@@ -89,6 +89,18 @@
             },
         },
         {
+            "name": "BasicCompute",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/Compute/1.BasicCompute/BasicCompute",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/Compute/1.BasicCompute",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "",
+            },
+        },
+        {
             "name": "First3DShape",
             "type": "lldb",
             "request": "launch",
