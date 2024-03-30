@@ -1,0 +1,20 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "DynamicUniforms",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/2D/6.DynamicUniforms/DynamicUniforms",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/2D/6.DynamicUniforms",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/lib",
+            },
+        }
+    ]
+}
