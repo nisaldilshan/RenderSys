@@ -8,9 +8,9 @@ add_subdirectory(2D/7.Fluid2D)
 
 add_subdirectory(Compute/1.BasicCompute)
 
-# add_subdirectory(7.First3DShape)
-# add_subdirectory(8.TransformationMatrices)
-# add_subdirectory(9.BasicShading)
+add_subdirectory(3D/Basic/1.First3DShape)
+add_subdirectory(3D/Basic/2.TransformationMatrices)
+add_subdirectory(3D/Basic/3.BasicShading)
 # add_subdirectory(10.FirstTexture)
 # add_subdirectory(11.TextureSampler)
 # add_subdirectory(12.TextureLoader)
