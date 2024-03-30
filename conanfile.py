@@ -11,9 +11,6 @@ class RenderSysConan(ConanFile):
     
     def requirements(self):
         self.requires('walnut/latest')
-        # self.requires('glm/0.9.9.8')
-        # self.requires('imgui/latest@nisaldilshan/docking')
-        # self.requires('stb/cci.20230920')
 
     def build_requirements(self):
         self.tool_requires('pkgconf/1.7.4')
