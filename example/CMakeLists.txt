@@ -14,9 +14,9 @@ add_subdirectory(3D/Basic/3.BasicShading)
 add_subdirectory(3D/Basic/4.FirstTexture)
 add_subdirectory(3D/Basic/5.TextureSampler)
 add_subdirectory(3D/Basic/6.TextureLoader)
-# add_subdirectory(13.CameraControls)
-# add_subdirectory(14.Lighting)
-# add_subdirectory(15.NormalMapping)
+add_subdirectory(3D/Basic/7.CameraControls)
+add_subdirectory(3D/Basic/8.Lighting)
+add_subdirectory(3D/Basic/9.NormalMapping)
 
 add_subdirectory(3D/Advanced/1.RayMarching)
 
