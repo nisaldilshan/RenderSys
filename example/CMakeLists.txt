@@ -18,7 +18,7 @@ add_subdirectory(Compute/1.BasicCompute)
 # add_subdirectory(14.Lighting)
 # add_subdirectory(15.NormalMapping)
 
-# add_subdirectory(17.RayMarching)
+add_subdirectory(3D/Advanced/1.RayMarching)
 
-# add_subdirectory(19.Fluid3D)
+add_subdirectory(3D/Volumetric/1.Fluid3D)
 

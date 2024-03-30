@@ -212,10 +212,10 @@
             "name": "RayMarching",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/RayMarching",
+            "program": "${workspaceFolder}/build/example/3D/Advanced/1.RayMarching/RayMarching",
             "args": [],
             "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/bin",
+            "cwd": "${workspaceFolder}/build/example/3D/Advanced/1.RayMarching",
             "env": { 
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/lib",
             },
