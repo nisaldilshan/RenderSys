@@ -55,6 +55,9 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Configure Conan
+      run: pip3 install conan==1.62.0
+
+    - name: Conan Install
       run: conan install .
 
     - name: Configure CMake
