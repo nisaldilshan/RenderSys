@@ -1,4 +1,5 @@
 #include "FluidSolver2D.h"
+#include <cassert>
 
 #define IX(x, y) ((x) + (y) * N)
 
@@ -25,6 +26,15 @@ static void set_bnd(int b, std::vector<float>& x, int N)
                                 + x[IX(N-1, 1)]);
     x[IX(N-1, N-1)]     = 0.5f * (x[IX(N-2, N-1)]
                                 + x[IX(N-1, N-2)]);
+
+    if(std::isnan(x[IX(0, 0)]))
+        x[IX(0, 0)] = 1.0f;
+    if(std::isnan(x[IX(0, N-1)]))
+        x[IX(0, N-1)] = 1.0f;
+    if(std::isnan(x[IX(N-1, 0)]))
+        x[IX(N-1, 0)] = 1.0f;
+    if(std::isnan(x[IX(N-1, N-1)]))
+        x[IX(N-1, N-1)] = 1.0f;                           
 }
 
 static void lin_solve(int b, std::vector<float>& x, std::vector<float>& x0, float a, float c, int N)
@@ -40,6 +50,8 @@ static void lin_solve(int b, std::vector<float>& x, std::vector<float>& x0, floa
                                 +x[IX(i  , j+1)]
                                 +x[IX(i  , j-1)]
                         )) * cRecip;
+                if(std::isnan(x[IX(i, j)]))
+                    x[IX(i, j)] = 1.0f;
             }
         }
         set_bnd(b, x, N);
@@ -87,50 +99,41 @@ void FluidSolver2D::FluidPlaneAddVelocity(int x, int y, float amountX, float amo
 
 void FluidSolver2D::Advect(int b, std::vector<float> &d, std::vector<float> &d0, std::vector<float> &velocX, std::vector<float> &velocY, float dt)
 {
-    const int N = m_fluid.size;
-    float i0, i1, j0, j1;
-    
-    float dtx = dt * (N - 2);
-    float dty = dt * (N - 2);
-    
-    float s0, s1, t0, t1;
-    float tmp1, tmp2, x, y;
-    
-    float Nfloat = N;
-    float ifloat, jfloat;
-    int i, j;
-    
+    const int N = m_fluid.size;    
+    const float dt0 = dt * N;
+    const float Nfloat = N;    
 
-    for(j = 1, jfloat = 1; j < N - 1; j++, jfloat++) { 
-        for(i = 1, ifloat = 1; i < N - 1; i++, ifloat++) {
-            tmp1 = dtx * velocX[IX(i, j)];
-            tmp2 = dty * velocY[IX(i, j)];
-            x    = ifloat - tmp1; 
-            y    = jfloat - tmp2;
+    for(int j = 1; j < N - 1; j++) { 
+        for(int i = 1; i < N - 1; i++) {
+            float x = float(i) - (dt0 * velocX[IX(i, j)]); 
+            float y = float(j) - (dt0 * velocY[IX(i, j)]);
             
-            if(x < 0.5f) x = 0.5f; 
-            if(x > Nfloat + 0.5f) x = Nfloat + 0.5f; 
-            i0 = floorf(x); 
-            i1 = i0 + 1.0f;
-            if(y < 0.5f) y = 0.5f; 
-            if(y > Nfloat + 0.5f) y = Nfloat + 0.5f; 
-            j0 = floorf(y);
-            j1 = j0 + 1.0f; 
+            if(x < 0.5f) 
+                x = 0.5f; 
+            if(x > Nfloat + 0.5f) 
+                x = Nfloat + 0.5f; 
+            if(y < 0.5f) 
+                y = 0.5f; 
+            if(y > Nfloat + 0.5f) 
+                y = Nfloat + 0.5f; 
             
-            s1 = x - i0; 
-            s0 = 1.0f - s1; 
-            t1 = y - j0; 
-            t0 = 1.0f - t1;
+            float i0 = floorf(x); 
+            float i1 = i0 + 1.0f;  
+            float j0 = floorf(y);
+            float j1 = j0 + 1.0f; 
+            
+            float s1 = x - i0; 
+            float s0 = 1.0f - s1; 
+            float t1 = y - j0; 
+            float t0 = 1.0f - t1;
             
             int i0i = i0;
             int i1i = i1;
             int j0i = j0;
             int j1i = j1;
             
-            d[IX(i, j)] = 
-            
-                s0 * ( t0 * d0[IX(i0i, j0i)]  +  t1 * d0[IX(i0i, j1i)])
-              + s1 * ( t0 * d0[IX(i1i, j0i)]  +  t1 * d0[IX(i1i, j1i)]);
+            d[IX(i, j)] =   s0 * ( t0 * d0[IX(i0i, j0i)]  +  t1 * d0[IX(i0i, j1i)])
+                          + s1 * ( t0 * d0[IX(i1i, j0i)]  +  t1 * d0[IX(i1i, j1i)]);
         }
     }
     set_bnd(b, d, N);

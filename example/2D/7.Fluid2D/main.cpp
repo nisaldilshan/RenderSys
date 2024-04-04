@@ -210,27 +210,47 @@ public:
 			m_finalImage->Resize(renderWidth, renderWidth);
 		}
 
-		m_solver->FluidPlaneAddDensity(128, 128, 500.0f);
-		m_solver->FluidPlaneAddDensity(126, 128, 500.0f);
-		m_solver->FluidPlaneAddDensity(130, 128, 500.0f);
-		m_solver->FluidPlaneAddDensity(128, 126, 500.0f);
-		m_solver->FluidPlaneAddDensity(128, 130, 500.0f);
+		for (int i = -1; i <= 1; i++) {
+    		for (int j = -1; j <= 1; j++) {
+				uint32_t some = Walnut::Random::UInt();
+				m_solver->FluidPlaneAddDensity(renderWidth/2 + i, renderWidth/2 + j, float(some % 500));
+			}
+		}
 
-		m_solver->FluidPlaneAddVelocity(110, 110, 1.0f, 1.0f);
-		m_solver->FluidPlaneAddVelocity(110, 110, 2.0f, 3.0f);
-		m_solver->FluidPlaneAddVelocity(110, 110, 3.0f, 2.0f);
+		static glm::vec2 angle = glm::circularRand(5.0f);
+		static std::chrono::steady_clock::time_point lastTime = std::chrono::steady_clock::now();
+		std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
+		if (currentTime - lastTime > std::chrono::milliseconds(2000))
+		{
+			angle = glm::circularRand(5.0f);
+			lastTime = currentTime;
+		}
+
+		for (int i = 0; i < 2; i++) {
+			m_solver->FluidPlaneAddVelocity(renderWidth/2, renderWidth/2, angle.x, angle.y);
+		}
 
 		m_solver->FluidSolveStep();
 
 		for (size_t i = 0; i < renderWidth * renderWidth; i++)
 		{
-			uint8_t red = m_fluid->density[i];
-			uint8_t green = m_fluid->density[i];
-			uint8_t blue = m_fluid->density[i];
+			float value = (m_fluid->density[i] / 1.0f);
+			if (value >= 255.0f)
+			{
+				value = 255.0f;
+			}
+			if (value <= 0.0f)
+			{
+				value = 0.0f;
+			}
+			uint8_t red = uint8_t(value);
+			uint8_t green = uint8_t(value);
+			uint8_t blue = uint8_t(value);
 			constexpr uint8_t alpha = 255;
         	uint32_t result = (alpha << 24) | (blue << 16) | (green << 8) | red;
 			m_imageData[i] = result;
 		}
+
 		m_finalImage->SetData(m_imageData);
 	}
 
