@@ -12,9 +12,9 @@
 struct FluidPlane {
     FluidPlane(std::size_t size)
         : size(size)
-        , dt(0.05f)
+        , dt(0.1f)
         , diffusion(0.0000001f)
-        , viscosity(0.0000000001f)
+        , viscosity(0.0000001f)
     {
         density0.resize(size * size);
         density.resize(size * size);

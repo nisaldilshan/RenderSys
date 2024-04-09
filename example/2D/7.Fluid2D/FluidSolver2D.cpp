@@ -28,13 +28,13 @@ static void set_bnd(int b, std::vector<float>& x, int N)
                                 + x[IX(N-1, N-2)]);
 
     if(std::isnan(x[IX(0, 0)]))
-        x[IX(0, 0)] = 1.0f;
+        x[IX(0, 0)] = 0.000001f;
     if(std::isnan(x[IX(0, N-1)]))
-        x[IX(0, N-1)] = 1.0f;
+        x[IX(0, N-1)] = 0.000001f;
     if(std::isnan(x[IX(N-1, 0)]))
-        x[IX(N-1, 0)] = 1.0f;
+        x[IX(N-1, 0)] = 0.000001f;
     if(std::isnan(x[IX(N-1, N-1)]))
-        x[IX(N-1, N-1)] = 1.0f;                           
+        x[IX(N-1, N-1)] = 0.000001f;                           
 }
 
 static void lin_solve(int b, std::vector<float>& x, std::vector<float>& x0, float a, float c, int N)
@@ -51,7 +51,7 @@ static void lin_solve(int b, std::vector<float>& x, std::vector<float>& x0, floa
                                 +x[IX(i  , j-1)]
                         )) * cRecip;
                 if(std::isnan(x[IX(i, j)]))
-                    x[IX(i, j)] = 1.0f;
+                    x[IX(i, j)] = 0.000001f;
             }
         }
         set_bnd(b, x, N);
@@ -134,6 +134,8 @@ void FluidSolver2D::Advect(int b, std::vector<float> &d, std::vector<float> &d0,
             
             d[IX(i, j)] =   s0 * ( t0 * d0[IX(i0i, j0i)]  +  t1 * d0[IX(i0i, j1i)])
                           + s1 * ( t0 * d0[IX(i1i, j0i)]  +  t1 * d0[IX(i1i, j1i)]);
+            // if(std::isnan(d[IX(i, j)]))
+            //         d[IX(i, j)] = 0.000001f;
         }
     }
     set_bnd(b, d, N);
@@ -170,6 +172,11 @@ void FluidSolver2D::Project(std::vector<float>& velocX, std::vector<float>& velo
                                          -p[IX(i-1, j)]) * N;
             velocY[IX(i, j)] -= 0.5f * (  p[IX(i, j+1)]
                                          -p[IX(i, j-1)]) * N;
+
+            if(std::isnan(velocX[IX(i, j)]))
+                    velocX[IX(i, j)] = 0.000001f;
+            if(std::isnan(velocY[IX(i, j)]))
+                    velocY[IX(i, j)] = 0.000001f;
         }
     }
     set_bnd(1, velocX, N);

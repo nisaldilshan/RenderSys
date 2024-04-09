@@ -12,6 +12,9 @@
 #include "FluidSolver2D.h"
 
 
+#include "Utils.h"
+
+
 /**
  * A structure that describes the data layout in the vertex buffer
  * We do not instantiate it but use it in `sizeof` and `offsetof`
@@ -213,7 +216,8 @@ public:
 		for (int i = -1; i <= 1; i++) {
     		for (int j = -1; j <= 1; j++) {
 				uint32_t some = Walnut::Random::UInt();
-				m_solver->FluidPlaneAddDensity(renderWidth/2 + i, renderWidth/2 + j, float(some % 500));
+				auto amount = float(some % 1000)+ 500.0f;
+				m_solver->FluidPlaneAddDensity(renderWidth/2 + i, renderWidth/2 + j, amount);
 			}
 		}
 
@@ -222,7 +226,7 @@ public:
 		std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
 		if (currentTime - lastTime > std::chrono::milliseconds(2000))
 		{
-			angle = glm::circularRand(5.0f);
+			angle = glm::circularRand(2.5f);
 			lastTime = currentTime;
 		}
 
@@ -234,20 +238,30 @@ public:
 
 		for (size_t i = 0; i < renderWidth * renderWidth; i++)
 		{
-			float value = (m_fluid->density[i] / 1.0f);
-			if (value >= 255.0f)
+			float density = m_fluid->density[i];
+			static float desityMax = density;
+			if (density > desityMax)
 			{
-				value = 255.0f;
+				desityMax = density;
 			}
-			if (value <= 0.0f)
-			{
-				value = 0.0f;
-			}
-			uint8_t red = uint8_t(value);
-			uint8_t green = uint8_t(value);
-			uint8_t blue = uint8_t(value);
+
+			float hue = fmodf(density + 50.0f, 360.0f); // (d + 50) % 360
+			float saturation = 1.0f;
+			float value = fmodf(density, desityMax); // d
+
+			float red = 0.0f;
+			float green = 0.0f;
+			float blue = 0.0f;
+
+			Utils::HSVtoRGB(red, green, blue, hue, saturation, value);
+
+			uint8_t redInt = static_cast<uint8_t>(red);
+			uint8_t greenInt = static_cast<uint8_t>(green);
+			uint8_t blueInt = static_cast<uint8_t>(blue);
+
+			
 			constexpr uint8_t alpha = 255;
-        	uint32_t result = (alpha << 24) | (blue << 16) | (green << 8) | red;
+        	uint32_t result = (alpha << 24) | (blueInt << 16) | (greenInt << 8) | redInt;
 			m_imageData[i] = result;
 		}
 
