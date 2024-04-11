@@ -5,16 +5,18 @@
 
 constexpr uint32_t linearSolveIterations = 4;
 
-static void set_bnd(int b, std::vector<float>& x, int N)
+// Check of Nan propagation
+// if(std::isnan(x[IX(0, 0)]))
+//     x[IX(0, 0)] = 0.000001f;
+
+static void set_bnd(int boundaryCondition, std::vector<float>& x, int N)
 {
     //set edges
     for(int i = 1; i < N - 1; i++) {
-        x[IX(i, 0  )] = b == 2 ? -x[IX(i, 1  )] : x[IX(i, 1  )];
-        x[IX(i, N-1)] = b == 2 ? -x[IX(i, N-2)] : x[IX(i, N-2)];
-    }
-    for(int j = 1; j < N - 1; j++) {
-        x[IX(0  , j)] = b == 1 ? -x[IX(1  , j)] : x[IX(1  , j)];
-        x[IX(N-1, j)] = b == 1 ? -x[IX(N-2, j)] : x[IX(N-2, j)];
+        x[IX(0  , i)] = boundaryCondition == 1 ? -x[IX(1  , i)] : x[IX(1  , i)];
+        x[IX(N-1, i)] = boundaryCondition == 1 ? -x[IX(N-2, i)] : x[IX(N-2, i)];
+        x[IX(i, 0  )] = boundaryCondition == 2 ? -x[IX(i, 1  )] : x[IX(i, 1  )];
+        x[IX(i, N-1)] = boundaryCondition == 2 ? -x[IX(i, N-2)] : x[IX(i, N-2)];
     }
     
     // set corners
@@ -25,19 +27,10 @@ static void set_bnd(int b, std::vector<float>& x, int N)
     x[IX(N-1, 0)]       = 0.5f * (x[IX(N-2, 0)]
                                 + x[IX(N-1, 1)]);
     x[IX(N-1, N-1)]     = 0.5f * (x[IX(N-2, N-1)]
-                                + x[IX(N-1, N-2)]);
-
-    // if(std::isnan(x[IX(0, 0)]))
-    //     x[IX(0, 0)] = 0.000001f;
-    // if(std::isnan(x[IX(0, N-1)]))
-    //     x[IX(0, N-1)] = 0.000001f;
-    // if(std::isnan(x[IX(N-1, 0)]))
-    //     x[IX(N-1, 0)] = 0.000001f;
-    // if(std::isnan(x[IX(N-1, N-1)]))
-    //     x[IX(N-1, N-1)] = 0.000001f;                           
+                                + x[IX(N-1, N-2)]);                        
 }
 
-static void lin_solve(int b, std::vector<float>& x, std::vector<float>& x0, float a, float c, int N)
+static void lin_solve_gauss_seidel(int boundaryCondition, std::vector<float>& x, std::vector<float>& x0, float a, float c, int N)
 {
     float cRecip = 1.0 / c;
     for (int k = 0; k < linearSolveIterations; k++) {
@@ -50,18 +43,40 @@ static void lin_solve(int b, std::vector<float>& x, std::vector<float>& x0, floa
                                 +x[IX(i  , j+1)]
                                 +x[IX(i  , j-1)]
                         )) * cRecip;
-                // if(std::isnan(x[IX(i, j)]))
-                //     x[IX(i, j)] = 0.000001f;
             }
         }
-        set_bnd(b, x, N);
+        set_bnd(boundaryCondition, x, N);
+    }
+}
+
+static void lin_solve_jacobi_iteration(int boundaryCondition, std::vector<float>& x, std::vector<float>& x0, float a, float c, int N)
+{
+    float cRecip = 1.0 / c;
+    std::vector<float> x_new(x.size(), 0.0f); // Create a new vector to store updated values
+    
+    for (int k = 0; k < linearSolveIterations; k++) {
+        for (int i = 1; i < N - 1; i++) {
+            for (int j = 1; j < N - 1; j++) {
+                x_new[IX(i, j)] =
+                    (x0[IX(i, j)]
+                        + a*(    x[IX(i+1, j  )]
+                                + x[IX(i-1, j  )]
+                                + x[IX(i  , j+1)]
+                                + x[IX(i  , j-1)]
+                        )) * cRecip;
+            }
+        }
+        
+        // Update the x vector after each iteration
+        x = x_new;
+        
+        set_bnd(boundaryCondition, x, N);
     }
 }
 
 FluidSolver2D::FluidSolver2D(FluidPlane& fluid)
     : m_fluid(fluid)
-{
-}
+{}
 
 void FluidSolver2D::FluidSolveStep()
 {
@@ -134,8 +149,6 @@ void FluidSolver2D::Advect(int b, std::vector<float> &d, std::vector<float> &d0,
             
             d[IX(i, j)] =   s0 * ( t0 * d0[IX(i0i, j0i)]  +  t1 * d0[IX(i0i, j1i)])
                           + s1 * ( t0 * d0[IX(i1i, j0i)]  +  t1 * d0[IX(i1i, j1i)]);
-            // if(std::isnan(d[IX(i, j)]))
-            //         d[IX(i, j)] = 0.000001f;
         }
     }
     set_bnd(b, d, N);
@@ -145,7 +158,7 @@ void FluidSolver2D::Diffuse(int b, std::vector<float>& x, std::vector<float>& x0
 {
     const int N = m_fluid.size;
     float a = dt * diff * (N - 2) * (N - 2);
-    lin_solve(b, x, x0, a, 1 + 4 * a, N);
+    lin_solve_gauss_seidel(b, x, x0, a, 1 + 4 * a, N);
 }
 
 void FluidSolver2D::Project(std::vector<float>& velocX, std::vector<float>& velocY, std::vector<float>& p, std::vector<float>& div)
@@ -165,7 +178,7 @@ void FluidSolver2D::Project(std::vector<float>& velocX, std::vector<float>& velo
     }
     set_bnd(0, div, N); 
     set_bnd(0, p, N);
-    lin_solve(0, p, div, 1, 6, N);
+    lin_solve_gauss_seidel(0, p, div, 1, 4, N);
     
     for (int i = 1; i < N - 1; i++) {
         for (int j = 1; j < N - 1; j++) {
@@ -173,11 +186,6 @@ void FluidSolver2D::Project(std::vector<float>& velocX, std::vector<float>& velo
                                          -p[IX(i-1, j)]) * N;
             velocY[IX(i, j)] -= 0.5f * (  p[IX(i, j+1)]
                                          -p[IX(i, j-1)]) * N;
-
-            // if(std::isnan(velocX[IX(i, j)]))
-            //         velocX[IX(i, j)] = 0.000001f;
-            // if(std::isnan(velocY[IX(i, j)]))
-            //         velocY[IX(i, j)] = 0.000001f;
         }
     }
     set_bnd(1, velocX, N);
