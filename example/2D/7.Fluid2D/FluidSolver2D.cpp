@@ -27,22 +27,22 @@ static void set_bnd(int b, std::vector<float>& x, int N)
     x[IX(N-1, N-1)]     = 0.5f * (x[IX(N-2, N-1)]
                                 + x[IX(N-1, N-2)]);
 
-    if(std::isnan(x[IX(0, 0)]))
-        x[IX(0, 0)] = 0.000001f;
-    if(std::isnan(x[IX(0, N-1)]))
-        x[IX(0, N-1)] = 0.000001f;
-    if(std::isnan(x[IX(N-1, 0)]))
-        x[IX(N-1, 0)] = 0.000001f;
-    if(std::isnan(x[IX(N-1, N-1)]))
-        x[IX(N-1, N-1)] = 0.000001f;                           
+    // if(std::isnan(x[IX(0, 0)]))
+    //     x[IX(0, 0)] = 0.000001f;
+    // if(std::isnan(x[IX(0, N-1)]))
+    //     x[IX(0, N-1)] = 0.000001f;
+    // if(std::isnan(x[IX(N-1, 0)]))
+    //     x[IX(N-1, 0)] = 0.000001f;
+    // if(std::isnan(x[IX(N-1, N-1)]))
+    //     x[IX(N-1, N-1)] = 0.000001f;                           
 }
 
 static void lin_solve(int b, std::vector<float>& x, std::vector<float>& x0, float a, float c, int N)
 {
     float cRecip = 1.0 / c;
     for (int k = 0; k < linearSolveIterations; k++) {
-        for (int j = 1; j < N - 1; j++) {
-            for (int i = 1; i < N - 1; i++) {
+        for (int i = 1; i < N - 1; i++) {
+            for (int j = 1; j < N - 1; j++) {
                 x[IX(i, j)] =
                     (x0[IX(i, j)]
                         + a*(    x[IX(i+1, j  )]
@@ -50,8 +50,8 @@ static void lin_solve(int b, std::vector<float>& x, std::vector<float>& x0, floa
                                 +x[IX(i  , j+1)]
                                 +x[IX(i  , j-1)]
                         )) * cRecip;
-                if(std::isnan(x[IX(i, j)]))
-                    x[IX(i, j)] = 0.000001f;
+                // if(std::isnan(x[IX(i, j)]))
+                //     x[IX(i, j)] = 0.000001f;
             }
         }
         set_bnd(b, x, N);
@@ -103,8 +103,8 @@ void FluidSolver2D::Advect(int b, std::vector<float> &d, std::vector<float> &d0,
     const float dt0 = dt * N;
     const float Nfloat = N;    
 
-    for(int j = 1; j < N - 1; j++) { 
-        for(int i = 1; i < N - 1; i++) {
+    for(int i = 1; i < N - 1; i++) {
+        for(int j = 1; j < N - 1; j++) { 
             float x = float(i) - (dt0 * velocX[IX(i, j)]); 
             float y = float(j) - (dt0 * velocY[IX(i, j)]);
             
@@ -145,20 +145,21 @@ void FluidSolver2D::Diffuse(int b, std::vector<float>& x, std::vector<float>& x0
 {
     const int N = m_fluid.size;
     float a = dt * diff * (N - 2) * (N - 2);
-    lin_solve(b, x, x0, a, 1 + 6 * a, N);
+    lin_solve(b, x, x0, a, 1 + 4 * a, N);
 }
 
 void FluidSolver2D::Project(std::vector<float>& velocX, std::vector<float>& velocY, std::vector<float>& p, std::vector<float>& div)
 {
     const int N = m_fluid.size;
-    for (int j = 1; j < N - 1; j++) {
-        for (int i = 1; i < N - 1; i++) {
-            div[IX(i, j)] = -0.5f*(
+    float h = 1.0/N;
+    for (int i = 1; i < N - 1; i++) {
+        for (int j = 1; j < N - 1; j++) {
+            div[IX(i, j)] = -0.5f * h *(
                      velocX[IX(i+1, j  )]
                     -velocX[IX(i-1, j  )]
                     +velocY[IX(i  , j+1)]
                     -velocY[IX(i  , j-1)]
-                )/N;
+                );
             p[IX(i, j)] = 0;
         }
     }
@@ -166,17 +167,17 @@ void FluidSolver2D::Project(std::vector<float>& velocX, std::vector<float>& velo
     set_bnd(0, p, N);
     lin_solve(0, p, div, 1, 6, N);
     
-    for (int j = 1; j < N - 1; j++) {
-        for (int i = 1; i < N - 1; i++) {
+    for (int i = 1; i < N - 1; i++) {
+        for (int j = 1; j < N - 1; j++) {
             velocX[IX(i, j)] -= 0.5f * (  p[IX(i+1, j)]
                                          -p[IX(i-1, j)]) * N;
             velocY[IX(i, j)] -= 0.5f * (  p[IX(i, j+1)]
                                          -p[IX(i, j-1)]) * N;
 
-            if(std::isnan(velocX[IX(i, j)]))
-                    velocX[IX(i, j)] = 0.000001f;
-            if(std::isnan(velocY[IX(i, j)]))
-                    velocY[IX(i, j)] = 0.000001f;
+            // if(std::isnan(velocX[IX(i, j)]))
+            //         velocX[IX(i, j)] = 0.000001f;
+            // if(std::isnan(velocY[IX(i, j)]))
+            //         velocY[IX(i, j)] = 0.000001f;
         }
     }
     set_bnd(1, velocX, N);
