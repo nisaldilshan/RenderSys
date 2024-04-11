@@ -216,17 +216,17 @@ public:
 		for (int i = -1; i <= 1; i++) {
     		for (int j = -1; j <= 1; j++) {
 				uint32_t some = Walnut::Random::UInt();
-				auto amount = float(some % 1000)+ 500.0f;
+				auto amount = float(some % 500)+ 100.0f;
 				m_solver->FluidPlaneAddDensity(renderWidth/2 + i, renderWidth/2 + j, amount);
 			}
 		}
 
-		static glm::vec2 angle = glm::circularRand(5.0f);
+		static glm::vec2 angle = glm::circularRand(10.0f);
 		static std::chrono::steady_clock::time_point lastTime = std::chrono::steady_clock::now();
 		std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
 		if (currentTime - lastTime > std::chrono::milliseconds(2000))
 		{
-			angle = glm::circularRand(2.5f);
+			angle = glm::circularRand(10.0f);
 			lastTime = currentTime;
 		}
 
@@ -238,16 +238,21 @@ public:
 
 		for (size_t i = 0; i < renderWidth * renderWidth; i++)
 		{
-			float density = m_fluid->density[i];
-			static float desityMax = density;
-			if (density > desityMax)
+			const float density = m_fluid->density[i];
+			if (density > m_desityMax)
 			{
-				desityMax = density;
+				m_desityMax = density;
+			}
+
+			const glm::vec2 velocity = glm::vec2(m_fluid->Vx[i], m_fluid->Vy[i]);
+			if (glm::length(velocity) > glm::length(m_velocityMax))
+			{
+				m_velocityMax = velocity;
 			}
 
 			float hue = fmodf(density + 50.0f, 360.0f); // (d + 50) % 360
 			float saturation = 1.0f;
-			float value = fmodf(density, desityMax); // d
+			float value = fmodf(density, m_desityMax); // d
 
 			float red = 0.0f;
 			float green = 0.0f;
@@ -290,6 +295,9 @@ public:
 	{
 		ImGui::Begin("Settings");
         ImGui::Text("Last render: %.3fms", m_lastRenderTime);
+		ImGui::Text("Max Density: %.3fms", m_desityMax);
+		ImGui::Text("Max Velocity: %.3fms", glm::length(m_velocityMax));
+		ImGui::Text("Optimum Delta Time: %.6fms", (1.0f / simulationDimension) / glm::length(m_velocityMax));
 
 
 		ImGui::Checkbox("HW", &m_hWSolver);
@@ -340,6 +348,9 @@ private:
 	std::shared_ptr<Walnut::Image> m_finalImage = nullptr;
 	std::unique_ptr<FluidPlane> m_fluid;
 	std::unique_ptr<FluidSolver2D> m_solver;
+
+	float m_desityMax = 0.0f;
+	glm::vec2 m_velocityMax = glm::vec2(0.0f);
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

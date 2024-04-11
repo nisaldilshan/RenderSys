@@ -12,7 +12,7 @@
 struct FluidPlane {
     FluidPlane(std::size_t size)
         : size(size)
-        , dt(0.1f)
+        , dt(0.01f)
         , diffusion(0.0000001f)
         , viscosity(0.0000001f)
     {
