@@ -8,11 +8,11 @@
     // https://developer.nvidia.com/gpugems/gpugems/part-vi-beyond-triangles/chapter-38-fast-fluid-dynamics-simulation-gpu
     // https://mikeash.com/pyblog/fluid-simulation-for-dummies.html
     // https://www.youtube.com/watch?v=alhpH6ECFvQ
+    // But How DO Fluid Simulations Work? - https://www.youtube.com/watch?v=qsYE1wMEMPA
 
 struct FluidPlane {
     FluidPlane(std::size_t size)
         : size(size)
-        , dt(0.01f)
         , diffusion(0.0000001f)
         , viscosity(0.0000001f)
     {
@@ -25,7 +25,6 @@ struct FluidPlane {
     }
 
     const std::size_t size;
-    const float dt;
     const float diffusion;
     const float viscosity;
     

@@ -80,8 +80,7 @@ FluidSolver2D::FluidSolver2D(FluidPlane& fluid)
 
 void FluidSolver2D::FluidSolveStep()
 {
-    int N          = m_fluid.size;
-    float dt       = m_fluid.dt;
+    float dt       = 0.01f;
     
     Diffuse(1, m_fluid.Vx0, m_fluid.Vx, m_fluid.viscosity, dt);
     Diffuse(2, m_fluid.Vy0, m_fluid.Vy, m_fluid.viscosity, dt);
