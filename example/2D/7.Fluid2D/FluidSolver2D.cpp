@@ -80,19 +80,34 @@ FluidSolver2D::FluidSolver2D(FluidPlane& fluid)
 
 void FluidSolver2D::FluidSolveStep()
 {
-    float dt       = 0.01f;
-    
+    const float dt = 0.01f;
+    VelocityStep(dt);
+    DensityStep(dt);
+}
+
+void FluidSolver2D::VelocityStep(const float dt)
+{
+    // Diffusion algorithm will be applied to "Vx/Vy" and the results will be stored in "Vx0/Vy0"
     Diffuse(1, m_fluid.Vx0, m_fluid.Vx, m_fluid.viscosity, dt);
     Diffuse(2, m_fluid.Vy0, m_fluid.Vy, m_fluid.viscosity, dt);
-    
+    // Divergence free projection will be applied to the results of previous steps which was stored in "Vx0" and "Vy0"
     Project(m_fluid.Vx0, m_fluid.Vy0, m_fluid.Vx, m_fluid.Vy);
     
+    // Advection algorithm will apply to the results of previous step which was stored in "Vx0/Vy0" 
+    // and the final results will be stored in "Vx/Vy"
     Advect(1, m_fluid.Vx, m_fluid.Vx0, m_fluid.Vx0, m_fluid.Vy0, dt);
     Advect(2, m_fluid.Vy, m_fluid.Vy0, m_fluid.Vx0, m_fluid.Vy0, dt);
-    
+    // Divergence free projection will be applied to the results of previous steps which was stored in "Vx" and "Vy"
     Project(m_fluid.Vx, m_fluid.Vy, m_fluid.Vx0, m_fluid.Vy0);
-    
+}
+
+void FluidSolver2D::DensityStep(const float dt)
+{
+    // Diffusion algorithm will be applied to "density" and the results will be stored in "density0"
     Diffuse(0, m_fluid.density0, m_fluid.density, m_fluid.diffusion, dt);
+
+    // Advection algorithm will apply to the results of previous step which was stored in "density0" 
+    // and the final results will be stored in "density"
     Advect(0, m_fluid.density, m_fluid.density0, m_fluid.Vx, m_fluid.Vy, dt);
 }
 

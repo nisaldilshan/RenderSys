@@ -226,7 +226,7 @@ public:
 		std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
 		if (currentTime - lastTime > std::chrono::milliseconds(2000))
 		{
-			angle = glm::circularRand(10.0f);
+			angle = glm::circularRand(20.0f);
 			lastTime = currentTime;
 		}
 

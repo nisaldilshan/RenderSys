@@ -13,8 +13,8 @@
 struct FluidPlane {
     FluidPlane(std::size_t size)
         : size(size)
-        , diffusion(0.0000001f)
-        , viscosity(0.0000001f)
+        , diffusion(0.0000000f)
+        , viscosity(0.0000000f)
     {
         density0.resize(size * size);
         density.resize(size * size);
@@ -50,6 +50,8 @@ private:
     void Advect(int b, std::vector<float>& d, std::vector<float>& d0,  std::vector<float>& velocX, std::vector<float>& velocY, float dt);
     void Diffuse(int b, std::vector<float>& x, std::vector<float>& x0, float diff, float dt);
     void Project(std::vector<float>& velocX, std::vector<float>& velocY, std::vector<float>& p, std::vector<float>& div);
+    void VelocityStep(const float dt);
+    void DensityStep(const float dt);
 
     FluidPlane& m_fluid;
 };
