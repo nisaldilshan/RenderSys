@@ -27,3 +27,9 @@ class RenderSysConan(ConanFile):
         cmake.verbose = True
         cmake.configure()
         cmake.build()
+
+    def layout(self):
+        self.folders.source = "."
+        self.folders.build = "build"
+        self.folders.generators = "build"
+        self.folders.imports = self.folders.build
