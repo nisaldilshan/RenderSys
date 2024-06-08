@@ -7,7 +7,7 @@
 
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include "Buffer.h"
+#include "../Buffer.h"
 
 namespace GraphicsAPI
 {

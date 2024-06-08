@@ -1,6 +1,6 @@
 #include "Compute.h"
 
-#include "WebGPUCompute.h"
+#include "WebGPU/WebGPUCompute.h"
 
 Compute::Compute()
     : m_computeBackend(std::make_unique<GraphicsAPI::WebGPUCompute>())

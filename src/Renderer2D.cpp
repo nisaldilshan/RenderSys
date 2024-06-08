@@ -1,6 +1,6 @@
 #include "Renderer2D.h"
 
-#include "WebGPURenderer2D.h"
+#include "WebGPU/WebGPURenderer2D.h"
 
 Renderer2D::Renderer2D()
     : m_Width(0)

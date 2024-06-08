@@ -1,6 +1,6 @@
 #include "Renderer3D.h"
 
-#include "WebGPURenderer3D.h"
+#include "WebGPU/WebGPURenderer3D.h"
 
 Renderer3D::Renderer3D()
     : m_Width(0)

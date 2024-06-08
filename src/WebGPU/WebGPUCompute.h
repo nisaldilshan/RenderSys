@@ -5,7 +5,7 @@
 
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
-#include "Buffer.h"
+#include "../Buffer.h"
 
 namespace GraphicsAPI
 {
