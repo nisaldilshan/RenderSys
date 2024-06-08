@@ -18,6 +18,7 @@ class RenderSysConan(ConanFile):
 
     def generate(self):
         tc = CMakeToolchain(self)
+        tc.variables["RENDERER"] = self.dependencies['walnut'].options.rendering_backend
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()

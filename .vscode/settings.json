@@ -53,6 +53,7 @@
         "string_view": "cpp",
         "typeinfo": "cpp",
         "unordered_map": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "charconv": "cpp"
     }
 }

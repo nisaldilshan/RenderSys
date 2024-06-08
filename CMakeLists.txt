@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.22.0)
-
 project (RenderSys)
+
+message(STATUS "RENDERER: " ${RENDERER})
 
 find_package(walnut REQUIRED)
 
