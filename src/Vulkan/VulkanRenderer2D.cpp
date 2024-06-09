@@ -151,7 +151,7 @@ void VulkanRenderer2D::CreatePipeline()
     // std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
-void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, wgpu::VertexBufferLayout bufferLayout)
+void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
 {
     // std::cout << "Creating vertex buffer..." << std::endl;
     // m_vertexCount = bufferLength / bufferLayout.arrayStride;
@@ -186,9 +186,9 @@ void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
     // std::cout << "Index buffer: " << m_indexBuffer << std::endl;
 }
 
-void VulkanRenderer2D::SetBindGroupLayoutEntry(wgpu::BindGroupLayoutEntry bindGroupLayoutEntry)
+void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
-    // // Create a bind group layout
+    // Create a bind group layout
 	// wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
 	// bindGroupLayoutDesc.entryCount = 1;
 	// bindGroupLayoutDesc.entries = &bindGroupLayoutEntry;
@@ -332,7 +332,7 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
 
 ImTextureID VulkanRenderer2D::GetDescriptorSet()
 {
-    return m_textureToRenderInto;
+    //return m_textureToRenderInto;
 }
 
 void VulkanRenderer2D::BeginRenderPass()

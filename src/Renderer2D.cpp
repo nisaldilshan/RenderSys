@@ -43,7 +43,7 @@ void Renderer2D::SetStandaloneShader(const char* shaderSource, uint32_t vertexSh
     m_rendererBackend->CreateStandaloneShader(shaderSource, vertexShaderCallCount);
 }
 
-void Renderer2D::SetVertexBufferData(const void* bufferData, uint32_t bufferLength, wgpu::VertexBufferLayout bufferLayout)
+void Renderer2D::SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
 {
     m_rendererBackend->CreateVertexBuffer(bufferData, bufferLength, bufferLayout);
 }
@@ -53,7 +53,7 @@ void Renderer2D::SetIndexBufferData(const std::vector<uint16_t>& bufferData)
     m_rendererBackend->CreateIndexBuffer(bufferData);
 }
 
-void Renderer2D::SetBindGroupLayoutEntry(wgpu::BindGroupLayoutEntry bindGroupLayoutEntry)
+void Renderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
     m_rendererBackend->SetBindGroupLayoutEntry(bindGroupLayoutEntry);
 }

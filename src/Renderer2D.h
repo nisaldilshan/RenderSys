@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <Walnut/ImageFormat.h>
 
-
 #define RENDERER_BACKEND 2
 
 #if (RENDERER_BACKEND == 1)
@@ -15,6 +14,8 @@
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 #else
 #endif
+
+#include "RenderUtil.h"
 
 namespace GraphicsAPI
 {
@@ -41,9 +42,9 @@ public:
     void OnResize(uint32_t width, uint32_t height);
     void SetShader(const char* shaderSource);
     void SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount);
-    void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, wgpu::VertexBufferLayout bufferLayout);
+    void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
-    void SetBindGroupLayoutEntry(wgpu::BindGroupLayoutEntry bindGroupLayoutEntry);
+    void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
     void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
     void SetUniformBufferData(const void* bufferData, uint32_t uniformIndex);
     void* GetDescriptorSet();
@@ -57,7 +58,7 @@ public:
 
 private:
     uint32_t m_Width = 0, m_Height = 0;
-    std::unique_ptr<GraphicsAPI::WebGPURenderer2D> m_rendererBackend;
+    std::unique_ptr<GraphicsAPI::RendererType> m_rendererBackend;
     const char* m_shaderSource = nullptr;
 };
 
