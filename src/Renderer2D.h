@@ -4,18 +4,26 @@
 #include <stdint.h>
 #include <Walnut/ImageFormat.h>
 
-#include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
-#define RENDERER_BACKEND 3
+#define RENDERER_BACKEND 2
+
+#if (RENDERER_BACKEND == 1)
+#include <Walnut/GraphicsAPI/OpenGLGraphics.h>
+#elif (RENDERER_BACKEND == 2)
+#include <Walnut/GraphicsAPI/VulkanGraphics.h>
+#elif (RENDERER_BACKEND == 3)
+#include <Walnut/GraphicsAPI/WebGPUGraphics.h>
+#else
+#endif
 
 namespace GraphicsAPI
 {
 #if (RENDERER_BACKEND == 1)
-class OpenGLImage;
-typedef OpenGLImage ImageType;
+class OpenGLRenderer2D;
+typedef OpenGLRenderer2D RendererType;
 #elif (RENDERER_BACKEND == 2)
-class VulkanImage;
-typedef VulkanImage ImageType;
+class VulkanRenderer2D;
+typedef VulkanRenderer2D RendererType;
 #elif (RENDERER_BACKEND == 3)
 class WebGPURenderer2D;
 typedef WebGPURenderer2D RendererType;

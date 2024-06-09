@@ -1,11 +1,19 @@
 #include "Renderer2D.h"
 
+
+#if (RENDERER_BACKEND == 1)
+//#include <Walnut/GraphicsAPI/OpenGLGraphics.h>
+#elif (RENDERER_BACKEND == 2)
+#include "Vulkan/VulkanRenderer2D.h"
+#elif (RENDERER_BACKEND == 3)
 #include "WebGPU/WebGPURenderer2D.h"
+#else
+#endif
 
 Renderer2D::Renderer2D()
     : m_Width(0)
     , m_Height(0)
-    , m_rendererBackend(std::make_unique<GraphicsAPI::WebGPURenderer2D>())
+    , m_rendererBackend(std::make_unique<GraphicsAPI::RendererType>())
 {}
 
 void Renderer2D::OnResize(uint32_t width, uint32_t height)
