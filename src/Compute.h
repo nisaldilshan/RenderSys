@@ -7,8 +7,6 @@
 
 #include "Buffer.h"
 
-#define RENDERER_BACKEND 3
-
 namespace GraphicsAPI
 {
 #if (RENDERER_BACKEND == 1)

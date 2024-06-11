@@ -4,13 +4,10 @@
 #include <stdint.h>
 #include <Walnut/ImageFormat.h>
 
-
 #define GLM_FORCE_LEFT_HANDED
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include "Buffer.h"
-
-#define RENDERER_BACKEND 3
 
 #if (RENDERER_BACKEND == 1)
 #include <Walnut/GraphicsAPI/OpenGLGraphics.h>
@@ -20,6 +17,8 @@
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 #else
 #endif
+
+#include "RenderUtil.h"
 
 namespace GraphicsAPI
 {
@@ -46,9 +45,9 @@ public:
     void Init();
     void SetShader(const char* shaderSource);
     void SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount);
-    void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, wgpu::VertexBufferLayout bufferLayout);
+    void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
-    void CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEntry>& bindGroupLayoutEntries);
+    void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
     void CreateTexture(uint32_t width, uint32_t height, const void* textureData, uint32_t mipMapLevelCount);
     void CreateTextureSampler();
     void SetClearColor(glm::vec4 clearColor);
@@ -65,6 +64,6 @@ public:
 
 private:
     uint32_t m_Width = 0, m_Height = 0;
-    std::unique_ptr<GraphicsAPI::WebGPURenderer3D> m_rendererBackend;
+    std::unique_ptr<GraphicsAPI::RendererType> m_rendererBackend;
 };
 

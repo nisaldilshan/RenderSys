@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <Walnut/ImageFormat.h>
 
-#define RENDERER_BACKEND 2
-
 #if (RENDERER_BACKEND == 1)
 #include <Walnut/GraphicsAPI/OpenGLGraphics.h>
 #elif (RENDERER_BACKEND == 2)

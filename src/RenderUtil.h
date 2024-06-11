@@ -59,6 +59,11 @@ namespace RenderSys
     {
         /* data */
     };
+
+    struct TextureDescriptor
+    {
+        /* data */
+    };
     
     
 } // namespace RenderSys
