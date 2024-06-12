@@ -6,34 +6,72 @@ namespace GraphicsAPI
 
 void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
 {
-    // m_width = width;
-    // m_height = height;
-    // wgpu::TextureDescriptor tex_desc = {};
-    // tex_desc.label = "Renderer Final Texture";
-    // tex_desc.dimension = WGPUTextureDimension_2D;
-    // tex_desc.size.width = m_width;
-    // tex_desc.size.height = m_height;
-    // tex_desc.size.depthOrArrayLayers = 1;
-    // tex_desc.sampleCount = 1;
-    // tex_desc.format = WGPUTextureFormat_BGRA8Unorm;
-    // tex_desc.mipLevelCount = 1;
-    // tex_desc.usage = WGPUTextureUsage_CopyDst | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment;
-    // //##
-    // tex_desc.viewFormatCount = 1;
-    // wgpu::TextureFormat tf = WebGPU::GetSwapChainFormat();
-	// tex_desc.viewFormats = (WGPUTextureFormat *)const_cast<wgpu::TextureFormat *>(&tf);
-    // //##
-    // wgpu::Texture texture = WebGPU::GetDevice().createTexture(tex_desc);
+    m_width = width;
+    m_height = height;
 
-    // wgpu::TextureViewDescriptor tex_view_desc = {};
-    // tex_view_desc.format = WGPUTextureFormat_BGRA8Unorm;
-    // tex_view_desc.dimension = WGPUTextureViewDimension_2D;
-    // tex_view_desc.baseMipLevel = 0;
-    // tex_view_desc.mipLevelCount = 1;
-    // tex_view_desc.baseArrayLayer = 0;
-    // tex_view_desc.arrayLayerCount = 1;
-    // tex_view_desc.aspect = WGPUTextureAspect_All;
-    // m_textureToRenderInto = texture.createView(tex_view_desc);
+    // Create the image
+    VkImageCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    info.imageType = VK_IMAGE_TYPE_2D;
+    info.format = VK_FORMAT_R8G8B8A8_UNORM;
+    info.extent.width = m_width;
+    info.extent.height = m_height;
+    info.extent.depth = 1;
+    info.mipLevels = 1;
+    info.arrayLayers = 1;
+    info.samples = VK_SAMPLE_COUNT_1_BIT;
+    info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT; // WGPUTextureUsage_CopyDst | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment;
+    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_image);
+    Vulkan::check_vk_result(err);
+
+    VkMemoryRequirements req;
+    vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_image, &req);
+    VkMemoryAllocateInfo alloc_info = {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc_info.allocationSize = req.size;
+    alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
+    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_imageMemory);
+    Vulkan::check_vk_result(err);
+    err = vkBindImageMemory(Vulkan::GetDevice(), m_image, m_imageMemory, 0);
+    Vulkan::check_vk_result(err);
+
+    //// Create the image view
+    {
+        VkResult err;
+        VkImageViewCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        info.image = m_image;
+        info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        info.format = VK_FORMAT_R8G8B8A8_UNORM;
+        info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        info.subresourceRange.levelCount = 1;
+        info.subresourceRange.layerCount = 1;
+        err = vkCreateImageView(Vulkan::GetDevice(), &info, nullptr, &m_imageView);
+        Vulkan::check_vk_result(err);
+    }
+
+    //// Create the sampler
+    {
+        VkSamplerCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        info.magFilter = VK_FILTER_LINEAR;
+        info.minFilter = VK_FILTER_LINEAR;
+        info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        info.minLod = -1000;
+        info.maxLod = 1000;
+        info.maxAnisotropy = 1.0f;
+        VkResult err = vkCreateSampler(Vulkan::GetDevice(), &info, nullptr, &m_imageSampler);
+        Vulkan::check_vk_result(err);
+    }
+
+    //// create the descriptor set
+    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_imageSampler, m_imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void VulkanRenderer3D::CreateShaders(const char* shaderSource)
@@ -453,7 +491,7 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
 
 ImTextureID VulkanRenderer3D::GetDescriptorSet()
 {
-    // return m_textureToRenderInto;
+    return m_descriptorSet;
 }
 
 void VulkanRenderer3D::BeginRenderPass()

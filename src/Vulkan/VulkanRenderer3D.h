@@ -48,7 +48,12 @@ namespace GraphicsAPI
 
         // wgpu::ShaderModule m_shaderModule = nullptr;
         // wgpu::RenderPipeline m_pipeline = nullptr;
-        // wgpu::TextureView m_textureToRenderInto = nullptr;
+
+        VkImage m_image;
+        VkImageView m_imageView;
+        VkDeviceMemory m_imageMemory;
+        VkSampler m_imageSampler;
+        VkDescriptorSet m_descriptorSet; // same as m_textureToRenderInto
 
         uint32_t m_vertexCount = 0;
         uint64_t m_vertexBufferSize = 0;
