@@ -293,7 +293,19 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
 
 void VulkanRenderer2D::SimpleRender()
 {
-    // m_renderPass.draw(m_vertexCount, 1, 0, 0);
+    /* the rendering itself happens here */
+    vkCmdBindPipeline(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdPipeline);
+
+    /* required for dynamic viewport */
+    vkCmdSetViewport(mRenderData.rdCommandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(mRenderData.rdCommandBuffer, 0, 1, &scissor);
+
+    /* the triangle drawing itself */
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(mRenderData.rdCommandBuffer, 0, 1, &mVertexBuffer, &offset);
+    vkCmdBindDescriptorSets(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdPipelineLayout, 0, 1, &mRenderData.rdDescriptorSet, 0, nullptr);
+
+    vkCmdDraw(mRenderData.rdCommandBuffer, mTriangleCount * 3, 1, 0, 0);
 }
 
 void VulkanRenderer2D::Render()
@@ -337,47 +349,112 @@ ImTextureID VulkanRenderer2D::GetDescriptorSet()
 
 void VulkanRenderer2D::BeginRenderPass()
 {
-    // if (!m_textureToRenderInto)
-    //     std::cerr << "Cannot acquire texture to render into" << std::endl;
+    VkResult err;
 
-    // wgpu::CommandEncoderDescriptor commandEncoderDesc;
-    // commandEncoderDesc.label = "Renderer Command Encoder";
-    // m_currentCommandEncoder = WebGPU::GetDevice().createCommandEncoder(commandEncoderDesc);
+	VkSemaphore image_acquired_semaphore = g_MainWindowData.FrameSemaphores[g_MainWindowData.SemaphoreIndex].ImageAcquiredSemaphore;
+	VkSemaphore render_complete_semaphore = g_MainWindowData.FrameSemaphores[g_MainWindowData.SemaphoreIndex].RenderCompleteSemaphore;
+	err = vkAcquireNextImageKHR(g_Device, g_MainWindowData.Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE, &g_MainWindowData.FrameIndex);
+	if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR)
+	{
+		g_SwapChainRebuild = true;
+		return;
+	}
+	check_vk_result(err);
 
-    // wgpu::RenderPassDescriptor renderPassDesc;
+	s_CurrentFrameIndex = (s_CurrentFrameIndex + 1) % g_MainWindowData.ImageCount;
 
-    // wgpu::RenderPassColorAttachment renderPassColorAttachment;
-    // renderPassColorAttachment.view = m_textureToRenderInto;
-    // renderPassColorAttachment.resolveTarget = nullptr;
-    // renderPassColorAttachment.loadOp = wgpu::LoadOp::Clear;
-    // renderPassColorAttachment.storeOp = wgpu::StoreOp::Store;
-    // renderPassColorAttachment.clearValue = wgpu::Color{ 0.9, 0.1, 0.2, 1.0 };
-    // renderPassDesc.colorAttachmentCount = 1;
-    // renderPassDesc.colorAttachments = &renderPassColorAttachment;
+	ImGui_ImplVulkanH_Frame* fd = &g_MainWindowData.Frames[g_MainWindowData.FrameIndex];
+	{
+		err = vkWaitForFences(g_Device, 1, &fd->Fence, VK_TRUE, UINT64_MAX);    // wait indefinitely instead of periodically checking
+		check_vk_result(err);
 
-    // renderPassDesc.depthStencilAttachment = nullptr;
-    // renderPassDesc.timestampWriteCount = 0;
-    // renderPassDesc.timestampWrites = nullptr;
+		err = vkResetFences(g_Device, 1, &fd->Fence);
+		check_vk_result(err);
+	}
+	
+	{
+		// Free resources in queue
+		for (auto& func : s_ResourceFreeQueue[s_CurrentFrameIndex])
+			func();
+		s_ResourceFreeQueue[s_CurrentFrameIndex].clear();
+	}
+	{
+		// Free command buffers allocated by Application::GetCommandBuffer
+		// These use g_MainWindowData.FrameIndex and not s_CurrentFrameIndex because they're tied to the swapchain image index
+		auto& allocatedCommandBuffers = s_AllocatedCommandBuffers[g_MainWindowData.FrameIndex];
+		if (allocatedCommandBuffers.size() > 0)
+		{
+			vkFreeCommandBuffers(g_Device, fd->CommandPool, (uint32_t)allocatedCommandBuffers.size(), allocatedCommandBuffers.data());
+			allocatedCommandBuffers.clear();
+		}
 
-    // m_renderPass = m_currentCommandEncoder.beginRenderPass(renderPassDesc);
-
-    // // In its overall outline, drawing a triangle is as simple as this:
-    // // Select which render pipeline to use
-    // m_renderPass.setPipeline(m_pipeline);
+		err = vkResetCommandPool(g_Device, fd->CommandPool, 0);
+		check_vk_result(err);
+		VkCommandBufferBeginInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		err = vkBeginCommandBuffer(fd->CommandBuffer, &info);
+		check_vk_result(err);
+	}
+	{
+		VkRenderPassBeginInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		info.renderPass = g_MainWindowData.RenderPass;
+		info.framebuffer = fd->Framebuffer;
+		info.renderArea.extent.width = g_MainWindowData.Width;
+		info.renderArea.extent.height = g_MainWindowData.Height;
+		info.clearValueCount = 1;
+		info.pClearValues = &g_MainWindowData.ClearValue;
+		vkCmdBeginRenderPass(fd->CommandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
+	}
 }
 
 void VulkanRenderer2D::EndRenderPass()
 {
-    // m_renderPass.end();
-    // SubmitCommandBuffer();
+	vkCmdEndRenderPass(fd->CommandBuffer);
+	{
+		VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		VkSubmitInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		info.waitSemaphoreCount = 1;
+		info.pWaitSemaphores = &image_acquired_semaphore;
+		info.pWaitDstStageMask = &wait_stage;
+		info.commandBufferCount = 1;
+		info.pCommandBuffers = &fd->CommandBuffer;
+		info.signalSemaphoreCount = 1;
+		info.pSignalSemaphores = &render_complete_semaphore;
+
+		err = vkEndCommandBuffer(fd->CommandBuffer);
+		check_vk_result(err);
+
+        SubmitCommandBuffer();
+	}
 }
 
 void VulkanRenderer2D::SubmitCommandBuffer()
 {
-    // wgpu::CommandBufferDescriptor cmdBufferDescriptor;
-    // cmdBufferDescriptor.label = "Command buffer";
-    // wgpu::CommandBuffer commands = m_currentCommandEncoder.finish(cmdBufferDescriptor);
-    // GraphicsAPI::WebGPU::GetQueue().submit(commands);
+    // Submit command buffer
+    err = vkQueueSubmit(g_Queue, 1, &info, fd->Fence);
+	check_vk_result(err);
+
+    if (g_SwapChainRebuild)
+		return;
+	VkSemaphore render_complete_semaphore = g_MainWindowData.FrameSemaphores[g_MainWindowData.SemaphoreIndex].RenderCompleteSemaphore;
+	VkPresentInfoKHR info = {};
+	info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	info.waitSemaphoreCount = 1;
+	info.pWaitSemaphores = &render_complete_semaphore;
+	info.swapchainCount = 1;
+	info.pSwapchains = &g_MainWindowData.Swapchain;
+	info.pImageIndices = &g_MainWindowData.FrameIndex;
+	VkResult err = vkQueuePresentKHR(g_Queue, &info);
+	if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR)
+	{
+		g_SwapChainRebuild = true;
+		return;
+	}
+	check_vk_result(err);
+	g_MainWindowData.SemaphoreIndex = (g_MainWindowData.SemaphoreIndex + 1) % g_MainWindowData.ImageCount; // Now we can use the next set of semaphores
 }
 
 } // namespace GraphicsAPI
