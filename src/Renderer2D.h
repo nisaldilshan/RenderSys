@@ -42,6 +42,7 @@ public:
     void SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount);
     void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
+    void CreatePipelineAndFrameBuffers();
     void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
     void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
     void SetUniformBufferData(const void* bufferData, uint32_t uniformIndex);

@@ -29,8 +29,8 @@ Renderer2D::~Renderer2D()
 
 void Renderer2D::Init()
 {
+    m_rendererBackend->Init();
     m_rendererBackend->CreateBindGroup();
-    m_rendererBackend->CreatePipeline();
 }
 
 void Renderer2D::SetShader(const char* shaderSource)
@@ -51,6 +51,12 @@ void Renderer2D::SetVertexBufferData(const void* bufferData, uint32_t bufferLeng
 void Renderer2D::SetIndexBufferData(const std::vector<uint16_t>& bufferData)
 {
     m_rendererBackend->CreateIndexBuffer(bufferData);
+}
+
+void Renderer2D::CreatePipelineAndFrameBuffers()
+{
+    m_rendererBackend->CreatePipeline();
+    m_rendererBackend->CreateFrameBuffer();
 }
 
 void Renderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)

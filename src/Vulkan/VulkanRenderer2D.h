@@ -30,9 +30,10 @@ namespace GraphicsAPI
 
         bool Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
-        void CreateShaders(std::string  shaderSource);
+        void CreateShaders(const char* shaderSource);
         void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);
         void CreatePipeline();
+        void CreateFrameBuffer();
         void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
         void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
         void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
@@ -51,7 +52,8 @@ namespace GraphicsAPI
         void SubmitCommandBuffer();
         uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
-        VkShaderModule m_shaderModule = 0;
+        VkShaderModule m_shaderModuleVertex = 0;
+        VkShaderModule m_shaderModuleFragment = 0;
         // wgpu::RenderPipeline m_pipeline = nullptr;
         // wgpu::TextureView m_textureToRenderInto = nullptr;
 

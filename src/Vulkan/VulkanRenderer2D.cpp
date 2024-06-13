@@ -1,7 +1,9 @@
 #include "VulkanRenderer2D.h"
 
 #include <iostream>
+#include <fstream>
 #include "vkb/VkBootstrap.h"
+#define VMA_IMPLEMENTATION
 #include "vma/vk_mem_alloc.h"
 
 namespace GraphicsAPI
@@ -243,38 +245,6 @@ bool createDepthBuffer()
     return true;
 }
 
-bool createFrameBuffers()
-{
-    g_rdSwapchainImages = g_vkbSwapChain.get_images().value();
-    g_rdSwapchainImageViews = g_vkbSwapChain.get_image_views().value();
-
-    g_framebuffers.resize(g_rdSwapchainImageViews.size());
-
-    for (unsigned int i = 0; i < g_rdSwapchainImageViews.size(); ++i) {
-        VkImageView attachments[] = { g_rdSwapchainImageViews.at(i), g_depthImageView };
-
-        VkFramebufferCreateInfo FboInfo{};
-        FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        FboInfo.renderPass = g_renderpass;
-        FboInfo.attachmentCount = 2;
-        FboInfo.pAttachments = attachments;
-        FboInfo.width = g_vkbSwapChain.extent.width;
-        FboInfo.height = g_vkbSwapChain.extent.height;
-        FboInfo.layers = 1;
-
-        if (vkCreateFramebuffer(g_vkbDevice.device, &FboInfo, nullptr, &g_framebuffers[i]) != VK_SUCCESS) {
-            std::cout << "error: failed to create framebuffer" << std::endl;
-            return false;
-        }
-    }
-    return true;
-
-    // do destroy
-    // for (auto &fb : renderData.rdFramebuffers) {
-    //     vkDestroyFramebuffer(renderData.rdVkbDevice.device, fb, nullptr);
-    // }
-}
-
 bool createSyncObjects()
 {
     VkFenceCreateInfo fenceInfo{};
@@ -303,10 +273,6 @@ bool VulkanRenderer2D::Init()
         return false;
     }
 
-    // if (!getQueue()) {
-    //     return false;
-    // }
-
     if (!CreateSwapChain()) {
         return false;
     }
@@ -315,14 +281,12 @@ bool VulkanRenderer2D::Init()
         return false;
     }
 
-    if (!createRenderPass())
+    if (!createCommandBuffer())
     {
         return false;
     }
 
-    CreatePipeline();
-
-    if (!createFrameBuffers())
+    if (!createRenderPass())
     {
         return false;
     }
@@ -330,7 +294,6 @@ bool VulkanRenderer2D::Init()
     if (!createSyncObjects()) {
         return false;
     }
-
 
     return true;
 }
@@ -367,22 +330,128 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     // m_textureToRenderInto = texture.createView(tex_view_desc);
 }
 
-void VulkanRenderer2D::CreateShaders(std::string shaderSource)
+
+std::string loadFileToString(std::string fileName) {
+  std::ifstream inFile(fileName, std::ios::binary);
+  std::string str;
+
+  if (inFile.is_open()) {
+    str.clear();
+    // allocate string data (no slower realloc)
+    inFile.seekg(0, std::ios::end);
+    str.reserve(inFile.tellg());
+    inFile.seekg(0, std::ios::beg);
+
+    str.assign((std::istreambuf_iterator<char>(inFile)),
+                std::istreambuf_iterator<char>());
+    inFile.close();
+  } else {
+    //Logger::log(1, "%s error: could not open file %s\n", __FUNCTION__, fileName.c_str());
+    //Logger::log(1, "%s error: system says '%s'\n", __FUNCTION__, strerror(errno));
+    return std::string();
+  }
+
+  if (inFile.bad() || inFile.fail()) {
+    //Logger::log(1, "%s error: error while reading file %s\n", __FUNCTION__, fileName.c_str());
+    inFile.close();
+    return std::string();
+  }
+
+  inFile.close();
+  //Logger::log(1, "%s: file %s successfully read to string\n", __FUNCTION__, fileName.c_str());
+  return str;
+}
+
+void VulkanRenderer2D::CreateShaders(const char* shaderSource)
 {
-    std::cout << "Creating shader module..." << std::endl;
+    std::cout << "Creating shader modules..." << std::endl;
 
-    VkShaderModuleCreateInfo shaderCreateInfo{};
-    shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    shaderCreateInfo.codeSize = shaderSource.size();
-    /* casting needed to align the code to 32 bit */
-    shaderCreateInfo.pCode = reinterpret_cast<const uint32_t*>(shaderSource.c_str());
+    // auto file = std::string(shaderSource);
+    // auto shaderAsBinaryString = loadFileToString(file); 
 
-    if (vkCreateShaderModule(g_vkbDevice.device, &shaderCreateInfo, nullptr, &m_shaderModule) != VK_SUCCESS) {
-        std::cout << "could not load shader" << std::endl;
-        return;
+    {
+        static uint32_t __glsl_shader_vert_spv[] =
+        {
+            0x07230203,0x00010000,0x0008000b,0x00000021,0x00000000,0x00020011,0x00000001,0x0006000b,
+            0x00000001,0x4c534c47,0x6474732e,0x3035342e,0x00000000,0x0003000e,0x00000000,0x00000001,
+            0x0009000f,0x00000000,0x00000004,0x6e69616d,0x00000000,0x0000000d,0x00000012,0x0000001d,
+            0x0000001f,0x00030003,0x00000002,0x000001cc,0x00040005,0x00000004,0x6e69616d,0x00000000,
+            0x00060005,0x0000000b,0x505f6c67,0x65567265,0x78657472,0x00000000,0x00060006,0x0000000b,
+            0x00000000,0x505f6c67,0x7469736f,0x006e6f69,0x00070006,0x0000000b,0x00000001,0x505f6c67,
+            0x746e696f,0x657a6953,0x00000000,0x00070006,0x0000000b,0x00000002,0x435f6c67,0x4470696c,
+            0x61747369,0x0065636e,0x00070006,0x0000000b,0x00000003,0x435f6c67,0x446c6c75,0x61747369,
+            0x0065636e,0x00030005,0x0000000d,0x00000000,0x00040005,0x00000012,0x736f5061,0x00000000,
+            0x00050005,0x0000001d,0x43786574,0x64726f6f,0x00000000,0x00050005,0x0000001f,0x78655461,
+            0x726f6f43,0x00000064,0x00050048,0x0000000b,0x00000000,0x0000000b,0x00000000,0x00050048,
+            0x0000000b,0x00000001,0x0000000b,0x00000001,0x00050048,0x0000000b,0x00000002,0x0000000b,
+            0x00000003,0x00050048,0x0000000b,0x00000003,0x0000000b,0x00000004,0x00030047,0x0000000b,
+            0x00000002,0x00040047,0x00000012,0x0000001e,0x00000000,0x00040047,0x0000001d,0x0000001e,
+            0x00000000,0x00040047,0x0000001f,0x0000001e,0x00000001,0x00020013,0x00000002,0x00030021,
+            0x00000003,0x00000002,0x00030016,0x00000006,0x00000020,0x00040017,0x00000007,0x00000006,
+            0x00000004,0x00040015,0x00000008,0x00000020,0x00000000,0x0004002b,0x00000008,0x00000009,
+            0x00000001,0x0004001c,0x0000000a,0x00000006,0x00000009,0x0006001e,0x0000000b,0x00000007,
+            0x00000006,0x0000000a,0x0000000a,0x00040020,0x0000000c,0x00000003,0x0000000b,0x0004003b,
+            0x0000000c,0x0000000d,0x00000003,0x00040015,0x0000000e,0x00000020,0x00000001,0x0004002b,
+            0x0000000e,0x0000000f,0x00000000,0x00040017,0x00000010,0x00000006,0x00000003,0x00040020,
+            0x00000011,0x00000001,0x00000010,0x0004003b,0x00000011,0x00000012,0x00000001,0x0004002b,
+            0x00000006,0x00000014,0x3f800000,0x00040020,0x00000019,0x00000003,0x00000007,0x00040017,
+            0x0000001b,0x00000006,0x00000002,0x00040020,0x0000001c,0x00000003,0x0000001b,0x0004003b,
+            0x0000001c,0x0000001d,0x00000003,0x00040020,0x0000001e,0x00000001,0x0000001b,0x0004003b,
+            0x0000001e,0x0000001f,0x00000001,0x00050036,0x00000002,0x00000004,0x00000000,0x00000003,
+            0x000200f8,0x00000005,0x0004003d,0x00000010,0x00000013,0x00000012,0x00050051,0x00000006,
+            0x00000015,0x00000013,0x00000000,0x00050051,0x00000006,0x00000016,0x00000013,0x00000001,
+            0x00050051,0x00000006,0x00000017,0x00000013,0x00000002,0x00070050,0x00000007,0x00000018,
+            0x00000015,0x00000016,0x00000017,0x00000014,0x00050041,0x00000019,0x0000001a,0x0000000d,
+            0x0000000f,0x0003003e,0x0000001a,0x00000018,0x0004003d,0x0000001b,0x00000020,0x0000001f,
+            0x0003003e,0x0000001d,0x00000020,0x000100fd,0x00010038
+        };
+
+        VkShaderModuleCreateInfo shaderCreateInfoVert{};
+        shaderCreateInfoVert.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        shaderCreateInfoVert.codeSize = sizeof(__glsl_shader_vert_spv);
+        shaderCreateInfoVert.pCode = reinterpret_cast<const uint32_t*>(__glsl_shader_vert_spv);
+
+        if (vkCreateShaderModule(g_vkbDevice.device, &shaderCreateInfoVert, nullptr, &m_shaderModuleVertex) != VK_SUCCESS) {
+            std::cout << "could not load vertex shader" << std::endl;
+            return;
+        }
+
+        std::cout << "Vertex Shader module: " << m_shaderModuleVertex << std::endl;
     }
 
-    std::cout << "Shader module: " << m_shaderModule << std::endl;
+
+    {
+        static uint32_t __glsl_shader_frag_spv[] = 
+        {
+            0x07230203,0x00010000,0x0008000b,0x00000011,0x00000000,0x00020011,0x00000001,0x0006000b,
+            0x00000001,0x4c534c47,0x6474732e,0x3035342e,0x00000000,0x0003000e,0x00000000,0x00000001,
+            0x0007000f,0x00000004,0x00000004,0x6e69616d,0x00000000,0x00000009,0x00000010,0x00030010,
+            0x00000004,0x00000007,0x00030003,0x00000002,0x000001cc,0x00040005,0x00000004,0x6e69616d,
+            0x00000000,0x00050005,0x00000009,0x67617246,0x6f6c6f43,0x00000072,0x00050005,0x00000010,
+            0x43786574,0x64726f6f,0x00000000,0x00040047,0x00000009,0x0000001e,0x00000000,0x00040047,
+            0x00000010,0x0000001e,0x00000000,0x00020013,0x00000002,0x00030021,0x00000003,0x00000002,
+            0x00030016,0x00000006,0x00000020,0x00040017,0x00000007,0x00000006,0x00000004,0x00040020,
+            0x00000008,0x00000003,0x00000007,0x0004003b,0x00000008,0x00000009,0x00000003,0x0004002b,
+            0x00000006,0x0000000a,0x3f800000,0x0004002b,0x00000006,0x0000000b,0x3ecccccd,0x0004002b,
+            0x00000006,0x0000000c,0x00000000,0x0007002c,0x00000007,0x0000000d,0x0000000a,0x0000000b,
+            0x0000000c,0x0000000a,0x00040017,0x0000000e,0x00000006,0x00000002,0x00040020,0x0000000f,
+            0x00000001,0x0000000e,0x0004003b,0x0000000f,0x00000010,0x00000001,0x00050036,0x00000002,
+            0x00000004,0x00000000,0x00000003,0x000200f8,0x00000005,0x0003003e,0x00000009,0x0000000d,
+            0x000100fd,0x00010038
+        };
+
+        VkShaderModuleCreateInfo shaderCreateInfoFrag{};
+        shaderCreateInfoFrag.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        shaderCreateInfoFrag.codeSize = sizeof(__glsl_shader_frag_spv);
+        shaderCreateInfoFrag.pCode = reinterpret_cast<const uint32_t*>(__glsl_shader_frag_spv);
+
+        if (vkCreateShaderModule(g_vkbDevice.device, &shaderCreateInfoFrag, nullptr, &m_shaderModuleFragment) != VK_SUCCESS) {
+            std::cout << "could not load fragment shader" << std::endl;
+            return;
+        }
+
+        std::cout << "Fragment Shader module: " << m_shaderModuleFragment << std::endl;
+    }
 }
 
 void VulkanRenderer2D::CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount)
@@ -393,16 +462,18 @@ void VulkanRenderer2D::CreateStandaloneShader(const char *shaderSource, uint32_t
 
 void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
+    
+}
+
+void VulkanRenderer2D::CreateBindGroup()
+{
     // Create a bind group layout
     m_bindGroupLayout = std::make_unique<VkPipelineLayoutCreateInfo>();
     m_bindGroupLayout->sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     m_bindGroupLayout->setLayoutCount = 0; // was 1
     //m_bindGroupLayout->pSetLayouts = &renderData.rdTextureLayout;
     m_bindGroupLayout->pushConstantRangeCount = 0;
-}
 
-void VulkanRenderer2D::CreateBindGroup()
-{
     if (m_bindGroupLayout)
     {
         if (vkCreatePipelineLayout(g_vkbDevice.device, m_bindGroupLayout.get(), nullptr, &g_pipelineLayout) != VK_SUCCESS) {
@@ -419,7 +490,7 @@ void VulkanRenderer2D::CreatePipeline()
 {
     std::cout << "Creating render pipeline..." << std::endl;
 
-    if (m_shaderModule == VK_NULL_HANDLE) {
+    if (m_shaderModuleVertex == VK_NULL_HANDLE || m_shaderModuleFragment == VK_NULL_HANDLE) {
         std::cout << "error: could not load shaders" << std::endl;
         return;
     }
@@ -427,14 +498,14 @@ void VulkanRenderer2D::CreatePipeline()
     VkPipelineShaderStageCreateInfo vertexStageInfo{};
     vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertexStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertexStageInfo.module = m_shaderModule;
-    vertexStageInfo.pName = "vs_main";
+    vertexStageInfo.module = m_shaderModuleVertex;
+    vertexStageInfo.pName = "main";
 
     VkPipelineShaderStageCreateInfo fragmentStageInfo{};
     fragmentStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragmentStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragmentStageInfo.module = m_shaderModule;
-    fragmentStageInfo.pName = "fs_main";
+    fragmentStageInfo.module = m_shaderModuleFragment;
+    fragmentStageInfo.pName = "main";
 
     VkPipelineShaderStageCreateInfo shaderStagesInfo[] = { vertexStageInfo, fragmentStageInfo };
 
@@ -560,10 +631,41 @@ void VulkanRenderer2D::CreatePipeline()
     }
 
     /* it is save to destroy the shader modules after pipeline has been created */
-    vkDestroyShaderModule (g_vkbDevice.device, m_shaderModule, nullptr);
-   
+    vkDestroyShaderModule (g_vkbDevice.device, m_shaderModuleVertex, nullptr);
+    vkDestroyShaderModule (g_vkbDevice.device, m_shaderModuleFragment, nullptr);
     
     std::cout << "Render pipeline: " << g_pipeline << std::endl;
+}
+
+void VulkanRenderer2D::CreateFrameBuffer()
+{
+    g_rdSwapchainImages = g_vkbSwapChain.get_images().value();
+    g_rdSwapchainImageViews = g_vkbSwapChain.get_image_views().value();
+
+    g_framebuffers.resize(g_rdSwapchainImageViews.size());
+
+    for (unsigned int i = 0; i < g_rdSwapchainImageViews.size(); ++i) {
+        VkImageView attachments[] = { g_rdSwapchainImageViews.at(i), g_depthImageView };
+
+        VkFramebufferCreateInfo FboInfo{};
+        FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        FboInfo.renderPass = g_renderpass;
+        FboInfo.attachmentCount = 2;
+        FboInfo.pAttachments = attachments;
+        FboInfo.width = g_vkbSwapChain.extent.width;
+        FboInfo.height = g_vkbSwapChain.extent.height;
+        FboInfo.layers = 1;
+
+        if (vkCreateFramebuffer(g_vkbDevice.device, &FboInfo, nullptr, &g_framebuffers[i]) != VK_SUCCESS) {
+            std::cout << "error: failed to create framebuffer" << std::endl;
+            return ;
+        }
+    }
+
+    // do destroy
+    // for (auto &fb : renderData.rdFramebuffers) {
+    //     vkDestroyFramebuffer(renderData.rdVkbDevice.device, fb, nullptr);
+    // }
 }
 
 void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
@@ -674,6 +776,11 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
 
 void VulkanRenderer2D::SimpleRender()
 {
+    
+}
+
+void VulkanRenderer2D::Render()
+{
     /* the rendering itself happens here */
     vkCmdBindPipeline(g_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
 
@@ -698,24 +805,6 @@ void VulkanRenderer2D::SimpleRender()
     //vkCmdBindDescriptorSets(g_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelineLayout, 0, 1, &mRenderData.rdDescriptorSet, 0, nullptr);
 
     vkCmdDraw(g_commandBuffer, g_triangleCount * 3, 1, 0, 0);
-}
-
-void VulkanRenderer2D::Render()
-{
-    // // Set vertex buffer while encoding the render pass
-    // m_renderPass.setVertexBuffer(0, m_vertexBuffer, 0, m_vertexBufferSize);
-
-    // // Set binding group
-    // if (m_bindGroup)
-    //     m_renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
-
-    // if (m_indexCount > 0)
-    // {
-    //     m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexCount * sizeof(uint16_t));
-    //     m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
-    // }
-    // else
-    //     m_renderPass.draw(m_vertexCount, 1, 0, 0);
 }
 
 void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffsetCount)
