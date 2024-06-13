@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
-
-#include <Walnut/GraphicsAPI/VulkanGraphics.h>
+#include <vector>
+#include <imgui_impl_glfw.h>
 
 #include "../RenderUtil.h"
 
@@ -15,6 +15,7 @@ namespace GraphicsAPI
         VulkanRenderer2D() = default;
         ~VulkanRenderer2D() = default;
 
+        bool Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
         void CreateShaders(const char* shaderSource);
         void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);
@@ -33,6 +34,7 @@ namespace GraphicsAPI
         void EndRenderPass();
         
     private:
+        bool CreateSwapChain();
         void SubmitCommandBuffer();
         uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
