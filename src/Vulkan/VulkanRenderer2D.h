@@ -2,13 +2,26 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <vector>
-#include <imgui_impl_glfw.h>
+#include <glm/ext.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <Walnut/GraphicsAPI/VulkanGraphics.h>
 
 #include "../RenderUtil.h"
 
+
+class VkPipelineLayoutCreateInfo;
+
 namespace GraphicsAPI
 {
+    struct RenderSysVkVertex
+    {
+        glm::vec3 position;
+        glm::vec2 uv;
+    };
+
+    struct RenderSysVkMesh {
+        std::vector<RenderSysVkVertex> vertices;
+    };
     class VulkanRenderer2D
     {
     public:
@@ -17,7 +30,7 @@ namespace GraphicsAPI
 
         bool Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
-        void CreateShaders(const char* shaderSource);
+        void CreateShaders(std::string  shaderSource);
         void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);
         void CreatePipeline();
         void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
@@ -38,7 +51,7 @@ namespace GraphicsAPI
         void SubmitCommandBuffer();
         uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
-        // wgpu::ShaderModule m_shaderModule = nullptr;
+        VkShaderModule m_shaderModule = 0;
         // wgpu::RenderPipeline m_pipeline = nullptr;
         // wgpu::TextureView m_textureToRenderInto = nullptr;
 
@@ -50,8 +63,8 @@ namespace GraphicsAPI
         uint32_t m_indexCount = 0;
         // wgpu::Buffer m_indexBuffer = nullptr;
 
-        // wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
-        // wgpu::PipelineLayout m_pipelineLayout = nullptr;
+        std::unique_ptr<VkPipelineLayoutCreateInfo> m_bindGroupLayout;
+        
         // wgpu::Buffer m_uniformBuffer = nullptr;
         // wgpu::BindGroup m_bindGroup = nullptr;
         uint32_t m_sizeOfUniform = 0;
