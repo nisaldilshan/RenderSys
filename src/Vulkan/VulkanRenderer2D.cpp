@@ -1,6 +1,8 @@
 #include "VulkanRenderer2D.h"
-#include "vkb/VkBootstrap.h"
+
 #include <iostream>
+#include "vkb/VkBootstrap.h"
+#include "vma/vk_mem_alloc.h"
 
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 
@@ -14,6 +16,8 @@ vkb::PhysicalDevice g_vkbPhysDevice;
 vkb::Device g_vkbDevice;
 vkb::Swapchain g_vkbSwapChain;
 
+VmaAllocator g_allocator;
+
 VkCommandPool g_commandPool = VK_NULL_HANDLE;
 VkCommandBuffer g_commandBuffer = VK_NULL_HANDLE;
 
@@ -21,7 +25,15 @@ VkSemaphore g_presentSemaphore = VK_NULL_HANDLE;
 VkSemaphore g_renderSemaphore = VK_NULL_HANDLE;
 VkFence g_renderFence = VK_NULL_HANDLE;
 
+std::vector<VkImage> g_rdSwapchainImages;
+std::vector<VkImageView> g_rdSwapchainImageViews;
+std::vector<VkFramebuffer> g_framebuffers;
+
+VkImage g_depthImage = VK_NULL_HANDLE;
+VkImageView g_depthImageView = VK_NULL_HANDLE;
 constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
+VmaAllocation g_depthImageAllocation = VK_NULL_HANDLE;
+
 VkRenderPass g_renderpass = VK_NULL_HANDLE;
 
 bool deviceInit()
@@ -173,12 +185,90 @@ bool createRenderPass()
 
 bool initVma()
 {
+    VmaAllocatorCreateInfo allocatorInfo{};
+    allocatorInfo.physicalDevice = g_vkbPhysDevice.physical_device;
+    allocatorInfo.device = g_vkbDevice.device;
+    allocatorInfo.instance = g_vkbInstance.instance;
+    if (vmaCreateAllocator(&allocatorInfo, &g_allocator) != VK_SUCCESS) {
+        std::cout << "error: could not init VMA" << std::endl;
+        return false;
+    }
+
     return true;
 }
 
-bool getQueue()
+bool createDepthBuffer() 
 {
+    VkExtent3D depthImageExtent = { g_vkbSwapChain.extent.width, g_vkbSwapChain.extent.height, 1 };
+
+    VkImageCreateInfo depthImageInfo{};
+    depthImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    depthImageInfo.imageType = VK_IMAGE_TYPE_2D;
+    depthImageInfo.format = g_rdDepthFormat;
+    depthImageInfo.extent = depthImageExtent;
+    depthImageInfo.mipLevels = 1;
+    depthImageInfo.arrayLayers = 1;
+    depthImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    depthImageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    VmaAllocationCreateInfo depthAllocInfo{};
+    depthAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    depthAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    if (vmaCreateImage(g_allocator, &depthImageInfo, &depthAllocInfo, &g_depthImage, &g_depthImageAllocation, nullptr) != VK_SUCCESS) {
+        std::cout << "error: could not allocate depth buffer memory" << std::endl;
+        return false;
+    }
+
+    VkImageViewCreateInfo depthImageViewinfo{};
+    depthImageViewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    depthImageViewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    depthImageViewinfo.image = g_depthImage;
+    depthImageViewinfo.format = g_rdDepthFormat;
+    depthImageViewinfo.subresourceRange.baseMipLevel = 0;
+    depthImageViewinfo.subresourceRange.levelCount = 1;
+    depthImageViewinfo.subresourceRange.baseArrayLayer = 0;
+    depthImageViewinfo.subresourceRange.layerCount = 1;
+    depthImageViewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+    if (vkCreateImageView(g_vkbDevice.device, &depthImageViewinfo, nullptr, &g_depthImageView) != VK_SUCCESS) {
+        std::cout << "error: could not create depth buffer image view" << std::endl;
+        return false;
+    }
     return true;
+}
+
+bool createFrameBuffers()
+{
+    g_rdSwapchainImages = g_vkbSwapChain.get_images().value();
+    g_rdSwapchainImageViews = g_vkbSwapChain.get_image_views().value();
+
+    g_framebuffers.resize(g_rdSwapchainImageViews.size());
+
+    for (unsigned int i = 0; i < g_rdSwapchainImageViews.size(); ++i) {
+        VkImageView attachments[] = { g_rdSwapchainImageViews.at(i), g_depthImageView };
+
+        VkFramebufferCreateInfo FboInfo{};
+        FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        FboInfo.renderPass = g_renderpass;
+        FboInfo.attachmentCount = 2;
+        FboInfo.pAttachments = attachments;
+        FboInfo.width = g_vkbSwapChain.extent.width;
+        FboInfo.height = g_vkbSwapChain.extent.height;
+        FboInfo.layers = 1;
+
+        if (vkCreateFramebuffer(g_vkbDevice.device, &FboInfo, nullptr, &g_framebuffers[i]) != VK_SUCCESS) {
+            std::cout << "error: failed to create framebuffer" << std::endl;
+            return false;
+        }
+    }
+    return true;
+
+    // do destroy
+    // for (auto &fb : renderData.rdFramebuffers) {
+    //     vkDestroyFramebuffer(renderData.rdVkbDevice.device, fb, nullptr);
+    // }
 }
 
 bool createSyncObjects()
@@ -209,13 +299,28 @@ bool VulkanRenderer2D::Init()
         return false;
     }
 
-    if (!getQueue()) {
-        return false;
-    }
+    // if (!getQueue()) {
+    //     return false;
+    // }
 
     if (!CreateSwapChain()) {
         return false;
     }
+
+    if (!createDepthBuffer()) {
+        return false;
+    }
+
+    if (!createRenderPass())
+    {
+        return false;
+    }
+
+    if (!createFrameBuffers())
+    {
+        return false;
+    }
+
 
     return true;
 }
@@ -620,7 +725,7 @@ void VulkanRenderer2D::BeginRenderPass()
     rpInfo.renderArea.offset.x = 0;
     rpInfo.renderArea.offset.y = 0;
     rpInfo.renderArea.extent = g_vkbSwapChain.extent;
-    rpInfo.framebuffer = mRenderData.rdFramebuffers[imageIndex];
+    rpInfo.framebuffer = g_framebuffers[imageIndex];
 
     rpInfo.clearValueCount = 2;
     rpInfo.pClearValues = clearValues;

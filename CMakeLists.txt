@@ -9,6 +9,7 @@ if(RENDERER STREQUAL "Vulkan")
     add_library (RenderSys2D STATIC
                     src/Renderer2D.cpp
                     src/Vulkan/VulkanRenderer2D.cpp
+                    src/Vulkan/vkb/VkBootstrap.cpp
     )
     target_link_libraries(RenderSys2D PRIVATE 
                             walnut::walnut
