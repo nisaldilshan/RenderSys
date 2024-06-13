@@ -29,6 +29,9 @@ std::vector<VkImage> g_rdSwapchainImages;
 std::vector<VkImageView> g_rdSwapchainImageViews;
 std::vector<VkFramebuffer> g_framebuffers;
 
+VkQueue g_graphicsQueue = VK_NULL_HANDLE;
+VkQueue g_presentQueue = VK_NULL_HANDLE;
+
 VkImage g_depthImage = VK_NULL_HANDLE;
 VkImageView g_depthImageView = VK_NULL_HANDLE;
 constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
@@ -263,6 +266,25 @@ bool createSyncObjects()
     return true;
 }
 
+
+bool getQueue() {
+  auto graphQueueRet = g_vkbDevice.get_queue(vkb::QueueType::graphics);
+  if (!graphQueueRet.has_value()) {
+    std::cout << "error: could not get graphics queue" << std::endl;
+    return false;
+  }
+  g_graphicsQueue = graphQueueRet.value();
+
+  auto presentQueueRet = g_vkbDevice.get_queue(vkb::QueueType::present);
+  if (!presentQueueRet.has_value()) {
+    std::cout << "error: could not get present queue" << std::endl;
+    return false;
+  }
+  g_presentQueue = presentQueueRet.value();
+
+  return true;
+}
+
 bool VulkanRenderer2D::Init()
 {
     if (!deviceInit()) {
@@ -270,6 +292,10 @@ bool VulkanRenderer2D::Init()
     }
 
     if (!initVma()) {
+        return false;
+    }
+
+    if (!getQueue()) {
         return false;
     }
 
@@ -298,6 +324,22 @@ bool VulkanRenderer2D::Init()
     return true;
 }
 
+bool VulkanRenderer2D::CreateSwapChain()
+{
+    vkb::SwapchainBuilder swapChainBuild{g_vkbDevice};
+
+    /* VK_PRESENT_MODE_FIFO_KHR enables vsync */
+    auto swapChainBuildRet = swapChainBuild.set_old_swapchain(g_vkbSwapChain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
+    if (!swapChainBuildRet)
+    {
+        return false;
+    }
+
+    vkb::destroy_swapchain(g_vkbSwapChain);
+    g_vkbSwapChain = swapChainBuildRet.value();
+
+    return true;
+}
 void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
 {
     // m_width = width;
@@ -370,6 +412,7 @@ void VulkanRenderer2D::CreateShaders(const char* shaderSource)
     // auto shaderAsBinaryString = loadFileToString(file); 
 
     {
+        // ./glslangValidator -V -x -o shader.vert.u32 shader.vert
         static uint32_t __glsl_shader_vert_spv[] =
         {
             0x07230203,0x00010000,0x0008000b,0x00000021,0x00000000,0x00020011,0x00000001,0x0006000b,
@@ -421,6 +464,7 @@ void VulkanRenderer2D::CreateShaders(const char* shaderSource)
 
 
     {
+        // ./glslangValidator -V -x -o shader.frag.u32 shader.frag
         static uint32_t __glsl_shader_frag_spv[] = 
         {
             0x07230203,0x00010000,0x0008000b,0x00000011,0x00000000,0x00020011,0x00000001,0x0006000b,
@@ -823,11 +867,49 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     // m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
 }
 
-ImTextureID VulkanRenderer2D::GetDescriptorSet()
+VkSampler g_TextureSampler = VK_NULL_HANDLE;
+void CreateSampler()
 {
-    return ImTextureID{};
+    VkSamplerCreateInfo texSamplerInfo{};
+    texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    texSamplerInfo.magFilter = VK_FILTER_LINEAR;
+    texSamplerInfo.minFilter = VK_FILTER_LINEAR;
+    texSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    texSamplerInfo.unnormalizedCoordinates = VK_FALSE;
+    texSamplerInfo.compareEnable = VK_FALSE;
+    texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    texSamplerInfo.mipLodBias = 0.0f;
+    texSamplerInfo.minLod = 0.0f;
+    texSamplerInfo.maxLod = 0.0f;
+    texSamplerInfo.anisotropyEnable = VK_FALSE;
+    texSamplerInfo.maxAnisotropy = 1.0f;
+
+    if (vkCreateSampler(g_vkbDevice.device, &texSamplerInfo, nullptr, &g_TextureSampler) != VK_SUCCESS) {
+        std::cout << "error: could not create sampler for texture" << std::endl;
+    }
 }
 
+ImTextureID VulkanRenderer2D::GetDescriptorSet()
+{
+    static bool samplerCreated = false;
+    if (!samplerCreated && g_vkbDevice.device != VK_NULL_HANDLE) 
+    {
+        CreateSampler();
+        samplerCreated = true;
+    }
+    static auto finalDescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(g_TextureSampler, g_depthImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    if (samplerCreated)
+        return finalDescriptorSet;
+    else
+        return ImTextureID{};
+}
+
+
+uint32_t g_acquiredimageIndex = 0;
 void VulkanRenderer2D::BeginRenderPass()
 {
     if (vkWaitForFences(g_vkbDevice.device, 1, &g_renderFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
@@ -840,8 +922,7 @@ void VulkanRenderer2D::BeginRenderPass()
         return;
     }
 
-    uint32_t imageIndex = 0;
-    VkResult result = vkAcquireNextImageKHR(g_vkbDevice.device, g_vkbSwapChain.swapchain, UINT64_MAX, g_presentSemaphore, VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(g_vkbDevice.device, g_vkbSwapChain.swapchain, UINT64_MAX, g_presentSemaphore, VK_NULL_HANDLE, &g_acquiredimageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         //return recreateSwapchain();
         std::cout << "need to recreate swapchain" << std::endl;
@@ -878,12 +959,10 @@ void VulkanRenderer2D::BeginRenderPass()
     VkRenderPassBeginInfo rpInfo{};
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rpInfo.renderPass = g_renderpass;
-
     rpInfo.renderArea.offset.x = 0;
     rpInfo.renderArea.offset.y = 0;
     rpInfo.renderArea.extent = g_vkbSwapChain.extent;
-    rpInfo.framebuffer = g_framebuffers[imageIndex];
-
+    rpInfo.framebuffer = g_framebuffers[g_acquiredimageIndex];
     rpInfo.clearValueCount = 2;
     rpInfo.pClearValues = clearValues;
 
@@ -892,29 +971,51 @@ void VulkanRenderer2D::BeginRenderPass()
 
 void VulkanRenderer2D::EndRenderPass()
 {
-	
-}
+	vkCmdEndRenderPass(g_commandBuffer);
 
-bool VulkanRenderer2D::CreateSwapChain()
-{
-    vkb::SwapchainBuilder swapChainBuild{g_vkbDevice};
-
-    /* VK_PRESENT_MODE_FIFO_KHR enables vsync */
-    auto swapChainBuildRet = swapChainBuild.set_old_swapchain(g_vkbSwapChain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
-    if (!swapChainBuildRet)
-    {
-        return false;
+    if (vkEndCommandBuffer(g_commandBuffer) != VK_SUCCESS) {
+        std::cout << "error: failed to end command buffer" << std::endl;
     }
 
-    vkb::destroy_swapchain(g_vkbSwapChain);
-    g_vkbSwapChain = swapChainBuildRet.value();
-
-    return true;
+    SubmitCommandBuffer();
 }
 
 void VulkanRenderer2D::SubmitCommandBuffer()
 {
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    submitInfo.pWaitDstStageMask = &waitStage;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &g_presentSemaphore;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &g_renderSemaphore;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &g_commandBuffer;
+
+    // if (vkQueueSubmit(g_graphicsQueue, 1, &submitInfo, g_renderFence) != VK_SUCCESS) {
+    //     std::cout << "error: failed to submit draw command buffer" << std::endl;
+    //     return;
+    // }
+
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &g_renderSemaphore;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &g_vkbSwapChain.swapchain;
+    presentInfo.pImageIndices = &g_acquiredimageIndex;
+
+    VkResult result = vkQueuePresentKHR(g_presentQueue, &presentInfo);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        std::cout << "need to recreate swapchain" << std::endl;
+        //return recreateSwapchain();
+    } else {
+        if (result != VK_SUCCESS) {
+            std::cout << "error: failed to present swapchain image" << std::endl;
+        }
+    }
 }
 
 } // namespace GraphicsAPI
