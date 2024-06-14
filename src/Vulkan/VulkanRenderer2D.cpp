@@ -10,11 +10,7 @@ namespace GraphicsAPI
 {
 
 uint32_t g_acquiredFrameIndex = 0;
-vkb::Instance g_vkbInstance;
-VkSurfaceKHR g_surface = VK_NULL_HANDLE;
-vkb::PhysicalDevice g_vkbPhysDevice;
-vkb::Device g_vkbDevice;
-vkb::Swapchain g_vkbSwapChain;
+//vkb::Swapchain g_vkbSwapChain;
 
 VmaAllocator g_allocator;
 
@@ -25,12 +21,11 @@ VkSemaphore g_presentSemaphore = VK_NULL_HANDLE;
 VkSemaphore g_renderSemaphore = VK_NULL_HANDLE;
 VkFence g_renderFence = VK_NULL_HANDLE;
 
-std::vector<VkImage> g_rdSwapchainImages;
 std::vector<VkImageView> g_rdSwapchainImageViews;
 std::vector<VkFramebuffer> g_framebuffers;
 
-VkQueue g_graphicsQueue = VK_NULL_HANDLE;
-VkQueue g_presentQueue = VK_NULL_HANDLE;
+//VkQueue g_graphicsQueue = VK_NULL_HANDLE;
+//VkQueue g_presentQueue = VK_NULL_HANDLE;
 
 VkImage g_depthImage = VK_NULL_HANDLE;
 VkImageView g_depthImageView = VK_NULL_HANDLE;
@@ -47,45 +42,6 @@ VmaAllocation g_vertexBufferAllocation;
 
 bool deviceInit()
 {
-    /* instance and window */
-    vkb::InstanceBuilder instBuild;
-    auto instRet = instBuild.use_default_debug_messenger().request_validation_layers().build();
-    // auto instRet = instBuild.build();
-    if (!instRet)
-    {
-        std::cout << "error: could not build vkb instance" << std::endl;
-        return false;
-    }
-    g_vkbInstance = instRet.value();
-
-    VkResult result = VK_ERROR_UNKNOWN;
-    result = glfwCreateWindowSurface(g_vkbInstance, Vulkan::GetWindowHandle(), nullptr, &g_surface);
-    if (result != VK_SUCCESS)
-    {
-        std::cout << "error: Could not create Vulkan surface" << std::endl;
-        return false;
-    }
-
-    /* just get the first available device */
-    vkb::PhysicalDeviceSelector physicalDevSel{g_vkbInstance};
-    auto physicalDevSelRet = physicalDevSel.set_surface(g_surface).select();
-    if (!physicalDevSelRet)
-    {
-        std::cout << "error: could not get physical devices" << std::endl;
-        return false;
-    }
-    g_vkbPhysDevice = physicalDevSelRet.value();
-    std::cout << "found physical device : " << g_vkbPhysDevice.name.c_str() << std::endl;
-
-    vkb::DeviceBuilder devBuilder{g_vkbPhysDevice};
-    auto devBuilderRet = devBuilder.build();
-    if (!devBuilderRet)
-    {
-        std::cout << "error: could not get devices" << std::endl;
-        return false;
-    }
-    g_vkbDevice = devBuilderRet.value();
-
     return true;
 }
 
@@ -93,10 +49,10 @@ bool createCommandBuffer()
 {
     VkCommandPoolCreateInfo poolCreateInfo{};
     poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolCreateInfo.queueFamilyIndex = g_vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+    poolCreateInfo.queueFamilyIndex = Vulkan::GetQueueFamilyIndex();
     poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-    if (vkCreateCommandPool(g_vkbDevice.device, &poolCreateInfo, nullptr, &g_commandPool) != VK_SUCCESS) {
+    if (vkCreateCommandPool(Vulkan::GetDevice(), &poolCreateInfo, nullptr, &g_commandPool) != VK_SUCCESS) {
         std::cout << "error: could not create command pool" << std::endl;
         return false;
     }
@@ -107,7 +63,7 @@ bool createCommandBuffer()
     bufferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     bufferAllocInfo.commandBufferCount = 1;
 
-    if (vkAllocateCommandBuffers(g_vkbDevice.device, &bufferAllocInfo, &g_commandBuffer) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(Vulkan::GetDevice(), &bufferAllocInfo, &g_commandBuffer) != VK_SUCCESS) {
         std::cout << "error: could not allocate command buffers" << std::endl;
         return false;
     }
@@ -121,7 +77,7 @@ bool createCommandBuffer()
 bool createRenderPass() 
 {
   VkAttachmentDescription colorAtt{};
-  colorAtt.format = g_vkbSwapChain.image_format;
+  colorAtt.format = VK_FORMAT_B8G8R8A8_UNORM;
   colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
   colorAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   colorAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -183,7 +139,7 @@ bool createRenderPass()
   renderPassInfo.dependencyCount = 2;
   renderPassInfo.pDependencies = dependencies;
 
-  if (vkCreateRenderPass(g_vkbDevice.device, &renderPassInfo, nullptr, &g_renderpass) != VK_SUCCESS) {
+  if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &g_renderpass) != VK_SUCCESS) {
     std::cout<< "error; could not create renderpass" << std::endl;
     return false;
   }
@@ -195,9 +151,9 @@ bool createRenderPass()
 bool initVma()
 {
     VmaAllocatorCreateInfo allocatorInfo{};
-    allocatorInfo.physicalDevice = g_vkbPhysDevice.physical_device;
-    allocatorInfo.device = g_vkbDevice.device;
-    allocatorInfo.instance = g_vkbInstance.instance;
+    allocatorInfo.physicalDevice = Vulkan::GetPhysicalDevice();
+    allocatorInfo.device = Vulkan::GetDevice();
+    allocatorInfo.instance = Vulkan::GetInstance();
     if (vmaCreateAllocator(&allocatorInfo, &g_allocator) != VK_SUCCESS) {
         std::cout << "error: could not init VMA" << std::endl;
         return false;
@@ -208,43 +164,43 @@ bool initVma()
 
 bool createDepthBuffer() 
 {
-    VkExtent3D depthImageExtent = { g_vkbSwapChain.extent.width, g_vkbSwapChain.extent.height, 1 };
+    // VkExtent3D depthImageExtent = { g_vkbSwapChain.extent.width, g_vkbSwapChain.extent.height, 1 };
 
-    VkImageCreateInfo depthImageInfo{};
-    depthImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    depthImageInfo.imageType = VK_IMAGE_TYPE_2D;
-    depthImageInfo.format = g_rdDepthFormat;
-    depthImageInfo.extent = depthImageExtent;
-    depthImageInfo.mipLevels = 1;
-    depthImageInfo.arrayLayers = 1;
-    depthImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    depthImageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    // VkImageCreateInfo depthImageInfo{};
+    // depthImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    // depthImageInfo.imageType = VK_IMAGE_TYPE_2D;
+    // depthImageInfo.format = g_rdDepthFormat;
+    // depthImageInfo.extent = depthImageExtent;
+    // depthImageInfo.mipLevels = 1;
+    // depthImageInfo.arrayLayers = 1;
+    // depthImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    // depthImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    // depthImageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-    VmaAllocationCreateInfo depthAllocInfo{};
-    depthAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    depthAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    // VmaAllocationCreateInfo depthAllocInfo{};
+    // depthAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    // depthAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    if (vmaCreateImage(g_allocator, &depthImageInfo, &depthAllocInfo, &g_depthImage, &g_depthImageAllocation, nullptr) != VK_SUCCESS) {
-        std::cout << "error: could not allocate depth buffer memory" << std::endl;
-        return false;
-    }
+    // if (vmaCreateImage(g_allocator, &depthImageInfo, &depthAllocInfo, &g_depthImage, &g_depthImageAllocation, nullptr) != VK_SUCCESS) {
+    //     std::cout << "error: could not allocate depth buffer memory" << std::endl;
+    //     return false;
+    // }
 
-    VkImageViewCreateInfo depthImageViewinfo{};
-    depthImageViewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    depthImageViewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    depthImageViewinfo.image = g_depthImage;
-    depthImageViewinfo.format = g_rdDepthFormat;
-    depthImageViewinfo.subresourceRange.baseMipLevel = 0;
-    depthImageViewinfo.subresourceRange.levelCount = 1;
-    depthImageViewinfo.subresourceRange.baseArrayLayer = 0;
-    depthImageViewinfo.subresourceRange.layerCount = 1;
-    depthImageViewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    // VkImageViewCreateInfo depthImageViewinfo{};
+    // depthImageViewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    // depthImageViewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    // depthImageViewinfo.image = g_depthImage;
+    // depthImageViewinfo.format = g_rdDepthFormat;
+    // depthImageViewinfo.subresourceRange.baseMipLevel = 0;
+    // depthImageViewinfo.subresourceRange.levelCount = 1;
+    // depthImageViewinfo.subresourceRange.baseArrayLayer = 0;
+    // depthImageViewinfo.subresourceRange.layerCount = 1;
+    // depthImageViewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-    if (vkCreateImageView(g_vkbDevice.device, &depthImageViewinfo, nullptr, &g_depthImageView) != VK_SUCCESS) {
-        std::cout << "error: could not create depth buffer image view" << std::endl;
-        return false;
-    }
+    // if (vkCreateImageView(Vulkan::GetDevice(), &depthImageViewinfo, nullptr, &g_depthImageView) != VK_SUCCESS) {
+    //     std::cout << "error: could not create depth buffer image view" << std::endl;
+    //     return false;
+    // }
     return true;
 }
 
@@ -257,9 +213,9 @@ bool createSyncObjects()
     VkSemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    if (vkCreateSemaphore(g_vkbDevice.device, &semaphoreInfo, nullptr, &g_presentSemaphore) != VK_SUCCESS ||
-        vkCreateSemaphore(g_vkbDevice.device, &semaphoreInfo, nullptr, &g_renderSemaphore) != VK_SUCCESS ||
-        vkCreateFence(g_vkbDevice.device, &fenceInfo, nullptr, &g_renderFence) != VK_SUCCESS) {
+    if (vkCreateSemaphore(Vulkan::GetDevice(), &semaphoreInfo, nullptr, &g_presentSemaphore) != VK_SUCCESS ||
+        vkCreateSemaphore(Vulkan::GetDevice(), &semaphoreInfo, nullptr, &g_renderSemaphore) != VK_SUCCESS ||
+        vkCreateFence(Vulkan::GetDevice(), &fenceInfo, nullptr, &g_renderFence) != VK_SUCCESS) {
         std::cout << "error: failed to init sync objects" << std::endl;
         return false;
     }
@@ -268,19 +224,19 @@ bool createSyncObjects()
 
 
 bool getQueue() {
-  auto graphQueueRet = g_vkbDevice.get_queue(vkb::QueueType::graphics);
-  if (!graphQueueRet.has_value()) {
-    std::cout << "error: could not get graphics queue" << std::endl;
-    return false;
-  }
-  g_graphicsQueue = graphQueueRet.value();
+//   auto graphQueueRet = g_vkbDevice.get_queue(vkb::QueueType::graphics);
+//   if (!graphQueueRet.has_value()) {
+//     std::cout << "error: could not get graphics queue" << std::endl;
+//     return false;
+//   }
+//   g_graphicsQueue = graphQueueRet.value();
 
-  auto presentQueueRet = g_vkbDevice.get_queue(vkb::QueueType::present);
-  if (!presentQueueRet.has_value()) {
-    std::cout << "error: could not get present queue" << std::endl;
-    return false;
-  }
-  g_presentQueue = presentQueueRet.value();
+//   auto presentQueueRet = g_vkbDevice.get_queue(vkb::QueueType::present);
+//   if (!presentQueueRet.has_value()) {
+//     std::cout << "error: could not get present queue" << std::endl;
+//     return false;
+//   }
+//   g_presentQueue = presentQueueRet.value();
 
   return true;
 }
@@ -326,17 +282,17 @@ bool VulkanRenderer2D::Init()
 
 bool VulkanRenderer2D::CreateSwapChain()
 {
-    vkb::SwapchainBuilder swapChainBuild{g_vkbDevice};
+    // vkb::SwapchainBuilder swapChainBuild{g_vkbDevice};
 
-    /* VK_PRESENT_MODE_FIFO_KHR enables vsync */
-    auto swapChainBuildRet = swapChainBuild.set_old_swapchain(g_vkbSwapChain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
-    if (!swapChainBuildRet)
-    {
-        return false;
-    }
+    // /* VK_PRESENT_MODE_FIFO_KHR enables vsync */
+    // auto swapChainBuildRet = swapChainBuild.set_old_swapchain(g_vkbSwapChain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
+    // if (!swapChainBuildRet)
+    // {
+    //     return false;
+    // }
 
-    vkb::destroy_swapchain(g_vkbSwapChain);
-    g_vkbSwapChain = swapChainBuildRet.value();
+    // vkb::destroy_swapchain(g_vkbSwapChain);
+    // g_vkbSwapChain = swapChainBuildRet.value();
 
     return true;
 }
@@ -454,7 +410,7 @@ void VulkanRenderer2D::CreateShaders(const char* shaderSource)
         shaderCreateInfoVert.codeSize = sizeof(__glsl_shader_vert_spv);
         shaderCreateInfoVert.pCode = reinterpret_cast<const uint32_t*>(__glsl_shader_vert_spv);
 
-        if (vkCreateShaderModule(g_vkbDevice.device, &shaderCreateInfoVert, nullptr, &m_shaderModuleVertex) != VK_SUCCESS) {
+        if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfoVert, nullptr, &m_shaderModuleVertex) != VK_SUCCESS) {
             std::cout << "could not load vertex shader" << std::endl;
             return;
         }
@@ -489,7 +445,7 @@ void VulkanRenderer2D::CreateShaders(const char* shaderSource)
         shaderCreateInfoFrag.codeSize = sizeof(__glsl_shader_frag_spv);
         shaderCreateInfoFrag.pCode = reinterpret_cast<const uint32_t*>(__glsl_shader_frag_spv);
 
-        if (vkCreateShaderModule(g_vkbDevice.device, &shaderCreateInfoFrag, nullptr, &m_shaderModuleFragment) != VK_SUCCESS) {
+        if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfoFrag, nullptr, &m_shaderModuleFragment) != VK_SUCCESS) {
             std::cout << "could not load fragment shader" << std::endl;
             return;
         }
@@ -520,7 +476,7 @@ void VulkanRenderer2D::CreateBindGroup()
 
     if (m_bindGroupLayout)
     {
-        if (vkCreatePipelineLayout(g_vkbDevice.device, m_bindGroupLayout.get(), nullptr, &g_pipelineLayout) != VK_SUCCESS) {
+        if (vkCreatePipelineLayout(Vulkan::GetDevice(), m_bindGroupLayout.get(), nullptr, &g_pipelineLayout) != VK_SUCCESS) {
             std::cout << "error: could not create pipeline layout" << std::endl;
         }
     }
@@ -588,14 +544,14 @@ void VulkanRenderer2D::CreatePipeline()
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = static_cast<float>(g_vkbSwapChain.extent.width);
-    viewport.height = static_cast<float>(g_vkbSwapChain.extent.height);
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor{};
     scissor.offset = { 0, 0 };
-    scissor.extent = g_vkbSwapChain.extent;
+    scissor.extent = {m_width, m_height};
 
     VkPipelineViewportStateCreateInfo viewportStateInfo{};
     viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -669,42 +625,41 @@ void VulkanRenderer2D::CreatePipeline()
     pipelineCreateInfo.subpass = 0;
     pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-    if (vkCreateGraphicsPipelines(g_vkbDevice.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &g_pipeline) != VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &g_pipeline) != VK_SUCCESS) {
         std::cout << "error: could not create rendering pipeline" << std::endl;
-        vkDestroyPipelineLayout(g_vkbDevice.device, g_pipelineLayout, nullptr);
+        vkDestroyPipelineLayout(Vulkan::GetDevice(), g_pipelineLayout, nullptr);
     }
 
     /* it is save to destroy the shader modules after pipeline has been created */
-    vkDestroyShaderModule (g_vkbDevice.device, m_shaderModuleVertex, nullptr);
-    vkDestroyShaderModule (g_vkbDevice.device, m_shaderModuleFragment, nullptr);
+    vkDestroyShaderModule (Vulkan::GetDevice(), m_shaderModuleVertex, nullptr);
+    vkDestroyShaderModule (Vulkan::GetDevice(), m_shaderModuleFragment, nullptr);
     
     std::cout << "Render pipeline: " << g_pipeline << std::endl;
 }
 
 void VulkanRenderer2D::CreateFrameBuffer()
 {
-    g_rdSwapchainImages = g_vkbSwapChain.get_images().value();
-    g_rdSwapchainImageViews = g_vkbSwapChain.get_image_views().value();
+    // g_rdSwapchainImageViews = g_vkbSwapChain.get_image_views().value();
 
-    g_framebuffers.resize(g_rdSwapchainImageViews.size());
+    // g_framebuffers.resize(g_rdSwapchainImageViews.size());
 
-    for (unsigned int i = 0; i < g_rdSwapchainImageViews.size(); ++i) {
-        VkImageView attachments[] = { g_rdSwapchainImageViews.at(i), g_depthImageView };
+    // for (unsigned int i = 0; i < g_rdSwapchainImageViews.size(); ++i) {
+    //     VkImageView attachments[] = { g_rdSwapchainImageViews.at(i), g_depthImageView };
 
-        VkFramebufferCreateInfo FboInfo{};
-        FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        FboInfo.renderPass = g_renderpass;
-        FboInfo.attachmentCount = 2;
-        FboInfo.pAttachments = attachments;
-        FboInfo.width = g_vkbSwapChain.extent.width;
-        FboInfo.height = g_vkbSwapChain.extent.height;
-        FboInfo.layers = 1;
+    //     VkFramebufferCreateInfo FboInfo{};
+    //     FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    //     FboInfo.renderPass = g_renderpass;
+    //     FboInfo.attachmentCount = 2;
+    //     FboInfo.pAttachments = attachments;
+    //     FboInfo.width = m_width;
+    //     FboInfo.height = m_height;
+    //     FboInfo.layers = 1;
 
-        if (vkCreateFramebuffer(g_vkbDevice.device, &FboInfo, nullptr, &g_framebuffers[i]) != VK_SUCCESS) {
-            std::cout << "error: failed to create framebuffer" << std::endl;
-            return ;
-        }
-    }
+    //     if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &g_framebuffers[i]) != VK_SUCCESS) {
+    //         std::cout << "error: failed to create framebuffer" << std::endl;
+    //         return ;
+    //     }
+    // }
 
     // do destroy
     // for (auto &fb : renderData.rdFramebuffers) {
@@ -832,15 +787,15 @@ void VulkanRenderer2D::Render()
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = static_cast<float>(g_vkbSwapChain.extent.width);
-    viewport.height = static_cast<float>(g_vkbSwapChain.extent.height);
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(g_commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = { 0, 0 };
-    scissor.extent = g_vkbSwapChain.extent;
+    scissor.extent = { m_width, m_height };
     vkCmdSetScissor(g_commandBuffer, 0, 1, &scissor);
 
     /* the triangle drawing itself */
@@ -888,7 +843,7 @@ void CreateSampler()
     texSamplerInfo.anisotropyEnable = VK_FALSE;
     texSamplerInfo.maxAnisotropy = 1.0f;
 
-    if (vkCreateSampler(g_vkbDevice.device, &texSamplerInfo, nullptr, &g_TextureSampler) != VK_SUCCESS) {
+    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &g_TextureSampler) != VK_SUCCESS) {
         std::cout << "error: could not create sampler for texture" << std::endl;
     }
 }
@@ -896,7 +851,7 @@ void CreateSampler()
 ImTextureID VulkanRenderer2D::GetDescriptorSet()
 {
     static bool samplerCreated = false;
-    if (!samplerCreated && g_vkbDevice.device != VK_NULL_HANDLE) 
+    if (!samplerCreated && Vulkan::GetDevice() != VK_NULL_HANDLE) 
     {
         CreateSampler();
         samplerCreated = true;
@@ -909,28 +864,28 @@ ImTextureID VulkanRenderer2D::GetDescriptorSet()
 }
 
 
-uint32_t g_acquiredimageIndex = 0;
+//uint32_t g_acquiredimageIndex = 0;
 void VulkanRenderer2D::BeginRenderPass()
 {
-    if (vkWaitForFences(g_vkbDevice.device, 1, &g_renderFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+    if (vkWaitForFences(Vulkan::GetDevice(), 1, &g_renderFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
         std::cout << "error: waiting for fence failed" << std::endl;
         return;
     }
 
-    if (vkResetFences(g_vkbDevice.device, 1, &g_renderFence) != VK_SUCCESS) {
+    if (vkResetFences(Vulkan::GetDevice(), 1, &g_renderFence) != VK_SUCCESS) {
         std::cout << "error: fence reset failed" << std::endl;
         return;
     }
 
-    VkResult result = vkAcquireNextImageKHR(g_vkbDevice.device, g_vkbSwapChain.swapchain, UINT64_MAX, g_presentSemaphore, VK_NULL_HANDLE, &g_acquiredimageIndex);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        //return recreateSwapchain();
-        std::cout << "need to recreate swapchain" << std::endl;
-    } else {
-        if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-            std::cout << "error: failed to acquire swapchain image. Error is " << result << std::endl;
-        }
-    }
+    // VkResult result = vkAcquireNextImageKHR(Vulkan::GetDevice(), g_vkbSwapChain.swapchain, UINT64_MAX, g_presentSemaphore, VK_NULL_HANDLE, &g_acquiredimageIndex);
+    // if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+    //     //return recreateSwapchain();
+    //     std::cout << "need to recreate swapchain" << std::endl;
+    // } else {
+    //     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+    //         std::cout << "error: failed to acquire swapchain image. Error is " << result << std::endl;
+    //     }
+    // }
 
     if (vkResetCommandBuffer(g_commandBuffer, 0) != VK_SUCCESS) {
         std::cout << "error: failed to reset command buffer" << std::endl;
@@ -956,13 +911,34 @@ void VulkanRenderer2D::BeginRenderPass()
 
     VkClearValue clearValues[] = { colorClearValue, depthValue };
 
+    static bool frameBufferAttachmentsCreated = false;
+    VkFramebuffer frameBufferAttachment;
+    VkImageView attachment;
+    if (!frameBufferAttachmentsCreated) 
+    {
+        VkFramebufferCreateInfo FboInfo{};
+        FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        FboInfo.renderPass = g_renderpass;
+        FboInfo.attachmentCount = 1;
+        FboInfo.pAttachments = &attachment;
+        FboInfo.width = m_width;
+        FboInfo.height = m_height;
+        FboInfo.layers = 1;
+
+        if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &frameBufferAttachment) != VK_SUCCESS) {
+            std::cout << "error: failed to create framebuffer" << std::endl;
+            return ;
+        }
+        frameBufferAttachmentsCreated = true;
+    }
+
     VkRenderPassBeginInfo rpInfo{};
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rpInfo.renderPass = g_renderpass;
     rpInfo.renderArea.offset.x = 0;
     rpInfo.renderArea.offset.y = 0;
-    rpInfo.renderArea.extent = g_vkbSwapChain.extent;
-    rpInfo.framebuffer = g_framebuffers[g_acquiredimageIndex];
+    rpInfo.renderArea.extent = { m_width, m_height };
+    rpInfo.framebuffer = frameBufferAttachment;
     rpInfo.clearValueCount = 2;
     rpInfo.pClearValues = clearValues;
 
@@ -994,28 +970,28 @@ void VulkanRenderer2D::SubmitCommandBuffer()
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &g_commandBuffer;
 
-    // if (vkQueueSubmit(g_graphicsQueue, 1, &submitInfo, g_renderFence) != VK_SUCCESS) {
-    //     std::cout << "error: failed to submit draw command buffer" << std::endl;
-    //     return;
-    // }
-
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &g_renderSemaphore;
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &g_vkbSwapChain.swapchain;
-    presentInfo.pImageIndices = &g_acquiredimageIndex;
-
-    VkResult result = vkQueuePresentKHR(g_presentQueue, &presentInfo);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        std::cout << "need to recreate swapchain" << std::endl;
-        //return recreateSwapchain();
-    } else {
-        if (result != VK_SUCCESS) {
-            std::cout << "error: failed to present swapchain image" << std::endl;
-        }
+    if (vkQueueSubmit(Vulkan::GetDeviceQueue(), 1, &submitInfo, g_renderFence) != VK_SUCCESS) {
+        std::cout << "error: failed to submit draw command buffer" << std::endl;
+        return;
     }
+
+    // VkPresentInfoKHR presentInfo{};
+    // presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    // presentInfo.waitSemaphoreCount = 1;
+    // presentInfo.pWaitSemaphores = &g_renderSemaphore;
+    // presentInfo.swapchainCount = 1;
+    // presentInfo.pSwapchains = &g_vkbSwapChain.swapchain;
+    // presentInfo.pImageIndices = &g_acquiredimageIndex;
+
+    // VkResult result = vkQueuePresentKHR(g_presentQueue, &presentInfo);
+    // if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    //     std::cout << "need to recreate swapchain" << std::endl;
+    //     //return recreateSwapchain();
+    // } else {
+    //     if (result != VK_SUCCESS) {
+    //         std::cout << "error: failed to present swapchain image" << std::endl;
+    //     }
+    // }
 }
 
 } // namespace GraphicsAPI
