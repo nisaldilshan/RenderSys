@@ -298,8 +298,8 @@ bool VulkanRenderer2D::CreateSwapChain()
 }
 void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
 {
-    // m_width = width;
-    // m_height = height;
+    m_width = width;
+    m_height = height;
     // wgpu::TextureDescriptor tex_desc = {};
     // tex_desc.label = "Renderer Final Texture";
     // tex_desc.dimension = WGPUTextureDimension_2D;
@@ -909,13 +909,55 @@ void VulkanRenderer2D::BeginRenderPass()
     VkClearValue depthValue;
     depthValue.depthStencil.depth = 1.0f;
 
-    VkClearValue clearValues[] = { colorClearValue, depthValue };
+    VkClearValue clearValues[] = { colorClearValue };
 
     static bool frameBufferAttachmentsCreated = false;
-    VkFramebuffer frameBufferAttachment;
-    VkImageView attachment;
+    static VkFramebuffer frameBufferAttachment;
     if (!frameBufferAttachmentsCreated) 
     {
+        static VkImage m_Image;
+        static VkDeviceMemory m_Memory;
+        VkImageCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        info.imageType = VK_IMAGE_TYPE_2D;
+        info.format = VK_FORMAT_R8G8B8A8_UNORM;
+        info.extent.width = m_width;
+        info.extent.height = m_height;
+        info.extent.depth = 1;
+        info.mipLevels = 1;
+        info.arrayLayers = 1;
+        info.samples = VK_SAMPLE_COUNT_1_BIT;
+        info.tiling = VK_IMAGE_TILING_OPTIMAL;
+        info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_Image);
+        Vulkan::check_vk_result(err);
+        VkMemoryRequirements req;
+        vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_Image, &req);
+        VkMemoryAllocateInfo alloc_info = {};
+        alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        alloc_info.allocationSize = req.size;
+        alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
+        err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
+        Vulkan::check_vk_result(err);
+        err = vkBindImageMemory(Vulkan::GetDevice(), m_Image, m_Memory, 0);
+        Vulkan::check_vk_result(err);
+
+        static VkImageView attachment;
+        {
+            VkImageViewCreateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            info.image = m_Image;
+            info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            info.format = VK_FORMAT_R8G8B8A8_UNORM;
+            info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            info.subresourceRange.levelCount = 1;
+            info.subresourceRange.layerCount = 1;
+            VkResult err = vkCreateImageView(Vulkan::GetDevice(), &info, nullptr, &attachment);
+            Vulkan::check_vk_result(err);
+        }
+        
         VkFramebufferCreateInfo FboInfo{};
         FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         FboInfo.renderPass = g_renderpass;
@@ -939,7 +981,7 @@ void VulkanRenderer2D::BeginRenderPass()
     rpInfo.renderArea.offset.y = 0;
     rpInfo.renderArea.extent = { m_width, m_height };
     rpInfo.framebuffer = frameBufferAttachment;
-    rpInfo.clearValueCount = 2;
+    rpInfo.clearValueCount = 1;
     rpInfo.pClearValues = clearValues;
 
     vkCmdBeginRenderPass(g_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -963,10 +1005,10 @@ void VulkanRenderer2D::SubmitCommandBuffer()
 
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     submitInfo.pWaitDstStageMask = &waitStage;
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &g_presentSemaphore;
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &g_renderSemaphore;
+    // submitInfo.waitSemaphoreCount = 1;
+    // submitInfo.pWaitSemaphores = &g_presentSemaphore;
+    // submitInfo.signalSemaphoreCount = 1;
+    // submitInfo.pSignalSemaphores = &g_renderSemaphore;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &g_commandBuffer;
 
