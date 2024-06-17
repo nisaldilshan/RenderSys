@@ -9,6 +9,10 @@ wgpu::VertexFormat GetWebGPUVertexFormat(RenderSys::VertexFormat renderSysFormat
     {
         return wgpu::VertexFormat::Float32x2;
     }
+    else if (renderSysFormat == RenderSys::VertexFormat::Float32x3)
+    {
+        return wgpu::VertexFormat::Float32x3;
+    }
     else
     {
         assert(false);
@@ -28,12 +32,18 @@ wgpu::VertexBufferLayout GetWebGPUVertexBufferLayout(RenderSys::VertexBufferLayo
     }
     
     layout.attributeCount = renderSysBufferLayout.attributeCount;
-    static wgpu::VertexAttribute vAttrib;
-    vAttrib.format = GetWebGPUVertexFormat(renderSysBufferLayout.attributes->format);
-    vAttrib.offset = renderSysBufferLayout.attributes->offset;
-    vAttrib.shaderLocation = renderSysBufferLayout.attributes->shaderLocation;
-    layout.attributes = &vAttrib;
-    // layout.attributes = reinterpret_cast<WGPUVertexAttribute const*>(renderSysBufferLayout.attributes);
+    static std::vector<wgpu::VertexAttribute> vAttribArr(layout.attributeCount);
+    
+    int attribCounter = 0;
+    for (wgpu::VertexAttribute& vAttrib : vAttribArr)
+    {
+        vAttrib.format = GetWebGPUVertexFormat(renderSysBufferLayout.attributes[attribCounter].format);
+        vAttrib.offset = renderSysBufferLayout.attributes[attribCounter].offset;
+        vAttrib.shaderLocation = renderSysBufferLayout.attributes[attribCounter].shaderLocation;
+        attribCounter++;
+    }
+    
+    layout.attributes = &vAttribArr[0];
                                             
     return layout;
 }
