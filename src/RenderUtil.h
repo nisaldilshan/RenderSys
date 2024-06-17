@@ -80,6 +80,12 @@ namespace RenderSys
         BufferBindingType type = BufferBindingType::Undefined;
         bool hasDynamicOffset = false;
         uint64_t minBindingSize = 0;
+
+        void setDefault() {
+            type = BufferBindingType::Uniform;
+            hasDynamicOffset = false;
+            minBindingSize = 0;
+        }
     };
 
     enum class SamplerBindingType
@@ -93,6 +99,10 @@ namespace RenderSys
     struct SamplerBindingLayout {
         void const * nextInChain = nullptr; // was "ChainedStruct const *""
         SamplerBindingType type = SamplerBindingType::Undefined;
+
+        void setDefault() {
+            type = SamplerBindingType::Filtering;
+        }
     };
 
     enum class TextureSampleType
@@ -108,12 +118,12 @@ namespace RenderSys
     enum class TextureViewDimension
     {
         Undefined = 0,
-        e1D,
-        e2D,
-        e2DArray,
+        _1D,
+        _2D,
+        _2DArray,
         Cube,
         CubeArray,
-        e3D
+        _3D
     };
 
     struct TextureBindingLayout {
@@ -121,6 +131,12 @@ namespace RenderSys
         TextureSampleType sampleType = TextureSampleType::Undefined;
         TextureViewDimension viewDimension = TextureViewDimension::Undefined;
         bool multisampled = false;
+
+        void setDefault() {
+            sampleType = TextureSampleType::Float;
+            viewDimension = TextureViewDimension::_2D;
+            multisampled = false;
+        }
     };
 
     enum class StorageTextureAccess
@@ -234,6 +250,12 @@ namespace RenderSys
         StorageTextureAccess access = StorageTextureAccess::Undefined;
         TextureFormat format = TextureFormat::Undefined;
         TextureViewDimension viewDimension = TextureViewDimension::Undefined;
+
+        void setDefault() {
+            access = StorageTextureAccess::WriteOnly;
+            format = TextureFormat::Undefined;
+            viewDimension = TextureViewDimension::_2D;
+        }
     };
 
     struct BindGroupLayoutEntry
@@ -245,6 +267,18 @@ namespace RenderSys
         SamplerBindingLayout sampler;
         TextureBindingLayout texture;
         StorageTextureBindingLayout storageTexture;
+
+        void setDefault()
+        {
+            buffer.setDefault();
+            sampler.setDefault();
+            texture.setDefault();
+            storageTexture.setDefault();
+            buffer.type = BufferBindingType::Undefined;
+            sampler.type = SamplerBindingType::Undefined;
+            texture.sampleType = TextureSampleType::Undefined;
+            storageTexture.access = StorageTextureAccess::Undefined;
+        }
     };
 
     struct TextureDescriptor
