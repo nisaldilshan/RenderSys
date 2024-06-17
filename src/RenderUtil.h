@@ -10,12 +10,7 @@ namespace RenderSys
         VertexBufferNotUsed
     };
 
-    struct VertexBufferLayout
-    {
-        /* data */
-    };
-
-    enum class VertexFormat
+        enum class VertexFormat
     {
         Undefined = 0,
         Uint8x2,
@@ -52,8 +47,22 @@ namespace RenderSys
 
     struct VertexAttribute
     {
-        /* data */
+        VertexFormat format;
+        uint64_t offset;
+        uint32_t shaderLocation;
     };
+
+    struct VertexBufferLayout
+    {
+        uint64_t arrayStride;
+        VertexStepMode stepMode = VertexStepMode::Vertex;
+        size_t attributeCount;
+        VertexAttribute const * attributes;
+    };
+
+
+
+    
 
     struct BindGroupLayoutEntry
     {

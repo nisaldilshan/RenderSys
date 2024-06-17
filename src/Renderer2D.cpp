@@ -33,12 +33,17 @@ void Renderer2D::Init()
     m_rendererBackend->CreateBindGroup();
 }
 
-void Renderer2D::SetShader(const char* shaderSource)
+void Renderer2D::SetShaderFile(const char* shaderFile)
 {
-    m_rendererBackend->CreateShaders(shaderSource);
+    m_rendererBackend->CreateShaders(shaderFile);
 }
 
-void Renderer2D::SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount)
+void Renderer2D::SetShaderAsString(const std::string& shaderSource)
+{
+    m_rendererBackend->CreateShaders(shaderSource.c_str());
+}
+
+void Renderer2D::SetStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount)
 {
     m_rendererBackend->CreateStandaloneShader(shaderSource, vertexShaderCallCount);
 }
@@ -53,10 +58,9 @@ void Renderer2D::SetIndexBufferData(const std::vector<uint16_t>& bufferData)
     m_rendererBackend->CreateIndexBuffer(bufferData);
 }
 
-void Renderer2D::CreatePipelineAndFrameBuffers()
+void Renderer2D::CreatePipeline()
 {
     m_rendererBackend->CreatePipeline();
-    m_rendererBackend->CreateFrameBuffer();
 }
 
 void Renderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)

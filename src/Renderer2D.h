@@ -2,16 +2,9 @@
 
 #include <memory>
 #include <stdint.h>
+#include <imgui_impl_glfw.h>
 #include <Walnut/ImageFormat.h>
 
-#if (RENDERER_BACKEND == 1)
-#include <Walnut/GraphicsAPI/OpenGLGraphics.h>
-#elif (RENDERER_BACKEND == 2)
-#include <Walnut/GraphicsAPI/VulkanGraphics.h>
-#elif (RENDERER_BACKEND == 3)
-#include <Walnut/GraphicsAPI/WebGPUGraphics.h>
-#else
-#endif
 
 #include "RenderUtil.h"
 
@@ -38,11 +31,12 @@ public:
 
     void Init();
     void OnResize(uint32_t width, uint32_t height);
-    void SetShader(const char* shaderSource);
+    void SetShaderFile(const char* shaderFile);
+    void SetShaderAsString(const std::string& shaderSource);
     void SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount);
     void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
-    void CreatePipelineAndFrameBuffers();
+    void CreatePipeline();
     void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
     void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
     void SetUniformBufferData(const void* bufferData, uint32_t uniformIndex);
