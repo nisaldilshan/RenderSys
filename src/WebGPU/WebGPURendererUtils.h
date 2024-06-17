@@ -36,6 +36,12 @@ wgpu::VertexBufferLayout GetWebGPUVertexBufferLayout(RenderSys::VertexBufferLayo
     case RenderSys::VertexStepMode::Vertex:
         layout.stepMode = wgpu::VertexStepMode::Vertex;
         break;
+    case RenderSys::VertexStepMode::Instance:
+        assert(false);
+        break;
+    case RenderSys::VertexStepMode::VertexBufferNotUsed:
+        assert(false);
+        break;
     }
     
     layout.attributeCount = renderSysBufferLayout.attributeCount;
@@ -55,9 +61,27 @@ wgpu::VertexBufferLayout GetWebGPUVertexBufferLayout(RenderSys::VertexBufferLayo
     return layout;
 }
 
-wgpu::ShaderStage GetWebGPUShaderStageVisibility(RenderSys::ShaderStage shaderStage)
+WGPUShaderStageFlags GetWebGPUShaderStageVisibility(RenderSys::ShaderStage shaderStage)
 {
-
+    WGPUShaderStageFlags result;
+    if (static_cast<uint32_t>(shaderStage) == 1) // RenderSys::ShaderStage::Vertex
+    {
+        result = wgpu::ShaderStage::Vertex;
+    }
+    else if (static_cast<uint32_t>(shaderStage) == 2) // RenderSys::ShaderStage::Fragment
+    {
+        result = wgpu::ShaderStage::Fragment;
+    }
+    else if (static_cast<uint32_t>(shaderStage) == 3) // RenderSys::ShaderStage::Vertex | RenderSys::ShaderStage::Fragment
+    {
+        result = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
+    }
+    else
+    {
+        assert(false);
+    }
+    
+    return result;
 }
 
 wgpu::BindGroupLayoutEntry* GetWebGPUBindGroupLayoutEntryPtr(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)

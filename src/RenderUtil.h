@@ -3,11 +3,10 @@
 namespace RenderSys
 {
 
-    enum class VertexStepMode
-    {
-        Vertex = 0,
-        Instance,
-        VertexBufferNotUsed
+    enum class VertexStepMode : uint32_t {
+        Vertex = 0x00000000,
+        Instance = 0x00000001,
+        VertexBufferNotUsed = 0x00000002,
     };
 
         enum class VertexFormat
@@ -61,12 +60,11 @@ namespace RenderSys
     };
 
 
-    enum class ShaderStage
-    {
-        None = 0,
-        Vertex,
-        Fragment,
-        Compute,
+    enum class ShaderStage : uint32_t {
+        None = 0x00000000,
+        Vertex = 0x00000001,
+        Fragment = 0x00000002,
+        Compute = 0x00000004,
     };
 
     enum class BufferBindingType

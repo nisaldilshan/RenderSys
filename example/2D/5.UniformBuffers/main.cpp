@@ -1,5 +1,5 @@
-#include "Walnut/Application.h"
-#include "Walnut/EntryPoint.h"
+#include <Walnut/Application.h>
+#include <Walnut/EntryPoint.h>
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
 
