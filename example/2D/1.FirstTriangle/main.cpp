@@ -28,6 +28,7 @@ public:
             m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
+			m_renderer->Init();
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
 			const char* shaderSource = R"(
@@ -50,7 +51,7 @@ public:
 				}
 			)";
 			m_renderer->SetStandaloneShader(shaderSource, 3);
-			m_renderer->Init();
+			m_renderer->CreatePipeline();
         }
 
 		if (m_renderer)

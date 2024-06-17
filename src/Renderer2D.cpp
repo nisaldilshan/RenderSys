@@ -30,7 +30,6 @@ Renderer2D::~Renderer2D()
 void Renderer2D::Init()
 {
     m_rendererBackend->Init();
-    m_rendererBackend->CreateBindGroup();
 }
 
 void Renderer2D::SetShaderFile(const char* shaderFile)
@@ -71,6 +70,11 @@ void Renderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGro
 void Renderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform)
 {
     m_rendererBackend->CreateUniformBuffer(bufferLength, sizeOfUniform);
+}
+
+void Renderer2D::CreateBindGroup()
+{
+    m_rendererBackend->CreateBindGroup();
 }
 
 void Renderer2D::SetUniformBufferData(const void* bufferData, uint32_t uniformIndex)

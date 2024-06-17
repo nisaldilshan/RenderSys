@@ -39,6 +39,7 @@ public:
     void CreatePipeline();
     void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
     void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
+    void CreateBindGroup();
     void SetUniformBufferData(const void* bufferData, uint32_t uniformIndex);
     void* GetDescriptorSet();
     uint32_t GetWidth() const { return m_Width; }
