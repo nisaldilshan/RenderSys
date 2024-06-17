@@ -5,6 +5,8 @@
 
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
+#include "../RenderUtil.h"
+
 namespace GraphicsAPI
 {
     class WebGPURenderer2D
@@ -13,13 +15,14 @@ namespace GraphicsAPI
         WebGPURenderer2D() = default;
         ~WebGPURenderer2D() = default;
 
+        void Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
         void CreateShaders(const char* shaderSource);
         void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);
         void CreatePipeline();
-        void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, wgpu::VertexBufferLayout bufferLayout);
+        void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
         void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
-        void SetBindGroupLayoutEntry(wgpu::BindGroupLayoutEntry bindGroupLayoutEntry);
+        void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
         void CreateBindGroup();
         void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
         void SetUniformData(const void* bufferData, uint32_t uniformIndex);

@@ -28,6 +28,8 @@ public:
             m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
+			m_renderer->Init();
+			
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
 			const char* shaderSource = R"(
@@ -47,7 +49,9 @@ public:
 					return vec4f(1.0, 0.4, 0.0, 1.0);
 				}
 			)";
-			m_renderer->SetShader(shaderSource);
+
+			const auto shaderSourceStr = std::string(shaderSource);
+			m_renderer->SetShaderAsString(shaderSource);
 
 			// Vertex buffer
 			// There are 2 floats per vertex, one for x and one for y.
@@ -67,25 +71,24 @@ public:
 				+0.05f, +0.5
 			};
 
-			wgpu::VertexBufferLayout vertexBufferLayout;
-			wgpu::VertexAttribute vertexAttrib;
+			RenderSys::VertexAttribute vertexAttrib;
 			// == Per attribute ==
 			// Corresponds to @location(...)
 			vertexAttrib.shaderLocation = 0;
 			// Means vec2f in the shader
-			vertexAttrib.format = wgpu::VertexFormat::Float32x2;
+			vertexAttrib.format = RenderSys::VertexFormat::Float32x2;
 			// Index of the first element
 			vertexAttrib.offset = 0;
 
+			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = 1;
 			vertexBufferLayout.attributes = &vertexAttrib;
 			vertexBufferLayout.arrayStride = 2 * sizeof(float);
-			vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 
 			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
-
-			m_renderer->Init();
+			m_renderer->CreatePipeline();
         }
 
 		if (m_renderer)
