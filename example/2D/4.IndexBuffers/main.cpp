@@ -28,6 +28,7 @@ public:
             m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
+			m_renderer->Init();
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
 			const char* shaderSource = R"(
@@ -67,7 +68,7 @@ public:
 				return vec4f(in.color, 1.0);
 			}
 			)";
-			m_renderer->SetShader(shaderSource);
+			m_renderer->SetShaderAsString(shaderSource);
 
 			// Vertex buffer
 			// The de-duplicated list of point positions
@@ -81,24 +82,24 @@ public:
 
 			// Vertex fetch
 			// We now have 2 attributes
-			std::vector<wgpu::VertexAttribute> vertexAttribs(2);
+			std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
 
 			// Position attribute
 			vertexAttribs[0].shaderLocation = 0;
-			vertexAttribs[0].format = wgpu::VertexFormat::Float32x2;
+			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x2;
 			vertexAttribs[0].offset = 0;
 
 			// Color attribute
 			vertexAttribs[1].shaderLocation = 1;
-			vertexAttribs[1].format = wgpu::VertexFormat::Float32x3; // different type!
+			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; // different type!
 			vertexAttribs[1].offset = 2 * sizeof(float); // non null offset!
 
-			wgpu::VertexBufferLayout vertexBufferLayout;
+			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
 			// stride
 			vertexBufferLayout.arrayStride = 5 * sizeof(float);
-			vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 
 			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
@@ -111,7 +112,7 @@ public:
 			};
 			m_renderer->SetIndexBufferData(indexData);
 
-			m_renderer->Init();
+			m_renderer->CreatePipeline();
         }
 
 		if (m_renderer)

@@ -37,7 +37,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/2D/3.VertexAttributes",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
@@ -49,7 +49,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/2D/4.IndexBuffers",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
@@ -61,7 +61,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/2D/5.UniformBuffers",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
