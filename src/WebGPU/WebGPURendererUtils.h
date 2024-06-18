@@ -94,6 +94,11 @@ wgpu::BufferBindingType GetWebGPUBufferBindingType(RenderSys::BufferBindingType 
     {
         return wgpu::BufferBindingType::Storage;
     }
+    else if (type == RenderSys::BufferBindingType::Undefined)
+    {
+        std::cout << "using undefined buffer type" << std::endl;
+        return wgpu::BufferBindingType::Undefined;
+    }
     else
     {
         assert(false);
@@ -119,9 +124,20 @@ wgpu::BindGroupLayoutEntry* GetWebGPUBindGroupLayoutEntriesPtr(const std::vector
     {
         bGroupLayoutArr[i].binding = bindGroupLayoutEntries[i].binding;
         bGroupLayoutArr[i].visibility = GetWebGPUShaderStageVisibility(bindGroupLayoutEntries[i].visibility);
-        bGroupLayoutArr[i].buffer.type = GetWebGPUBufferBindingType(bindGroupLayoutEntries[i].buffer.type);
-        bGroupLayoutArr[i].buffer.minBindingSize = bindGroupLayoutEntries[i].buffer.minBindingSize;
-        bGroupLayoutArr[i].buffer.hasDynamicOffset = bindGroupLayoutEntries[i].buffer.hasDynamicOffset;
+
+        if (bindGroupLayoutEntries[i].buffer.type != RenderSys::BufferBindingType::Undefined)
+        {
+            bGroupLayoutArr[i].buffer.type = GetWebGPUBufferBindingType(bindGroupLayoutEntries[i].buffer.type);
+            bGroupLayoutArr[i].buffer.minBindingSize = bindGroupLayoutEntries[i].buffer.minBindingSize;
+            bGroupLayoutArr[i].buffer.hasDynamicOffset = bindGroupLayoutEntries[i].buffer.hasDynamicOffset;
+        }
+
+        if (bindGroupLayoutEntries[i].texture.sampleType != RenderSys::TextureSampleType::Undefined)
+        {
+            std::cout << "binding texture" << std::endl;
+            bGroupLayoutArr[i].texture.sampleType = wgpu::TextureSampleType::Float;
+            bGroupLayoutArr[i].texture.viewDimension = wgpu::TextureViewDimension::_2D;
+        }
     }
     
     return &bGroupLayoutArr[0];

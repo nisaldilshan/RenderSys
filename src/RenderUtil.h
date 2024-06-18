@@ -64,6 +64,7 @@ namespace RenderSys
         None = 0x00000000,
         Vertex = 0x00000001,
         Fragment = 0x00000002,
+        VertexAndFragment = 0x00000003,
         Compute = 0x00000004,
     };
 
