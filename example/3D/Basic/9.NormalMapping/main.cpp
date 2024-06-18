@@ -175,7 +175,7 @@ public:
 		m_renderer = std::make_unique<Renderer3D>();
 
 		assert(m_shaderSource);
-		m_renderer->SetShader(m_shaderSource);
+		m_renderer->SetShaderAsString(m_shaderSource);
 
 		m_renderer->CreateTextureSampler();
 		m_renderer->CreateTexture(baseColorTexture->GetWidth(), baseColorTexture->GetHeight(), baseColorTexture->GetData(), baseColorTexture->GetMipLevelCount());
@@ -261,97 +261,99 @@ public:
 private:
 	void InitialCode()
 	{
+		m_renderer->Init();
 		m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-		std::vector<wgpu::VertexAttribute> vertexAttribs(6);
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(6);
 
 		// Position attribute
 		vertexAttribs[0].shaderLocation = 0;
-		vertexAttribs[0].format = wgpu::VertexFormat::Float32x3;
+		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[0].offset = 0;
 
 		// Normal attribute
 		vertexAttribs[1].shaderLocation = 1;
-		vertexAttribs[1].format = wgpu::VertexFormat::Float32x3;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
 
 		// Color attribute
 		vertexAttribs[2].shaderLocation = 2;
-		vertexAttribs[2].format = wgpu::VertexFormat::Float32x3;
+		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[2].offset = offsetof(VertexAttributes, color);
 
 		// UV attribute
 		vertexAttribs[3].shaderLocation = 3;
-		vertexAttribs[3].format = wgpu::VertexFormat::Float32x2;
+		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
 		vertexAttribs[3].offset = offsetof(VertexAttributes, uv);
 
 		// Tangent attribute
 		vertexAttribs[4].shaderLocation = 4;
-		vertexAttribs[4].format = wgpu::VertexFormat::Float32x3;
+		vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[4].offset = offsetof(VertexAttributes, tangent);
 
 		// Bitangent attribute
 		vertexAttribs[5].shaderLocation = 5;
-		vertexAttribs[5].format = wgpu::VertexFormat::Float32x3;
+		vertexAttribs[5].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[5].offset = offsetof(VertexAttributes, bitangent);
 
-		wgpu::VertexBufferLayout vertexBufferLayout;
+		RenderSys::VertexBufferLayout vertexBufferLayout;
 		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 		vertexBufferLayout.attributes = vertexAttribs.data();
 		// stride
 		vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
-		vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 		assert(m_vertexData.size() > 0);
 		m_renderer->SetVertexBufferData(m_vertexData.data(), m_vertexData.size() * sizeof(VertexAttributes), vertexBufferLayout);
 
 		// Create binding layouts
-		std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(5, wgpu::Default);
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(5);
 		// The uniform buffer binding that we already had
-		wgpu::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
+		RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 		uniformBindingLayout.setDefault();
 		uniformBindingLayout.binding = 0;
-		uniformBindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
-		uniformBindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
+		uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
+		uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 		uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 		uniformBindingLayout.buffer.hasDynamicOffset = true;
 
 		// The texture binding
-		wgpu::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
+		RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
 		textureBindingLayout.setDefault();
 		textureBindingLayout.binding = 1;
-		textureBindingLayout.visibility = wgpu::ShaderStage::Fragment;
-		textureBindingLayout.texture.sampleType = wgpu::TextureSampleType::Float;
-		textureBindingLayout.texture.viewDimension = wgpu::TextureViewDimension::_2D;
+		textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+		textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
+		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
 		// The normal map binding
-		wgpu::BindGroupLayoutEntry& normalTextureBindingLayout = bindingLayoutEntries[2];
+		RenderSys::BindGroupLayoutEntry& normalTextureBindingLayout = bindingLayoutEntries[2];
 		normalTextureBindingLayout.setDefault();
 		normalTextureBindingLayout.binding = 2;
-		normalTextureBindingLayout.visibility = wgpu::ShaderStage::Fragment;
-		normalTextureBindingLayout.texture.sampleType = wgpu::TextureSampleType::Float;
-		normalTextureBindingLayout.texture.viewDimension = wgpu::TextureViewDimension::_2D;
+		normalTextureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+		normalTextureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
+		normalTextureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
 		// The sampler binding
-		wgpu::BindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[3];
+		RenderSys::BindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[3];
 		samplerBindingLayout.setDefault();
 		samplerBindingLayout.binding = 3;
-		samplerBindingLayout.visibility = wgpu::ShaderStage::Fragment;
-		samplerBindingLayout.sampler.type = wgpu::SamplerBindingType::Filtering;
+		samplerBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+		samplerBindingLayout.sampler.type = RenderSys::SamplerBindingType::Filtering;
 
 		// Lighting Uniforms
-		wgpu::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[4];
+		RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[4];
 		lightingUniformLayout.setDefault();
 		lightingUniformLayout.binding = 4;
-		lightingUniformLayout.visibility = wgpu::ShaderStage::Fragment; // only Fragment is needed
-		lightingUniformLayout.buffer.type = wgpu::BufferBindingType::Uniform;
+		lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
+		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
 
 		m_renderer->CreateUniformBuffer(1, UniformBuf::UniformType::ModelViewProjection, sizeof(MyUniforms), uniformBindingLayout.binding);
 		m_renderer->CreateUniformBuffer(1, UniformBuf::UniformType::Lighting, sizeof(LightingUniforms), lightingUniformLayout.binding);
 
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
-		m_renderer->Init();
+		m_renderer->CreatePipeline();
+		
 	}
 
     std::unique_ptr<Renderer3D> m_renderer;

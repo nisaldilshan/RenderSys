@@ -217,7 +217,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/3D/Advanced/1.RayMarching",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/lib",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
             },
         }
     ]
