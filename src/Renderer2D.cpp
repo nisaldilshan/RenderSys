@@ -16,15 +16,14 @@ Renderer2D::Renderer2D()
     , m_rendererBackend(std::make_unique<GraphicsAPI::RendererType>())
 {}
 
+Renderer2D::~Renderer2D()
+{}
+
 void Renderer2D::OnResize(uint32_t width, uint32_t height)
 {
     m_Width = width;
     m_Height = height;
     m_rendererBackend->CreateTextureToRenderInto(m_Width, m_Height);
-}
-
-Renderer2D::~Renderer2D()
-{
 }
 
 void Renderer2D::Init()
@@ -62,18 +61,14 @@ void Renderer2D::CreatePipeline()
     m_rendererBackend->CreatePipeline();
 }
 
-void Renderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
-{
-    m_rendererBackend->SetBindGroupLayoutEntry(bindGroupLayoutEntry);
-}
-
 void Renderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform)
 {
     m_rendererBackend->CreateUniformBuffer(bufferLength, sizeOfUniform);
 }
 
-void Renderer2D::CreateBindGroup()
+void Renderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntries)
 {
+    m_rendererBackend->SetBindGroupLayoutEntry(bindGroupLayoutEntries);
     m_rendererBackend->CreateBindGroup();
 }
 
@@ -82,7 +77,7 @@ void Renderer2D::SetUniformBufferData(const void* bufferData, uint32_t uniformIn
     m_rendererBackend->SetUniformData(bufferData, uniformIndex);
 }
 
-void* Renderer2D::GetDescriptorSet()
+void* Renderer2D::GetDescriptorSet() const
 {
     return m_rendererBackend->GetDescriptorSet();
 }

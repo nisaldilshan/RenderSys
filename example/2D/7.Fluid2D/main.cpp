@@ -118,6 +118,7 @@ public:
             renderWidth != m_renderer->GetWidth() ||
             renderHeight != m_renderer->GetHeight())
         {
+			m_renderer->Init();
 			m_renderer->OnResize(renderWidth, renderHeight);
 
 			// Vertex buffer
@@ -175,11 +176,8 @@ public:
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 			uniformBindingLayout.buffer.hasDynamicOffset = false;
 
-			m_renderer->SetBindGroupLayoutEntry(uniformBindingLayout);
-			m_renderer->CreateUniformBuffer(1, sizeof(MyUniforms));
-
-			m_renderer->Init();
-			m_renderer->CreateBindGroup();
+			m_renderer->CreateUniformBuffer(1, sizeof(MyUniforms));			
+			m_renderer->CreateBindGroup(uniformBindingLayout);
 			m_renderer->CreatePipeline();
         }
 

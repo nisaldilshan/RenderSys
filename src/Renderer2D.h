@@ -37,11 +37,10 @@ public:
     void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
     void CreatePipeline();
-    void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
+    void CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntries);
     void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
-    void CreateBindGroup();
+    
     void SetUniformBufferData(const void* bufferData, uint32_t uniformIndex);
-    void* GetDescriptorSet();
     uint32_t GetWidth() const { return m_Width; }
 	uint32_t GetHeight() const { return m_Height; }
     void SimpleRender();
@@ -50,9 +49,9 @@ public:
     void BeginRenderPass();
     void EndRenderPass();
 
+    void* GetDescriptorSet() const;
 private:
     uint32_t m_Width = 0, m_Height = 0;
     std::unique_ptr<GraphicsAPI::RendererType> m_rendererBackend;
-    const char* m_shaderSource = nullptr;
 };
 

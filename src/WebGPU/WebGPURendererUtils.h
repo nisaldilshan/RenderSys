@@ -84,6 +84,22 @@ WGPUShaderStageFlags GetWebGPUShaderStageVisibility(RenderSys::ShaderStage shade
     return result;
 }
 
+wgpu::BufferBindingType GetWebGPUBufferBindingType(RenderSys::BufferBindingType type)
+{
+    if (type == RenderSys::BufferBindingType::Uniform)
+    {
+        return wgpu::BufferBindingType::Uniform;
+    }
+    else if (type == RenderSys::BufferBindingType::Storage)
+    {
+        return wgpu::BufferBindingType::Storage;
+    }
+    else
+    {
+        assert(false);
+    }
+}
+
 wgpu::BindGroupLayoutEntry* GetWebGPUBindGroupLayoutEntryPtr(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
     static std::vector<wgpu::BindGroupLayoutEntry> bGroupLayoutArr(1);
@@ -92,5 +108,21 @@ wgpu::BindGroupLayoutEntry* GetWebGPUBindGroupLayoutEntryPtr(RenderSys::BindGrou
     bGroupLayoutArr[0].buffer.type = wgpu::BufferBindingType::Uniform; //bindGroupLayoutEntry.buffer.type;
     bGroupLayoutArr[0].buffer.minBindingSize = bindGroupLayoutEntry.buffer.minBindingSize;
     bGroupLayoutArr[0].buffer.hasDynamicOffset = bindGroupLayoutEntry.buffer.hasDynamicOffset;
+    return &bGroupLayoutArr[0];
+}
+
+wgpu::BindGroupLayoutEntry* GetWebGPUBindGroupLayoutEntriesPtr(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
+{
+    static std::vector<wgpu::BindGroupLayoutEntry> bGroupLayoutArr(bindGroupLayoutEntries.size());
+
+    for (size_t i = 0; i < bGroupLayoutArr.size(); i++)    
+    {
+        bGroupLayoutArr[i].binding = bindGroupLayoutEntries[i].binding;
+        bGroupLayoutArr[i].visibility = GetWebGPUShaderStageVisibility(bindGroupLayoutEntries[i].visibility);
+        bGroupLayoutArr[i].buffer.type = GetWebGPUBufferBindingType(bindGroupLayoutEntries[i].buffer.type);
+        bGroupLayoutArr[i].buffer.minBindingSize = bindGroupLayoutEntries[i].buffer.minBindingSize;
+        bGroupLayoutArr[i].buffer.hasDynamicOffset = bindGroupLayoutEntries[i].buffer.hasDynamicOffset;
+    }
+    
     return &bGroupLayoutArr[0];
 }

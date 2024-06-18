@@ -4,8 +4,6 @@
 namespace GraphicsAPI
 {
 
-
-
 void WebGPURenderer2D::Init()
 {
 }
