@@ -1,7 +1,14 @@
 #include "WebGPURenderer3D.h"
+#include "WebGPURendererUtils.h"
 
 namespace GraphicsAPI
 {
+
+const wgpu::TextureFormat g_depthTextureFormat = wgpu::TextureFormat::Depth24Plus;
+
+void WebGPURenderer3D::Init()
+{
+}
 
 void WebGPURenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
 {
@@ -137,8 +144,7 @@ void WebGPURenderer3D::CreatePipeline()
     // Each time a fragment is blended into the target, we update the value of the Z-buffer
 	depthStencilState.depthWriteEnabled = true;
 	// Store the format in a variable as later parts of the code depend on it
-	m_depthTextureFormat = wgpu::TextureFormat::Depth24Plus;
-	depthStencilState.format = m_depthTextureFormat;
+	depthStencilState.format = g_depthTextureFormat;
 	// Deactivate the stencil alltogether
 	depthStencilState.stencilReadMask = 0;
 	depthStencilState.stencilWriteMask = 0;
@@ -163,12 +169,12 @@ void WebGPURenderer3D::CreatePipeline()
     std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
-void WebGPURenderer3D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, wgpu::VertexBufferLayout bufferLayout)
+void WebGPURenderer3D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
 {
     std::cout << "Creating vertex buffer..." << std::endl;
     m_vertexCount = bufferLength / bufferLayout.arrayStride;
     m_vertexBufferSize = bufferLength;
-    m_vertexBufferLayout = bufferLayout;
+    m_vertexBufferLayout = GetWebGPUVertexBufferLayout(bufferLayout);
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = m_vertexBufferSize;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
@@ -203,13 +209,13 @@ void WebGPURenderer3D::SetClearColor(glm::vec4 clearColor)
     m_clearColor = wgpu::Color{clearColor.x, clearColor.y, clearColor.z, clearColor.w};
 }
 
-void WebGPURenderer3D::CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEntry>& bindGroupLayoutEntries)
+void WebGPURenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
     // Create a bind group layout using a vector of layout entries
     auto bindGroupLayoutEntryCount = (uint32_t)bindGroupLayoutEntries.size();
 	wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
 	bindGroupLayoutDesc.entryCount = bindGroupLayoutEntryCount;
-	bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
+	bindGroupLayoutDesc.entries = GetWebGPUBindGroupLayoutEntriesPtr(bindGroupLayoutEntries);
     bindGroupLayoutDesc.label = "MainBindGroupLayout";
 	m_bindGroupLayout = WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
 
@@ -231,7 +237,7 @@ void WebGPURenderer3D::CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEn
             auto bindingIndex = bindGroupLayoutEntry.binding;
             bindings[bindingIndex].binding = bindingIndex;
 
-            if (bindGroupLayoutEntry.buffer.type == wgpu::BufferBindingType::Uniform)
+            if (bindGroupLayoutEntry.buffer.type == RenderSys::BufferBindingType::Uniform)
             {
                 bool uniformBufferFound = false;
                 for (const auto& uniformBuffer : m_uniformBuffers)
@@ -251,11 +257,11 @@ void WebGPURenderer3D::CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEn
 
                 assert(uniformBufferFound);
             }
-            else if (bindGroupLayoutEntry.sampler.type == wgpu::SamplerBindingType::Filtering)
+            else if (bindGroupLayoutEntry.sampler.type == RenderSys::SamplerBindingType::Filtering)
             {
                 bindings[bindingIndex].sampler = m_textureSampler;
             }
-            else if (bindGroupLayoutEntry.texture.viewDimension == wgpu::TextureViewDimension::_2D)
+            else if (bindGroupLayoutEntry.texture.viewDimension == RenderSys::TextureViewDimension::_2D)
             {
                 if (bindingIndex == 1) // this is base color texture
                 {
@@ -541,13 +547,13 @@ void WebGPURenderer3D::CreateDepthTexture()
     // Create the depth texture
 	wgpu::TextureDescriptor depthTextureDesc;
 	depthTextureDesc.dimension = wgpu::TextureDimension::_2D;
-	depthTextureDesc.format = m_depthTextureFormat;
+	depthTextureDesc.format = g_depthTextureFormat;
 	depthTextureDesc.mipLevelCount = 1;
 	depthTextureDesc.sampleCount = 1;
 	depthTextureDesc.size = {m_width, m_height, 1};
 	depthTextureDesc.usage = wgpu::TextureUsage::RenderAttachment;
 	depthTextureDesc.viewFormatCount = 1;
-	depthTextureDesc.viewFormats = (WGPUTextureFormat*)&m_depthTextureFormat;
+	depthTextureDesc.viewFormats = (WGPUTextureFormat*)&g_depthTextureFormat;
 	m_depthTexture = WebGPU::GetDevice().createTexture(depthTextureDesc);
 	std::cout << "Depth texture: " << m_depthTexture << std::endl;
 
@@ -559,7 +565,7 @@ void WebGPURenderer3D::CreateDepthTexture()
 	depthTextureViewDesc.baseMipLevel = 0;
 	depthTextureViewDesc.mipLevelCount = 1;
 	depthTextureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
-	depthTextureViewDesc.format = m_depthTextureFormat;
+	depthTextureViewDesc.format = g_depthTextureFormat;
 	m_depthTextureView = m_depthTexture.createView(depthTextureViewDesc);
 	std::cout << "Depth texture view: " << m_depthTextureView << std::endl;
 }

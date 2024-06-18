@@ -9,6 +9,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include "../Buffer.h"
 
+#include "../RenderUtil.h"
+
 namespace GraphicsAPI
 {
     class WebGPURenderer3D
@@ -17,14 +19,15 @@ namespace GraphicsAPI
         WebGPURenderer3D() = default;
         ~WebGPURenderer3D() = default;
 
+        void Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
         void CreateShaders(const char* shaderSource);
         void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);
         void CreatePipeline();
-        void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, wgpu::VertexBufferLayout bufferLayout);
+        void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
         void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
         void SetClearColor(glm::vec4 clearColor);
-        void CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEntry>& bindGroupLayoutEntries);
+        void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
         void CreateUniformBuffer(size_t bufferLength, UniformBuf::UniformType type, uint32_t sizeOfUniform, uint32_t bindingIndex);
         void CreateDepthTexture();
         void CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
@@ -66,7 +69,6 @@ namespace GraphicsAPI
         wgpu::CommandEncoder m_currentCommandEncoder = nullptr;
         wgpu::RenderPassEncoder m_renderPass = nullptr;
 
-        wgpu::TextureFormat m_depthTextureFormat =  wgpu::TextureFormat::Undefined;
         wgpu::Texture m_depthTexture = nullptr;
         wgpu::TextureView m_depthTextureView = nullptr;
 
