@@ -116,6 +116,22 @@ wgpu::BindGroupLayoutEntry* GetWebGPUBindGroupLayoutEntryPtr(RenderSys::BindGrou
     return &bGroupLayoutArr[0];
 }
 
+wgpu::TextureSampleType GetWebGPUTextureSamplingType(RenderSys::TextureSampleType type)
+{
+    if (type == RenderSys::TextureSampleType::Float)
+    {
+        return wgpu::TextureSampleType::Float;
+    }
+    else if (type == RenderSys::TextureSampleType::UnfilterableFloat)
+    {
+        return wgpu::TextureSampleType::UnfilterableFloat;
+    }
+    else
+    {
+        assert(false);
+    }
+}
+
 wgpu::BindGroupLayoutEntry* GetWebGPUBindGroupLayoutEntriesPtr(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
     static std::vector<wgpu::BindGroupLayoutEntry> bGroupLayoutArr(bindGroupLayoutEntries.size());
@@ -135,8 +151,14 @@ wgpu::BindGroupLayoutEntry* GetWebGPUBindGroupLayoutEntriesPtr(const std::vector
         if (bindGroupLayoutEntries[i].texture.sampleType != RenderSys::TextureSampleType::Undefined)
         {
             std::cout << "binding texture" << std::endl;
-            bGroupLayoutArr[i].texture.sampleType = wgpu::TextureSampleType::Float;
+            bGroupLayoutArr[i].texture.sampleType = GetWebGPUTextureSamplingType(bindGroupLayoutEntries[i].texture.sampleType);
             bGroupLayoutArr[i].texture.viewDimension = wgpu::TextureViewDimension::_2D;
+        }
+
+        if (bindGroupLayoutEntries[i].sampler.type != RenderSys::SamplerBindingType::Undefined)
+        {
+            std::cout << "binding sampler" << std::endl;
+            bGroupLayoutArr[i].sampler.type = wgpu::SamplerBindingType::Filtering;
         }
     }
     
