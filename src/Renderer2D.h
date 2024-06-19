@@ -29,6 +29,11 @@ public:
     Renderer2D();
     ~Renderer2D();
 
+    Renderer2D(const Renderer2D&) = delete;
+	Renderer2D &operator=(const Renderer2D&) = delete;
+	Renderer2D(Renderer2D&&) = delete;
+	Renderer2D &operator=(Renderer2D&&) = delete;
+
     void Init();
     void OnResize(uint32_t width, uint32_t height);
     void SetShaderFile(const char* shaderFile);

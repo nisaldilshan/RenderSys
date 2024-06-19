@@ -6,7 +6,7 @@ add_subdirectory(2D/5.UniformBuffers)
 add_subdirectory(2D/6.DynamicUniforms)
 add_subdirectory(2D/7.Fluid2D)
 
-# add_subdirectory(Compute/1.BasicCompute)
+add_subdirectory(Compute/1.BasicCompute)
 
 add_subdirectory(3D/Basic/1.First3DShape)
 add_subdirectory(3D/Basic/2.TransformationMatrices)

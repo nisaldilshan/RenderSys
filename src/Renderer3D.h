@@ -33,6 +33,11 @@ class Renderer3D
 public:
     Renderer3D();
     ~Renderer3D();
+    
+    Renderer3D(const Renderer3D&) = delete;
+	Renderer3D &operator=(const Renderer3D&) = delete;
+	Renderer3D(Renderer3D&&) = delete;
+	Renderer3D &operator=(Renderer3D&&) = delete;
 
     void Init();
     void OnResize(uint32_t width, uint32_t height);
