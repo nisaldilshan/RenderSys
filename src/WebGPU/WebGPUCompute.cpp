@@ -147,7 +147,7 @@ void WebGPUCompute::BeginComputePass()
     
 
     wgpu::ComputePassDescriptor computePassDesc;
-    computePassDesc.timestampWriteCount = 0;
+    //computePassDesc.timestampWriteCount = 0;
     computePassDesc.timestampWrites = nullptr;
 
     m_computePass = m_commandEncoder.beginComputePass(computePassDesc);

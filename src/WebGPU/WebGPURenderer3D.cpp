@@ -474,6 +474,7 @@ void WebGPURenderer3D::BeginRenderPass()
 
     wgpu::RenderPassColorAttachment renderPassColorAttachment;
     renderPassColorAttachment.view = m_textureToRenderInto;
+    renderPassColorAttachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
     renderPassColorAttachment.resolveTarget = nullptr;
     renderPassColorAttachment.loadOp = wgpu::LoadOp::Clear;
     renderPassColorAttachment.storeOp = wgpu::StoreOp::Store;
@@ -505,7 +506,7 @@ void WebGPURenderer3D::BeginRenderPass()
     depthStencilAttachment.stencilReadOnly = true;
 
     renderPassDesc.depthStencilAttachment = &depthStencilAttachment;
-    renderPassDesc.timestampWriteCount = 0;
+    //renderPassDesc.timestampWriteCount = 0;
     renderPassDesc.timestampWrites = nullptr;
 
     m_renderPass = m_currentCommandEncoder.beginRenderPass(renderPassDesc);
