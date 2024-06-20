@@ -16,6 +16,9 @@ Renderer2D::Renderer2D()
     , m_rendererBackend(std::make_unique<GraphicsAPI::RendererType>())
 {}
 
+Renderer2D::~Renderer2D()
+{}
+
 void Renderer2D::OnResize(uint32_t width, uint32_t height)
 {
     m_Width = width;
@@ -23,22 +26,22 @@ void Renderer2D::OnResize(uint32_t width, uint32_t height)
     m_rendererBackend->CreateTextureToRenderInto(m_Width, m_Height);
 }
 
-Renderer2D::~Renderer2D()
-{
-}
-
 void Renderer2D::Init()
 {
-    m_rendererBackend->CreateBindGroup();
-    m_rendererBackend->CreatePipeline();
+    m_rendererBackend->Init();
 }
 
-void Renderer2D::SetShader(const char* shaderSource)
+void Renderer2D::SetShaderFile(const char* shaderFile)
 {
-    m_rendererBackend->CreateShaders(shaderSource);
+    m_rendererBackend->CreateShaders(shaderFile);
 }
 
-void Renderer2D::SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount)
+void Renderer2D::SetShaderAsString(const std::string& shaderSource)
+{
+    m_rendererBackend->CreateShaders(shaderSource.c_str());
+}
+
+void Renderer2D::SetStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount)
 {
     m_rendererBackend->CreateStandaloneShader(shaderSource, vertexShaderCallCount);
 }
@@ -53,9 +56,9 @@ void Renderer2D::SetIndexBufferData(const std::vector<uint16_t>& bufferData)
     m_rendererBackend->CreateIndexBuffer(bufferData);
 }
 
-void Renderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
+void Renderer2D::CreatePipeline()
 {
-    m_rendererBackend->SetBindGroupLayoutEntry(bindGroupLayoutEntry);
+    m_rendererBackend->CreatePipeline();
 }
 
 void Renderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform)
@@ -63,12 +66,18 @@ void Renderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform
     m_rendererBackend->CreateUniformBuffer(bufferLength, sizeOfUniform);
 }
 
+void Renderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntries)
+{
+    m_rendererBackend->SetBindGroupLayoutEntry(bindGroupLayoutEntries);
+    m_rendererBackend->CreateBindGroup();
+}
+
 void Renderer2D::SetUniformBufferData(const void* bufferData, uint32_t uniformIndex)
 {
     m_rendererBackend->SetUniformData(bufferData, uniformIndex);
 }
 
-void* Renderer2D::GetDescriptorSet()
+void* Renderer2D::GetDescriptorSet() const
 {
     return m_rendererBackend->GetDescriptorSet();
 }

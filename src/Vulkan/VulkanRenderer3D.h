@@ -2,24 +2,22 @@
 
 #include <stdint.h>
 #include <stddef.h>
-
-#include <Walnut/GraphicsAPI/WebGPUGraphics.h>
-
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include "../Buffer.h"
+
+#include <Walnut/GraphicsAPI/VulkanGraphics.h>
 
 #include "../RenderUtil.h"
+#include "../Buffer.h"
 
 namespace GraphicsAPI
 {
-    class WebGPURenderer3D
+    class VulkanRenderer3D
     {
     public:
-        WebGPURenderer3D() = default;
-        ~WebGPURenderer3D() = default;
+        VulkanRenderer3D() = default;
+        ~VulkanRenderer3D() = default;
 
-        void Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
         void CreateShaders(const char* shaderSource);
         void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);
@@ -42,38 +40,44 @@ namespace GraphicsAPI
         void Reset();
         
     private:
-        void UploadTexture(wgpu::Texture texture, wgpu::TextureDescriptor textureDesc, const void* textureData);
+        void UploadTexture(VkImage texture, RenderSys::TextureDescriptor textureDesc, const void* textureData);
         void SubmitCommandBuffer();
         uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
-        wgpu::Color m_clearColor = wgpu::Color{ 0.9, 0.1, 0.2, 1.0 };
+        // wgpu::Color m_clearColor = wgpu::Color{ 0.9, 0.1, 0.2, 1.0 };
 
-        wgpu::ShaderModule m_shaderModule = nullptr;
-        wgpu::RenderPipeline m_pipeline = nullptr;
-        wgpu::TextureView m_textureToRenderInto = nullptr;
+        // wgpu::ShaderModule m_shaderModule = nullptr;
+        // wgpu::RenderPipeline m_pipeline = nullptr;
+
+        VkImage m_image;
+        VkImageView m_imageView;
+        VkDeviceMemory m_imageMemory;
+        VkSampler m_imageSampler;
+        VkDescriptorSet m_descriptorSet; // same as m_textureToRenderInto
 
         uint32_t m_vertexCount = 0;
         uint64_t m_vertexBufferSize = 0;
-        wgpu::Buffer m_vertexBuffer = nullptr;
-        wgpu::VertexBufferLayout m_vertexBufferLayout;
+        // wgpu::Buffer m_vertexBuffer = nullptr;
+        // wgpu::VertexBufferLayout m_vertexBufferLayout;
 
         uint32_t m_indexCount = 0;
-        wgpu::Buffer m_indexBuffer = nullptr;
+        // wgpu::Buffer m_indexBuffer = nullptr;
 
-        wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
-        wgpu::PipelineLayout m_pipelineLayout = nullptr;
+        // wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
+        // wgpu::PipelineLayout m_pipelineLayout = nullptr;
 
-        std::unordered_map<UniformBuf::UniformType, std::tuple<uint32_t, wgpu::Buffer, uint32_t>> m_uniformBuffers;
-        wgpu::BindGroup m_bindGroup = nullptr;
+        // std::unordered_map<UniformBuf::UniformType, std::tuple<uint32_t, wgpu::Buffer, uint32_t>> m_uniformBuffers;
+        // wgpu::BindGroup m_bindGroup = nullptr;
 
-        wgpu::CommandEncoder m_currentCommandEncoder = nullptr;
-        wgpu::RenderPassEncoder m_renderPass = nullptr;
+        // wgpu::CommandEncoder m_currentCommandEncoder = nullptr;
+        // wgpu::RenderPassEncoder m_renderPass = nullptr;
 
-        wgpu::Texture m_depthTexture = nullptr;
-        wgpu::TextureView m_depthTextureView = nullptr;
+        // wgpu::TextureFormat m_depthTextureFormat =  wgpu::TextureFormat::Undefined;
+        // wgpu::Texture m_depthTexture = nullptr;
+        // wgpu::TextureView m_depthTextureView = nullptr;
 
-        std::vector<std::pair<wgpu::Texture, wgpu::TextureView>> m_texturesAndViews;
-        wgpu::Sampler m_textureSampler = nullptr;
+        // std::vector<std::pair<wgpu::Texture, wgpu::TextureView>> m_texturesAndViews;
+        // wgpu::Sampler m_textureSampler = nullptr;
 
         uint32_t m_width, m_height;
     };

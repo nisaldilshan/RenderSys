@@ -47,6 +47,7 @@ public:
             m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
+			m_renderer->Init();
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 			m_camera->SetViewportSize((float)m_viewportWidth, (float)m_viewportHeight);
 
@@ -156,7 +157,7 @@ public:
 			}
 
 			)";
-			m_renderer->SetShader(shaderSource);
+			m_renderer->SetShaderAsString(shaderSource);
 
 			// Vertex buffer
 			// There are 2 floats per vertex, one for x and one for y.
@@ -172,42 +173,41 @@ public:
 				+0.9, +0.9, 0.0, 1.0 , 1.0,
 			};
 
-			std::vector<wgpu::VertexAttribute> vertexAttribs(2);
+			std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
 
 			// Position attribute
 			vertexAttribs[0].shaderLocation = 0;
-			vertexAttribs[0].format = wgpu::VertexFormat::Float32x3;
+			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
 			vertexAttribs[0].offset = 0;
 
 			// UV attribute
 			vertexAttribs[1].shaderLocation = 1;
-			vertexAttribs[1].format = wgpu::VertexFormat::Float32x2;
+			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x2;
 			vertexAttribs[1].offset = offsetof(VertexAttributes, uv);
 
-			wgpu::VertexBufferLayout vertexBufferLayout;
+			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
 			vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
-			vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 
 			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
 
 			// Create binding layouts
-			std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(1, wgpu::Default);
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);
 			// The uniform buffer binding that we already had
-			wgpu::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
+			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 			uniformBindingLayout.setDefault();
 			uniformBindingLayout.binding = 0;
-			uniformBindingLayout.visibility = wgpu::ShaderStage::Fragment;
-			uniformBindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
+			uniformBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 			uniformBindingLayout.buffer.hasDynamicOffset = true;
 
 			m_renderer->CreateUniformBuffer(1, UniformBuf::UniformType::ModelViewProjection, sizeof(MyUniforms), uniformBindingLayout.binding);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
-
-			m_renderer->Init();
+			m_renderer->CreatePipeline();
         }
 
 		m_camera->OnUpdate();

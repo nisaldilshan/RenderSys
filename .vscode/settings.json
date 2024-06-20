@@ -54,6 +54,7 @@
         "typeinfo": "cpp",
         "unordered_map": "cpp",
         "variant": "cpp",
-        "charconv": "cpp"
+        "charconv": "cpp",
+        "shared_mutex": "cpp"
     }
 }

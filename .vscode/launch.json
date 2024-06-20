@@ -13,7 +13,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/2D/1.FirstTriangle",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
@@ -25,7 +25,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/2D/2.VertexBuffers",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
@@ -37,7 +37,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/2D/3.VertexAttributes",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
@@ -49,7 +49,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/2D/4.IndexBuffers",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
@@ -61,7 +61,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/2D/5.UniformBuffers",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
@@ -73,7 +73,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/2D/6.DynamicUniforms",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
@@ -85,7 +85,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/2D/7.Fluid2D",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
@@ -97,7 +97,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/Compute/1.BasicCompute",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
         },
         {
@@ -217,7 +217,7 @@
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}/build/example/3D/Advanced/1.RayMarching",
             "env": { 
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/lib",
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
             },
         }
     ]

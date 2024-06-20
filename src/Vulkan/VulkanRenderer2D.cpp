@@ -1,12 +1,305 @@
 #include "VulkanRenderer2D.h"
 
+#include <iostream>
+#include <fstream>
+#include "vkb/VkBootstrap.h"
+#define VMA_IMPLEMENTATION
+#include "vma/vk_mem_alloc.h"
+
 namespace GraphicsAPI
 {
 
+uint32_t g_acquiredFrameIndex = 0;
+//vkb::Swapchain g_vkbSwapChain;
+
+VmaAllocator g_allocator;
+
+VkCommandPool g_commandPool = VK_NULL_HANDLE;
+VkCommandBuffer g_commandBuffer = VK_NULL_HANDLE;
+
+VkSemaphore g_presentSemaphore = VK_NULL_HANDLE;
+VkSemaphore g_renderSemaphore = VK_NULL_HANDLE;
+VkFence g_renderFence = VK_NULL_HANDLE;
+
+std::vector<VkImageView> g_rdSwapchainImageViews;
+std::vector<VkFramebuffer> g_framebuffers;
+
+//VkQueue g_graphicsQueue = VK_NULL_HANDLE;
+//VkQueue g_presentQueue = VK_NULL_HANDLE;
+
+VkImage g_depthImage = VK_NULL_HANDLE;
+VkImageView g_depthImageView = VK_NULL_HANDLE;
+constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
+VmaAllocation g_depthImageAllocation = VK_NULL_HANDLE;
+
+VkRenderPass g_renderpass = VK_NULL_HANDLE;
+VkPipelineLayout g_pipelineLayout = VK_NULL_HANDLE;
+VkPipeline g_pipeline = VK_NULL_HANDLE;
+
+int g_triangleCount = 0;
+VkBuffer g_vertexBuffer;
+VmaAllocation g_vertexBufferAllocation;
+
+bool deviceInit()
+{
+    return true;
+}
+
+bool createCommandBuffer()
+{
+    VkCommandPoolCreateInfo poolCreateInfo{};
+    poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolCreateInfo.queueFamilyIndex = Vulkan::GetQueueFamilyIndex();
+    poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+    if (vkCreateCommandPool(Vulkan::GetDevice(), &poolCreateInfo, nullptr, &g_commandPool) != VK_SUCCESS) {
+        std::cout << "error: could not create command pool" << std::endl;
+        return false;
+    }
+
+    VkCommandBufferAllocateInfo bufferAllocInfo{};
+    bufferAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    bufferAllocInfo.commandPool = g_commandPool;
+    bufferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    bufferAllocInfo.commandBufferCount = 1;
+
+    if (vkAllocateCommandBuffers(Vulkan::GetDevice(), &bufferAllocInfo, &g_commandBuffer) != VK_SUCCESS) {
+        std::cout << "error: could not allocate command buffers" << std::endl;
+        return false;
+    }
+
+    return true;
+
+    // call vkDestroyCommandPool(renderData.rdVkbDevice.device, renderData.rdCommandPool, nullptr); to destroy commandpool
+    // call vkFreeCommandBuffers(renderData.rdVkbDevice.device, renderData.rdCommandPool, 1, &commandBuffer); to destroy command buffer
+}
+
+bool createRenderPass() 
+{
+  VkAttachmentDescription colorAtt{};
+  colorAtt.format = VK_FORMAT_B8G8R8A8_UNORM;
+  colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
+  colorAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  colorAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  colorAtt.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+  VkAttachmentReference colorAttRef{};
+  colorAttRef.attachment = 0;
+  colorAttRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  VkAttachmentDescription depthAtt{};
+  depthAtt.flags = 0;
+  depthAtt.format = g_rdDepthFormat;
+  depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
+  depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  depthAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depthAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depthAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  depthAtt.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+  VkAttachmentReference depthAttRef{};
+  depthAttRef.attachment = 1;
+  depthAttRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+  VkSubpassDescription subpassDesc{};
+  subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  subpassDesc.colorAttachmentCount = 1;
+  subpassDesc.pColorAttachments = &colorAttRef;
+  subpassDesc.pDepthStencilAttachment = &depthAttRef;
+
+  VkSubpassDependency subpassDep{};
+  subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+  subpassDep.dstSubpass = 0;
+  subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  subpassDep.srcAccessMask = 0;
+  subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+  VkSubpassDependency depthDep{};
+  depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+  depthDep.dstSubpass = 0;
+  depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+  depthDep.srcAccessMask = 0;
+  depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+  depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+  VkSubpassDependency dependencies[] = { subpassDep, depthDep };
+  VkAttachmentDescription attachments[] = { colorAtt, depthAtt };
+
+  VkRenderPassCreateInfo renderPassInfo{};
+  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  renderPassInfo.attachmentCount = 2;
+  renderPassInfo.pAttachments = attachments;
+  renderPassInfo.subpassCount = 1;
+  renderPassInfo.pSubpasses = &subpassDesc;
+  renderPassInfo.dependencyCount = 2;
+  renderPassInfo.pDependencies = dependencies;
+
+  if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &g_renderpass) != VK_SUCCESS) {
+    std::cout<< "error; could not create renderpass" << std::endl;
+    return false;
+  }
+
+  return true;
+}
+
+
+bool initVma()
+{
+    VmaAllocatorCreateInfo allocatorInfo{};
+    allocatorInfo.physicalDevice = Vulkan::GetPhysicalDevice();
+    allocatorInfo.device = Vulkan::GetDevice();
+    allocatorInfo.instance = Vulkan::GetInstance();
+    if (vmaCreateAllocator(&allocatorInfo, &g_allocator) != VK_SUCCESS) {
+        std::cout << "error: could not init VMA" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+bool createDepthBuffer() 
+{
+    // VkExtent3D depthImageExtent = { g_vkbSwapChain.extent.width, g_vkbSwapChain.extent.height, 1 };
+
+    // VkImageCreateInfo depthImageInfo{};
+    // depthImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    // depthImageInfo.imageType = VK_IMAGE_TYPE_2D;
+    // depthImageInfo.format = g_rdDepthFormat;
+    // depthImageInfo.extent = depthImageExtent;
+    // depthImageInfo.mipLevels = 1;
+    // depthImageInfo.arrayLayers = 1;
+    // depthImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    // depthImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    // depthImageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    // VmaAllocationCreateInfo depthAllocInfo{};
+    // depthAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    // depthAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    // if (vmaCreateImage(g_allocator, &depthImageInfo, &depthAllocInfo, &g_depthImage, &g_depthImageAllocation, nullptr) != VK_SUCCESS) {
+    //     std::cout << "error: could not allocate depth buffer memory" << std::endl;
+    //     return false;
+    // }
+
+    // VkImageViewCreateInfo depthImageViewinfo{};
+    // depthImageViewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    // depthImageViewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    // depthImageViewinfo.image = g_depthImage;
+    // depthImageViewinfo.format = g_rdDepthFormat;
+    // depthImageViewinfo.subresourceRange.baseMipLevel = 0;
+    // depthImageViewinfo.subresourceRange.levelCount = 1;
+    // depthImageViewinfo.subresourceRange.baseArrayLayer = 0;
+    // depthImageViewinfo.subresourceRange.layerCount = 1;
+    // depthImageViewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+    // if (vkCreateImageView(Vulkan::GetDevice(), &depthImageViewinfo, nullptr, &g_depthImageView) != VK_SUCCESS) {
+    //     std::cout << "error: could not create depth buffer image view" << std::endl;
+    //     return false;
+    // }
+    return true;
+}
+
+bool createSyncObjects()
+{
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    if (vkCreateSemaphore(Vulkan::GetDevice(), &semaphoreInfo, nullptr, &g_presentSemaphore) != VK_SUCCESS ||
+        vkCreateSemaphore(Vulkan::GetDevice(), &semaphoreInfo, nullptr, &g_renderSemaphore) != VK_SUCCESS ||
+        vkCreateFence(Vulkan::GetDevice(), &fenceInfo, nullptr, &g_renderFence) != VK_SUCCESS) {
+        std::cout << "error: failed to init sync objects" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+
+bool getQueue() {
+//   auto graphQueueRet = g_vkbDevice.get_queue(vkb::QueueType::graphics);
+//   if (!graphQueueRet.has_value()) {
+//     std::cout << "error: could not get graphics queue" << std::endl;
+//     return false;
+//   }
+//   g_graphicsQueue = graphQueueRet.value();
+
+//   auto presentQueueRet = g_vkbDevice.get_queue(vkb::QueueType::present);
+//   if (!presentQueueRet.has_value()) {
+//     std::cout << "error: could not get present queue" << std::endl;
+//     return false;
+//   }
+//   g_presentQueue = presentQueueRet.value();
+
+  return true;
+}
+
+bool VulkanRenderer2D::Init()
+{
+    if (!deviceInit()) {
+        return false;
+    }
+
+    if (!initVma()) {
+        return false;
+    }
+
+    if (!getQueue()) {
+        return false;
+    }
+
+    if (!CreateSwapChain()) {
+        return false;
+    }
+
+    if (!createDepthBuffer()) {
+        return false;
+    }
+
+    if (!createCommandBuffer())
+    {
+        return false;
+    }
+
+    if (!createRenderPass())
+    {
+        return false;
+    }
+
+    if (!createSyncObjects()) {
+        return false;
+    }
+
+    return true;
+}
+
+bool VulkanRenderer2D::CreateSwapChain()
+{
+    // vkb::SwapchainBuilder swapChainBuild{g_vkbDevice};
+
+    // /* VK_PRESENT_MODE_FIFO_KHR enables vsync */
+    // auto swapChainBuildRet = swapChainBuild.set_old_swapchain(g_vkbSwapChain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
+    // if (!swapChainBuildRet)
+    // {
+    //     return false;
+    // }
+
+    // vkb::destroy_swapchain(g_vkbSwapChain);
+    // g_vkbSwapChain = swapChainBuildRet.value();
+
+    return true;
+}
 void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
 {
-    // m_width = width;
-    // m_height = height;
+    m_width = width;
+    m_height = height;
     // wgpu::TextureDescriptor tex_desc = {};
     // tex_desc.label = "Renderer Final Texture";
     // tex_desc.dimension = WGPUTextureDimension_2D;
@@ -35,26 +328,130 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     // m_textureToRenderInto = texture.createView(tex_view_desc);
 }
 
+
+std::string loadFileToString(std::string fileName) {
+  std::ifstream inFile(fileName, std::ios::binary);
+  std::string str;
+
+  if (inFile.is_open()) {
+    str.clear();
+    // allocate string data (no slower realloc)
+    inFile.seekg(0, std::ios::end);
+    str.reserve(inFile.tellg());
+    inFile.seekg(0, std::ios::beg);
+
+    str.assign((std::istreambuf_iterator<char>(inFile)),
+                std::istreambuf_iterator<char>());
+    inFile.close();
+  } else {
+    //Logger::log(1, "%s error: could not open file %s\n", __FUNCTION__, fileName.c_str());
+    //Logger::log(1, "%s error: system says '%s'\n", __FUNCTION__, strerror(errno));
+    return std::string();
+  }
+
+  if (inFile.bad() || inFile.fail()) {
+    //Logger::log(1, "%s error: error while reading file %s\n", __FUNCTION__, fileName.c_str());
+    inFile.close();
+    return std::string();
+  }
+
+  inFile.close();
+  //Logger::log(1, "%s: file %s successfully read to string\n", __FUNCTION__, fileName.c_str());
+  return str;
+}
+
 void VulkanRenderer2D::CreateShaders(const char* shaderSource)
 {
-//     std::cout << "Creating shader module..." << std::endl;
+    std::cout << "Creating shader modules..." << std::endl;
 
-//     wgpu::ShaderModuleDescriptor shaderDesc;
-// #ifdef WEBGPU_BACKEND_WGPU
-//     shaderDesc.hintCount = 0;
-//     shaderDesc.hints = nullptr;
-// #endif
+    // auto file = std::string(shaderSource);
+    // auto shaderAsBinaryString = loadFileToString(file); 
 
-//     wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
-//     // Set the chained struct's header
-//     shaderCodeDesc.chain.next = nullptr;
-//     shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
-//     shaderCodeDesc.code = shaderSource;
-//     // Connect the chain
-//     shaderDesc.nextInChain = &shaderCodeDesc.chain;
-//     m_shaderModule = WebGPU::GetDevice().createShaderModule(shaderDesc);
+    {
+        // ./glslangValidator -V -x -o shader.vert.u32 shader.vert
+        static uint32_t __glsl_shader_vert_spv[] =
+        {
+            0x07230203,0x00010000,0x0008000b,0x00000021,0x00000000,0x00020011,0x00000001,0x0006000b,
+            0x00000001,0x4c534c47,0x6474732e,0x3035342e,0x00000000,0x0003000e,0x00000000,0x00000001,
+            0x0009000f,0x00000000,0x00000004,0x6e69616d,0x00000000,0x0000000d,0x00000012,0x0000001d,
+            0x0000001f,0x00030003,0x00000002,0x000001cc,0x00040005,0x00000004,0x6e69616d,0x00000000,
+            0x00060005,0x0000000b,0x505f6c67,0x65567265,0x78657472,0x00000000,0x00060006,0x0000000b,
+            0x00000000,0x505f6c67,0x7469736f,0x006e6f69,0x00070006,0x0000000b,0x00000001,0x505f6c67,
+            0x746e696f,0x657a6953,0x00000000,0x00070006,0x0000000b,0x00000002,0x435f6c67,0x4470696c,
+            0x61747369,0x0065636e,0x00070006,0x0000000b,0x00000003,0x435f6c67,0x446c6c75,0x61747369,
+            0x0065636e,0x00030005,0x0000000d,0x00000000,0x00040005,0x00000012,0x736f5061,0x00000000,
+            0x00050005,0x0000001d,0x43786574,0x64726f6f,0x00000000,0x00050005,0x0000001f,0x78655461,
+            0x726f6f43,0x00000064,0x00050048,0x0000000b,0x00000000,0x0000000b,0x00000000,0x00050048,
+            0x0000000b,0x00000001,0x0000000b,0x00000001,0x00050048,0x0000000b,0x00000002,0x0000000b,
+            0x00000003,0x00050048,0x0000000b,0x00000003,0x0000000b,0x00000004,0x00030047,0x0000000b,
+            0x00000002,0x00040047,0x00000012,0x0000001e,0x00000000,0x00040047,0x0000001d,0x0000001e,
+            0x00000000,0x00040047,0x0000001f,0x0000001e,0x00000001,0x00020013,0x00000002,0x00030021,
+            0x00000003,0x00000002,0x00030016,0x00000006,0x00000020,0x00040017,0x00000007,0x00000006,
+            0x00000004,0x00040015,0x00000008,0x00000020,0x00000000,0x0004002b,0x00000008,0x00000009,
+            0x00000001,0x0004001c,0x0000000a,0x00000006,0x00000009,0x0006001e,0x0000000b,0x00000007,
+            0x00000006,0x0000000a,0x0000000a,0x00040020,0x0000000c,0x00000003,0x0000000b,0x0004003b,
+            0x0000000c,0x0000000d,0x00000003,0x00040015,0x0000000e,0x00000020,0x00000001,0x0004002b,
+            0x0000000e,0x0000000f,0x00000000,0x00040017,0x00000010,0x00000006,0x00000003,0x00040020,
+            0x00000011,0x00000001,0x00000010,0x0004003b,0x00000011,0x00000012,0x00000001,0x0004002b,
+            0x00000006,0x00000014,0x3f800000,0x00040020,0x00000019,0x00000003,0x00000007,0x00040017,
+            0x0000001b,0x00000006,0x00000002,0x00040020,0x0000001c,0x00000003,0x0000001b,0x0004003b,
+            0x0000001c,0x0000001d,0x00000003,0x00040020,0x0000001e,0x00000001,0x0000001b,0x0004003b,
+            0x0000001e,0x0000001f,0x00000001,0x00050036,0x00000002,0x00000004,0x00000000,0x00000003,
+            0x000200f8,0x00000005,0x0004003d,0x00000010,0x00000013,0x00000012,0x00050051,0x00000006,
+            0x00000015,0x00000013,0x00000000,0x00050051,0x00000006,0x00000016,0x00000013,0x00000001,
+            0x00050051,0x00000006,0x00000017,0x00000013,0x00000002,0x00070050,0x00000007,0x00000018,
+            0x00000015,0x00000016,0x00000017,0x00000014,0x00050041,0x00000019,0x0000001a,0x0000000d,
+            0x0000000f,0x0003003e,0x0000001a,0x00000018,0x0004003d,0x0000001b,0x00000020,0x0000001f,
+            0x0003003e,0x0000001d,0x00000020,0x000100fd,0x00010038
+        };
 
-//     std::cout << "Shader module: " << m_shaderModule << std::endl;
+        VkShaderModuleCreateInfo shaderCreateInfoVert{};
+        shaderCreateInfoVert.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        shaderCreateInfoVert.codeSize = sizeof(__glsl_shader_vert_spv);
+        shaderCreateInfoVert.pCode = reinterpret_cast<const uint32_t*>(__glsl_shader_vert_spv);
+
+        if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfoVert, nullptr, &m_shaderModuleVertex) != VK_SUCCESS) {
+            std::cout << "could not load vertex shader" << std::endl;
+            return;
+        }
+
+        std::cout << "Vertex Shader module: " << m_shaderModuleVertex << std::endl;
+    }
+
+
+    {
+        // ./glslangValidator -V -x -o shader.frag.u32 shader.frag
+        static uint32_t __glsl_shader_frag_spv[] = 
+        {
+            0x07230203,0x00010000,0x0008000b,0x00000011,0x00000000,0x00020011,0x00000001,0x0006000b,
+            0x00000001,0x4c534c47,0x6474732e,0x3035342e,0x00000000,0x0003000e,0x00000000,0x00000001,
+            0x0007000f,0x00000004,0x00000004,0x6e69616d,0x00000000,0x00000009,0x00000010,0x00030010,
+            0x00000004,0x00000007,0x00030003,0x00000002,0x000001cc,0x00040005,0x00000004,0x6e69616d,
+            0x00000000,0x00050005,0x00000009,0x67617246,0x6f6c6f43,0x00000072,0x00050005,0x00000010,
+            0x43786574,0x64726f6f,0x00000000,0x00040047,0x00000009,0x0000001e,0x00000000,0x00040047,
+            0x00000010,0x0000001e,0x00000000,0x00020013,0x00000002,0x00030021,0x00000003,0x00000002,
+            0x00030016,0x00000006,0x00000020,0x00040017,0x00000007,0x00000006,0x00000004,0x00040020,
+            0x00000008,0x00000003,0x00000007,0x0004003b,0x00000008,0x00000009,0x00000003,0x0004002b,
+            0x00000006,0x0000000a,0x3f800000,0x0004002b,0x00000006,0x0000000b,0x3ecccccd,0x0004002b,
+            0x00000006,0x0000000c,0x00000000,0x0007002c,0x00000007,0x0000000d,0x0000000a,0x0000000b,
+            0x0000000c,0x0000000a,0x00040017,0x0000000e,0x00000006,0x00000002,0x00040020,0x0000000f,
+            0x00000001,0x0000000e,0x0004003b,0x0000000f,0x00000010,0x00000001,0x00050036,0x00000002,
+            0x00000004,0x00000000,0x00000003,0x000200f8,0x00000005,0x0003003e,0x00000009,0x0000000d,
+            0x000100fd,0x00010038
+        };
+
+        VkShaderModuleCreateInfo shaderCreateInfoFrag{};
+        shaderCreateInfoFrag.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        shaderCreateInfoFrag.codeSize = sizeof(__glsl_shader_frag_spv);
+        shaderCreateInfoFrag.pCode = reinterpret_cast<const uint32_t*>(__glsl_shader_frag_spv);
+
+        if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfoFrag, nullptr, &m_shaderModuleFragment) != VK_SUCCESS) {
+            std::cout << "could not load fragment shader" << std::endl;
+            return;
+        }
+
+        std::cout << "Fragment Shader module: " << m_shaderModuleFragment << std::endl;
+    }
 }
 
 void VulkanRenderer2D::CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount)
@@ -63,109 +460,237 @@ void VulkanRenderer2D::CreateStandaloneShader(const char *shaderSource, uint32_t
     // m_vertexCount = vertexShaderCallCount;
 }
 
+void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
+{
+    
+}
+
+void VulkanRenderer2D::CreateBindGroup()
+{
+    // Create a bind group layout
+    m_bindGroupLayout = std::make_unique<VkPipelineLayoutCreateInfo>();
+    m_bindGroupLayout->sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    m_bindGroupLayout->setLayoutCount = 0; // was 1
+    //m_bindGroupLayout->pSetLayouts = &renderData.rdTextureLayout;
+    m_bindGroupLayout->pushConstantRangeCount = 0;
+
+    if (m_bindGroupLayout)
+    {
+        if (vkCreatePipelineLayout(Vulkan::GetDevice(), m_bindGroupLayout.get(), nullptr, &g_pipelineLayout) != VK_SUCCESS) {
+            std::cout << "error: could not create pipeline layout" << std::endl;
+        }
+    }
+    else
+    {
+        std::cout << "No bind group layout" << std::endl;
+    }
+}
+
 void VulkanRenderer2D::CreatePipeline()
 {
-    // std::cout << "Creating render pipeline..." << std::endl;
+    std::cout << "Creating render pipeline..." << std::endl;
 
-    // wgpu::RenderPipelineDescriptor pipelineDesc;
+    if (m_shaderModuleVertex == VK_NULL_HANDLE || m_shaderModuleFragment == VK_NULL_HANDLE) {
+        std::cout << "error: could not load shaders" << std::endl;
+        return;
+    }
 
-    // // Vertex fetch
-    // if (m_vertexBufferSize > 0)
-    // {
-    //     pipelineDesc.vertex.bufferCount = 1;
-    //     pipelineDesc.vertex.buffers = &m_vertexBufferLayout;
+    VkPipelineShaderStageCreateInfo vertexStageInfo{};
+    vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertexStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertexStageInfo.module = m_shaderModuleVertex;
+    vertexStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo fragmentStageInfo{};
+    fragmentStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragmentStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragmentStageInfo.module = m_shaderModuleFragment;
+    fragmentStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo shaderStagesInfo[] = { vertexStageInfo, fragmentStageInfo };
+
+    /* assemble the graphics pipeline itself */
+    VkVertexInputBindingDescription mainBinding{};
+    mainBinding.binding = 0;
+    mainBinding.stride = sizeof(RenderSysVkVertex);
+    mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    VkVertexInputAttributeDescription positionAttribute{};
+    positionAttribute.binding = 0;
+    positionAttribute.location = 0;
+    positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+    positionAttribute.offset = offsetof(RenderSysVkVertex, position);
+
+    VkVertexInputAttributeDescription uvAttribute{};
+    uvAttribute.binding = 0;
+    uvAttribute.location = 1;
+    uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+    uvAttribute.offset = offsetof(RenderSysVkVertex, uv);
+
+    VkVertexInputAttributeDescription attributes[] = { positionAttribute, uvAttribute };
+
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &mainBinding;
+    vertexInputInfo.vertexAttributeDescriptionCount = 2;
+    vertexInputInfo.pVertexAttributeDescriptions = attributes;
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
+    inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = {m_width, m_height};
+
+    VkPipelineViewportStateCreateInfo viewportStateInfo{};
+    viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportStateInfo.viewportCount = 1;
+    viewportStateInfo.pViewports = &viewport;
+    viewportStateInfo.scissorCount = 1;
+    viewportStateInfo.pScissors = &scissor;
+
+    VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
+    rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizerInfo.depthClampEnable = VK_FALSE;
+    rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;
+    rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizerInfo.lineWidth = 1.0f;
+    rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizerInfo.depthBiasEnable = VK_FALSE;
+
+    VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
+    multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisamplingInfo.sampleShadingEnable = VK_FALSE;
+    multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+
+    VkPipelineColorBlendStateCreateInfo colorBlendingInfo{};
+    colorBlendingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlendingInfo.logicOpEnable = VK_FALSE;
+    colorBlendingInfo.logicOp = VK_LOGIC_OP_COPY;
+    colorBlendingInfo.attachmentCount = 1;
+    colorBlendingInfo.pAttachments = &colorBlendAttachment;
+    colorBlendingInfo.blendConstants[0] = 0.0f;
+    colorBlendingInfo.blendConstants[1] = 0.0f;
+    colorBlendingInfo.blendConstants[2] = 0.0f;
+    colorBlendingInfo.blendConstants[3] = 0.0f;
+
+    VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
+    depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencilInfo.depthTestEnable = VK_TRUE;
+    depthStencilInfo.depthWriteEnable = VK_TRUE;
+    depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
+    depthStencilInfo.minDepthBounds = 0.0f;
+    depthStencilInfo.maxDepthBounds = 1.0f;
+    depthStencilInfo.stencilTestEnable = VK_FALSE;
+
+    std::vector<VkDynamicState> dynStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+
+    VkPipelineDynamicStateCreateInfo dynStatesInfo{};
+    dynStatesInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynStatesInfo.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
+    dynStatesInfo.pDynamicStates = dynStates.data();
+
+    VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
+    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineCreateInfo.stageCount = 2;
+    pipelineCreateInfo.pStages = shaderStagesInfo;
+    pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+    pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
+    pipelineCreateInfo.pViewportState = &viewportStateInfo;
+    pipelineCreateInfo.pRasterizationState = &rasterizerInfo;
+    pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
+    pipelineCreateInfo.pColorBlendState = &colorBlendingInfo;
+    pipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
+    pipelineCreateInfo.pDynamicState = &dynStatesInfo;
+    pipelineCreateInfo.layout = g_pipelineLayout;
+    pipelineCreateInfo.renderPass = g_renderpass;
+    pipelineCreateInfo.subpass = 0;
+    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+    if (vkCreateGraphicsPipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &g_pipeline) != VK_SUCCESS) {
+        std::cout << "error: could not create rendering pipeline" << std::endl;
+        vkDestroyPipelineLayout(Vulkan::GetDevice(), g_pipelineLayout, nullptr);
+    }
+
+    /* it is save to destroy the shader modules after pipeline has been created */
+    vkDestroyShaderModule (Vulkan::GetDevice(), m_shaderModuleVertex, nullptr);
+    vkDestroyShaderModule (Vulkan::GetDevice(), m_shaderModuleFragment, nullptr);
+    
+    std::cout << "Render pipeline: " << g_pipeline << std::endl;
+}
+
+void VulkanRenderer2D::CreateFrameBuffer()
+{
+    // g_rdSwapchainImageViews = g_vkbSwapChain.get_image_views().value();
+
+    // g_framebuffers.resize(g_rdSwapchainImageViews.size());
+
+    // for (unsigned int i = 0; i < g_rdSwapchainImageViews.size(); ++i) {
+    //     VkImageView attachments[] = { g_rdSwapchainImageViews.at(i), g_depthImageView };
+
+    //     VkFramebufferCreateInfo FboInfo{};
+    //     FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    //     FboInfo.renderPass = g_renderpass;
+    //     FboInfo.attachmentCount = 2;
+    //     FboInfo.pAttachments = attachments;
+    //     FboInfo.width = m_width;
+    //     FboInfo.height = m_height;
+    //     FboInfo.layers = 1;
+
+    //     if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &g_framebuffers[i]) != VK_SUCCESS) {
+    //         std::cout << "error: failed to create framebuffer" << std::endl;
+    //         return ;
+    //     }
     // }
-    // else
-    // {
-    //     pipelineDesc.vertex.bufferCount = 0;
-    //     pipelineDesc.vertex.buffers = nullptr;
+
+    // do destroy
+    // for (auto &fb : renderData.rdFramebuffers) {
+    //     vkDestroyFramebuffer(renderData.rdVkbDevice.device, fb, nullptr);
     // }
-    // // Vertex shader
-    // pipelineDesc.vertex.module = m_shaderModule;
-	// pipelineDesc.vertex.entryPoint = "vs_main";
-    // pipelineDesc.vertex.constantCount = 0;
-	// pipelineDesc.vertex.constants = nullptr;
-
-    // // Primitive assembly and rasterization
-	// // Each sequence of 3 vertices is considered as a triangle
-	// pipelineDesc.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
-	// // We'll see later how to specify the order in which vertices should be
-	// // connected. When not specified, vertices are considered sequentially.
-	// pipelineDesc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
-	// // The face orientation is defined by assuming that when looking
-	// // from the front of the face, its corner vertices are enumerated
-	// // in the counter-clockwise (CCW) order.
-	// pipelineDesc.primitive.frontFace = wgpu::FrontFace::CCW;
-	// // But the face orientation does not matter much because we do not
-	// // cull (i.e. "hide") the faces pointing away from us (which is often
-	// // used for optimization).
-	// pipelineDesc.primitive.cullMode = wgpu::CullMode::None;
-
-    // // Fragment shader
-	// wgpu::FragmentState fragmentState;
-	// pipelineDesc.fragment = &fragmentState;
-	// fragmentState.module = m_shaderModule;
-	// fragmentState.entryPoint = "fs_main";
-	// fragmentState.constantCount = 0;
-	// fragmentState.constants = nullptr;
-
-    // // Configure blend state
-	// wgpu::BlendState blendState;
-	// // Usual alpha blending for the color:
-	// blendState.color.srcFactor = wgpu::BlendFactor::SrcAlpha;
-	// blendState.color.dstFactor = wgpu::BlendFactor::OneMinusSrcAlpha;
-	// blendState.color.operation = wgpu::BlendOperation::Add;
-	// // We leave the target alpha untouched:
-	// blendState.alpha.srcFactor = wgpu::BlendFactor::Zero;
-	// blendState.alpha.dstFactor = wgpu::BlendFactor::One;
-	// blendState.alpha.operation = wgpu::BlendOperation::Add;
-
-    // wgpu::ColorTargetState colorTarget;
-	// colorTarget.format = WebGPU::GetSwapChainFormat();
-	// colorTarget.blend = &blendState;
-	// colorTarget.writeMask = wgpu::ColorWriteMask::All; // We could write to only some of the color channels.
-
-	// // We have only one target because our render pass has only one output color
-	// // attachment.
-	// fragmentState.targetCount = 1;
-	// fragmentState.targets = &colorTarget;
-	
-	// // Depth and stencil tests are not used here
-	// pipelineDesc.depthStencil = nullptr;
-
-    // // Multi-sampling
-	// // Samples per pixel
-	// pipelineDesc.multisample.count = 1;
-	// // Default value for the mask, meaning "all bits on"
-	// pipelineDesc.multisample.mask = ~0u;
-	// // Default value as well (irrelevant for count = 1 anyways)
-	// pipelineDesc.multisample.alphaToCoverageEnabled = false;
-
-	// // Pipeline layout
-    // if (m_pipelineLayout)
-	//     pipelineDesc.layout = m_pipelineLayout;
-    // else
-    //     pipelineDesc.layout = nullptr;
-
-    // m_pipeline = WebGPU::GetDevice().createRenderPipeline(pipelineDesc);
-    // std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
 void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
 {
     // std::cout << "Creating vertex buffer..." << std::endl;
-    // m_vertexCount = bufferLength / bufferLayout.arrayStride;
-    // m_vertexBufferSize = bufferLength;
-    // m_vertexBufferLayout = bufferLayout;
-    // wgpu::BufferDescriptor bufferDesc;
-    // bufferDesc.size = m_vertexBufferSize;
-    // bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
-    // bufferDesc.mappedAtCreation = false;
-    // bufferDesc.label = "Vertex Buffer";
-    // m_vertexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = bufferLength;
+    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-    // // Upload vertex data to the buffer
-    // WebGPU::GetQueue().writeBuffer(m_vertexBuffer, 0, bufferData, bufferDesc.size);
+    VmaAllocationCreateInfo vmaAllocInfo{};
+    vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+    if (vmaCreateBuffer(g_allocator, &bufferInfo, &vmaAllocInfo, &g_vertexBuffer,  &g_vertexBufferAllocation, nullptr) != VK_SUCCESS) {
+        std::cout << "error: could not allocate vertex buffer via VMA" << std::endl;
+        return;
+    }
+
+    void* data;
+    vmaMapMemory(g_allocator, g_vertexBufferAllocation, &data);
+    std::memcpy(data, bufferData, bufferLength);
+    vmaUnmapMemory(g_allocator, g_vertexBufferAllocation);
+
+    g_triangleCount = bufferLength / 3;
+
     // std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
 }
 
@@ -184,51 +709,6 @@ void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
     // // Upload index data to the buffer
     // WebGPU::GetQueue().writeBuffer(m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
     // std::cout << "Index buffer: " << m_indexBuffer << std::endl;
-}
-
-void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
-{
-    // Create a bind group layout
-	// wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
-	// bindGroupLayoutDesc.entryCount = 1;
-	// bindGroupLayoutDesc.entries = &bindGroupLayoutEntry;
-	// m_bindGroupLayout = WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
-}
-
-void VulkanRenderer2D::CreateBindGroup()
-{
-    // if (m_bindGroupLayout)
-    // {
-    //     // Create the pipeline layout
-    //     wgpu::PipelineLayoutDescriptor pipelineLayoutDesc;
-    //     pipelineLayoutDesc.bindGroupLayoutCount = 1;
-    //     pipelineLayoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*)&m_bindGroupLayout;
-    //     m_pipelineLayout = WebGPU::GetDevice().createPipelineLayout(pipelineLayoutDesc);
-
-
-
-    //     // Create a binding
-    //     wgpu::BindGroupEntry binding;
-    //     // The index of the binding (the entries in bindGroupDesc can be in any order)
-    //     binding.binding = 0;
-    //     // The buffer it is actually bound to
-    //     binding.buffer = m_uniformBuffer;
-    //     // We can specify an offset within the buffer, so that a single buffer can hold
-    //     // multiple uniform blocks.
-    //     binding.offset = 0;
-    //     // And we specify again the size of the buffer.
-    //     assert(m_sizeOfUniform > 0);
-    //     binding.size = m_sizeOfUniform;
-
-
-    //     // A bind group contains one or multiple bindings
-    //     wgpu::BindGroupDescriptor bindGroupDesc;
-    //     bindGroupDesc.layout = m_bindGroupLayout;
-    //     // There must be as many bindings as declared in the layout!
-    //     bindGroupDesc.entryCount = 1; // TODO: Nisal - use bindGroupLayoutDesc.entryCount
-    //     bindGroupDesc.entries = &binding;
-    //     m_bindGroup = WebGPU::GetDevice().createBindGroup(bindGroupDesc);
-    // }
 }
 
 uint32_t VulkanRenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
@@ -257,6 +737,8 @@ uint32_t VulkanRenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_
     // );
 
     // return uniformStride * uniformIndex;
+
+    return 0;
 }
 
 void VulkanRenderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform)
@@ -293,25 +775,35 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
 
 void VulkanRenderer2D::SimpleRender()
 {
-    // m_renderPass.draw(m_vertexCount, 1, 0, 0);
+    
 }
 
 void VulkanRenderer2D::Render()
 {
-    // // Set vertex buffer while encoding the render pass
-    // m_renderPass.setVertexBuffer(0, m_vertexBuffer, 0, m_vertexBufferSize);
+    /* the rendering itself happens here */
+    vkCmdBindPipeline(g_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
 
-    // // Set binding group
-    // if (m_bindGroup)
-    //     m_renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
+    /* required for dynamic viewport */
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(g_commandBuffer, 0, 1, &viewport);
 
-    // if (m_indexCount > 0)
-    // {
-    //     m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexCount * sizeof(uint16_t));
-    //     m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
-    // }
-    // else
-    //     m_renderPass.draw(m_vertexCount, 1, 0, 0);
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = { m_width, m_height };
+    vkCmdSetScissor(g_commandBuffer, 0, 1, &scissor);
+
+    /* the triangle drawing itself */
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(g_commandBuffer, 0, 1, &g_vertexBuffer, &offset);
+    //vkCmdBindDescriptorSets(g_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelineLayout, 0, 1, &mRenderData.rdDescriptorSet, 0, nullptr);
+
+    vkCmdDraw(g_commandBuffer, g_triangleCount * 3, 1, 0, 0);
 }
 
 void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffsetCount)
@@ -330,54 +822,218 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     // m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
 }
 
-ImTextureID VulkanRenderer2D::GetDescriptorSet()
+VkSampler g_TextureSampler = VK_NULL_HANDLE;
+void CreateSampler()
 {
-    //return m_textureToRenderInto;
+    VkSamplerCreateInfo texSamplerInfo{};
+    texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    texSamplerInfo.magFilter = VK_FILTER_LINEAR;
+    texSamplerInfo.minFilter = VK_FILTER_LINEAR;
+    texSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    texSamplerInfo.unnormalizedCoordinates = VK_FALSE;
+    texSamplerInfo.compareEnable = VK_FALSE;
+    texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    texSamplerInfo.mipLodBias = 0.0f;
+    texSamplerInfo.minLod = 0.0f;
+    texSamplerInfo.maxLod = 0.0f;
+    texSamplerInfo.anisotropyEnable = VK_FALSE;
+    texSamplerInfo.maxAnisotropy = 1.0f;
+
+    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &g_TextureSampler) != VK_SUCCESS) {
+        std::cout << "error: could not create sampler for texture" << std::endl;
+    }
 }
 
+ImTextureID VulkanRenderer2D::GetDescriptorSet()
+{
+    static bool samplerCreated = false;
+    if (!samplerCreated && Vulkan::GetDevice() != VK_NULL_HANDLE) 
+    {
+        CreateSampler();
+        samplerCreated = true;
+    }
+    static auto finalDescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(g_TextureSampler, g_depthImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    if (samplerCreated)
+        return finalDescriptorSet;
+    else
+        return ImTextureID{};
+}
+
+
+//uint32_t g_acquiredimageIndex = 0;
 void VulkanRenderer2D::BeginRenderPass()
 {
-    // if (!m_textureToRenderInto)
-    //     std::cerr << "Cannot acquire texture to render into" << std::endl;
+    if (vkWaitForFences(Vulkan::GetDevice(), 1, &g_renderFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+        std::cout << "error: waiting for fence failed" << std::endl;
+        return;
+    }
 
-    // wgpu::CommandEncoderDescriptor commandEncoderDesc;
-    // commandEncoderDesc.label = "Renderer Command Encoder";
-    // m_currentCommandEncoder = WebGPU::GetDevice().createCommandEncoder(commandEncoderDesc);
+    if (vkResetFences(Vulkan::GetDevice(), 1, &g_renderFence) != VK_SUCCESS) {
+        std::cout << "error: fence reset failed" << std::endl;
+        return;
+    }
 
-    // wgpu::RenderPassDescriptor renderPassDesc;
+    // VkResult result = vkAcquireNextImageKHR(Vulkan::GetDevice(), g_vkbSwapChain.swapchain, UINT64_MAX, g_presentSemaphore, VK_NULL_HANDLE, &g_acquiredimageIndex);
+    // if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+    //     //return recreateSwapchain();
+    //     std::cout << "need to recreate swapchain" << std::endl;
+    // } else {
+    //     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+    //         std::cout << "error: failed to acquire swapchain image. Error is " << result << std::endl;
+    //     }
+    // }
 
-    // wgpu::RenderPassColorAttachment renderPassColorAttachment;
-    // renderPassColorAttachment.view = m_textureToRenderInto;
-    // renderPassColorAttachment.resolveTarget = nullptr;
-    // renderPassColorAttachment.loadOp = wgpu::LoadOp::Clear;
-    // renderPassColorAttachment.storeOp = wgpu::StoreOp::Store;
-    // renderPassColorAttachment.clearValue = wgpu::Color{ 0.9, 0.1, 0.2, 1.0 };
-    // renderPassDesc.colorAttachmentCount = 1;
-    // renderPassDesc.colorAttachments = &renderPassColorAttachment;
+    if (vkResetCommandBuffer(g_commandBuffer, 0) != VK_SUCCESS) {
+        std::cout << "error: failed to reset command buffer" << std::endl;
+        return;
+    }
 
-    // renderPassDesc.depthStencilAttachment = nullptr;
-    // renderPassDesc.timestampWriteCount = 0;
-    // renderPassDesc.timestampWrites = nullptr;
+    VkCommandBufferBeginInfo cmdBeginInfo{};
+    cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    // m_renderPass = m_currentCommandEncoder.beginRenderPass(renderPassDesc);
+    if(vkBeginCommandBuffer(g_commandBuffer, &cmdBeginInfo) != VK_SUCCESS) {
+        std::cout << "error: failed to begin command buffer" << std::endl;
+        return;
+    }
 
-    // // In its overall outline, drawing a triangle is as simple as this:
-    // // Select which render pipeline to use
-    // m_renderPass.setPipeline(m_pipeline);
+    ////
+
+    VkClearValue colorClearValue;
+    colorClearValue.color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
+
+    VkClearValue depthValue;
+    depthValue.depthStencil.depth = 1.0f;
+
+    VkClearValue clearValues[] = { colorClearValue };
+
+    static bool frameBufferAttachmentsCreated = false;
+    static VkFramebuffer frameBufferAttachment;
+    if (!frameBufferAttachmentsCreated) 
+    {
+        static VkImage m_Image;
+        static VkDeviceMemory m_Memory;
+        VkImageCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        info.imageType = VK_IMAGE_TYPE_2D;
+        info.format = VK_FORMAT_R8G8B8A8_UNORM;
+        info.extent.width = m_width;
+        info.extent.height = m_height;
+        info.extent.depth = 1;
+        info.mipLevels = 1;
+        info.arrayLayers = 1;
+        info.samples = VK_SAMPLE_COUNT_1_BIT;
+        info.tiling = VK_IMAGE_TILING_OPTIMAL;
+        info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_Image);
+        Vulkan::check_vk_result(err);
+        VkMemoryRequirements req;
+        vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_Image, &req);
+        VkMemoryAllocateInfo alloc_info = {};
+        alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        alloc_info.allocationSize = req.size;
+        alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
+        err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
+        Vulkan::check_vk_result(err);
+        err = vkBindImageMemory(Vulkan::GetDevice(), m_Image, m_Memory, 0);
+        Vulkan::check_vk_result(err);
+
+        static VkImageView attachment;
+        {
+            VkImageViewCreateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            info.image = m_Image;
+            info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            info.format = VK_FORMAT_R8G8B8A8_UNORM;
+            info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            info.subresourceRange.levelCount = 1;
+            info.subresourceRange.layerCount = 1;
+            VkResult err = vkCreateImageView(Vulkan::GetDevice(), &info, nullptr, &attachment);
+            Vulkan::check_vk_result(err);
+        }
+        
+        VkFramebufferCreateInfo FboInfo{};
+        FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        FboInfo.renderPass = g_renderpass;
+        FboInfo.attachmentCount = 1;
+        FboInfo.pAttachments = &attachment;
+        FboInfo.width = m_width;
+        FboInfo.height = m_height;
+        FboInfo.layers = 1;
+
+        if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &frameBufferAttachment) != VK_SUCCESS) {
+            std::cout << "error: failed to create framebuffer" << std::endl;
+            return ;
+        }
+        frameBufferAttachmentsCreated = true;
+    }
+
+    VkRenderPassBeginInfo rpInfo{};
+    rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rpInfo.renderPass = g_renderpass;
+    rpInfo.renderArea.offset.x = 0;
+    rpInfo.renderArea.offset.y = 0;
+    rpInfo.renderArea.extent = { m_width, m_height };
+    rpInfo.framebuffer = frameBufferAttachment;
+    rpInfo.clearValueCount = 1;
+    rpInfo.pClearValues = clearValues;
+
+    vkCmdBeginRenderPass(g_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanRenderer2D::EndRenderPass()
 {
-    // m_renderPass.end();
-    // SubmitCommandBuffer();
+	vkCmdEndRenderPass(g_commandBuffer);
+
+    if (vkEndCommandBuffer(g_commandBuffer) != VK_SUCCESS) {
+        std::cout << "error: failed to end command buffer" << std::endl;
+    }
+
+    SubmitCommandBuffer();
 }
 
 void VulkanRenderer2D::SubmitCommandBuffer()
 {
-    // wgpu::CommandBufferDescriptor cmdBufferDescriptor;
-    // cmdBufferDescriptor.label = "Command buffer";
-    // wgpu::CommandBuffer commands = m_currentCommandEncoder.finish(cmdBufferDescriptor);
-    // GraphicsAPI::WebGPU::GetQueue().submit(commands);
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    submitInfo.pWaitDstStageMask = &waitStage;
+    // submitInfo.waitSemaphoreCount = 1;
+    // submitInfo.pWaitSemaphores = &g_presentSemaphore;
+    // submitInfo.signalSemaphoreCount = 1;
+    // submitInfo.pSignalSemaphores = &g_renderSemaphore;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &g_commandBuffer;
+
+    if (vkQueueSubmit(Vulkan::GetDeviceQueue(), 1, &submitInfo, g_renderFence) != VK_SUCCESS) {
+        std::cout << "error: failed to submit draw command buffer" << std::endl;
+        return;
+    }
+
+    // VkPresentInfoKHR presentInfo{};
+    // presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    // presentInfo.waitSemaphoreCount = 1;
+    // presentInfo.pWaitSemaphores = &g_renderSemaphore;
+    // presentInfo.swapchainCount = 1;
+    // presentInfo.pSwapchains = &g_vkbSwapChain.swapchain;
+    // presentInfo.pImageIndices = &g_acquiredimageIndex;
+
+    // VkResult result = vkQueuePresentKHR(g_presentQueue, &presentInfo);
+    // if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    //     std::cout << "need to recreate swapchain" << std::endl;
+    //     //return recreateSwapchain();
+    // } else {
+    //     if (result != VK_SUCCESS) {
+    //         std::cout << "error: failed to present swapchain image" << std::endl;
+    //     }
+    // }
 }
 
 } // namespace GraphicsAPI

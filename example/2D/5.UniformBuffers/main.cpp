@@ -1,5 +1,5 @@
-#include "Walnut/Application.h"
-#include "Walnut/EntryPoint.h"
+#include <Walnut/Application.h>
+#include <Walnut/EntryPoint.h>
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
 
@@ -46,6 +46,7 @@ public:
             m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
+			m_renderer->Init();
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
 			const char* shaderSource = R"(
@@ -101,7 +102,7 @@ public:
 				return vec4f(corrected_color, 1.0);
 			}
 			)";
-			m_renderer->SetShader(shaderSource);
+			m_renderer->SetShaderAsString(shaderSource);
 
 			//
 			std::vector<float> vertexData;
@@ -116,44 +117,43 @@ public:
 
 			// Vertex fetch
 			// We now have 2 attributes
-			std::vector<wgpu::VertexAttribute> vertexAttribs(2);
+			std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
 
 			// Position attribute
 			vertexAttribs[0].shaderLocation = 0;
-			vertexAttribs[0].format = wgpu::VertexFormat::Float32x2;
+			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x2;
 			vertexAttribs[0].offset = 0;
 
 			// Color attribute
 			vertexAttribs[1].shaderLocation = 1;
-			vertexAttribs[1].format = wgpu::VertexFormat::Float32x3; // different type!
+			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; // different type!
 			vertexAttribs[1].offset = 2 * sizeof(float); // non null offset!
 
-			wgpu::VertexBufferLayout vertexBufferLayout;
+			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
 			// stride
 			vertexBufferLayout.arrayStride = 5 * sizeof(float);
-			vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 
 			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
 			m_renderer->SetIndexBufferData(indexData);
 
 			// Create binding layout (don't forget to = Default)
-			wgpu::BindGroupLayoutEntry bGLayoutEntry = wgpu::Default;
+			RenderSys::BindGroupLayoutEntry bGLayoutEntry;// = wgpu::Default;
 			// The binding index as used in the @binding attribute in the shader
 			bGLayoutEntry.binding = 0;
 			// The stage that needs to access this resource
-			bGLayoutEntry.visibility = wgpu::ShaderStage::Vertex;
-			bGLayoutEntry.buffer.type = wgpu::BufferBindingType::Uniform;
+			bGLayoutEntry.visibility = RenderSys::ShaderStage::Vertex;
+			bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
 			bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
 			// Make this binding dynamic so we can offset it between draw calls
 			bGLayoutEntry.buffer.hasDynamicOffset = true;
 
-			m_renderer->SetBindGroupLayoutEntry(bGLayoutEntry);
 			m_renderer->CreateUniformBuffer(1, sizeof(MyUniforms));
-
-			m_renderer->Init();
+			m_renderer->CreateBindGroup(bGLayoutEntry);
+			m_renderer->CreatePipeline();
         }
 
 		if (m_renderer)

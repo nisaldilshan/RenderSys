@@ -23,7 +23,7 @@ struct MyUniforms {
 // Have the compiler check byte alignment
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-class Renderer2DLayer : public Walnut::Layer
+class Renderer3DLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
@@ -47,6 +47,8 @@ public:
         {
 			m_renderer.reset();
 			m_renderer = std::make_shared<Renderer3D>();
+
+			m_renderer->Init();	
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
 			const char* shaderSource = R"(
@@ -115,7 +117,7 @@ public:
 				return vec4f(corrected_color, uMyUniforms.color.a);
 			}
 			)";
-			m_renderer->SetShader(shaderSource);
+			m_renderer->SetShaderAsString(shaderSource);
 
 			//
 			std::vector<float> vertexData;
@@ -130,45 +132,46 @@ public:
 
 			// Vertex fetch
 			// We now have 2 attributes
-			std::vector<wgpu::VertexAttribute> vertexAttribs(2);
+			std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
 
 			// Position attribute
 			vertexAttribs[0].shaderLocation = 0;
-			vertexAttribs[0].format = wgpu::VertexFormat::Float32x3;
+			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
 			vertexAttribs[0].offset = 0;
 
 			// Color attribute
 			vertexAttribs[1].shaderLocation = 1;
-			vertexAttribs[1].format = wgpu::VertexFormat::Float32x3; // different type!
+			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; // different type!
 			vertexAttribs[1].offset = 3 * sizeof(float); // non null offset!
 
-			wgpu::VertexBufferLayout vertexBufferLayout;
+			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
 			// stride
 			vertexBufferLayout.arrayStride = 6 * sizeof(float);
-			vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 
 			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * sizeof(float), vertexBufferLayout);
 			m_renderer->SetIndexBufferData(indexData);
 
 			// Create binding layout (don't forget to = Default)
-			std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(1, wgpu::Default);
-			wgpu::BindGroupLayoutEntry& bGLayoutEntry = bindingLayoutEntries[0];
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);
+			RenderSys::BindGroupLayoutEntry& bGLayoutEntry = bindingLayoutEntries[0];
+			bGLayoutEntry.setDefault();
 			// The binding index as used in the @binding attribute in the shader
 			bGLayoutEntry.binding = 0;
 			// The stage that needs to access this resource
-			bGLayoutEntry.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
-			bGLayoutEntry.buffer.type = wgpu::BufferBindingType::Uniform;
+			bGLayoutEntry.visibility = static_cast<RenderSys::ShaderStage>
+							(static_cast<uint32_t>(RenderSys::ShaderStage::Vertex) | static_cast<uint32_t>(RenderSys::ShaderStage::Fragment));
+			bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
 			bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
 			// Make this binding dynamic so we can offset it between draw calls
 			bGLayoutEntry.buffer.hasDynamicOffset = true;
 
 			m_renderer->CreateUniformBuffer(2, UniformBuf::UniformType::ModelViewProjection, sizeof(MyUniforms), bGLayoutEntry.binding);
-
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
-			m_renderer->Init();	
+			m_renderer->CreatePipeline();
         }
 
 		if (m_renderer)
@@ -228,6 +231,6 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	spec.Name = "Renderer3D Example";
 
 	Walnut::Application* app = new Walnut::Application(spec);
-	app->PushLayer<Renderer2DLayer>();
+	app->PushLayer<Renderer3DLayer>();
 	return app;
 }

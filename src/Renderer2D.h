@@ -2,18 +2,9 @@
 
 #include <memory>
 #include <stdint.h>
+#include <imgui_impl_glfw.h>
 #include <Walnut/ImageFormat.h>
 
-#define RENDERER_BACKEND 2
-
-#if (RENDERER_BACKEND == 1)
-#include <Walnut/GraphicsAPI/OpenGLGraphics.h>
-#elif (RENDERER_BACKEND == 2)
-#include <Walnut/GraphicsAPI/VulkanGraphics.h>
-#elif (RENDERER_BACKEND == 3)
-#include <Walnut/GraphicsAPI/WebGPUGraphics.h>
-#else
-#endif
 
 #include "RenderUtil.h"
 
@@ -38,16 +29,23 @@ public:
     Renderer2D();
     ~Renderer2D();
 
+    Renderer2D(const Renderer2D&) = delete;
+	Renderer2D &operator=(const Renderer2D&) = delete;
+	Renderer2D(Renderer2D&&) = delete;
+	Renderer2D &operator=(Renderer2D&&) = delete;
+
     void Init();
     void OnResize(uint32_t width, uint32_t height);
-    void SetShader(const char* shaderSource);
+    void SetShaderFile(const char* shaderFile);
+    void SetShaderAsString(const std::string& shaderSource);
     void SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount);
     void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
-    void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
+    void CreatePipeline();
+    void CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntries);
     void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
+    
     void SetUniformBufferData(const void* bufferData, uint32_t uniformIndex);
-    void* GetDescriptorSet();
     uint32_t GetWidth() const { return m_Width; }
 	uint32_t GetHeight() const { return m_Height; }
     void SimpleRender();
@@ -56,9 +54,9 @@ public:
     void BeginRenderPass();
     void EndRenderPass();
 
+    void* GetDescriptorSet() const;
 private:
     uint32_t m_Width = 0, m_Height = 0;
     std::unique_ptr<GraphicsAPI::RendererType> m_rendererBackend;
-    const char* m_shaderSource = nullptr;
 };
 

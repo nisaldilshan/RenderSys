@@ -1,7 +1,12 @@
 #include "WebGPURenderer2D.h"
+#include "WebGPURendererUtils.h"
 
 namespace GraphicsAPI
 {
+
+void WebGPURenderer2D::Init()
+{
+}
 
 void WebGPURenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
 {
@@ -140,6 +145,7 @@ void WebGPURenderer2D::CreatePipeline()
 	pipelineDesc.multisample.mask = ~0u;
 	// Default value as well (irrelevant for count = 1 anyways)
 	pipelineDesc.multisample.alphaToCoverageEnabled = false;
+    pipelineDesc.label = "WebGPU Render Pipeline";
 
 	// Pipeline layout
     if (m_pipelineLayout)
@@ -151,12 +157,12 @@ void WebGPURenderer2D::CreatePipeline()
     std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
-void WebGPURenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, wgpu::VertexBufferLayout bufferLayout)
+void WebGPURenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
 {
     std::cout << "Creating vertex buffer..." << std::endl;
     m_vertexCount = bufferLength / bufferLayout.arrayStride;
     m_vertexBufferSize = bufferLength;
-    m_vertexBufferLayout = bufferLayout;
+    m_vertexBufferLayout = GetWebGPUVertexBufferLayout(bufferLayout);
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = m_vertexBufferSize;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
@@ -186,12 +192,12 @@ void WebGPURenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
     std::cout << "Index buffer: " << m_indexBuffer << std::endl;
 }
 
-void WebGPURenderer2D::SetBindGroupLayoutEntry(wgpu::BindGroupLayoutEntry bindGroupLayoutEntry)
+void WebGPURenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
     // Create a bind group layout
 	wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
 	bindGroupLayoutDesc.entryCount = 1;
-	bindGroupLayoutDesc.entries = &bindGroupLayoutEntry;
+	bindGroupLayoutDesc.entries = GetWebGPUBindGroupLayoutEntryPtr(bindGroupLayoutEntry);
 	m_bindGroupLayout = WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
 }
 
@@ -348,6 +354,7 @@ void WebGPURenderer2D::BeginRenderPass()
 
     wgpu::RenderPassColorAttachment renderPassColorAttachment;
     renderPassColorAttachment.view = m_textureToRenderInto;
+    renderPassColorAttachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
     renderPassColorAttachment.resolveTarget = nullptr;
     renderPassColorAttachment.loadOp = wgpu::LoadOp::Clear;
     renderPassColorAttachment.storeOp = wgpu::StoreOp::Store;
@@ -356,7 +363,7 @@ void WebGPURenderer2D::BeginRenderPass()
     renderPassDesc.colorAttachments = &renderPassColorAttachment;
 
     renderPassDesc.depthStencilAttachment = nullptr;
-    renderPassDesc.timestampWriteCount = 0;
+    //renderPassDesc.timestampWriteCount = 0;
     renderPassDesc.timestampWrites = nullptr;
 
     m_renderPass = m_currentCommandEncoder.beginRenderPass(renderPassDesc);
