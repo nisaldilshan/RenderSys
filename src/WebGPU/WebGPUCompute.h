@@ -18,9 +18,10 @@ namespace GraphicsAPI
         void CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEntry>& bindGroupLayoutEntries);
         void CreateShaders(const char *shaderSource);
         void CreatePipeline();
-        void CreateBuffer(uint32_t bufferLength, ComputeBuf::BufferType type);
+        void CreateBuffer(uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name);
+        void SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string& name);
         void BeginComputePass();
-        void Compute(const void *bufferData, uint32_t bufferLength);
+        void Compute();
         void EndComputePass();
     private:
         wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
@@ -30,8 +31,7 @@ namespace GraphicsAPI
         wgpu::CommandEncoder m_commandEncoder = nullptr;
         wgpu::ComputePassEncoder m_computePass = nullptr;
 
-        wgpu::Buffer m_inputBuffer = nullptr;
-        wgpu::Buffer m_outputBuffer = nullptr;
+        std::unordered_map<std::string, wgpu::Buffer> m_buffersAccessibleToShader;
         wgpu::Buffer m_mapBuffer = nullptr;
     };
 }

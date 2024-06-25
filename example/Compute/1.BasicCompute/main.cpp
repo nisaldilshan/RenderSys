@@ -34,11 +34,24 @@ public:
 		m_compute->SetShader(shaderSource);
 
 		
-		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Input);
-		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Output);
-		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Map);
+		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Input, "INPUT_BUFFER");
+		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
+		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Map, "");
 
-		initBindGroupLayout();
+		// Create bind group layout
+		std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(2, wgpu::Default);
+
+		// Input buffer
+		bindingLayoutEntries[0].binding = 0;
+		bindingLayoutEntries[0].buffer.type = wgpu::BufferBindingType::ReadOnlyStorage;
+		bindingLayoutEntries[0].visibility = wgpu::ShaderStage::Compute;
+
+		// Output buffer
+		bindingLayoutEntries[1].binding = 1;
+		bindingLayoutEntries[1].buffer.type = wgpu::BufferBindingType::Storage;
+		bindingLayoutEntries[1].visibility = wgpu::ShaderStage::Compute;
+
+		m_compute->CreateBindGroup(bindingLayoutEntries);
 		m_compute->CreatePipeline();
 
 		m_inputBufferValues.resize(g_bufferSize / sizeof(float));
@@ -55,9 +68,8 @@ public:
         Walnut::Timer timer;
 
 		m_compute->BeginComputePass();
-
-		m_compute->DoCompute(m_inputBufferValues.data(), g_bufferSize);
-
+		m_compute->SetBufferData(m_inputBufferValues.data(), g_bufferSize, "INPUT_BUFFER");
+		m_compute->DoCompute();
 		m_compute->EndComputePass();
 
         m_lastRenderTime = timer.ElapsedMillis();
@@ -78,24 +90,6 @@ public:
 	}
 
 private:
-	void initBindGroupLayout()
-	{
-		// Create bind group layout
-		std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(2, wgpu::Default);
-
-		// Input buffer
-		bindingLayoutEntries[0].binding = 0;
-		bindingLayoutEntries[0].buffer.type = wgpu::BufferBindingType::ReadOnlyStorage;
-		bindingLayoutEntries[0].visibility = wgpu::ShaderStage::Compute;
-
-		// Output buffer
-		bindingLayoutEntries[1].binding = 1;
-		bindingLayoutEntries[1].buffer.type = wgpu::BufferBindingType::Storage;
-		bindingLayoutEntries[1].visibility = wgpu::ShaderStage::Compute;
-
-		m_compute->CreateBindGroup(bindingLayoutEntries);
-	}
-
     std::unique_ptr<Compute> m_compute;
     float m_lastRenderTime = 0.0f;
 	std::vector<float> m_inputBufferValues;

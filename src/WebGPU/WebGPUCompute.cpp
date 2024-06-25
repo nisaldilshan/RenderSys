@@ -5,19 +5,12 @@ namespace GraphicsAPI
 
 WebGPUCompute::~WebGPUCompute()
 {
-    if (m_inputBuffer)
+    for (auto& [name, buffer] : m_buffersAccessibleToShader)
     {
-        m_inputBuffer.destroy();
-	    m_inputBuffer.release();
-        m_inputBuffer = nullptr;
+        buffer.destroy();
+        buffer.release();
     }
-    
-    if (m_outputBuffer)
-    {
-        m_outputBuffer.destroy();
-	    m_outputBuffer.release();
-        m_outputBuffer = nullptr;
-    }
+    m_buffersAccessibleToShader.clear();
 	
     if (m_mapBuffer)
     {
@@ -39,21 +32,28 @@ void WebGPUCompute::CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEntry
     bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
     m_bindGroupLayout = WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
 
-    
     std::vector<wgpu::BindGroupEntry> bindings;
     bindings.resize(bindGroupLayoutEntryCount);
 
     // Input buffer
-	bindings[0].binding = 0;
-	bindings[0].buffer = m_inputBuffer;
-	bindings[0].offset = 0;
-	bindings[0].size = m_inputBuffer.getSize();
+    {
+        auto it = m_buffersAccessibleToShader.find("INPUT_BUFFER");
+        assert(it != m_buffersAccessibleToShader.end());
+        bindings[0].binding = 0;
+        bindings[0].buffer = it->second;
+        bindings[0].offset = 0;
+        bindings[0].size = it->second.getSize();
+    }
 
 	// Output buffer
-	bindings[1].binding = 1;
-	bindings[1].buffer = m_outputBuffer;
-	bindings[1].offset = 0;
-	bindings[1].size = m_outputBuffer.getSize();
+    {
+        auto it = m_buffersAccessibleToShader.find("OUTPUT_BUFFER");
+        assert(it != m_buffersAccessibleToShader.end());
+        bindings[1].binding = 1;
+        bindings[1].buffer = it->second;
+        bindings[1].offset = 0;
+        bindings[1].size = it->second.getSize();
+    }
 
     wgpu::BindGroupDescriptor bindGroupDesc;
 	bindGroupDesc.layout = m_bindGroupLayout;
@@ -110,25 +110,26 @@ void WebGPUCompute::CreatePipeline()
     std::cout << "Compute pipeline: " << m_pipeline << std::endl;
 }
 
-void WebGPUCompute::CreateBuffer(uint32_t bufferLength, ComputeBuf::BufferType type)
+void WebGPUCompute::CreateBuffer(uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name)
 {
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.mappedAtCreation = false;
     bufferDesc.size = bufferLength;
+    bufferDesc.label = name.c_str();
 
     switch (type)
     {
     case ComputeBuf::BufferType::Input:
         std::cout << "Creating input buffer..." << std::endl;
         bufferDesc.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst;
-        m_inputBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
-        std::cout << "input buffer: " << m_inputBuffer << std::endl;
+        m_buffersAccessibleToShader.emplace(name, WebGPU::GetDevice().createBuffer(bufferDesc));
+        std::cout << "input buffer: " << m_buffersAccessibleToShader.find(name)->second << std::endl;
         break;
     case ComputeBuf::BufferType::Output:
         std::cout << "Creating output buffer..." << std::endl;
         bufferDesc.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopySrc;
-        m_outputBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
-        std::cout << "output buffer: " << m_outputBuffer << std::endl;
+        m_buffersAccessibleToShader.emplace(name, WebGPU::GetDevice().createBuffer(bufferDesc));
+        std::cout << "output buffer: " << m_buffersAccessibleToShader.find(name)->second << std::endl;
         break;
     case ComputeBuf::BufferType::Map:
         std::cout << "Creating map buffer..." << std::endl;
@@ -153,10 +154,15 @@ void WebGPUCompute::BeginComputePass()
     m_computePass = m_commandEncoder.beginComputePass(computePassDesc);
 }
 
-void WebGPUCompute::Compute(const void *bufferData, uint32_t bufferLength)
+void WebGPUCompute::SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string &name)
 {
-    WebGPU::GetQueue().writeBuffer(m_inputBuffer, 0, bufferData, bufferLength);
+    auto it = m_buffersAccessibleToShader.find(name);
+    assert(it != m_buffersAccessibleToShader.end());
+    WebGPU::GetQueue().writeBuffer(it->second, 0, bufferData, bufferLength);
+}
 
+void WebGPUCompute::Compute()
+{
     m_computePass.setPipeline(m_pipeline);
     m_computePass.setBindGroup(0, m_bindGroup, 0, nullptr);
     constexpr uint32_t workgroupCount = 2;
@@ -172,7 +178,9 @@ void WebGPUCompute::EndComputePass()
     std::cout << "sizeOfMapBuffer : " << sizeOfMapBuffer << std::endl;
     // Copy the memory from the output buffer that lies in the storage part of the
     // memory to the map buffer, which is in the "mappable" part of the memory.
-	m_commandEncoder.copyBufferToBuffer(m_outputBuffer, 0, m_mapBuffer, 0, sizeOfMapBuffer);
+    auto it = m_buffersAccessibleToShader.find("OUTPUT_BUFFER");
+    assert(it != m_buffersAccessibleToShader.end());
+	m_commandEncoder.copyBufferToBuffer(it->second, 0, m_mapBuffer, 0, sizeOfMapBuffer);
 
     wgpu::CommandBufferDescriptor cmdBufferDescriptor;
     cmdBufferDescriptor.label = "Compute Command Buffer";

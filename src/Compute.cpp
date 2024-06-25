@@ -26,9 +26,14 @@ void Compute::CreatePipeline()
     m_computeBackend->CreatePipeline();
 }
 
-void Compute::CreateBuffer(const uint32_t bufferLength, ComputeBuf::BufferType type)
+void Compute::CreateBuffer(const uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name)
 {
-    m_computeBackend->CreateBuffer(bufferLength, type);
+    m_computeBackend->CreateBuffer(bufferLength, type, name);
+}
+
+void Compute::SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string &name)
+{
+    m_computeBackend->SetBufferData(bufferData, bufferLength, name);
 }
 
 void Compute::BeginComputePass()
@@ -36,9 +41,9 @@ void Compute::BeginComputePass()
     m_computeBackend->BeginComputePass();
 }
 
-void Compute::DoCompute(const void* bufferData, const uint32_t bufferLength)
+void Compute::DoCompute()
 {
-    m_computeBackend->Compute(bufferData, bufferLength);
+    m_computeBackend->Compute();
 }
 
 void Compute::EndComputePass()
