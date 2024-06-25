@@ -2,6 +2,7 @@
 #include "Walnut/EntryPoint.h"
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
+#include <Walnut/Image.h>
 
 #include "../../../src/Compute.h"
 #include <GLFW/glfw3.h>
@@ -12,6 +13,14 @@ class ComputeLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
+	{
+		m_finalImage = std::make_shared<Walnut::Image>(1, 1, Walnut::ImageFormat::RGBA);
+	}
+
+	virtual void OnDetach() override
+	{}
+
+	void GPUInit()
 	{
 		m_compute.reset();
 		m_compute = std::make_unique<Compute>();
@@ -60,13 +69,8 @@ public:
 		}
 	}
 
-	virtual void OnDetach() override
-	{}
-
-	virtual void OnUpdate(float ts) override
+	void GPUSolve()
 	{
-        Walnut::Timer timer;
-
 		m_compute->BeginComputePass();
 		m_compute->SetBufferData(m_inputBufferValues.data(), g_bufferSize, "INPUT_BUFFER");
 		m_compute->DoCompute();
@@ -78,6 +82,40 @@ public:
 		for (int i = 0; i < g_bufferSize / sizeof(float); ++i) {
 			std::cout << "output " << output[i] << std::endl;
 		}
+	}
+
+	void CPUInit()
+	{
+		
+	}
+
+	void CPUSolve()
+	{
+
+	}
+
+	virtual void OnUpdate(float ts) override
+	{
+		Walnut::Timer timer;
+		if (m_viewportWidth == 0 || m_viewportHeight == 0)
+			return;
+
+		if (m_viewportWidth != m_finalImage->GetWidth() || m_viewportHeight != m_finalImage->GetHeight())
+		{
+			m_finalImage->Resize(m_viewportWidth, m_viewportHeight);
+			m_finalImageData.resize(m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4); // 4 for RGBA
+			GPUInit();
+			CPUInit();
+		}
+
+        if (m_hWSolver)
+		{
+			GPUSolve();
+		}
+		else
+		{
+			CPUSolve();
+		}
 
         m_lastRenderTime = timer.ElapsedMillis();
 	}
@@ -86,20 +124,35 @@ public:
 	{
 		ImGui::Begin("Settings");
         ImGui::Text("Last render: %.3fms", m_lastRenderTime);
+		ImGui::Checkbox("HW", &m_hWSolver);
 		ImGui::End();
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin("Results");
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::Begin("Viewport");
+		m_viewportWidth = ImGui::GetContentRegionAvail().x;
+        m_viewportHeight = ImGui::GetContentRegionAvail().y;
+
+		assert(m_finalImage);
+
+		ImVec2 uv_min = ImVec2(1, 0);                 // Top-left
+		ImVec2 uv_max = ImVec2(0, 1); 
+		float aspectRatio = (float)m_finalImage->GetWidth() / (float)m_finalImage->GetHeight();
+		float viewHeight = (float)m_finalImage->GetHeight();
+		ImGui::Image((void*)m_finalImage->GetDescriptorSet(), { aspectRatio * viewHeight, viewHeight }, uv_min, uv_max);
+
 		ImGui::End();
         ImGui::PopStyleVar();
-
-		ImGui::ShowDemoWindow();
 	}
 
 private:
     std::unique_ptr<Compute> m_compute;
     float m_lastRenderTime = 0.0f;
 	std::vector<float> m_inputBufferValues;
+	uint32_t m_viewportWidth = 0;
+    uint32_t m_viewportHeight = 0;
+	bool m_hWSolver = false;
+	std::shared_ptr<Walnut::Image> m_finalImage = nullptr;
+	std::vector<uint8_t> m_finalImageData;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

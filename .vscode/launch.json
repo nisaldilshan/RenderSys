@@ -101,6 +101,18 @@
             },
         },
         {
+            "name": "Noise",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/Compute/2.Noise/Noise",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/Compute/2.Noise",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
+            },
+        },
+        {
             "name": "First3DShape",
             "type": "lldb",
             "request": "launch",
