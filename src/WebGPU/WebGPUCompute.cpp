@@ -192,9 +192,17 @@ void WebGPUCompute::EndComputePass()
     // Copy output
 	auto handle = m_mapBuffer.mapAsync(wgpu::MapMode::Read, 0, sizeOfMapBuffer, [&](wgpu::BufferMapAsyncStatus status) {
 		if (status == wgpu::BufferMapAsyncStatus::Success) {
-            const void* output = m_mapBuffer.getConstMappedRange(0, sizeOfMapBuffer);
-            memcpy(&m_mapBufferMappedData[0], output, sizeOfMapBuffer);
-			m_mapBuffer.unmap();
+            uint8_t* output = static_cast<uint8_t*>(m_mapBuffer.getMappedRange(0, 256));
+            if (output)
+            {
+                memcpy(&m_mapBufferMappedData[0], output, sizeOfMapBuffer);
+            }
+            else
+            {
+                std::cout << "null output" << std::endl;
+                //assert(false);
+            }
+            m_mapBuffer.unmap();
 		}
         else
         {

@@ -7,8 +7,6 @@
 #include "../../../src/Compute.h"
 #include <GLFW/glfw3.h>
 
-constexpr uint32_t g_bufferSize = 64 * sizeof(float);
-
 class ComputeLayer : public Walnut::Layer
 {
 public:
@@ -26,8 +24,8 @@ public:
 		m_compute = std::make_unique<Compute>();
 
 		const char* shaderSource = R"(
-		@group(0) @binding(0) var<storage,read> inputBuffer: array<f32,64>;
-		@group(0) @binding(1) var<storage,read_write> outputBuffer: array<f32,64>;
+		@group(0) @binding(0) var<storage,read> inputBuffer: array<f32>;
+		@group(0) @binding(1) var<storage,read_write> outputBuffer: array<f32>;
 
 		// The function to evaluate for each element of the processed buffer
 		fn f(x: f32) -> f32 {
@@ -42,10 +40,10 @@ public:
 		)";
 		m_compute->SetShader(shaderSource);
 
-		
-		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Input, "INPUT_BUFFER");
-		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
-		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Map, "");
+		const auto bufferSize = m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4;
+		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Input, "INPUT_BUFFER");
+		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
+		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Map, "");
 
 		// Create bind group layout
 		std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(2, wgpu::Default);
@@ -63,7 +61,7 @@ public:
 		m_compute->CreateBindGroup(bindingLayoutEntries);
 		m_compute->CreatePipeline();
 
-		m_inputBufferValues.resize(g_bufferSize / sizeof(float));
+		m_inputBufferValues.resize(bufferSize / sizeof(float));
 		for (int i = 0; i < m_inputBufferValues.size(); ++i) {
 			m_inputBufferValues[i] = 0.1f * i;
 		}
@@ -72,21 +70,22 @@ public:
 	void GPUSolve()
 	{
 		m_compute->BeginComputePass();
-		m_compute->SetBufferData(m_inputBufferValues.data(), g_bufferSize, "INPUT_BUFFER");
+		const auto bufferSize = m_inputBufferValues.size() * sizeof(float);
+		m_compute->SetBufferData(m_inputBufferValues.data(), bufferSize, "INPUT_BUFFER");
 		m_compute->DoCompute();
 		m_compute->EndComputePass();
 
 		auto& result = m_compute->GetMappedResult();
-		assert(result.size() == g_bufferSize);
+		assert(result.size() == bufferSize);
 		const float* output = (const float*)(&result[0]);
-		for (int i = 0; i < g_bufferSize / sizeof(float); ++i) {
+		for (int i = 0; i < bufferSize / sizeof(float); ++i) {
 			std::cout << "output " << output[i] << std::endl;
 		}
 	}
 
 	void CPUInit()
 	{
-		
+
 	}
 
 	void CPUSolve()
