@@ -50,3 +50,8 @@ void Compute::EndComputePass()
 {
     m_computeBackend->EndComputePass();
 }
+
+std::vector<uint8_t> &Compute::GetMappedResult()
+{
+    return m_computeBackend->GetMappedResult();
+}

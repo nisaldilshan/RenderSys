@@ -72,6 +72,13 @@ public:
 		m_compute->DoCompute();
 		m_compute->EndComputePass();
 
+		auto& result = m_compute->GetMappedResult();
+		assert(result.size() == g_bufferSize);
+		const float* output = (const float*)(&result[0]);
+		for (int i = 0; i < g_bufferSize / sizeof(float); ++i) {
+			std::cout << "output " << output[i] << std::endl;
+		}
+
         m_lastRenderTime = timer.ElapsedMillis();
 	}
 

@@ -33,6 +33,7 @@ public:
     void BeginComputePass();
     void DoCompute();
     void EndComputePass();
+    std::vector<uint8_t>& GetMappedResult();
 private:
     std::unique_ptr<GraphicsAPI::ComputeType> m_computeBackend;
 };

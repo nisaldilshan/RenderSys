@@ -23,6 +23,7 @@ namespace GraphicsAPI
         void BeginComputePass();
         void Compute();
         void EndComputePass();
+        std::vector<uint8_t>& GetMappedResult();
     private:
         wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
         wgpu::BindGroup m_bindGroup = nullptr;
@@ -33,5 +34,7 @@ namespace GraphicsAPI
 
         std::unordered_map<std::string, wgpu::Buffer> m_buffersAccessibleToShader;
         wgpu::Buffer m_mapBuffer = nullptr;
+        std::vector<uint8_t> m_mapBufferMappedData;
+        bool m_resultReady = false;
     };
 }

@@ -135,6 +135,7 @@ void WebGPUCompute::CreateBuffer(uint32_t bufferLength, ComputeBuf::BufferType t
         std::cout << "Creating map buffer..." << std::endl;
         bufferDesc.usage = wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst;
         m_mapBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+        m_mapBufferMappedData.resize(bufferLength);
         std::cout << "map buffer: " << m_mapBuffer << std::endl;
         break;
     }
@@ -163,6 +164,7 @@ void WebGPUCompute::SetBufferData(const void *bufferData, uint32_t bufferLength,
 
 void WebGPUCompute::Compute()
 {
+    m_resultReady = false;
     m_computePass.setPipeline(m_pipeline);
     m_computePass.setBindGroup(0, m_bindGroup, 0, nullptr);
     constexpr uint32_t workgroupCount = 2;
@@ -174,7 +176,7 @@ void WebGPUCompute::EndComputePass()
     m_computePass.end();
 
     // Have to copy buffers before encoder.finish
-    auto sizeOfMapBuffer = m_mapBuffer.getSize();
+    const auto sizeOfMapBuffer = m_mapBuffer.getSize();
     std::cout << "sizeOfMapBuffer : " << sizeOfMapBuffer << std::endl;
     // Copy the memory from the output buffer that lies in the storage part of the
     // memory to the map buffer, which is in the "mappable" part of the memory.
@@ -187,20 +189,22 @@ void WebGPUCompute::EndComputePass()
     wgpu::CommandBuffer commands = m_commandEncoder.finish(cmdBufferDescriptor);
     WebGPU::GetQueue().submit(commands);
 
-    // Print output
-	bool done = false;
+    // Copy output
 	auto handle = m_mapBuffer.mapAsync(wgpu::MapMode::Read, 0, sizeOfMapBuffer, [&](wgpu::BufferMapAsyncStatus status) {
 		if (status == wgpu::BufferMapAsyncStatus::Success) {
-			const float* output = (const float*)m_mapBuffer.getConstMappedRange(0, sizeOfMapBuffer);
-			for (int i = 0; i < sizeOfMapBuffer/sizeof(float); ++i) {
-				std::cout << "output " << output[i] << std::endl;
-			}
+            const void* output = m_mapBuffer.getConstMappedRange(0, sizeOfMapBuffer);
+            memcpy(&m_mapBufferMappedData[0], output, sizeOfMapBuffer);
 			m_mapBuffer.unmap();
 		}
-		done = true;
+        else
+        {
+            std::cout << "Failed to map buffer" << std::endl;
+            assert(false);
+        }
+		m_resultReady = true;
 	});
 
-	while (!done) {
+	while (!m_resultReady) {
 		// Checks for ongoing asynchronous operations and call their callbacks if needed
 #ifdef WEBGPU_BACKEND_WGPU
         queue.submit(0, nullptr);
@@ -212,6 +216,13 @@ void WebGPUCompute::EndComputePass()
     m_commandEncoder.release();
 }
 
+std::vector<uint8_t>& WebGPUCompute::GetMappedResult()
+{
+    if (!m_resultReady)
+        assert(false);
+        
+    return m_mapBufferMappedData;
+}
 
 }
 
