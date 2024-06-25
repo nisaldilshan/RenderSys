@@ -4,9 +4,10 @@ add_subdirectory(2D/3.VertexAttributes)
 add_subdirectory(2D/4.IndexBuffers)
 add_subdirectory(2D/5.UniformBuffers)
 add_subdirectory(2D/6.DynamicUniforms)
-add_subdirectory(2D/7.Fluid2D)
 
 add_subdirectory(Compute/1.BasicCompute)
+add_subdirectory(Compute/2.Noise)
+add_subdirectory(Compute/3.Fluid2D)
 
 add_subdirectory(3D/Basic/1.First3DShape)
 add_subdirectory(3D/Basic/2.TransformationMatrices)
