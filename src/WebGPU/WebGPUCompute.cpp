@@ -3,6 +3,9 @@
 namespace GraphicsAPI
 {
 
+wgpu::Buffer m_mapBuffer = nullptr;
+std::vector<uint8_t> m_mapBufferMappedData;
+
 WebGPUCompute::~WebGPUCompute()
 {
     for (auto& [name, buffer] : m_buffersAccessibleToShader)
@@ -162,13 +165,44 @@ void WebGPUCompute::SetBufferData(const void *bufferData, uint32_t bufferLength,
     WebGPU::GetQueue().writeBuffer(it->second, 0, bufferData, bufferLength);
 }
 
+bool g_resultReady = false;
+
 void WebGPUCompute::Compute()
 {
-    m_resultReady = false;
+    g_resultReady = false;
     m_computePass.setPipeline(m_pipeline);
     m_computePass.setBindGroup(0, m_bindGroup, 0, nullptr);
     constexpr uint32_t workgroupCount = 2;
 	m_computePass.dispatchWorkgroups(workgroupCount, 1, 1);
+}
+
+void dummyFunc(WGPUMapAsyncStatus status, char const * message, void* userdata1, void* userdata2) // userdata1 = m_mapBuffer and userdata2 = m_mapBufferMappedData
+{
+    std::cout << "Dummy Func got called!" << std::endl;
+    // auto mapBuffer = static_cast<wgpu::Buffer*>(userdata1);
+    // auto mapBufferMappedData = static_cast<std::vector<uint8_t>*>(userdata1);
+    // assert(mapBuffer);
+    // assert(mapBufferMappedData);
+    if (status == wgpu::MapAsyncStatus::Success)
+    {
+        const uint8_t *output = static_cast<const uint8_t *>(m_mapBuffer.getConstMappedRange(0, m_mapBufferMappedData.size()));
+        if (output)
+        {
+            memcpy(m_mapBufferMappedData.data(), output, m_mapBufferMappedData.size());
+        }
+        else
+        {
+            std::cout << "null output" << std::endl;
+            // assert(false);
+        }
+        m_mapBuffer.unmap();
+    }
+    else
+    {
+        std::cout << "Failed to map buffer" << std::endl;
+        assert(false);
+    }
+    g_resultReady = true;
 }
 
 void WebGPUCompute::EndComputePass()
@@ -190,34 +224,21 @@ void WebGPUCompute::EndComputePass()
     WebGPU::GetQueue().submit(commands);
 
     // Copy output
-	auto handle = m_mapBuffer.mapAsync(wgpu::MapMode::Read, 0, sizeOfMapBuffer, [&](wgpu::BufferMapAsyncStatus status) {
-		if (status == wgpu::BufferMapAsyncStatus::Success) {
-            uint8_t* output = static_cast<uint8_t*>(m_mapBuffer.getMappedRange(0, 256));
-            if (output)
-            {
-                memcpy(&m_mapBufferMappedData[0], output, sizeOfMapBuffer);
-            }
-            else
-            {
-                std::cout << "null output" << std::endl;
-                //assert(false);
-            }
-            m_mapBuffer.unmap();
-		}
-        else
-        {
-            std::cout << "Failed to map buffer" << std::endl;
-            assert(false);
-        }
-		m_resultReady = true;
-	});
+    wgpu::BufferMapCallbackInfo2 callbackInfo;
+    callbackInfo.callback = &dummyFunc;
+    callbackInfo.mode = WGPUCallbackMode_AllowSpontaneous;
+    callbackInfo.userdata1 = static_cast<void*>(&m_mapBuffer);
+    callbackInfo.userdata2 = static_cast<void*>(&m_mapBufferMappedData);
 
-	while (!m_resultReady) {
+    wgpu::Future handle = m_mapBuffer.mapAsync2(wgpu::MapMode::Read, 0, sizeOfMapBuffer, callbackInfo);
+
+	while (!g_resultReady) {
 		// Checks for ongoing asynchronous operations and call their callbacks if needed
 #ifdef WEBGPU_BACKEND_WGPU
         queue.submit(0, nullptr);
 #else
         WebGPU::GetInstance().processEvents();
+        WebGPU::GetDevice().tick();
 #endif
 	}
 
@@ -226,7 +247,7 @@ void WebGPUCompute::EndComputePass()
 
 std::vector<uint8_t>& WebGPUCompute::GetMappedResult()
 {
-    if (!m_resultReady)
+    if (!g_resultReady)
         assert(false);
         
     return m_mapBufferMappedData;

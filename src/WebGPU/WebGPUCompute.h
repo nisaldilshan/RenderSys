@@ -33,8 +33,6 @@ namespace GraphicsAPI
         wgpu::ComputePassEncoder m_computePass = nullptr;
 
         std::unordered_map<std::string, wgpu::Buffer> m_buffersAccessibleToShader;
-        wgpu::Buffer m_mapBuffer = nullptr;
-        std::vector<uint8_t> m_mapBufferMappedData;
-        bool m_resultReady = false;
+        
     };
 }
