@@ -194,11 +194,6 @@ void WebGPUCompute::Compute(const uint32_t workgroupCountX, const uint32_t workg
 
 void dummyFunc(WGPUMapAsyncStatus status, char const * message, void* userdata1, void* userdata2) // userdata1 = m_mapBuffer and userdata2 = m_mapBufferMappedData
 {
-    std::cout << "Dummy Func got called!" << std::endl;
-    // auto mapBuffer = static_cast<wgpu::Buffer*>(userdata1);
-    // auto mapBufferMappedData = static_cast<std::vector<uint8_t>*>(userdata1);
-    // assert(mapBuffer);
-    // assert(mapBufferMappedData);
     if (status == wgpu::MapAsyncStatus::Success)
     {
         const uint8_t *output = static_cast<const uint8_t *>(m_mapBuffer.getConstMappedRange(0, m_mapBufferMappedData.size()));
@@ -227,7 +222,6 @@ void WebGPUCompute::EndComputePass()
 
     // Have to copy buffers before encoder.finish
     const auto sizeOfMapBuffer = m_mapBuffer.getSize();
-    std::cout << "sizeOfMapBuffer : " << sizeOfMapBuffer << std::endl;
     // Copy the memory from the output buffer that lies in the storage part of the
     // memory to the map buffer, which is in the "mappable" part of the memory.
     auto it = m_buffersAccessibleToShader.find("OUTPUT_BUFFER");

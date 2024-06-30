@@ -7,8 +7,8 @@
 #include "../../../src/Compute.h"
 #include <GLFW/glfw3.h>
 
-constexpr int g_width = 320;
-constexpr int g_height = 240;
+constexpr int g_width = 1280;
+constexpr int g_height = 720;
 
 struct MyUniforms {
     float time;
@@ -37,30 +37,40 @@ public:
 		struct MyUniforms {
 			time: f32,
 		};
-		@group(0) @binding(2) var<uniform> uMyUniforms: MyUniforms;
 
 		@group(0) @binding(0) var<storage,read> inputBuffer: array<f32>;
 		@group(0) @binding(1) var<storage,read_write> outputBuffer: array<u32>;
+		@group(0) @binding(2) var<uniform> uMyUniforms: MyUniforms;
 
-		fn noise(p_par: vec3<f32>) -> f32 {
-			var p = p_par;
-			let ip: vec3<f32> = floor(p);
-			p = p - ip;
-			let s = vec3<f32>(7., 157., 113.);
-			var h = vec4<f32>(0., s.yz, s.y + s.z)+dot(ip, s);
-			p = p * p * (3. - p * 2.);
-			h = mix(fract(sin(h)*43758.5), fract(sin(h+s.x)*43758.5), p.x);
-			let h2 = mix(h.xz, h.yw, p.y);
-			return mix(h2.x, h2.y, p.z);
+		fn hash22(p: vec2u) -> vec2u {
+			var v = p * 1664525u + 1013904223u;
+			v.x += v.y * 1664525u; v.y += v.x * 1664525u;
+			v ^= v >> vec2u(16u);
+			v.x += v.y * 1664525u; v.y += v.x * 1664525u;
+			v ^= v >> vec2u(16u);
+			return v;
+		}
+
+		fn rand22(f: vec2f) -> vec2f { return vec2f(hash22(bitcast<vec2u>(f))) / f32(0xffffffff); }
+
+		fn noise2(n: vec2f) -> f32 {
+			let d = vec2f(0., 1.);
+			let b = floor(n);
+			let f = smoothstep(vec2f(0.), vec2f(1.), fract(n));
+
+			let mix1 = mix(rand22(b), rand22(b + d.yx), f.x);
+			let mix2 = mix(rand22(b + d.xx), rand22(b + d.yy), f.x);
+			let finalmix = mix(mix1, mix2, f.y);
+			return (finalmix.x + finalmix.y)/2;
 		}
 
 		@compute @workgroup_size(8,8)
 		fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
-			let blue = u32(noise(vec3f(f32(id.x), f32(id.y), uMyUniforms.time*20.)) * 1000.);
-			let green = u32(noise(vec3f(f32(id.x), f32(id.y), uMyUniforms.time*40.)) * 1000.);
-			let red = u32(noise(vec3f(f32(id.x), f32(id.y), uMyUniforms.time*60.)) * 1000.);
+			let blue = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*2000, f32(id.y)+uMyUniforms.time*6000)) * 500.);
+			let green = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*4000, f32(id.y)+uMyUniforms.time*4000)) * 500.);
+			let red = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*6000, f32(id.y)+uMyUniforms.time*2000)) * 500.);
 			let result = (255 << 24) | (blue << 16) | (green << 8) | red;
-			let arrayPos = &outputBuffer[id.x + (320 * id.y)];
+			let arrayPos = &outputBuffer[id.x + (1280 * id.y)];
 			*arrayPos = result;
 		}
 		)";
@@ -116,17 +126,17 @@ public:
 
 		// divide by workgroup size and divide by sizeof float as we iterate a float array in the shader
 		const uint32_t workgroupDispatchCount = std::ceil(bufferSize / sizeof(float) / 64.0);
-		m_compute->DoCompute(40, 30); 
+		m_compute->DoCompute(g_width/8, g_height/8); 
 		m_compute->EndComputePass();
 
 		auto& result = m_compute->GetMappedResult();
 		assert(result.size() == bufferSize);
-		const uint32_t* output = (const uint32_t*)(&result[0]);
-		std::cout << "output " << std::endl;
-		for (int i = 0; i < bufferSize / sizeof(float); ++i) {
-			//std::cout << output[i] << ", ";
-		}
-		std::cout << std::endl;
+		// const uint32_t* output = (const uint32_t*)(&result[0]);
+		// std::cout << "output " << std::endl;
+		// for (int i = 0; i < bufferSize / sizeof(float); ++i) {
+		// 	std::cout << output[i] << ", ";
+		// }
+		// std::cout << std::endl;
 
 
 		m_finalImage->Resize(g_width, g_height);
