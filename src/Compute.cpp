@@ -41,9 +41,9 @@ void Compute::BeginComputePass()
     m_computeBackend->BeginComputePass();
 }
 
-void Compute::DoCompute()
+void Compute::DoCompute(const uint32_t workgroupCount)
 {
-    m_computeBackend->Compute();
+    m_computeBackend->Compute(workgroupCount);
 }
 
 void Compute::EndComputePass()

@@ -31,7 +31,7 @@ public:
     void CreateBuffer(const uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name);
     void SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string& name);
     void BeginComputePass();
-    void DoCompute();
+    void DoCompute(const uint32_t workgroupCount);
     void EndComputePass();
     std::vector<uint8_t>& GetMappedResult();
 private:

@@ -167,12 +167,11 @@ void WebGPUCompute::SetBufferData(const void *bufferData, uint32_t bufferLength,
 
 bool g_resultReady = false;
 
-void WebGPUCompute::Compute()
+void WebGPUCompute::Compute(const uint32_t workgroupCount)
 {
     g_resultReady = false;
     m_computePass.setPipeline(m_pipeline);
     m_computePass.setBindGroup(0, m_bindGroup, 0, nullptr);
-    constexpr uint32_t workgroupCount = 2;
 	m_computePass.dispatchWorkgroups(workgroupCount, 1, 1);
 }
 

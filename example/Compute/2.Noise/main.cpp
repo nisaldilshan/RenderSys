@@ -13,6 +13,8 @@ public:
 	virtual void OnAttach() override
 	{
 		m_finalImage = std::make_shared<Walnut::Image>(1, 1, Walnut::ImageFormat::RGBA);
+		GPUInit();
+		CPUInit();
 	}
 
 	virtual void OnDetach() override
@@ -32,7 +34,7 @@ public:
 			return 2.0 * x + 1.0;
 		}
 
-		@compute @workgroup_size(32)
+		@compute @workgroup_size(64)
 		fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
 			// Apply the function f to the buffer element at index id.x:
 			outputBuffer[id.x] = f(inputBuffer[id.x]);
@@ -40,7 +42,9 @@ public:
 		)";
 		m_compute->SetShader(shaderSource);
 
-		const auto bufferSize = m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4;
+		constexpr uint32_t computeWidth = 200;
+		constexpr uint32_t computeHeight = 150;
+		const auto bufferSize = computeWidth * computeHeight * 4;
 		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Input, "INPUT_BUFFER");
 		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
 		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Map, "");
@@ -72,15 +76,25 @@ public:
 		m_compute->BeginComputePass();
 		const auto bufferSize = m_inputBufferValues.size() * sizeof(float);
 		m_compute->SetBufferData(m_inputBufferValues.data(), bufferSize, "INPUT_BUFFER");
-		m_compute->DoCompute();
+		m_compute->DoCompute(bufferSize / 64); // divide by workgroup size
 		m_compute->EndComputePass();
 
 		auto& result = m_compute->GetMappedResult();
 		assert(result.size() == bufferSize);
 		const float* output = (const float*)(&result[0]);
+		std::cout << "output " << std::endl;
 		for (int i = 0; i < bufferSize / sizeof(float); ++i) {
-			std::cout << "output " << output[i] << std::endl;
+			//std::cout << output[i] << ", ";
 		}
+		std::cout << std::endl;
+
+
+		m_finalImage->Resize(200, 150);
+		m_finalImageData.resize(m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4); // 4 for RGBA
+		
+		memcpy(m_finalImageData.data(), result.data(), m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4);
+
+		m_finalImage->SetData(m_finalImageData.data());
 	}
 
 	void CPUInit()
@@ -99,13 +113,6 @@ public:
 		if (m_viewportWidth == 0 || m_viewportHeight == 0)
 			return;
 
-		if (m_viewportWidth != m_finalImage->GetWidth() || m_viewportHeight != m_finalImage->GetHeight())
-		{
-			m_finalImage->Resize(m_viewportWidth, m_viewportHeight);
-			m_finalImageData.resize(m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4); // 4 for RGBA
-			GPUInit();
-			CPUInit();
-		}
 
         if (m_hWSolver)
 		{
@@ -136,7 +143,7 @@ public:
 		ImVec2 uv_min = ImVec2(1, 0);                 // Top-left
 		ImVec2 uv_max = ImVec2(0, 1); 
 		float aspectRatio = (float)m_finalImage->GetWidth() / (float)m_finalImage->GetHeight();
-		float viewHeight = (float)m_finalImage->GetHeight();
+		float viewHeight = m_viewportHeight;
 		ImGui::Image((void*)m_finalImage->GetDescriptorSet(), { aspectRatio * viewHeight, viewHeight }, uv_min, uv_max);
 
 		ImGui::End();
