@@ -34,10 +34,33 @@ public:
 			return 2.0 * x + 1.0;
 		}
 
+		fn hash22(p: vec2u) -> vec2u {
+			var v = p * 1664525u + 1013904223u;
+			v.x += v.y * 1664525u; v.y += v.x * 1664525u;
+			v ^= v >> vec2u(16u);
+			v.x += v.y * 1664525u; v.y += v.x * 1664525u;
+			v ^= v >> vec2u(16u);
+			return v;
+		}
+
+		fn rand22(f: vec2f) -> vec2f { return vec2f(hash22(bitcast<vec2u>(f))) / f32(0xffffffff); }
+
+		fn noise_2d(pixelPos: vec2f) -> f32 {
+			let d = vec2f(0., 1.);
+			let b = floor(pixelPos);
+			let f = smoothstep(vec2f(0.), vec2f(1.), fract(pixelPos));
+
+			let mix1 = mix(rand22(b), rand22(b + d.yx), f.x);
+			let mix2 = mix(rand22(b + d.xx), rand22(b + d.yy), f.x);
+			let finalmix = mix(mix1, mix2, f.y);
+			return (finalmix.x + finalmix.y)/2;
+		}
+
 		@compute @workgroup_size(64)
 		fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
 			// Apply the function f to the buffer element at index id.x:
-			outputBuffer[id.x] = f(inputBuffer[id.x]);
+			//outputBuffer[id.x] = f(inputBuffer[id.x]);\
+			outputBuffer[id.x] = noise_2d(vec2f(inputBuffer[id.x], inputBuffer[id.x]));
 		}
 		)";
 		m_compute->SetShader(shaderSource);
