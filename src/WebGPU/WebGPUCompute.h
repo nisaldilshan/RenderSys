@@ -21,7 +21,7 @@ namespace GraphicsAPI
         void CreateBuffer(uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name);
         void SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string& name);
         void BeginComputePass();
-        void Compute(const uint32_t workgroupCount);
+        void Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY);
         void EndComputePass();
         std::vector<uint8_t>& GetMappedResult();
     private:

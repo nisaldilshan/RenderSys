@@ -156,14 +156,14 @@ public:
 
 			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
 			// Create binding layout (don't forget to = Default)
-			RenderSys::BindGroupLayoutEntry bGLayoutEntry;
-			bGLayoutEntry.setDefault();
-			// The binding index as used in the @binding attribute in the shader
-			bGLayoutEntry.binding = 0;
-			// The stage that needs to access this resource
-			bGLayoutEntry.visibility = RenderSys::ShaderStage::Vertex;
-			bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
-			bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
+			// RenderSys::BindGroupLayoutEntry bGLayoutEntry;
+			// bGLayoutEntry.setDefault();
+			// // The binding index as used in the @binding attribute in the shader
+			// bGLayoutEntry.binding = 0;
+			// // The stage that needs to access this resource
+			// bGLayoutEntry.visibility = RenderSys::ShaderStage::Vertex;
+			// bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
+			// bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
 
 			// Create binding layouts
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);

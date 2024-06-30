@@ -18,7 +18,8 @@ enum class BufferType
 {
     Input = 0,
     Output,
-    Map
+    Map,
+    Uniform
 };
     
 } // namespace Compute

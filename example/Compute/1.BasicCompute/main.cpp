@@ -69,7 +69,7 @@ public:
 
 		m_compute->BeginComputePass();
 		m_compute->SetBufferData(m_inputBufferValues.data(), g_bufferSize, "INPUT_BUFFER");
-		m_compute->DoCompute(2); // dispatch 2 workgroups to cover the entire buffer (one workgroup is 32 elements)
+		m_compute->DoCompute(2, 1); // dispatch 2 workgroups to cover the entire buffer (one workgroup is 32 elements)
 		m_compute->EndComputePass();
 
 		auto& result = m_compute->GetMappedResult();

@@ -58,6 +58,16 @@ void WebGPUCompute::CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEntry
         bindings[1].size = it->second.getSize();
     }
 
+    // Uniform buffer
+    {
+        auto it = m_buffersAccessibleToShader.find("UNIFORM_BUFFER");
+        assert(it != m_buffersAccessibleToShader.end());
+        bindings[2].binding = 2;
+        bindings[2].buffer = it->second;
+        bindings[2].offset = 0;
+        bindings[2].size = it->second.getSize();
+    }
+
     wgpu::BindGroupDescriptor bindGroupDesc;
 	bindGroupDesc.layout = m_bindGroupLayout;
 	bindGroupDesc.entryCount = (uint32_t)bindings.size();
@@ -141,6 +151,13 @@ void WebGPUCompute::CreateBuffer(uint32_t bufferLength, ComputeBuf::BufferType t
         m_mapBufferMappedData.resize(bufferLength);
         std::cout << "map buffer: " << m_mapBuffer << std::endl;
         break;
+    case ComputeBuf::BufferType::Uniform:
+        std::cout << "Creating map buffer..." << std::endl;
+        bufferDesc.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
+        bufferDesc.mappedAtCreation = false;
+        m_buffersAccessibleToShader.emplace(name, WebGPU::GetDevice().createBuffer(bufferDesc));
+        std::cout << "map buffer: " << m_mapBuffer << std::endl;
+        break;
     }
 }
 
@@ -167,12 +184,12 @@ void WebGPUCompute::SetBufferData(const void *bufferData, uint32_t bufferLength,
 
 bool g_resultReady = false;
 
-void WebGPUCompute::Compute(const uint32_t workgroupCount)
+void WebGPUCompute::Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY)
 {
     g_resultReady = false;
     m_computePass.setPipeline(m_pipeline);
     m_computePass.setBindGroup(0, m_bindGroup, 0, nullptr);
-	m_computePass.dispatchWorkgroups(workgroupCount, 1, 1);
+	m_computePass.dispatchWorkgroups(workgroupCountX, workgroupCountY, 1);
 }
 
 void dummyFunc(WGPUMapAsyncStatus status, char const * message, void* userdata1, void* userdata2) // userdata1 = m_mapBuffer and userdata2 = m_mapBufferMappedData

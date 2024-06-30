@@ -7,6 +7,13 @@
 #include "../../../src/Compute.h"
 #include <GLFW/glfw3.h>
 
+constexpr int g_width = 320;
+constexpr int g_height = 240;
+
+struct MyUniforms {
+    float time;
+};
+
 class ComputeLayer : public Walnut::Layer
 {
 public:
@@ -26,64 +33,66 @@ public:
 		m_compute = std::make_unique<Compute>();
 
 		const char* shaderSource = R"(
+
+		struct MyUniforms {
+			time: f32,
+		};
+		@group(0) @binding(2) var<uniform> uMyUniforms: MyUniforms;
+
 		@group(0) @binding(0) var<storage,read> inputBuffer: array<f32>;
-		@group(0) @binding(1) var<storage,read_write> outputBuffer: array<f32>;
+		@group(0) @binding(1) var<storage,read_write> outputBuffer: array<u32>;
 
-		// The function to evaluate for each element of the processed buffer
-		fn f(x: f32) -> f32 {
-			return 2.0 * x + 1.0;
+		fn noise(p_par: vec3<f32>) -> f32 {
+			var p = p_par;
+			let ip: vec3<f32> = floor(p);
+			p = p - ip;
+			let s = vec3<f32>(7., 157., 113.);
+			var h = vec4<f32>(0., s.yz, s.y + s.z)+dot(ip, s);
+			p = p * p * (3. - p * 2.);
+			h = mix(fract(sin(h)*43758.5), fract(sin(h+s.x)*43758.5), p.x);
+			let h2 = mix(h.xz, h.yw, p.y);
+			return mix(h2.x, h2.y, p.z);
 		}
 
-		fn hash22(p: vec2u) -> vec2u {
-			var v = p * 1664525u + 1013904223u;
-			v.x += v.y * 1664525u; v.y += v.x * 1664525u;
-			v ^= v >> vec2u(16u);
-			v.x += v.y * 1664525u; v.y += v.x * 1664525u;
-			v ^= v >> vec2u(16u);
-			return v;
-		}
-
-		fn rand22(f: vec2f) -> vec2f { return vec2f(hash22(bitcast<vec2u>(f))) / f32(0xffffffff); }
-
-		fn noise_2d(pixelPos: vec2f) -> f32 {
-			let d = vec2f(0., 1.);
-			let b = floor(pixelPos);
-			let f = smoothstep(vec2f(0.), vec2f(1.), fract(pixelPos));
-
-			let mix1 = mix(rand22(b), rand22(b + d.yx), f.x);
-			let mix2 = mix(rand22(b + d.xx), rand22(b + d.yy), f.x);
-			let finalmix = mix(mix1, mix2, f.y);
-			return (finalmix.x + finalmix.y)/2;
-		}
-
-		@compute @workgroup_size(64)
+		@compute @workgroup_size(8,8)
 		fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
-			// Apply the function f to the buffer element at index id.x:
-			//outputBuffer[id.x] = f(inputBuffer[id.x]);\
-			outputBuffer[id.x] = noise_2d(vec2f(inputBuffer[id.x], inputBuffer[id.x]));
+			let blue = u32(noise(vec3f(f32(id.x), f32(id.y), uMyUniforms.time*20.)) * 1000.);
+			let green = u32(noise(vec3f(f32(id.x), f32(id.y), uMyUniforms.time*40.)) * 1000.);
+			let red = u32(noise(vec3f(f32(id.x), f32(id.y), uMyUniforms.time*60.)) * 1000.);
+			let result = (255 << 24) | (blue << 16) | (green << 8) | red;
+			let arrayPos = &outputBuffer[id.x + (320 * id.y)];
+			*arrayPos = result;
 		}
 		)";
 		m_compute->SetShader(shaderSource);
 
-		constexpr uint32_t computeWidth = 200;
-		constexpr uint32_t computeHeight = 150;
+		constexpr uint32_t computeWidth = g_width;
+		constexpr uint32_t computeHeight = g_height;
 		const auto bufferSize = computeWidth * computeHeight * 4;
 		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Input, "INPUT_BUFFER");
 		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
 		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Map, "");
+		m_compute->CreateBuffer(1 * sizeof(MyUniforms), ComputeBuf::BufferType::Uniform, "UNIFORM_BUFFER");	
 
 		// Create bind group layout
-		std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(2, wgpu::Default);
+		std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(3, wgpu::Default);
 
 		// Input buffer
 		bindingLayoutEntries[0].binding = 0;
-		bindingLayoutEntries[0].buffer.type = wgpu::BufferBindingType::ReadOnlyStorage;
 		bindingLayoutEntries[0].visibility = wgpu::ShaderStage::Compute;
+		bindingLayoutEntries[0].buffer.type = wgpu::BufferBindingType::ReadOnlyStorage;
 
 		// Output buffer
 		bindingLayoutEntries[1].binding = 1;
-		bindingLayoutEntries[1].buffer.type = wgpu::BufferBindingType::Storage;
 		bindingLayoutEntries[1].visibility = wgpu::ShaderStage::Compute;
+		bindingLayoutEntries[1].buffer.type = wgpu::BufferBindingType::Storage;
+
+		// Uniform buffer
+		bindingLayoutEntries[2].binding = 2;
+		bindingLayoutEntries[2].visibility = wgpu::ShaderStage::Compute;
+		bindingLayoutEntries[2].buffer.type = wgpu::BufferBindingType::Uniform;
+		bindingLayoutEntries[2].buffer.minBindingSize = sizeof(MyUniforms);
+		bindingLayoutEntries[2].buffer.hasDynamicOffset = false;
 
 		m_compute->CreateBindGroup(bindingLayoutEntries);
 		m_compute->CreatePipeline();
@@ -97,16 +106,22 @@ public:
 	void GPUSolve()
 	{
 		m_compute->BeginComputePass();
+
 		const auto bufferSize = m_inputBufferValues.size() * sizeof(float);
 		m_compute->SetBufferData(m_inputBufferValues.data(), bufferSize, "INPUT_BUFFER");
+
+
+		m_myUniformData.time = static_cast<float>(glfwGetTime());
+		m_compute->SetBufferData(&m_myUniformData, 1 * sizeof(MyUniforms), "UNIFORM_BUFFER");
+
 		// divide by workgroup size and divide by sizeof float as we iterate a float array in the shader
 		const uint32_t workgroupDispatchCount = std::ceil(bufferSize / sizeof(float) / 64.0);
-		m_compute->DoCompute(workgroupDispatchCount); 
+		m_compute->DoCompute(40, 30); 
 		m_compute->EndComputePass();
 
 		auto& result = m_compute->GetMappedResult();
 		assert(result.size() == bufferSize);
-		const float* output = (const float*)(&result[0]);
+		const uint32_t* output = (const uint32_t*)(&result[0]);
 		std::cout << "output " << std::endl;
 		for (int i = 0; i < bufferSize / sizeof(float); ++i) {
 			//std::cout << output[i] << ", ";
@@ -114,7 +129,7 @@ public:
 		std::cout << std::endl;
 
 
-		m_finalImage->Resize(200, 150);
+		m_finalImage->Resize(g_width, g_height);
 		m_finalImageData.resize(m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4); // 4 for RGBA
 		
 		memcpy(m_finalImageData.data(), result.data(), m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4);
@@ -184,6 +199,7 @@ private:
 	bool m_hWSolver = false;
 	std::shared_ptr<Walnut::Image> m_finalImage = nullptr;
 	std::vector<uint8_t> m_finalImageData;
+	MyUniforms m_myUniformData;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
