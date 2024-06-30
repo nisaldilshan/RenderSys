@@ -76,7 +76,9 @@ public:
 		m_compute->BeginComputePass();
 		const auto bufferSize = m_inputBufferValues.size() * sizeof(float);
 		m_compute->SetBufferData(m_inputBufferValues.data(), bufferSize, "INPUT_BUFFER");
-		m_compute->DoCompute(bufferSize / 64); // divide by workgroup size
+		// divide by workgroup size and divide by sizeof float as we iterate a float array in the shader
+		const uint32_t workgroupDispatchCount = std::ceil(bufferSize / sizeof(float) / 64.0);
+		m_compute->DoCompute(workgroupDispatchCount); 
 		m_compute->EndComputePass();
 
 		auto& result = m_compute->GetMappedResult();
