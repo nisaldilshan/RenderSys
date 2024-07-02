@@ -5,8 +5,8 @@ class RenderSysConan(ConanFile):
     name = "RenderSys"
     version = "0.0.1"
     license = "MIT license"
-    url = "https://developer.avatarin.com/"
-    description = "avatarin's development framework (CoreSDK)"
+    url = "https://github.com/nisaldilshan/RenderSys.git"
+    description = "A simple rendering system written in C++"
     author = "Nisal Dilshan"
     settings = "os", "compiler", "build_type", "arch"
     generators = 'VirtualBuildEnv'
