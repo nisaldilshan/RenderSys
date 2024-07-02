@@ -29,6 +29,25 @@ class RenderSysConan(ConanFile):
         cmake.configure()
         cmake.build()
 
+    def package_id(self):
+        pass
+
+    def package_info(self):
+        pass
+        # if self.options.rendering_backend == "OpenGL":
+        #     self.cpp_info.libs = ["walnut", "walnut-graphics-opengl"]
+        # elif self.options.rendering_backend == "Vulkan":
+        #     self.cpp_info.libs = ["walnut", "walnut-graphics-vulkan"]
+        # else:
+        #     self.cpp_info.libs = ["walnut", "walnut-graphics-webgpu"]
+
+    def package(self):
+        cmake = CMake(self)
+        cmake.install()
+        # self.copy(pattern="Walnut/src/Walnut/EntryPoint.h", dst="lib", keep_path=False)
+        # self.copy(pattern="Walnut/src/Walnut/Application.h", dst="lib", keep_path=False)
+        # self.copy(pattern="Walnut/src/Walnut/Image.h", dst="lib", keep_path=False)
+
     def layout(self):
         self.folders.source = "."
         self.folders.build = "build"
