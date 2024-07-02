@@ -3,7 +3,7 @@
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
 
-#include "../../../src/Compute.h"
+#include <RenderSys/Compute.h>
 #include <GLFW/glfw3.h>
 
 constexpr uint32_t g_bufferSize = 64 * sizeof(float);

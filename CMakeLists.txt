@@ -74,4 +74,4 @@ install(TARGETS ComputeSys
     PRIVATE_HEADER DESTINATION include
 )
 
-#add_subdirectory(example)
+add_subdirectory(example)

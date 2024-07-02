@@ -2,8 +2,8 @@
 #include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 
-#include "../../../src/Renderer2D.h"
-#include "../../../src/Geometry.h"
+#include <RenderSys/Renderer2D.h>
+#include <RenderSys/Geometry.h>
 #include <GLFW/glfw3.h>
 
 /**

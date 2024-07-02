@@ -5,10 +5,10 @@
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
 
-#include "../../../../src/Renderer3D.h"
-#include "../../../../src/Geometry.h"
-#include "../../../../src/Texture.h"
-#include "../../../../src/Camera.h"
+#include <RenderSys/Renderer3D.h>
+#include <RenderSys/Geometry.h>
+#include <RenderSys/Texture.h>
+#include <RenderSys/Camera.h>
 #include <GLFW/glfw3.h>
 
 /**

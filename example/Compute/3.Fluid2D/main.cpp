@@ -6,7 +6,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include "../../../src/Renderer2D.h"
+#include <RenderSys/Renderer2D.h>
 #include "FluidSolver2D.h"
 
 

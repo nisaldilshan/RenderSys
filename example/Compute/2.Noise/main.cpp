@@ -4,7 +4,7 @@
 #include <Walnut/Timer.h>
 #include <Walnut/Image.h>
 
-#include "../../../src/Compute.h"
+#include <RenderSys/Compute.h>
 #include <GLFW/glfw3.h>
 
 constexpr int g_width = 1280;

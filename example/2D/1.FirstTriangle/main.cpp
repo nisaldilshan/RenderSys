@@ -3,7 +3,7 @@
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
 
-#include "../../../src/Renderer2D.h"
+#include <RenderSys/Renderer2D.h>
 
 class Renderer2DLayer : public Walnut::Layer
 {
