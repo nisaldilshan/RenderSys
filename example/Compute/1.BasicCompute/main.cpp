@@ -14,7 +14,7 @@ public:
 	virtual void OnAttach() override
 	{
 		m_compute.reset();
-		m_compute = std::make_unique<Compute>();
+		m_compute = std::make_unique<RenderSys::Compute>();
 
 		const char* shaderSource = R"(
 		@group(0) @binding(0) var<storage,read> inputBuffer: array<f32,64>;
@@ -97,7 +97,7 @@ public:
 	}
 
 private:
-    std::unique_ptr<Compute> m_compute;
+    std::unique_ptr<RenderSys::Compute> m_compute;
     float m_lastRenderTime = 0.0f;
 	std::vector<float> m_inputBufferValues;
 };

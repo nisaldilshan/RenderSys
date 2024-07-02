@@ -20,6 +20,9 @@ typedef WebGPUCompute ComputeType;
 #endif
 }
 
+namespace RenderSys
+{
+    
 class Compute
 {
 public:
@@ -37,4 +40,8 @@ public:
 private:
     std::unique_ptr<GraphicsAPI::ComputeType> m_computeBackend;
 };
+
+} // namespace RenderSys
+
+
 

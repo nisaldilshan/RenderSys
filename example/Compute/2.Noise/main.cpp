@@ -30,7 +30,7 @@ public:
 	void GPUInit()
 	{
 		m_compute.reset();
-		m_compute = std::make_unique<Compute>();
+		m_compute = std::make_unique<RenderSys::Compute>();
 
 		const char* shaderSource = R"(
 
@@ -201,7 +201,7 @@ public:
 	}
 
 private:
-    std::unique_ptr<Compute> m_compute;
+    std::unique_ptr<RenderSys::Compute> m_compute;
     float m_lastRenderTime = 0.0f;
 	std::vector<float> m_inputBufferValues;
 	uint32_t m_viewportWidth = 0;

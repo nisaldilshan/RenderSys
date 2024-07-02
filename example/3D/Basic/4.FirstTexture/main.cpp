@@ -48,7 +48,7 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer.reset();
-			m_renderer = std::make_shared<Renderer3D>();
+			m_renderer = std::make_shared<RenderSys::Renderer3D>();
 
 			m_renderer->Init();
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
@@ -258,7 +258,7 @@ public:
 	}
 
 private:
-    std::shared_ptr<Renderer3D> m_renderer;
+    std::shared_ptr<RenderSys::Renderer3D> m_renderer;
     uint32_t m_viewportWidth = 0;
     uint32_t m_viewportHeight = 0;
     float m_lastRenderTime = 0.0f;

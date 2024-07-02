@@ -10,7 +10,7 @@ class Renderer2DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
-		m_renderer = std::make_shared<Renderer2D>();
+		m_renderer = std::make_shared<RenderSys::Renderer2D>();
 	}
 
 	virtual void OnDetach() override
@@ -120,7 +120,7 @@ public:
 	}
 
 private:
-    std::shared_ptr<Renderer2D> m_renderer;
+    std::shared_ptr<RenderSys::Renderer2D> m_renderer;
     uint32_t m_viewportWidth = 0;
     uint32_t m_viewportHeight = 0;
     float m_lastRenderTime = 0.0f;

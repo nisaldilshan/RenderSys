@@ -101,7 +101,7 @@ public:
 		)";
 
 		m_renderer.reset();
-		m_renderer = std::make_unique<Renderer3D>();
+		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 
 		assert(m_shaderSource);
 		m_renderer->SetShaderAsString(m_shaderSource);
@@ -253,7 +253,7 @@ private:
 		m_renderer->CreatePipeline();
 	}
 
-    std::unique_ptr<Renderer3D> m_renderer;
+    std::unique_ptr<RenderSys::Renderer3D> m_renderer;
     uint32_t m_viewportWidth = 0;
     uint32_t m_viewportHeight = 0;
     float m_lastRenderTime = 0.0f;

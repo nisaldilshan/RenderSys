@@ -23,6 +23,8 @@ typedef WebGPURenderer2D RendererType;
 #endif
 }
 
+namespace RenderSys
+{
 class Renderer2D
 {
 public:
@@ -59,4 +61,7 @@ private:
     uint32_t m_Width = 0, m_Height = 0;
     std::unique_ptr<GraphicsAPI::RendererType> m_rendererBackend;
 };
+
+} // namespace RenderSys
+
 

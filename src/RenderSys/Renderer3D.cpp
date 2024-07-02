@@ -10,6 +10,8 @@
 #else
 #endif
 
+using namespace RenderSys;
+
 Renderer3D::Renderer3D()
     : m_Width(0)
     , m_Height(0)
