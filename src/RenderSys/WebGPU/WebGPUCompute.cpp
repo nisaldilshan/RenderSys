@@ -39,48 +39,16 @@ void WebGPUCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayout
     bindings.resize(bindGroupLayoutEntryCount);
 
     // Buffers
-    // for (size_t i = 0; i < bindings.size(); i++)
-    // {
-    //     assert(bindGroupLayoutEntries[i].buffer.type != wgpu::BufferBindingType::Undefined);
-    //     auto it = m_buffersAccessibleToShader.find(bindGroupLayoutEntries[i].buffer.bufferName);
-    //     assert(it != m_buffersAccessibleToShader.end());
-
-
-    //     bindings[i].binding = 0;
-    //     bindings[i].buffer = it->second;
-    //     bindings[i].offset = 0;
-    //     bindings[i].size = it->second.getSize();
-    // }
-    
-
-    // Input buffer
+    for (size_t i = 0; i < bindings.size(); i++)
     {
-        auto it = m_buffersAccessibleToShader.find("INPUT_BUFFER");
+        assert(bindGroupLayoutEntries[i].buffer.type != RenderSys::BufferBindingType::Undefined);
+        auto it = m_buffersAccessibleToShader.find(bindGroupLayoutEntries[i].buffer.bufferName);
         assert(it != m_buffersAccessibleToShader.end());
-        bindings[0].binding = 0;
-        bindings[0].buffer = it->second;
-        bindings[0].offset = 0;
-        bindings[0].size = it->second.getSize();
-    }
 
-	// Output buffer
-    {
-        auto it = m_buffersAccessibleToShader.find("OUTPUT_BUFFER");
-        assert(it != m_buffersAccessibleToShader.end());
-        bindings[1].binding = 1;
-        bindings[1].buffer = it->second;
-        bindings[1].offset = 0;
-        bindings[1].size = it->second.getSize();
-    }
-
-    // Uniform buffer
-    {
-        auto it = m_buffersAccessibleToShader.find("UNIFORM_BUFFER");
-        assert(it != m_buffersAccessibleToShader.end());
-        bindings[2].binding = 2;
-        bindings[2].buffer = it->second;
-        bindings[2].offset = 0;
-        bindings[2].size = it->second.getSize();
+        bindings[i].binding = bindGroupLayoutEntries[i].binding;
+        bindings[i].buffer = it->second;
+        bindings[i].offset = 0;
+        bindings[i].size = it->second.getSize();
     }
 
     wgpu::BindGroupDescriptor bindGroupDesc;

@@ -39,17 +39,21 @@ public:
 		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Map, "");
 
 		// Create bind group layout
-		std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(2, wgpu::Default);
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
 
 		// Input buffer
+		bindingLayoutEntries[0].setDefault();
 		bindingLayoutEntries[0].binding = 0;
-		bindingLayoutEntries[0].buffer.type = wgpu::BufferBindingType::ReadOnlyStorage;
-		bindingLayoutEntries[0].visibility = wgpu::ShaderStage::Compute;
+		bindingLayoutEntries[0].buffer.type = RenderSys::BufferBindingType::ReadOnlyStorage;
+		bindingLayoutEntries[0].buffer.bufferName = "INPUT_BUFFER";
+		bindingLayoutEntries[0].visibility = RenderSys::ShaderStage::Compute;
 
 		// Output buffer
+		bindingLayoutEntries[1].setDefault();
 		bindingLayoutEntries[1].binding = 1;
-		bindingLayoutEntries[1].buffer.type = wgpu::BufferBindingType::Storage;
-		bindingLayoutEntries[1].visibility = wgpu::ShaderStage::Compute;
+		bindingLayoutEntries[1].buffer.type = RenderSys::BufferBindingType::Storage;
+		bindingLayoutEntries[1].buffer.bufferName = "OUTPUT_BUFFER";
+		bindingLayoutEntries[1].visibility = RenderSys::ShaderStage::Compute;
 
 		m_compute->CreateBindGroup(bindingLayoutEntries);
 		m_compute->CreatePipeline();

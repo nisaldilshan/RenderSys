@@ -90,12 +90,15 @@ public:
 		bindingLayoutEntries[0].binding = 0;
 		bindingLayoutEntries[0].visibility = RenderSys::ShaderStage::Compute;
 		bindingLayoutEntries[0].buffer.type = RenderSys::BufferBindingType::ReadOnlyStorage;
+		bindingLayoutEntries[0].buffer.bufferName = "INPUT_BUFFER";
+		
 
 		// Output buffer
 		bindingLayoutEntries[1].setDefault();
 		bindingLayoutEntries[1].binding = 1;
 		bindingLayoutEntries[1].visibility = RenderSys::ShaderStage::Compute;
 		bindingLayoutEntries[1].buffer.type = RenderSys::BufferBindingType::Storage;
+		bindingLayoutEntries[1].buffer.bufferName = "OUTPUT_BUFFER";
 
 		// Uniform buffer
 		bindingLayoutEntries[2].setDefault();
@@ -104,6 +107,7 @@ public:
 		bindingLayoutEntries[2].buffer.type = RenderSys::BufferBindingType::Uniform;
 		bindingLayoutEntries[2].buffer.minBindingSize = sizeof(MyUniforms);
 		bindingLayoutEntries[2].buffer.hasDynamicOffset = false;
+		bindingLayoutEntries[2].buffer.bufferName = "UNIFORM_BUFFER";
 
 		m_compute->CreateBindGroup(bindingLayoutEntries);
 		m_compute->CreatePipeline();
