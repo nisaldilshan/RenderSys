@@ -5,6 +5,8 @@ class RenderSysConan(ConanFile):
     name = "RenderSys"
     version = "0.0.1"
     license = "MIT license"
+    url = "https://developer.avatarin.com/"
+    description = "avatarin's development framework (CoreSDK)"
     author = "Nisal Dilshan"
     settings = "os", "compiler", "build_type", "arch"
     generators = 'VirtualBuildEnv'
@@ -13,7 +15,6 @@ class RenderSysConan(ConanFile):
         self.requires('walnut/latest')
 
     def build_requirements(self):
-        self.tool_requires('pkgconf/1.7.4')
         self.tool_requires('cmake/3.25.3')
 
     def generate(self):
@@ -33,20 +34,11 @@ class RenderSysConan(ConanFile):
         pass
 
     def package_info(self):
-        pass
-        # if self.options.rendering_backend == "OpenGL":
-        #     self.cpp_info.libs = ["walnut", "walnut-graphics-opengl"]
-        # elif self.options.rendering_backend == "Vulkan":
-        #     self.cpp_info.libs = ["walnut", "walnut-graphics-vulkan"]
-        # else:
-        #     self.cpp_info.libs = ["walnut", "walnut-graphics-webgpu"]
+        self.cpp_info.defines = ["RENDERER_BACKEND=3"] # using 3 as backend support only WebGPU
 
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        # self.copy(pattern="Walnut/src/Walnut/EntryPoint.h", dst="lib", keep_path=False)
-        # self.copy(pattern="Walnut/src/Walnut/Application.h", dst="lib", keep_path=False)
-        # self.copy(pattern="Walnut/src/Walnut/Image.h", dst="lib", keep_path=False)
 
     def layout(self):
         self.folders.source = "."
