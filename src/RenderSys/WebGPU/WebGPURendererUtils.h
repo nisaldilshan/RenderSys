@@ -76,6 +76,10 @@ WGPUShaderStageFlags GetWebGPUShaderStageVisibility(RenderSys::ShaderStage shade
     {
         result = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
     }
+    else if (static_cast<uint32_t>(shaderStage) == 4) // RenderSys::ShaderStage::Vertex | RenderSys::ShaderStage::Fragment
+    {
+        result = wgpu::ShaderStage::Compute;
+    }
     else
     {
         assert(false);
@@ -93,6 +97,10 @@ wgpu::BufferBindingType GetWebGPUBufferBindingType(RenderSys::BufferBindingType 
     else if (type == RenderSys::BufferBindingType::Storage)
     {
         return wgpu::BufferBindingType::Storage;
+    }
+    else if (type == RenderSys::BufferBindingType::ReadOnlyStorage)
+    {
+        return wgpu::BufferBindingType::ReadOnlyStorage;
     }
     else if (type == RenderSys::BufferBindingType::Undefined)
     {

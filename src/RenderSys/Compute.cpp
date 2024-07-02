@@ -18,7 +18,7 @@ void Compute::SetShader(const char *shaderSource)
     m_computeBackend->CreateShaders(shaderSource);
 }
 
-void Compute::CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEntry>& bindGroupLayoutEntries)
+void Compute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
     m_computeBackend->CreateBindGroup(bindGroupLayoutEntries);
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace RenderSys
 {
 
@@ -81,6 +83,7 @@ namespace RenderSys
         BufferBindingType type = BufferBindingType::Undefined;
         bool hasDynamicOffset = false;
         uint64_t minBindingSize = 0;
+        std::string bufferName; // added by Nisal
 
         void setDefault() {
             type = BufferBindingType::Uniform;

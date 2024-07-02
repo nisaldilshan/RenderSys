@@ -2,10 +2,10 @@
 
 #include <memory>
 #include <stdint.h>
-
-#include <Walnut/GraphicsAPI/WebGPUGraphics.h>
+#include <imgui_impl_glfw.h>
 
 #include "Buffer.h"
+#include "RenderUtil.h"
 
 namespace GraphicsAPI
 {
@@ -29,7 +29,7 @@ public:
     Compute();
     ~Compute();
     void SetShader(const char* shaderSource);
-    void CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEntry>& bindGroupLayoutEntries);
+    void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
     void CreatePipeline();
     void CreateBuffer(const uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name);
     void SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string& name);

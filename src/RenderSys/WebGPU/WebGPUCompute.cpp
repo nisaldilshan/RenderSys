@@ -1,4 +1,5 @@
 #include "WebGPUCompute.h"
+#include "WebGPURendererUtils.h"
 
 namespace GraphicsAPI
 {
@@ -23,20 +24,34 @@ WebGPUCompute::~WebGPUCompute()
     }
 }
 
-void WebGPUCompute::CreateBindGroup(const std::vector<wgpu::BindGroupLayoutEntry>& bindGroupLayoutEntries)
+void WebGPUCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
-    std::cout << "Creating compute bind group..." << std::endl;
     // Create a bind group layout using a vector of layout entries
     auto bindGroupLayoutEntryCount = (uint32_t)bindGroupLayoutEntries.size();
     assert(bindGroupLayoutEntryCount > 0);
-
-    wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
-    bindGroupLayoutDesc.entryCount = (uint32_t)bindGroupLayoutEntries.size();
-    bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
+	wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
+	bindGroupLayoutDesc.entryCount = bindGroupLayoutEntryCount;
+	bindGroupLayoutDesc.entries = GetWebGPUBindGroupLayoutEntriesPtr(bindGroupLayoutEntries);
+    bindGroupLayoutDesc.label = "MainBindGroupLayout";
     m_bindGroupLayout = WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
 
     std::vector<wgpu::BindGroupEntry> bindings;
     bindings.resize(bindGroupLayoutEntryCount);
+
+    // Buffers
+    // for (size_t i = 0; i < bindings.size(); i++)
+    // {
+    //     assert(bindGroupLayoutEntries[i].buffer.type != wgpu::BufferBindingType::Undefined);
+    //     auto it = m_buffersAccessibleToShader.find(bindGroupLayoutEntries[i].buffer.bufferName);
+    //     assert(it != m_buffersAccessibleToShader.end());
+
+
+    //     bindings[i].binding = 0;
+    //     bindings[i].buffer = it->second;
+    //     bindings[i].offset = 0;
+    //     bindings[i].size = it->second.getSize();
+    // }
+    
 
     // Input buffer
     {

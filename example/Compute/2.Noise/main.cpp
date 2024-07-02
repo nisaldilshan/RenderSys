@@ -76,31 +76,32 @@ public:
 		)";
 		m_compute->SetShader(shaderSource);
 
-		constexpr uint32_t computeWidth = g_width;
-		constexpr uint32_t computeHeight = g_height;
-		const auto bufferSize = computeWidth * computeHeight * 4;
+		const auto bufferSize = g_width * g_height * 4;
 		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Input, "INPUT_BUFFER");
 		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
 		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Map, "");
 		m_compute->CreateBuffer(1 * sizeof(MyUniforms), ComputeBuf::BufferType::Uniform, "UNIFORM_BUFFER");	
 
 		// Create bind group layout
-		std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(3, wgpu::Default);
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 
 		// Input buffer
+		bindingLayoutEntries[0].setDefault();
 		bindingLayoutEntries[0].binding = 0;
-		bindingLayoutEntries[0].visibility = wgpu::ShaderStage::Compute;
-		bindingLayoutEntries[0].buffer.type = wgpu::BufferBindingType::ReadOnlyStorage;
+		bindingLayoutEntries[0].visibility = RenderSys::ShaderStage::Compute;
+		bindingLayoutEntries[0].buffer.type = RenderSys::BufferBindingType::ReadOnlyStorage;
 
 		// Output buffer
+		bindingLayoutEntries[1].setDefault();
 		bindingLayoutEntries[1].binding = 1;
-		bindingLayoutEntries[1].visibility = wgpu::ShaderStage::Compute;
-		bindingLayoutEntries[1].buffer.type = wgpu::BufferBindingType::Storage;
+		bindingLayoutEntries[1].visibility = RenderSys::ShaderStage::Compute;
+		bindingLayoutEntries[1].buffer.type = RenderSys::BufferBindingType::Storage;
 
 		// Uniform buffer
+		bindingLayoutEntries[2].setDefault();
 		bindingLayoutEntries[2].binding = 2;
-		bindingLayoutEntries[2].visibility = wgpu::ShaderStage::Compute;
-		bindingLayoutEntries[2].buffer.type = wgpu::BufferBindingType::Uniform;
+		bindingLayoutEntries[2].visibility = RenderSys::ShaderStage::Compute;
+		bindingLayoutEntries[2].buffer.type = RenderSys::BufferBindingType::Uniform;
 		bindingLayoutEntries[2].buffer.minBindingSize = sizeof(MyUniforms);
 		bindingLayoutEntries[2].buffer.hasDynamicOffset = false;
 
