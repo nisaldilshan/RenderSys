@@ -3,16 +3,12 @@
 #include <iostream>
 #include <fstream>
 #include "vkb/VkBootstrap.h"
-#define VMA_IMPLEMENTATION
-#include "vma/vk_mem_alloc.h"
 
 namespace GraphicsAPI
 {
 
 uint32_t g_acquiredFrameIndex = 0;
 //vkb::Swapchain g_vkbSwapChain;
-
-VmaAllocator g_allocator;
 
 VkCommandPool g_commandPool = VK_NULL_HANDLE;
 //VkCommandBuffer g_commandBuffer = VK_NULL_HANDLE;
@@ -31,7 +27,6 @@ VkDeviceMemory m_Memory;
 VkImage g_depthImage = VK_NULL_HANDLE;
 VkImageView g_depthImageView = VK_NULL_HANDLE;
 constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
-VmaAllocation g_depthImageAllocation = VK_NULL_HANDLE;
 
 VkRenderPass g_renderpass = VK_NULL_HANDLE;
 VkPipelineLayout g_pipelineLayout = VK_NULL_HANDLE;
@@ -39,7 +34,6 @@ VkPipeline g_pipeline = VK_NULL_HANDLE;
 
 int g_triangleCount = 0;
 VkBuffer g_vertexBuffer;
-VmaAllocation g_vertexBufferAllocation;
 
 bool m_inited = false;
 
@@ -662,21 +656,6 @@ void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = bufferLength;
     bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-
-    VmaAllocationCreateInfo vmaAllocInfo{};
-    vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-
-    if (vmaCreateBuffer(g_allocator, &bufferInfo, &vmaAllocInfo, &g_vertexBuffer,  &g_vertexBufferAllocation, nullptr) != VK_SUCCESS) {
-        std::cout << "error: could not allocate vertex buffer via VMA" << std::endl;
-        return;
-    }
-
-    void* data;
-    vmaMapMemory(g_allocator, g_vertexBufferAllocation, &data);
-    std::memcpy(data, bufferData, bufferLength);
-    vmaUnmapMemory(g_allocator, g_vertexBufferAllocation);
-
-    g_triangleCount = bufferLength / 3;
 
     // std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
 }
