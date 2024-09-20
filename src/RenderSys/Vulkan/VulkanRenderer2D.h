@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <stdint.h>
 #include <stddef.h>
 #include <glm/ext.hpp>
