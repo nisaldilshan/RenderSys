@@ -139,65 +139,6 @@ bool createRenderPass()
   return true;
 }
 
-
-bool createDepthBuffer() 
-{
-    // VkImageCreateInfo depthImageInfo{};
-    // depthImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    // depthImageInfo.imageType = VK_IMAGE_TYPE_2D;
-    // depthImageInfo.format = g_rdDepthFormat;
-    // //depthImageInfo.extent = depthImageExtent;
-    // depthImageInfo.mipLevels = 1;
-    // depthImageInfo.arrayLayers = 1;
-    // depthImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    // depthImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    // depthImageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-    VkImageCreateInfo info = {};
-    info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    info.imageType = VK_IMAGE_TYPE_2D;
-    info.format = VK_FORMAT_R8G8B8A8_UNORM;
-    info.extent.width = 10;//m_width;
-    info.extent.height = 10;//m_height;
-    info.extent.depth = 1;
-    info.mipLevels = 1;
-    info.arrayLayers = 1;
-    info.samples = VK_SAMPLE_COUNT_1_BIT;
-    info.tiling = VK_IMAGE_TILING_OPTIMAL;
-    info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &g_depthImage);
-    Vulkan::check_vk_result(err);
-    VkMemoryRequirements req;
-    vkGetImageMemoryRequirements(Vulkan::GetDevice(), g_depthImage, &req);
-    VkMemoryAllocateInfo alloc_info = {};
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.allocationSize = req.size;
-    alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
-    Vulkan::check_vk_result(err);
-    err = vkBindImageMemory(Vulkan::GetDevice(), g_depthImage, m_Memory, 0);
-    Vulkan::check_vk_result(err);
-
-    VkImageViewCreateInfo depthImageViewinfo{};
-    depthImageViewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    depthImageViewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    depthImageViewinfo.image = g_depthImage;
-    depthImageViewinfo.format = VK_FORMAT_R8G8B8A8_UNORM;
-    depthImageViewinfo.subresourceRange.baseMipLevel = 0;
-    depthImageViewinfo.subresourceRange.levelCount = 1;
-    depthImageViewinfo.subresourceRange.baseArrayLayer = 0;
-    depthImageViewinfo.subresourceRange.layerCount = 1;
-    depthImageViewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-    if (vkCreateImageView(Vulkan::GetDevice(), &depthImageViewinfo, nullptr, &g_depthImageView) != VK_SUCCESS) {
-        std::cout << "error: could not create depth buffer image view" << std::endl;
-        return false;
-    }
-    return true;
-}
-
 bool createSyncObjects()
 {
     VkFenceCreateInfo fenceInfo{};
@@ -237,15 +178,6 @@ bool getQueue() {
 
 bool VulkanRenderer2D::Init()
 {
-    if (!createDepthBuffer()) {
-        return false;
-    }
-
-    // if (!createCommandBuffer())
-    // {
-    //     return false;
-    // }
-
     if (!createRenderPass())
     {
         return false;
@@ -620,32 +552,6 @@ void VulkanRenderer2D::CreatePipeline()
 
 void VulkanRenderer2D::CreateFrameBuffer()
 {
-    // g_rdSwapchainImageViews = g_vkbSwapChain.get_image_views().value();
-
-    // g_framebuffers.resize(g_rdSwapchainImageViews.size());
-
-    // for (unsigned int i = 0; i < g_rdSwapchainImageViews.size(); ++i) {
-    //     VkImageView attachments[] = { g_rdSwapchainImageViews.at(i), g_depthImageView };
-
-    //     VkFramebufferCreateInfo FboInfo{};
-    //     FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    //     FboInfo.renderPass = g_renderpass;
-    //     FboInfo.attachmentCount = 2;
-    //     FboInfo.pAttachments = attachments;
-    //     FboInfo.width = m_width;
-    //     FboInfo.height = m_height;
-    //     FboInfo.layers = 1;
-
-    //     if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &g_framebuffers[i]) != VK_SUCCESS) {
-    //         std::cout << "error: failed to create framebuffer" << std::endl;
-    //         return ;
-    //     }
-    // }
-
-    // do destroy
-    // for (auto &fb : renderData.rdFramebuffers) {
-    //     vkDestroyFramebuffer(renderData.rdVkbDevice.device, fb, nullptr);
-    // }
 }
 
 void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
@@ -662,19 +568,6 @@ void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
 
 void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData)
 {
-    // std::cout << "Creating index buffer..." << std::endl;
-
-    // m_indexCount = bufferData.size();
-
-    // wgpu::BufferDescriptor bufferDesc;
-    // bufferDesc.size = bufferData.size() * sizeof(float);
-    // bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
-    // bufferDesc.label = "Index Buffer";
-    // m_indexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
-
-    // // Upload index data to the buffer
-    // WebGPU::GetQueue().writeBuffer(m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
-    // std::cout << "Index buffer: " << m_indexBuffer << std::endl;
 }
 
 uint32_t VulkanRenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
@@ -739,9 +632,100 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
     // }
 }
 
+VkCommandBuffer commandBufferForReal;
+VkBuffer VertBuffer;
 void VulkanRenderer2D::SimpleRender()
 {
     std::cout << "Simple render" << std::endl;
+    vkCmdBindPipeline(commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBufferForReal, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = { m_width, m_height };
+    vkCmdSetScissor(commandBufferForReal, 0, 1, &scissor);
+
+    VkDeviceMemory VertMemory;
+    static bool vertBufCreated = false;
+    if (!vertBufCreated)
+    {
+        VkBufferCreateInfo buf_info = {0};
+		buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		buf_info.size = 3 * sizeof(float);
+		buf_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+        auto res = vkCreateBuffer(Vulkan::GetDevice(), &buf_info, NULL, &VertBuffer);
+		if (res != VK_SUCCESS) {
+			fprintf(stderr, "vkCreateBuffer() failed (%d)\n", res);
+			return;
+		}
+
+        VkMemoryRequirements mem_reqs;
+		vkGetBufferMemoryRequirements(Vulkan::GetDevice(), VertBuffer, &mem_reqs);
+
+        VkPhysicalDeviceMemoryProperties gpu_mem;
+	    vkGetPhysicalDeviceMemoryProperties(Vulkan::GetPhysicalDevice(), &gpu_mem);
+
+        int mem_type_idx = -1;
+		unsigned int flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		int type_idx = -1;
+		for (int j = 0; j < gpu_mem.memoryTypeCount; j++) {
+			if ((mem_reqs.memoryTypeBits & (1 << j)) &&
+				(gpu_mem.memoryTypes[j].propertyFlags & flags) == flags)
+			{
+				mem_type_idx = j;
+				break;
+			}
+		}
+
+		if (mem_type_idx < 0) {
+			fprintf(stderr, "Could not find an appropriate memory type \n");
+			return;
+		}
+
+        VkMemoryAllocateInfo alloc_info = {0};
+		alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		alloc_info.allocationSize = mem_reqs.size;
+		alloc_info.memoryTypeIndex = mem_type_idx;
+
+		res = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, NULL, &VertMemory);
+		if (res != VK_SUCCESS) {
+			fprintf(stderr, "vkAllocateMemory() failed (%d)\n", res);
+			return;
+		}
+
+		void *buf;
+		res = vkMapMemory(Vulkan::GetDevice(), VertMemory, 0, alloc_info.allocationSize, 0, &buf);
+		if (res != VK_SUCCESS) {
+			fprintf(stderr, "vkMapMemory() failed (%d)\n", res);
+			return;
+		}
+
+		//memcpy(buf, data[i].bytes, data[i].size);
+		vkUnmapMemory(Vulkan::GetDevice(), VertMemory);
+
+        res = vkBindBufferMemory(Vulkan::GetDevice(), VertBuffer, VertMemory, 0);
+		if (res != VK_SUCCESS) {
+			fprintf(stderr, "vkBindBufferMemory() failed (%d)\n", res);
+			return;
+		}
+        vertBufCreated = true;
+    }
+
+    VkDeviceSize offset = 0;
+	vkCmdBindVertexBuffers(commandBufferForReal, 0, 1, &VertBuffer, &offset);
+    //vkCmdBindDescriptorSets(g_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelineLayout, 0, 1, &mRenderData.rdDescriptorSet, 0, nullptr);
+
+    const auto triangleCount = 1;
+    vkCmdDraw(commandBufferForReal, triangleCount * 3, 1, 0, 0);
 }
 
 void VulkanRenderer2D::Render()
@@ -835,7 +819,7 @@ ImTextureID VulkanRenderer2D::GetDescriptorSet()
 
 
 //uint32_t g_acquiredimageIndex = 0;
-VkCommandBuffer commandBufferForReal;
+
 void VulkanRenderer2D::BeginRenderPass()
 {
     // if (vkWaitForFences(Vulkan::GetDevice(), 1, &g_renderFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {

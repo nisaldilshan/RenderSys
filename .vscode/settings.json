@@ -55,6 +55,9 @@
         "unordered_map": "cpp",
         "variant": "cpp",
         "charconv": "cpp",
-        "shared_mutex": "cpp"
+        "shared_mutex": "cpp",
+        "span": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp"
     }
 }
