@@ -13,13 +13,16 @@ class RenderSysConan(ConanFile):
     
     def requirements(self):
         self.requires('walnut/latest')
+        self.requires('shaderc/2023.6')
 
     def build_requirements(self):
         self.tool_requires('cmake/3.25.3')
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["RENDERER"] = self.dependencies['walnut'].options.rendering_backend
+        rendererName = self.dependencies['walnut'].options.rendering_backend
+        print("Using Renderer - " + str(rendererName))
+        tc.variables["RENDERER"] = rendererName
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()

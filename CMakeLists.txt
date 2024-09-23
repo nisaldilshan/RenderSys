@@ -6,6 +6,7 @@ message(STATUS "RENDERER: " ${RENDERER})
 
 if(RENDERER STREQUAL "Vulkan")
     add_compile_definitions(RENDERER_BACKEND=2)
+    find_package(shaderc REQUIRED)
     add_library (RenderSys2D STATIC
                     src/RenderSys/Renderer2D.cpp
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
@@ -49,7 +50,7 @@ target_sources(RenderSys2D
 #                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
 #                 FILES src/RenderSys/Compute.h src/RenderSys/Buffer.h)
 
-target_link_libraries(RenderSys2D PRIVATE walnut::walnut)
+target_link_libraries(RenderSys2D PRIVATE walnut::walnut shaderc::shaderc)
 # target_link_libraries(RenderSys3D PRIVATE walnut::walnut)
 # target_link_libraries(ComputeSys PRIVATE walnut::walnut)
 

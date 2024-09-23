@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include "vkb/VkBootstrap.h"
+#include "Shader.h"
 
 namespace GraphicsAPI
 {
@@ -241,87 +242,30 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     // m_textureToRenderInto = texture.createView(tex_view_desc);
 }
 
-
-std::string loadFileToString(std::string fileName) {
-  std::ifstream inFile(fileName, std::ios::binary);
-  std::string str;
-
-  if (inFile.is_open()) {
-    str.clear();
-    // allocate string data (no slower realloc)
-    inFile.seekg(0, std::ios::end);
-    str.reserve(inFile.tellg());
-    inFile.seekg(0, std::ios::beg);
-
-    str.assign((std::istreambuf_iterator<char>(inFile)),
-                std::istreambuf_iterator<char>());
-    inFile.close();
-  } else {
-    //Logger::log(1, "%s error: could not open file %s\n", __FUNCTION__, fileName.c_str());
-    //Logger::log(1, "%s error: system says '%s'\n", __FUNCTION__, strerror(errno));
-    return std::string();
-  }
-
-  if (inFile.bad() || inFile.fail()) {
-    //Logger::log(1, "%s error: error while reading file %s\n", __FUNCTION__, fileName.c_str());
-    inFile.close();
-    return std::string();
-  }
-
-  inFile.close();
-  //Logger::log(1, "%s: file %s successfully read to string\n", __FUNCTION__, fileName.c_str());
-  return str;
-}
-
 void VulkanRenderer2D::CreateShaders(const char* shaderSource)
 {
     std::cout << "Creating shader modules..." << std::endl;
 
-    // auto file = std::string(shaderSource);
-    // auto shaderAsBinaryString = loadFileToString(file); 
-
     {
-        // ./glslangValidator -V -x -o shader.vert.u32 shader.vert
-        static uint32_t __glsl_shader_vert_spv[] =
-        {
-            0x07230203,0x00010000,0x0008000b,0x00000021,0x00000000,0x00020011,0x00000001,0x0006000b,
-            0x00000001,0x4c534c47,0x6474732e,0x3035342e,0x00000000,0x0003000e,0x00000000,0x00000001,
-            0x0009000f,0x00000000,0x00000004,0x6e69616d,0x00000000,0x0000000d,0x00000012,0x0000001d,
-            0x0000001f,0x00030003,0x00000002,0x000001cc,0x00040005,0x00000004,0x6e69616d,0x00000000,
-            0x00060005,0x0000000b,0x505f6c67,0x65567265,0x78657472,0x00000000,0x00060006,0x0000000b,
-            0x00000000,0x505f6c67,0x7469736f,0x006e6f69,0x00070006,0x0000000b,0x00000001,0x505f6c67,
-            0x746e696f,0x657a6953,0x00000000,0x00070006,0x0000000b,0x00000002,0x435f6c67,0x4470696c,
-            0x61747369,0x0065636e,0x00070006,0x0000000b,0x00000003,0x435f6c67,0x446c6c75,0x61747369,
-            0x0065636e,0x00030005,0x0000000d,0x00000000,0x00040005,0x00000012,0x736f5061,0x00000000,
-            0x00050005,0x0000001d,0x43786574,0x64726f6f,0x00000000,0x00050005,0x0000001f,0x78655461,
-            0x726f6f43,0x00000064,0x00050048,0x0000000b,0x00000000,0x0000000b,0x00000000,0x00050048,
-            0x0000000b,0x00000001,0x0000000b,0x00000001,0x00050048,0x0000000b,0x00000002,0x0000000b,
-            0x00000003,0x00050048,0x0000000b,0x00000003,0x0000000b,0x00000004,0x00030047,0x0000000b,
-            0x00000002,0x00040047,0x00000012,0x0000001e,0x00000000,0x00040047,0x0000001d,0x0000001e,
-            0x00000000,0x00040047,0x0000001f,0x0000001e,0x00000001,0x00020013,0x00000002,0x00030021,
-            0x00000003,0x00000002,0x00030016,0x00000006,0x00000020,0x00040017,0x00000007,0x00000006,
-            0x00000004,0x00040015,0x00000008,0x00000020,0x00000000,0x0004002b,0x00000008,0x00000009,
-            0x00000001,0x0004001c,0x0000000a,0x00000006,0x00000009,0x0006001e,0x0000000b,0x00000007,
-            0x00000006,0x0000000a,0x0000000a,0x00040020,0x0000000c,0x00000003,0x0000000b,0x0004003b,
-            0x0000000c,0x0000000d,0x00000003,0x00040015,0x0000000e,0x00000020,0x00000001,0x0004002b,
-            0x0000000e,0x0000000f,0x00000000,0x00040017,0x00000010,0x00000006,0x00000003,0x00040020,
-            0x00000011,0x00000001,0x00000010,0x0004003b,0x00000011,0x00000012,0x00000001,0x0004002b,
-            0x00000006,0x00000014,0x3f800000,0x00040020,0x00000019,0x00000003,0x00000007,0x00040017,
-            0x0000001b,0x00000006,0x00000002,0x00040020,0x0000001c,0x00000003,0x0000001b,0x0004003b,
-            0x0000001c,0x0000001d,0x00000003,0x00040020,0x0000001e,0x00000001,0x0000001b,0x0004003b,
-            0x0000001e,0x0000001f,0x00000001,0x00050036,0x00000002,0x00000004,0x00000000,0x00000003,
-            0x000200f8,0x00000005,0x0004003d,0x00000010,0x00000013,0x00000012,0x00050051,0x00000006,
-            0x00000015,0x00000013,0x00000000,0x00050051,0x00000006,0x00000016,0x00000013,0x00000001,
-            0x00050051,0x00000006,0x00000017,0x00000013,0x00000002,0x00070050,0x00000007,0x00000018,
-            0x00000015,0x00000016,0x00000017,0x00000014,0x00050041,0x00000019,0x0000001a,0x0000000d,
-            0x0000000f,0x0003003e,0x0000001a,0x00000018,0x0004003d,0x0000001b,0x00000020,0x0000001f,
-            0x0003003e,0x0000001d,0x00000020,0x000100fd,0x00010038
-        };
+        const std::string vertexShaderStr = R"(
+#version 450
+
+vec2 positions[3] = vec2[](
+    vec2(0.0, -0.5),
+    vec2(0.5, 0.5),
+    vec2(-0.5, 0.5)
+);
+
+void main() {
+    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
+})";
+
+        const std::vector<uint32_t> vertexShaderCompiled = VulkanShaderUtils::compile_file("shader_src", shaderc_glsl_vertex_shader, vertexShaderStr);
 
         VkShaderModuleCreateInfo shaderCreateInfoVert{};
         shaderCreateInfoVert.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        shaderCreateInfoVert.codeSize = sizeof(__glsl_shader_vert_spv);
-        shaderCreateInfoVert.pCode = reinterpret_cast<const uint32_t*>(__glsl_shader_vert_spv);
+        shaderCreateInfoVert.codeSize = sizeof(uint32_t) * vertexShaderCompiled.size();
+        shaderCreateInfoVert.pCode = vertexShaderCompiled.data();
 
         if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfoVert, nullptr, &m_shaderModuleVertex) != VK_SUCCESS) {
             std::cout << "could not load vertex shader" << std::endl;
