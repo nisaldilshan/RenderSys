@@ -2,27 +2,18 @@
 
 #include <iostream>
 #include <fstream>
-#include "vkb/VkBootstrap.h"
 #include "Shader.h"
 
 namespace GraphicsAPI
 {
 
 uint32_t g_acquiredFrameIndex = 0;
-//vkb::Swapchain g_vkbSwapChain;
-
 VkCommandPool g_commandPool = VK_NULL_HANDLE;
-//VkCommandBuffer g_commandBuffer = VK_NULL_HANDLE;
-
 VkSemaphore g_presentSemaphore = VK_NULL_HANDLE;
 VkSemaphore g_renderSemaphore = VK_NULL_HANDLE;
 VkFence g_renderFence = VK_NULL_HANDLE;
-
 std::vector<VkImageView> g_rdSwapchainImageViews;
 std::vector<VkFramebuffer> g_framebuffers;
-
-//VkQueue g_graphicsQueue = VK_NULL_HANDLE;
-//VkQueue g_presentQueue = VK_NULL_HANDLE;
 
 VkDeviceMemory m_Memory;
 VkImage g_depthImage = VK_NULL_HANDLE;
@@ -37,35 +28,6 @@ int g_triangleCount = 0;
 VkBuffer g_vertexBuffer;
 
 bool m_inited = false;
-
-// bool createCommandBuffer()
-// {
-//     VkCommandPoolCreateInfo poolCreateInfo{};
-//     poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-//     poolCreateInfo.queueFamilyIndex = Vulkan::GetQueueFamilyIndex();
-//     poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-//     if (vkCreateCommandPool(Vulkan::GetDevice(), &poolCreateInfo, nullptr, &g_commandPool) != VK_SUCCESS) {
-//         std::cout << "error: could not create command pool" << std::endl;
-//         return false;
-//     }
-
-//     VkCommandBufferAllocateInfo bufferAllocInfo{};
-//     bufferAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-//     bufferAllocInfo.commandPool = g_commandPool;
-//     bufferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-//     bufferAllocInfo.commandBufferCount = 1;
-
-//     if (vkAllocateCommandBuffers(Vulkan::GetDevice(), &bufferAllocInfo, &g_commandBuffer) != VK_SUCCESS) {
-//         std::cout << "error: could not allocate command buffers" << std::endl;
-//         return false;
-//     }
-
-//     return true;
-
-//     // call vkDestroyCommandPool(renderData.rdVkbDevice.device, renderData.rdCommandPool, nullptr); to destroy commandpool
-//     // call vkFreeCommandBuffers(renderData.rdVkbDevice.device, renderData.rdCommandPool, 1, &commandBuffer); to destroy command buffer
-// }
 
 bool createRenderPass() 
 {
@@ -158,25 +120,6 @@ bool createSyncObjects()
     return true;
 }
 
-
-bool getQueue() {
-//   auto graphQueueRet = g_vkbDevice.get_queue(vkb::QueueType::graphics);
-//   if (!graphQueueRet.has_value()) {
-//     std::cout << "error: could not get graphics queue" << std::endl;
-//     return false;
-//   }
-//   g_graphicsQueue = graphQueueRet.value();
-
-//   auto presentQueueRet = g_vkbDevice.get_queue(vkb::QueueType::present);
-//   if (!presentQueueRet.has_value()) {
-//     std::cout << "error: could not get present queue" << std::endl;
-//     return false;
-//   }
-//   g_presentQueue = presentQueueRet.value();
-
-  return true;
-}
-
 bool VulkanRenderer2D::Init()
 {
     if (!createRenderPass())
@@ -194,22 +137,6 @@ bool VulkanRenderer2D::Init()
     return true;
 }
 
-bool VulkanRenderer2D::CreateSwapChain()
-{
-    // vkb::SwapchainBuilder swapChainBuild{g_vkbDevice};
-
-    // /* VK_PRESENT_MODE_FIFO_KHR enables vsync */
-    // auto swapChainBuildRet = swapChainBuild.set_old_swapchain(g_vkbSwapChain).set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR).build();
-    // if (!swapChainBuildRet)
-    // {
-    //     return false;
-    // }
-
-    // vkb::destroy_swapchain(g_vkbSwapChain);
-    // g_vkbSwapChain = swapChainBuildRet.value();
-
-    return true;
-}
 void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
 {
     m_width = width;
@@ -761,47 +688,8 @@ ImTextureID VulkanRenderer2D::GetDescriptorSet()
         return ImTextureID{};
 }
 
-
-//uint32_t g_acquiredimageIndex = 0;
-
 void VulkanRenderer2D::BeginRenderPass()
 {
-    // if (vkWaitForFences(Vulkan::GetDevice(), 1, &g_renderFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-    //     std::cout << "error: waiting for fence failed" << std::endl;
-    //     return;
-    // }
-
-    // if (vkResetFences(Vulkan::GetDevice(), 1, &g_renderFence) != VK_SUCCESS) {
-    //     std::cout << "error: fence reset failed" << std::endl;
-    //     return;
-    // }
-
-    // VkResult result = vkAcquireNextImageKHR(Vulkan::GetDevice(), g_vkbSwapChain.swapchain, UINT64_MAX, g_presentSemaphore, VK_NULL_HANDLE, &g_acquiredimageIndex);
-    // if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-    //     //return recreateSwapchain();
-    //     std::cout << "need to recreate swapchain" << std::endl;
-    // } else {
-    //     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-    //         std::cout << "error: failed to acquire swapchain image. Error is " << result << std::endl;
-    //     }
-    // }
-
-    // if (vkResetCommandBuffer(g_commandBuffer, 0) != VK_SUCCESS) {
-    //     std::cout << "error: failed to reset command buffer" << std::endl;
-    //     return;
-    // }
-
-    // VkCommandBufferBeginInfo cmdBeginInfo{};
-    // cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    // cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    // if(vkBeginCommandBuffer(g_commandBuffer, &cmdBeginInfo) != VK_SUCCESS) {
-    //     std::cout << "error: failed to begin command buffer" << std::endl;
-    //     return;
-    // }
-
-    ////
-
     VkClearValue colorClearValue;
     colorClearValue.color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
 
@@ -992,16 +880,7 @@ void VulkanRenderer2D::BeginRenderPass()
 
 void VulkanRenderer2D::EndRenderPass()
 {
-    
-
 	vkCmdEndRenderPass(commandBufferForReal);
-
-    // if (vkEndCommandBuffer(g_commandBuffer) != VK_SUCCESS) {
-    //     std::cout << "error: failed to end command buffer" << std::endl;
-    // }
-
-    //SubmitCommandBuffer();
-
     GraphicsAPI::Vulkan::FlushCommandBuffer(commandBufferForReal);
 }
 
@@ -1023,24 +902,6 @@ void VulkanRenderer2D::SubmitCommandBuffer()
         std::cout << "error: failed to submit draw command buffer" << std::endl;
         return;
     }
-
-    // VkPresentInfoKHR presentInfo{};
-    // presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    // presentInfo.waitSemaphoreCount = 1;
-    // presentInfo.pWaitSemaphores = &g_renderSemaphore;
-    // presentInfo.swapchainCount = 1;
-    // presentInfo.pSwapchains = &g_vkbSwapChain.swapchain;
-    // presentInfo.pImageIndices = &g_acquiredimageIndex;
-
-    // VkResult result = vkQueuePresentKHR(g_presentQueue, &presentInfo);
-    // if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-    //     std::cout << "need to recreate swapchain" << std::endl;
-    //     //return recreateSwapchain();
-    // } else {
-    //     if (result != VK_SUCCESS) {
-    //         std::cout << "error: failed to present swapchain image" << std::endl;
-    //     }
-    // }
 }
 
 } // namespace GraphicsAPI
