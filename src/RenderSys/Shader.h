@@ -2,10 +2,29 @@
 #include <vector>
 
 #include <shaderc/shaderc.hpp>
+#include "RenderUtil.h"
 
 // Code copied from - https://github.com/google/shaderc/blob/main/examples/online-compile/main.cc
 
-namespace VulkanShaderUtils
+namespace RenderSys
+{
+
+enum class ShaderType
+{
+    SPIRV = 0,
+    WGSL
+};
+
+struct Shader
+{
+    ShaderType type;
+    ShaderStage stage;
+    std::string shaderSrc;
+    std::vector<uint32_t> compiledShader;
+};
+
+
+namespace ShaderUtils
 {
 
     // Compiles a shader to a SPIR-V binary. Returns the binary as
@@ -35,4 +54,6 @@ namespace VulkanShaderUtils
         return {module.cbegin(), module.cend()};
     }
 
-} // namespace VulkanShaderUtils
+} // namespace ShaderUtils
+
+} // namespace RenderSys

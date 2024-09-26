@@ -49,32 +49,15 @@ namespace GraphicsAPI
         void EndRenderPass();
         
     private:
-        bool CreateSwapChain();
         void SubmitCommandBuffer();
         uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
+        bool m_inited = false;
         VkShaderModule m_shaderModuleVertex = 0;
         VkShaderModule m_shaderModuleFragment = 0;
-        // wgpu::RenderPipeline m_pipeline = nullptr;
-        // wgpu::TextureView m_textureToRenderInto = nullptr;
-
         uint32_t m_vertexCount = 0;
         uint64_t m_vertexBufferSize = 0;
-        // wgpu::Buffer m_vertexBuffer = nullptr;
-        // wgpu::VertexBufferLayout m_vertexBufferLayout;
-
-        uint32_t m_indexCount = 0;
-        // wgpu::Buffer m_indexBuffer = nullptr;
-
         std::unique_ptr<VkPipelineLayoutCreateInfo> m_bindGroupLayout;
-        
-        // wgpu::Buffer m_uniformBuffer = nullptr;
-        // wgpu::BindGroup m_bindGroup = nullptr;
-        uint32_t m_sizeOfUniform = 0;
-
-        // wgpu::CommandEncoder m_currentCommandEncoder = nullptr;
-        // wgpu::RenderPassEncoder m_renderPass = nullptr;
-
         uint32_t m_width, m_height;
     };
 }

@@ -1,33 +1,18 @@
 #include "VulkanRenderer2D.h"
 
 #include <iostream>
-#include <fstream>
-#include "Shader.h"
+#include "../Shader.h"
 
 namespace GraphicsAPI
 {
 
-uint32_t g_acquiredFrameIndex = 0;
-VkCommandPool g_commandPool = VK_NULL_HANDLE;
 VkSemaphore g_presentSemaphore = VK_NULL_HANDLE;
 VkSemaphore g_renderSemaphore = VK_NULL_HANDLE;
 VkFence g_renderFence = VK_NULL_HANDLE;
-std::vector<VkImageView> g_rdSwapchainImageViews;
-std::vector<VkFramebuffer> g_framebuffers;
-
-VkDeviceMemory m_Memory;
-VkImage g_depthImage = VK_NULL_HANDLE;
-VkImageView g_depthImageView = VK_NULL_HANDLE;
 constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
-
 VkRenderPass g_renderpass = VK_NULL_HANDLE;
 VkPipelineLayout g_pipelineLayout = VK_NULL_HANDLE;
 VkPipeline g_pipeline = VK_NULL_HANDLE;
-
-int g_triangleCount = 0;
-VkBuffer g_vertexBuffer;
-
-bool m_inited = false;
 
 bool createRenderPass() 
 {
@@ -187,7 +172,7 @@ void main() {
     gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
 })";
 
-        const std::vector<uint32_t> vertexShaderCompiled = VulkanShaderUtils::compile_file("shader_src", shaderc_glsl_vertex_shader, vertexShaderStr);
+        const std::vector<uint32_t> vertexShaderCompiled = RenderSys::ShaderUtils::compile_file("shader_src", shaderc_glsl_vertex_shader, vertexShaderStr);
 
         VkShaderModuleCreateInfo shaderCreateInfoVert{};
         shaderCreateInfoVert.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -427,14 +412,14 @@ void VulkanRenderer2D::CreateFrameBuffer()
 
 void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
 {
-    // std::cout << "Creating vertex buffer..." << std::endl;
+    std::cout << "Creating vertex buffer..." << std::endl;
     
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = bufferLength;
     bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-    // std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
+    //std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
 }
 
 void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData)
@@ -443,71 +428,25 @@ void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
 
 uint32_t VulkanRenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
 {
-    // if (uniformIndex == 0)
-    //     return 0;
 
-    // // Get device limits
-    // wgpu::SupportedLimits deviceSupportedLimits;
-    // WebGPU::GetDevice().getLimits(&deviceSupportedLimits);
-    // wgpu::Limits deviceLimits = deviceSupportedLimits.limits;
-    
-    // /** Round 'value' up to the next multiplier of 'step' */
-    // auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
-    // {
-    //     uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
-    //     return step * divide_and_ceil;
-    // };
-
-    // // Create uniform buffer
-    // // Subtility
-    // assert(sizeOfUniform > 0);
-    // uint32_t uniformStride = ceilToNextMultiple(
-    //     (uint32_t)sizeOfUniform,
-    //     (uint32_t)deviceLimits.minUniformBufferOffsetAlignment
-    // );
-
-    // return uniformStride * uniformIndex;
 
     return 0;
 }
 
 void VulkanRenderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform)
 {
-    // assert(sizeOfUniform > 0);
-    // // Create uniform buffer
-    // // The buffer will only contain 1 float with the value of uTime
-    // wgpu::BufferDescriptor bufferDesc;
-    // const size_t maxUniformIndex = bufferLength - 1;
-    // bufferDesc.size = sizeOfUniform + GetOffset(maxUniformIndex, sizeOfUniform);
-    // // Make sure to flag the buffer as BufferUsage::Uniform
-    // bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
-    // bufferDesc.mappedAtCreation = false;
-    // m_uniformBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
-    // m_sizeOfUniform = sizeOfUniform;
+
 }
 
 void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIndex)
 {
-    // if (m_uniformBuffer)
-    // {
-    //     // WebGPU::GetQueue().writeBuffer(m_uniformBuffer, offsetof(MyUniforms, time), &bufferData.time, sizeof(MyUniforms::time));
-    //     // WebGPU::GetQueue().writeBuffer(m_uniformBuffer, offsetof(MyUniforms, color), &bufferData.color, sizeof(MyUniforms::color));
 
-    //     auto offset = GetOffset(uniformIndex, m_sizeOfUniform);
-    //     assert(m_sizeOfUniform > 0);
-    //     WebGPU::GetQueue().writeBuffer(m_uniformBuffer, offset, bufferData, m_sizeOfUniform);
-    // }
-    // else
-    // {
-    //     assert(false);
-    // }
 }
 
 VkCommandBuffer commandBufferForReal;
 VkBuffer VertBuffer;
 void VulkanRenderer2D::SimpleRender()
 {
-    std::cout << "Simple render" << std::endl;
     vkCmdBindPipeline(commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
 
     VkViewport viewport{};
@@ -701,92 +640,46 @@ void VulkanRenderer2D::BeginRenderPass()
     static bool frameBufferAttachmentsCreated = false;
     static VkFramebuffer frameBufferAttachment;
     
-    //static VkImage m_Image2;
-    if (!frameBufferAttachmentsCreated) 
+    if (!frameBufferAttachmentsCreated)
     {
-        
-        {
-            static VkDeviceMemory m_Memory;
-            VkImageCreateInfo info = {};
-            info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            info.imageType = VK_IMAGE_TYPE_2D;
-            info.format = VK_FORMAT_R8G8B8A8_UNORM;
-            info.extent.width = m_width;
-            info.extent.height = m_height;
-            info.extent.depth = 1;
-            info.mipLevels = 1;
-            info.arrayLayers = 1;
-            info.samples = VK_SAMPLE_COUNT_1_BIT;
-            info.tiling = VK_IMAGE_TILING_OPTIMAL;
-            info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-            info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_Image1);
-            Vulkan::check_vk_result(err);
-            VkMemoryRequirements req;
-            vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_Image1, &req);
-            VkMemoryAllocateInfo alloc_info = {};
-            alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            alloc_info.allocationSize = req.size;
-            alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-            err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
-            Vulkan::check_vk_result(err);
-            err = vkBindImageMemory(Vulkan::GetDevice(), m_Image1, m_Memory, 0);
-            Vulkan::check_vk_result(err);
+        static VkDeviceMemory m_Memory;
+        VkImageCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        info.imageType = VK_IMAGE_TYPE_2D;
+        info.format = VK_FORMAT_R8G8B8A8_UNORM;
+        info.extent.width = m_width;
+        info.extent.height = m_height;
+        info.extent.depth = 1;
+        info.mipLevels = 1;
+        info.arrayLayers = 1;
+        info.samples = VK_SAMPLE_COUNT_1_BIT;
+        info.tiling = VK_IMAGE_TILING_OPTIMAL;
+        info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_Image1);
+        Vulkan::check_vk_result(err);
+        VkMemoryRequirements req;
+        vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_Image1, &req);
+        VkMemoryAllocateInfo alloc_info = {};
+        alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        alloc_info.allocationSize = req.size;
+        alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
+        err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
+        Vulkan::check_vk_result(err);
+        err = vkBindImageMemory(Vulkan::GetDevice(), m_Image1, m_Memory, 0);
+        Vulkan::check_vk_result(err);
 
-            VkImageViewCreateInfo viewinfo = {};
-            viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewinfo.image = m_Image1;
-            viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewinfo.format = VK_FORMAT_R8G8B8A8_UNORM;
-            viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            viewinfo.subresourceRange.levelCount = 1;
-            viewinfo.subresourceRange.layerCount = 1;
-            err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &attachment1);
-            Vulkan::check_vk_result(err);
-        }
-
-        // VkImageView attachment2;
-        // {
-        //     static VkDeviceMemory m_Memory;
-        //     VkImageCreateInfo info = {};
-        //     info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        //     info.imageType = VK_IMAGE_TYPE_2D;
-        //     info.format = g_rdDepthFormat;
-        //     info.extent.width = m_width;
-        //     info.extent.height = m_height;
-        //     info.extent.depth = 1;
-        //     info.mipLevels = 1;
-        //     info.arrayLayers = 1;
-        //     info.samples = VK_SAMPLE_COUNT_1_BIT;
-        //     info.tiling = VK_IMAGE_TILING_OPTIMAL;
-        //     info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_ASPECT_DEPTH_BIT;
-        //     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        //     info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        //     VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_Image2);
-        //     Vulkan::check_vk_result(err);
-        //     VkMemoryRequirements req;
-        //     vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_Image2, &req);
-        //     VkMemoryAllocateInfo alloc_info = {};
-        //     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        //     alloc_info.allocationSize = req.size;
-        //     alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-        //     err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
-        //     Vulkan::check_vk_result(err);
-        //     err = vkBindImageMemory(Vulkan::GetDevice(), m_Image2, m_Memory, 0);
-        //     Vulkan::check_vk_result(err);
-
-        //     VkImageViewCreateInfo viewinfo = {};
-        //     viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        //     viewinfo.image = m_Image2;
-        //     viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        //     viewinfo.format = g_rdDepthFormat;
-        //     viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        //     viewinfo.subresourceRange.levelCount = 1;
-        //     viewinfo.subresourceRange.layerCount = 1;
-        //     err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &attachment2);
-        //     Vulkan::check_vk_result(err);
-        // }
+        VkImageViewCreateInfo viewinfo = {};
+        viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewinfo.image = m_Image1;
+        viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewinfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+        viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewinfo.subresourceRange.levelCount = 1;
+        viewinfo.subresourceRange.layerCount = 1;
+        err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &attachment1);
+        Vulkan::check_vk_result(err);
 
         VkImageView attachments1[] = { attachment1 };
         
@@ -834,35 +727,6 @@ void VulkanRenderer2D::BeginRenderPass()
     use_barrier.subresourceRange.levelCount = 1;
     use_barrier.subresourceRange.layerCount = 1;
     vkCmdPipelineBarrier(commandBufferForReal, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &use_barrier);
-    // {
-
-    //     VkImageMemoryBarrier copy_barrier = {};
-    //     copy_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    //     copy_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    //     copy_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    //     copy_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    //     copy_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    //     copy_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    //     copy_barrier.image = m_Image2;
-    //     copy_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    //     copy_barrier.subresourceRange.levelCount = 1;
-    //     copy_barrier.subresourceRange.layerCount = 1;
-    //     vkCmdPipelineBarrier(commandBufferForReal, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &copy_barrier);
-
-    //     VkImageMemoryBarrier use_barrier = {};
-    //     use_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    //     use_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    //     use_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    //     use_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    //     use_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    //     use_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    //     use_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    //     use_barrier.image = m_Image2;
-    //     use_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    //     use_barrier.subresourceRange.levelCount = 1;
-    //     use_barrier.subresourceRange.layerCount = 1;
-    //     vkCmdPipelineBarrier(commandBufferForReal, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &use_barrier);
-    // }
 
     VkRenderPassBeginInfo rpInfo{};
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -874,7 +738,6 @@ void VulkanRenderer2D::BeginRenderPass()
     rpInfo.clearValueCount = 2;
     rpInfo.pClearValues = clearValues;
 
-    
     vkCmdBeginRenderPass(commandBufferForReal, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
@@ -891,10 +754,6 @@ void VulkanRenderer2D::SubmitCommandBuffer()
 
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     submitInfo.pWaitDstStageMask = &waitStage;
-    // submitInfo.waitSemaphoreCount = 1;
-    // submitInfo.pWaitSemaphores = &g_presentSemaphore;
-    // submitInfo.signalSemaphoreCount = 1;
-    // submitInfo.pSignalSemaphores = &g_renderSemaphore;
     submitInfo.commandBufferCount = 1;
     //submitInfo.pCommandBuffers = &g_commandBuffer;
 
