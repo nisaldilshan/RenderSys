@@ -11,6 +11,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Renderer2D.cpp
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
                     src/RenderSys/Vulkan/vkb/VkBootstrap.cpp
+                    src/RenderSys/Shader.cpp
     )
     # add_library (RenderSys3D STATIC
     #                 src/RenderSys/Renderer3D.cpp

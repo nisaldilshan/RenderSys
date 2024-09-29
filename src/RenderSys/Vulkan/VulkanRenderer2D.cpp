@@ -1,7 +1,6 @@
 #include "VulkanRenderer2D.h"
 
 #include <iostream>
-#include "../Shader.h"
 
 namespace GraphicsAPI
 {
@@ -154,25 +153,13 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     // m_textureToRenderInto = texture.createView(tex_view_desc);
 }
 
-void VulkanRenderer2D::CreateShaders(const char* shaderSource)
+void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
 {
+    assert(shader.type == RenderSys::ShaderType::SPIRV);
     std::cout << "Creating shader modules..." << std::endl;
 
     {
-        const std::string vertexShaderStr = R"(
-#version 450
-
-vec2 positions[3] = vec2[](
-    vec2(0.0, -0.5),
-    vec2(0.5, 0.5),
-    vec2(-0.5, 0.5)
-);
-
-void main() {
-    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
-})";
-
-        const std::vector<uint32_t> vertexShaderCompiled = RenderSys::ShaderUtils::compile_file("shader_src", shaderc_glsl_vertex_shader, vertexShaderStr);
+        const std::vector<uint32_t> vertexShaderCompiled = RenderSys::ShaderUtils::compile_file("shader_src", shader);
 
         VkShaderModuleCreateInfo shaderCreateInfoVert{};
         shaderCreateInfoVert.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -223,9 +210,9 @@ void main() {
     }
 }
 
-void VulkanRenderer2D::CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount)
+void VulkanRenderer2D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount)
 {
-    CreateShaders(shaderSource);
+    CreateShaders(shader);
     m_vertexCount = vertexShaderCallCount;
 }
 

@@ -33,19 +33,14 @@ void Renderer2D::Init()
     m_rendererBackend->Init();
 }
 
-void Renderer2D::SetShaderFile(const char* shaderFile)
+void Renderer2D::SetShaderAsString(RenderSys::Shader& shader)
 {
-    m_rendererBackend->CreateShaders(shaderFile);
+    m_rendererBackend->CreateShaders(shader);
 }
 
-void Renderer2D::SetShaderAsString(const std::string& shaderSource)
+void Renderer2D::SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount)
 {
-    m_rendererBackend->CreateShaders(shaderSource.c_str());
-}
-
-void Renderer2D::SetStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount)
-{
-    m_rendererBackend->CreateStandaloneShader(shaderSource, vertexShaderCallCount);
+    m_rendererBackend->CreateStandaloneShader(shader, vertexShaderCallCount);
 }
 
 void Renderer2D::SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)

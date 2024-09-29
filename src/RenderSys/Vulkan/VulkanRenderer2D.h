@@ -8,7 +8,7 @@
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 
 #include "../RenderUtil.h"
-
+#include "../Shader.h"
 
 class VkPipelineLayoutCreateInfo;
 
@@ -31,8 +31,8 @@ namespace GraphicsAPI
 
         bool Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
-        void CreateShaders(const char* shaderSource);
-        void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);
+        void CreateShaders(RenderSys::Shader& shader);
+        void CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
         void CreatePipeline();
         void CreateFrameBuffer();
         void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);

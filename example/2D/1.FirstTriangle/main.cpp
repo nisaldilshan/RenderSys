@@ -2,6 +2,7 @@
 #include "Walnut/EntryPoint.h"
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
+#include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer2D.h>
 
@@ -31,26 +32,57 @@ public:
 			m_renderer->Init();
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			const char* shaderSource = R"(
-				@vertex
-				fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
-					var p = vec2f(0.0, 0.0);
-					if (in_vertex_index == 0u) {
-						p = vec2f(-0.5, -0.5);
-					} else if (in_vertex_index == 1u) {
-						p = vec2f(0.5, -0.5);
-					} else {
-						p = vec2f(0.0, 0.5);
-					}
-					return vec4f(p, 0.0, 1.0);
-				}
+			RenderSys::Shader shader;
+			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+			{
+				const char* shaderSource = R"(
+					#version 450
 
-				@fragment
-				fn fs_main() -> @location(0) vec4f {
-					return vec4f(0.0, 0.4, 1.0, 1.0);
-				}
-			)";
-			m_renderer->SetStandaloneShader(shaderSource, 3);
+					vec2 positions[3] = vec2[](
+						vec2(0.0, -0.5),
+						vec2(0.5, 0.5),
+						vec2(-0.5, 0.5)
+					);
+
+					void main() {
+						gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
+					}
+				)";
+				shader.type = RenderSys::ShaderType::SPIRV;
+				shader.shaderSrc = shaderSource;
+				shader.stage = RenderSys::ShaderStage::Vertex;
+			}
+			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+			{
+				const char* shaderSource = R"(
+					@vertex
+					fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
+						var p = vec2f(0.0, 0.0);
+						if (in_vertex_index == 0u) {
+							p = vec2f(-0.5, -0.5);
+						} else if (in_vertex_index == 1u) {
+							p = vec2f(0.5, -0.5);
+						} else {
+							p = vec2f(0.0, 0.5);
+						}
+						return vec4f(p, 0.0, 1.0);
+					}
+
+					@fragment
+					fn fs_main() -> @location(0) vec4f {
+						return vec4f(0.0, 0.4, 1.0, 1.0);
+					}
+				)";
+				shader.type = RenderSys::ShaderType::WGSL;
+				shader.shaderSrc = shaderSource;
+				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+			}
+			else
+			{
+				assert(false);
+			}
+			
+			m_renderer->SetStandaloneShader(shader, 3);
 			m_renderer->CreatePipeline();
         }
 

@@ -8,6 +8,7 @@
 
 
 #include "RenderUtil.h"
+#include "Shader.h"
 
 namespace GraphicsAPI
 {
@@ -21,6 +22,7 @@ typedef VulkanRenderer2D RendererType;
 class WebGPURenderer2D;
 typedef WebGPURenderer2D RendererType;
 #else
+static_assert(false);
 #endif
 }
 
@@ -39,9 +41,8 @@ public:
 
     void Init();
     void OnResize(uint32_t width, uint32_t height);
-    void SetShaderFile(const char* shaderFile);
-    void SetShaderAsString(const std::string& shaderSource);
-    void SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount);
+    void SetShaderAsString(RenderSys::Shader& shader);
+    void SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
     void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
     void CreatePipeline();
