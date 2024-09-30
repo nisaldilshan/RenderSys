@@ -31,6 +31,7 @@ namespace GraphicsAPI
 
         bool Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
+        void CreateTextureSampler();
         void CreateShaders(RenderSys::Shader& shader);
         void CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
         void CreatePipeline();
@@ -52,7 +53,10 @@ namespace GraphicsAPI
         void SubmitCommandBuffer();
         uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
-        bool m_inited = false;
+        VkImage m_ImageToRenderInto;
+        VkImageView m_imageViewToRenderInto;
+        VkSampler m_textureSampler;
+        VkDescriptorSet m_DescriptorSet;
         VkShaderModule m_shaderModuleVertex = 0;
         VkShaderModule m_shaderModuleFragment = 0;
         uint32_t m_vertexCount = 0;

@@ -117,7 +117,6 @@ bool VulkanRenderer2D::Init()
 
     CreateBindGroup();
 
-    m_inited = true;
     return true;
 }
 
@@ -125,32 +124,48 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
 {
     m_width = width;
     m_height = height;
-    // wgpu::TextureDescriptor tex_desc = {};
-    // tex_desc.label = "Renderer Final Texture";
-    // tex_desc.dimension = WGPUTextureDimension_2D;
-    // tex_desc.size.width = m_width;
-    // tex_desc.size.height = m_height;
-    // tex_desc.size.depthOrArrayLayers = 1;
-    // tex_desc.sampleCount = 1;
-    // tex_desc.format = WGPUTextureFormat_BGRA8Unorm;
-    // tex_desc.mipLevelCount = 1;
-    // tex_desc.usage = WGPUTextureUsage_CopyDst | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment;
-    // //##
-    // tex_desc.viewFormatCount = 1;
-    // wgpu::TextureFormat tf = WebGPU::GetSwapChainFormat();
-	// tex_desc.viewFormats = (WGPUTextureFormat *)const_cast<wgpu::TextureFormat *>(&tf);
-    // //##
-    // wgpu::Texture texture = WebGPU::GetDevice().createTexture(tex_desc);
 
-    // wgpu::TextureViewDescriptor tex_view_desc = {};
-    // tex_view_desc.format = WGPUTextureFormat_BGRA8Unorm;
-    // tex_view_desc.dimension = WGPUTextureViewDimension_2D;
-    // tex_view_desc.baseMipLevel = 0;
-    // tex_view_desc.mipLevelCount = 1;
-    // tex_view_desc.baseArrayLayer = 0;
-    // tex_view_desc.arrayLayerCount = 1;
-    // tex_view_desc.aspect = WGPUTextureAspect_All;
-    // m_textureToRenderInto = texture.createView(tex_view_desc);
+    static VkDeviceMemory m_Memory;
+    VkImageCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    info.imageType = VK_IMAGE_TYPE_2D;
+    info.format = VK_FORMAT_R8G8B8A8_UNORM;
+    info.extent.width = m_width;
+    info.extent.height = m_height;
+    info.extent.depth = 1;
+    info.mipLevels = 1;
+    info.arrayLayers = 1;
+    info.samples = VK_SAMPLE_COUNT_1_BIT;
+    info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_ImageToRenderInto);
+    Vulkan::check_vk_result(err);
+    VkMemoryRequirements req;
+    vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_ImageToRenderInto, &req);
+    VkMemoryAllocateInfo alloc_info = {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc_info.allocationSize = req.size;
+    alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
+    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
+    Vulkan::check_vk_result(err);
+    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
+    Vulkan::check_vk_result(err);
+
+    VkImageViewCreateInfo viewinfo = {};
+    viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewinfo.image = m_ImageToRenderInto;
+    viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewinfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+    viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewinfo.subresourceRange.levelCount = 1;
+    viewinfo.subresourceRange.layerCount = 1;
+    err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &m_imageViewToRenderInto);
+    Vulkan::check_vk_result(err);
+
+    CreateTextureSampler();
+    m_DescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
 }
 
 void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
@@ -569,8 +584,7 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     // m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
 }
 
-VkSampler g_TextureSampler = VK_NULL_HANDLE;
-void CreateSampler()
+void VulkanRenderer2D::CreateTextureSampler()
 {
     VkSamplerCreateInfo texSamplerInfo{};
     texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -590,28 +604,14 @@ void CreateSampler()
     texSamplerInfo.anisotropyEnable = VK_FALSE;
     texSamplerInfo.maxAnisotropy = 1.0f;
 
-    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &g_TextureSampler) != VK_SUCCESS) {
+    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_textureSampler) != VK_SUCCESS) {
         std::cout << "error: could not create sampler for texture" << std::endl;
     }
 }
 
-VkImage m_Image1;
-VkImageView attachment1;
 ImTextureID VulkanRenderer2D::GetDescriptorSet()
 {
-    if (!m_inited)
-        return ImTextureID{};
-    static bool samplerCreated = false;
-    if (!samplerCreated && Vulkan::GetDevice() != VK_NULL_HANDLE) 
-    {
-        CreateSampler();
-        samplerCreated = true;
-    }
-    static auto finalDescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(g_TextureSampler, attachment1, VK_IMAGE_LAYOUT_GENERAL);
-    if (samplerCreated)
-        return finalDescriptorSet;
-    else
-        return ImTextureID{};
+    return m_DescriptorSet;
 }
 
 void VulkanRenderer2D::BeginRenderPass()
@@ -629,46 +629,8 @@ void VulkanRenderer2D::BeginRenderPass()
     
     if (!frameBufferAttachmentsCreated)
     {
-        static VkDeviceMemory m_Memory;
-        VkImageCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        info.imageType = VK_IMAGE_TYPE_2D;
-        info.format = VK_FORMAT_R8G8B8A8_UNORM;
-        info.extent.width = m_width;
-        info.extent.height = m_height;
-        info.extent.depth = 1;
-        info.mipLevels = 1;
-        info.arrayLayers = 1;
-        info.samples = VK_SAMPLE_COUNT_1_BIT;
-        info.tiling = VK_IMAGE_TILING_OPTIMAL;
-        info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_Image1);
-        Vulkan::check_vk_result(err);
-        VkMemoryRequirements req;
-        vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_Image1, &req);
-        VkMemoryAllocateInfo alloc_info = {};
-        alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        alloc_info.allocationSize = req.size;
-        alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-        err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
-        Vulkan::check_vk_result(err);
-        err = vkBindImageMemory(Vulkan::GetDevice(), m_Image1, m_Memory, 0);
-        Vulkan::check_vk_result(err);
 
-        VkImageViewCreateInfo viewinfo = {};
-        viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewinfo.image = m_Image1;
-        viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewinfo.format = VK_FORMAT_R8G8B8A8_UNORM;
-        viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        viewinfo.subresourceRange.levelCount = 1;
-        viewinfo.subresourceRange.layerCount = 1;
-        err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &attachment1);
-        Vulkan::check_vk_result(err);
-
-        VkImageView attachments1[] = { attachment1 };
+        VkImageView attachments1[] = { m_imageViewToRenderInto };
         
         VkFramebufferCreateInfo FboInfo{};
         FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -687,33 +649,6 @@ void VulkanRenderer2D::BeginRenderPass()
     }
 
     commandBufferForReal = GraphicsAPI::Vulkan::GetCommandBuffer(true);
-
-    VkImageMemoryBarrier copy_barrier = {};
-    copy_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    copy_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    copy_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    copy_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    copy_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    copy_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    copy_barrier.image = m_Image1;
-    copy_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copy_barrier.subresourceRange.levelCount = 1;
-    copy_barrier.subresourceRange.layerCount = 1;
-    vkCmdPipelineBarrier(commandBufferForReal, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &copy_barrier);
-
-    VkImageMemoryBarrier use_barrier = {};
-    use_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    use_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    use_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    use_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    use_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    use_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    use_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    use_barrier.image = m_Image1;
-    use_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    use_barrier.subresourceRange.levelCount = 1;
-    use_barrier.subresourceRange.layerCount = 1;
-    vkCmdPipelineBarrier(commandBufferForReal, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &use_barrier);
 
     VkRenderPassBeginInfo rpInfo{};
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
