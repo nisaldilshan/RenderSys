@@ -31,11 +31,11 @@ public:
         {
 			m_renderer->Init();
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			RenderSys::Shader shader;
+			
 			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 			{
-				const char* shaderSource = R"(
+				RenderSys::Shader vertexShader;
+				const char* vertexShaderSource = R"(
 					#version 450
 
 					vec2 positions[3] = vec2[](
@@ -48,12 +48,31 @@ public:
 						gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
 					}
 				)";
-				shader.type = RenderSys::ShaderType::SPIRV;
-				shader.shaderSrc = shaderSource;
-				shader.stage = RenderSys::ShaderStage::Vertex;
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.shaderSrc = vertexShaderSource;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				m_renderer->SetStandaloneShader(vertexShader, 3);
+
+				RenderSys::Shader fragmentShader;
+				const char* fragmentShaderSource = R"(
+					#version 450
+
+					layout(location = 0) out vec4 FragColor;
+					layout(location = 0) in vec2 texCoord;
+
+					void main()
+					{
+						FragColor = vec4(1.0, 0.4000000059604644775390625, 0.0, 1.0);
+					}
+				)";
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.shaderSrc = fragmentShaderSource;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				m_renderer->SetStandaloneShader(fragmentShader, 3);
 			}
 			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 			{
+				RenderSys::Shader shader;
 				const char* shaderSource = R"(
 					@vertex
 					fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
@@ -76,13 +95,13 @@ public:
 				shader.type = RenderSys::ShaderType::WGSL;
 				shader.shaderSrc = shaderSource;
 				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+				m_renderer->SetStandaloneShader(shader, 3);
 			}
 			else
 			{
 				assert(false);
 			}
 			
-			m_renderer->SetStandaloneShader(shader, 3);
 			m_renderer->CreatePipeline();
         }
 

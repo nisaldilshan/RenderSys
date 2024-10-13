@@ -50,6 +50,7 @@ namespace GraphicsAPI
         void EndRenderPass();
         
     private:
+        void DestroyShaders();
         void SubmitCommandBuffer();
         uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
@@ -57,9 +58,7 @@ namespace GraphicsAPI
         VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
         VkSampler m_textureSampler;
         VkDescriptorSet m_DescriptorSet;
-        VkShaderModule m_shaderModuleVertex = 0;
-        VkShaderModule m_shaderModuleFragment = 0;
-        std::vector<VkPipelineShaderStageCreateInfo> m_shaderStagesInfo;
+        std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
         VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
         VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
         uint32_t m_vertexCount = 0;

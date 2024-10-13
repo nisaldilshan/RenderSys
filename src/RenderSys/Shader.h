@@ -21,6 +21,7 @@ struct Shader
     ShaderStage stage;
     std::string shaderSrc;
     std::vector<uint32_t> compiledShader;
+    std::string name;
 };
 
 

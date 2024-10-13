@@ -97,6 +97,10 @@
         "xloctime": "cpp",
         "xmemory": "cpp",
         "xtr1common": "cpp",
-        "xtree": "cpp"
+        "xtree": "cpp",
+        "coroutine": "cpp",
+        "resumable": "cpp",
+        "ranges": "cpp",
+        "stack": "cpp"
     }
 }

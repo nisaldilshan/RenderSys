@@ -1,5 +1,6 @@
 #include "Shader.h"
 
+#include <assert.h>
 #include <shaderc/shaderc.hpp>
 
 namespace RenderSys
@@ -14,7 +15,19 @@ std::vector<uint32_t> compile_file(const std::string &name,
                                     Shader& shader,
                                     bool optimize)
 {
-    shaderc_shader_kind kind = shaderc_glsl_vertex_shader;
+    shaderc_shader_kind kind;
+    if (shader.stage == RenderSys::ShaderStage::Vertex)
+    {
+        kind = shaderc_glsl_vertex_shader;
+    }
+    else if (shader.stage == RenderSys::ShaderStage::Fragment)
+    {
+        kind = shaderc_glsl_fragment_shader;
+    }
+    else
+    {
+        assert(false);
+    }
     const std::string &source = shader.shaderSrc;
     shaderc::Compiler compiler;
     shaderc::CompileOptions options;
