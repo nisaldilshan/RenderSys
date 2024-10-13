@@ -59,6 +59,7 @@ namespace GraphicsAPI
         VkSampler m_textureSampler;
         VkDescriptorSet m_DescriptorSet;
         std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
+        std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
         VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
         VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
         uint32_t m_vertexCount = 0;

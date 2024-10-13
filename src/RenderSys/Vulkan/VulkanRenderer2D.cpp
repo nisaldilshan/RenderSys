@@ -179,97 +179,58 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
 void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
 {
     assert(shader.type == RenderSys::ShaderType::SPIRV);
-    std::cout << "Creating shader module : " << shader.name << std::endl;
-
+    std::cout << "Creating shader module : " << shader.GetName() << std::endl;
+    std::vector<uint32_t> compiledShader;
+    auto shaderMapIter = m_shaderMap.find(shader.GetName());
+    if (shaderMapIter == m_shaderMap.end())
     {
-        const std::vector<uint32_t> vertexShaderCompiled = RenderSys::ShaderUtils::compile_file("shader_src", shader);
-        assert(vertexShaderCompiled.size() > 0);
-
-        VkShaderModuleCreateInfo shaderCreateInfoVert{};
-        shaderCreateInfoVert.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        shaderCreateInfoVert.codeSize = sizeof(uint32_t) * vertexShaderCompiled.size();
-        shaderCreateInfoVert.pCode = vertexShaderCompiled.data();
-
-        VkShaderModule shaderModuleVertex = 0;
-        if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfoVert, nullptr, &shaderModuleVertex) != VK_SUCCESS) {
-            std::cout << "could not load vertex shader" << std::endl;
-            return;
-        }
-
-        if (shaderModuleVertex == VK_NULL_HANDLE) {
-            std::cout << "error: could not load shaders" << std::endl;
-            return;
-        }
-
-        std::cout << "Created Shader module: " << shaderModuleVertex << std::endl;
-
-        VkShaderStageFlagBits shaderStageBits;
-        if (shader.stage == RenderSys::ShaderStage::Vertex)
-        {
-            shaderStageBits = VK_SHADER_STAGE_VERTEX_BIT;
-        }
-        else if (shader.stage == RenderSys::ShaderStage::Fragment)
-        {
-            shaderStageBits = VK_SHADER_STAGE_FRAGMENT_BIT;
-        }
-        else
-        {
-            assert(false);
-        }
-        VkPipelineShaderStageCreateInfo vertexStageInfo{};
-        vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertexStageInfo.stage = shaderStageBits;
-        vertexStageInfo.module = shaderModuleVertex;
-        vertexStageInfo.pName = "main";
-
-        m_shaderStageInfos.push_back(vertexStageInfo);
+        compiledShader = RenderSys::ShaderUtils::compile_file(shader.GetName(), shader);
+        assert(compiledShader.size() > 0);
+        m_shaderMap.emplace(shader.GetName(), compiledShader);
+    }
+    else
+    {
+        compiledShader = shaderMapIter->second;
     }
 
-    // {
-    //     const char* shaderSource = R"(
-    //         #version 450
+    VkShaderModuleCreateInfo shaderCreateInfo{};
+    shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shaderCreateInfo.codeSize = sizeof(uint32_t) * compiledShader.size();
+    shaderCreateInfo.pCode = compiledShader.data();
 
-    //         layout(location = 0) out vec4 FragColor;
-    //         layout(location = 0) in vec2 texCoord;
+    VkShaderModule shaderModule = 0;
+    if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+        std::cout << "could not load vertex shader" << std::endl;
+        return;
+    }
 
-    //         void main()
-    //         {
-    //             FragColor = vec4(1.0, 0.4000000059604644775390625, 0.0, 1.0);
-    //         }
-    //     )";
-    //     RenderSys::Shader fsShader;
-    //     fsShader.type = RenderSys::ShaderType::SPIRV;
-    //     fsShader.shaderSrc = shaderSource;
-    //     fsShader.stage = RenderSys::ShaderStage::Fragment;
-    //     const std::vector<uint32_t> fragmentShaderCompiled = RenderSys::ShaderUtils::compile_file("shader_src", fsShader);
-    //     assert(fragmentShaderCompiled.size() > 0);
+    if (shaderModule == VK_NULL_HANDLE) {
+        std::cout << "error: could not load shaders" << std::endl;
+        return;
+    }
 
-    //     VkShaderModuleCreateInfo shaderCreateInfoFrag{};
-    //     shaderCreateInfoFrag.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    //     shaderCreateInfoFrag.codeSize = sizeof(uint32_t) * fragmentShaderCompiled.size();
-    //     shaderCreateInfoFrag.pCode = fragmentShaderCompiled.data();
+    std::cout << "Created Shader module: " << shaderModule << std::endl;
 
-    //     VkShaderModule shaderModuleFragment = 0;
-    //     if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfoFrag, nullptr, &shaderModuleFragment) != VK_SUCCESS) {
-    //         std::cout << "could not load fragment shader" << std::endl;
-    //         return;
-    //     }
+    VkShaderStageFlagBits shaderStageBits;
+    if (shader.stage == RenderSys::ShaderStage::Vertex)
+    {
+        shaderStageBits = VK_SHADER_STAGE_VERTEX_BIT;
+    }
+    else if (shader.stage == RenderSys::ShaderStage::Fragment)
+    {
+        shaderStageBits = VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    else
+    {
+        assert(false);
+    }
+    VkPipelineShaderStageCreateInfo vertexStageInfo{};
+    vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertexStageInfo.stage = shaderStageBits;
+    vertexStageInfo.module = shaderModule;
+    vertexStageInfo.pName = "main";
 
-    //     if (shaderModuleFragment == VK_NULL_HANDLE) {
-    //         std::cout << "error: could not load shaders" << std::endl;
-    //         return;
-    //     }
-
-    //     std::cout << "Fragment Shader module: " << shaderModuleFragment << std::endl;
-
-    //     VkPipelineShaderStageCreateInfo fragmentStageInfo{};
-    //     fragmentStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    //     fragmentStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    //     fragmentStageInfo.module = shaderModuleFragment;
-    //     fragmentStageInfo.pName = "main";
-
-    //     m_shaderStageInfos.push_back(fragmentStageInfo);
-    // }
+    m_shaderStageInfos.push_back(vertexStageInfo);
 }
 
 void VulkanRenderer2D::DestroyShaders()

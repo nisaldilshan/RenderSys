@@ -15,13 +15,23 @@ enum class ShaderType
     WGSL
 };
 
-struct Shader
+class Shader
 {
+public:
+    Shader() = delete;
+    Shader(const std::string& name)
+        : m_name(name)
+    {}
+    ~Shader() = default;
+
+    std::string GetName() const { return m_name; }
+
     ShaderType type;
     ShaderStage stage;
     std::string shaderSrc;
     std::vector<uint32_t> compiledShader;
-    std::string name;
+private:
+    const std::string m_name;
 };
 
 

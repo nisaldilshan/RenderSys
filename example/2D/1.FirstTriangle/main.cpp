@@ -34,7 +34,7 @@ public:
 			
 			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 			{
-				RenderSys::Shader vertexShader;
+				RenderSys::Shader vertexShader("Vertext");
 				const char* vertexShaderSource = R"(
 					#version 450
 
@@ -53,7 +53,7 @@ public:
 				vertexShader.stage = RenderSys::ShaderStage::Vertex;
 				m_renderer->SetStandaloneShader(vertexShader, 3);
 
-				RenderSys::Shader fragmentShader;
+				RenderSys::Shader fragmentShader("Fragment");
 				const char* fragmentShaderSource = R"(
 					#version 450
 
@@ -72,7 +72,7 @@ public:
 			}
 			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 			{
-				RenderSys::Shader shader;
+				RenderSys::Shader shader("Combined");
 				const char* shaderSource = R"(
 					@vertex
 					fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
