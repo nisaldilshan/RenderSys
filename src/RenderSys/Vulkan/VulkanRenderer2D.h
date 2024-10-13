@@ -53,12 +53,14 @@ namespace GraphicsAPI
         void SubmitCommandBuffer();
         uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
-        VkImage m_ImageToRenderInto;
-        VkImageView m_imageViewToRenderInto;
+        VkImage m_ImageToRenderInto = VK_NULL_HANDLE;
+        VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
         VkSampler m_textureSampler;
         VkDescriptorSet m_DescriptorSet;
         VkShaderModule m_shaderModuleVertex = 0;
         VkShaderModule m_shaderModuleFragment = 0;
+        VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+        VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
         uint32_t m_vertexCount = 0;
         uint64_t m_vertexBufferSize = 0;
         std::unique_ptr<VkPipelineLayoutCreateInfo> m_bindGroupLayout;

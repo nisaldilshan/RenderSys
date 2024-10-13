@@ -10,84 +10,89 @@ VkSemaphore g_renderSemaphore = VK_NULL_HANDLE;
 VkFence g_renderFence = VK_NULL_HANDLE;
 constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
 VkRenderPass g_renderpass = VK_NULL_HANDLE;
-VkPipelineLayout g_pipelineLayout = VK_NULL_HANDLE;
 VkPipeline g_pipeline = VK_NULL_HANDLE;
 
-bool createRenderPass() 
+bool createRenderPass()
 {
-  VkAttachmentDescription colorAtt{};
-  colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
-  colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
-  colorAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  colorAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAtt.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+    if (g_renderpass)
+        return true;
 
-  VkAttachmentReference colorAttRef{};
-  colorAttRef.attachment = 0;
-  colorAttRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkAttachmentDescription colorAtt{};
+    colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
+    colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAtt.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-  VkAttachmentDescription depthAtt{};
-  depthAtt.flags = 0;
-  depthAtt.format = g_rdDepthFormat;
-  depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
-  depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  depthAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  depthAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  depthAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  depthAtt.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference colorAttRef{};
+    colorAttRef.attachment = 0;
+    colorAttRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-  VkAttachmentReference depthAttRef{};
-  depthAttRef.attachment = 1;
-  depthAttRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkAttachmentDescription depthAtt{};
+    depthAtt.flags = 0;
+    depthAtt.format = g_rdDepthFormat;
+    depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    depthAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAtt.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-  VkSubpassDescription subpassDesc{};
-  subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpassDesc.colorAttachmentCount = 1;
-  subpassDesc.pColorAttachments = &colorAttRef;
-  //subpassDesc.pDepthStencilAttachment = &depthAttRef;
+    VkAttachmentReference depthAttRef{};
+    depthAttRef.attachment = 1;
+    depthAttRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-  VkSubpassDependency subpassDep{};
-  subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-  subpassDep.dstSubpass = 0;
-  subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  subpassDep.srcAccessMask = 0;
-  subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    VkSubpassDescription subpassDesc{};
+    subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassDesc.colorAttachmentCount = 1;
+    subpassDesc.pColorAttachments = &colorAttRef;
+    // subpassDesc.pDepthStencilAttachment = &depthAttRef;
 
-  VkSubpassDependency depthDep{};
-  depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-  depthDep.dstSubpass = 0;
-  depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-  depthDep.srcAccessMask = 0;
-  depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-  depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    VkSubpassDependency subpassDep{};
+    subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpassDep.dstSubpass = 0;
+    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.srcAccessMask = 0;
+    subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-  VkSubpassDependency dependencies[] = { subpassDep, depthDep };
-  VkAttachmentDescription attachments[] = { colorAtt };
+    VkSubpassDependency depthDep{};
+    depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    depthDep.dstSubpass = 0;
+    depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    depthDep.srcAccessMask = 0;
+    depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-  VkRenderPassCreateInfo renderPassInfo{};
-  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderPassInfo.attachmentCount = 1;
-  renderPassInfo.pAttachments = attachments;
-  renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpassDesc;
-//   renderPassInfo.dependencyCount = 2;
-//   renderPassInfo.pDependencies = dependencies;
+    VkSubpassDependency dependencies[] = {subpassDep, depthDep};
+    VkAttachmentDescription attachments[] = {colorAtt};
 
-  if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &g_renderpass) != VK_SUCCESS) {
-    std::cout<< "error; could not create renderpass" << std::endl;
-    return false;
-  }
+    VkRenderPassCreateInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = attachments;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpassDesc;
+    //   renderPassInfo.dependencyCount = 2;
+    //   renderPassInfo.pDependencies = dependencies;
 
-  return true;
+    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &g_renderpass) != VK_SUCCESS)
+    {
+        std::cout << "error; could not create renderpass" << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 bool createSyncObjects()
 {
+    if (g_presentSemaphore && g_renderSemaphore)
+        return true;
     VkFenceCreateInfo fenceInfo{};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -166,6 +171,9 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
 
     CreateTextureSampler();
     m_DescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+
+
+    CreateFrameBuffer();
 }
 
 void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
@@ -238,23 +246,31 @@ void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry b
 
 void VulkanRenderer2D::CreateBindGroup()
 {
-    // Create a bind group layout
-    m_bindGroupLayout = std::make_unique<VkPipelineLayoutCreateInfo>();
-    m_bindGroupLayout->sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    m_bindGroupLayout->setLayoutCount = 0; // was 1
-    //m_bindGroupLayout->pSetLayouts = &renderData.rdTextureLayout;
-    m_bindGroupLayout->pushConstantRangeCount = 0;
-
-    if (m_bindGroupLayout)
+    if (!m_bindGroupLayout)
     {
-        if (vkCreatePipelineLayout(Vulkan::GetDevice(), m_bindGroupLayout.get(), nullptr, &g_pipelineLayout) != VK_SUCCESS) {
-            std::cout << "error: could not create pipeline layout" << std::endl;
+        // Create a bind group layout
+        m_bindGroupLayout = std::make_unique<VkPipelineLayoutCreateInfo>();
+        m_bindGroupLayout->sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        m_bindGroupLayout->setLayoutCount = 0; // was 1
+        //m_bindGroupLayout->pSetLayouts = &renderData.rdTextureLayout;
+        m_bindGroupLayout->pushConstantRangeCount = 0;
+    }
+
+    if (!m_pipelineLayout)
+    {
+        if (m_bindGroupLayout)
+        {
+            if (vkCreatePipelineLayout(Vulkan::GetDevice(), m_bindGroupLayout.get(), nullptr, &m_pipelineLayout) != VK_SUCCESS) {
+                std::cout << "error: could not create pipeline layout" << std::endl;
+            }
+            assert(m_pipelineLayout);
+        }
+        else
+        {
+            std::cout << "No bind group layout" << std::endl;
         }
     }
-    else
-    {
-        std::cout << "No bind group layout" << std::endl;
-    }
+
 }
 
 void VulkanRenderer2D::CreatePipeline()
@@ -391,14 +407,14 @@ void VulkanRenderer2D::CreatePipeline()
     pipelineCreateInfo.pColorBlendState = &colorBlendingInfo;
     pipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
     pipelineCreateInfo.pDynamicState = &dynStatesInfo;
-    pipelineCreateInfo.layout = g_pipelineLayout;
+    pipelineCreateInfo.layout = m_pipelineLayout;
     pipelineCreateInfo.renderPass = g_renderpass;
     pipelineCreateInfo.subpass = 0;
     pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
     if (vkCreateGraphicsPipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &g_pipeline) != VK_SUCCESS) {
         std::cout << "error: could not create rendering pipeline" << std::endl;
-        vkDestroyPipelineLayout(Vulkan::GetDevice(), g_pipelineLayout, nullptr);
+        vkDestroyPipelineLayout(Vulkan::GetDevice(), m_pipelineLayout, nullptr);
     }
 
     /* it is save to destroy the shader modules after pipeline has been created */
@@ -410,6 +426,25 @@ void VulkanRenderer2D::CreatePipeline()
 
 void VulkanRenderer2D::CreateFrameBuffer()
 {
+    if (m_frameBuffer)
+    {
+        vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
+    }
+
+    VkImageView attachments1[] = { m_imageViewToRenderInto };
+    VkFramebufferCreateInfo FboInfo{};
+    FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    FboInfo.renderPass = g_renderpass;
+    FboInfo.attachmentCount = 1;
+    FboInfo.pAttachments = attachments1;
+    FboInfo.width = m_width;
+    FboInfo.height = m_height;
+    FboInfo.layers = 1;
+
+    if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &m_frameBuffer) != VK_SUCCESS) {
+        std::cout << "error: failed to create framebuffer" << std::endl;
+        return ;
+    }
 }
 
 void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
@@ -624,39 +659,16 @@ void VulkanRenderer2D::BeginRenderPass()
 
     VkClearValue clearValues[] = { colorClearValue, depthValue };
 
-    static bool frameBufferAttachmentsCreated = false;
-    static VkFramebuffer frameBufferAttachment;
-    
-    if (!frameBufferAttachmentsCreated)
-    {
-
-        VkImageView attachments1[] = { m_imageViewToRenderInto };
-        
-        VkFramebufferCreateInfo FboInfo{};
-        FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        FboInfo.renderPass = g_renderpass;
-        FboInfo.attachmentCount = 1;
-        FboInfo.pAttachments = attachments1;
-        FboInfo.width = m_width;
-        FboInfo.height = m_height;
-        FboInfo.layers = 1;
-
-        if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &frameBufferAttachment) != VK_SUCCESS) {
-            std::cout << "error: failed to create framebuffer" << std::endl;
-            return ;
-        }
-        frameBufferAttachmentsCreated = true;
-    }
-
     commandBufferForReal = GraphicsAPI::Vulkan::GetCommandBuffer(true);
 
+    assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rpInfo.renderPass = g_renderpass;
     rpInfo.renderArea.offset.x = 0;
     rpInfo.renderArea.offset.y = 0;
     rpInfo.renderArea.extent = { m_width, m_height };
-    rpInfo.framebuffer = frameBufferAttachment;
+    rpInfo.framebuffer = m_frameBuffer;
     rpInfo.clearValueCount = 2;
     rpInfo.pClearValues = clearValues;
 
