@@ -230,6 +230,25 @@ void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
         }
 
         std::cout << "Fragment Shader module: " << m_shaderModuleFragment << std::endl;
+
+        if (m_shaderModuleVertex == VK_NULL_HANDLE || m_shaderModuleFragment == VK_NULL_HANDLE) {
+            std::cout << "error: could not load shaders" << std::endl;
+            return;
+        }
+
+        VkPipelineShaderStageCreateInfo vertexStageInfo{};
+        vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vertexStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vertexStageInfo.module = m_shaderModuleVertex;
+        vertexStageInfo.pName = "main";
+
+        VkPipelineShaderStageCreateInfo fragmentStageInfo{};
+        fragmentStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        fragmentStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fragmentStageInfo.module = m_shaderModuleFragment;
+        fragmentStageInfo.pName = "main";
+
+        m_shaderStagesInfo = { vertexStageInfo, fragmentStageInfo };
     }
 }
 
@@ -277,24 +296,7 @@ void VulkanRenderer2D::CreatePipeline()
 {
     std::cout << "Creating render pipeline..." << std::endl;
 
-    if (m_shaderModuleVertex == VK_NULL_HANDLE || m_shaderModuleFragment == VK_NULL_HANDLE) {
-        std::cout << "error: could not load shaders" << std::endl;
-        return;
-    }
-
-    VkPipelineShaderStageCreateInfo vertexStageInfo{};
-    vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertexStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertexStageInfo.module = m_shaderModuleVertex;
-    vertexStageInfo.pName = "main";
-
-    VkPipelineShaderStageCreateInfo fragmentStageInfo{};
-    fragmentStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragmentStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragmentStageInfo.module = m_shaderModuleFragment;
-    fragmentStageInfo.pName = "main";
-
-    VkPipelineShaderStageCreateInfo shaderStagesInfo[] = { vertexStageInfo, fragmentStageInfo };
+    
 
     /* assemble the graphics pipeline itself */
     VkVertexInputBindingDescription mainBinding{};
@@ -395,10 +397,11 @@ void VulkanRenderer2D::CreatePipeline()
     dynStatesInfo.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
     dynStatesInfo.pDynamicStates = dynStates.data();
 
+    assert(m_shaderStagesInfo.size() > 0);
     VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stageCount = 2;
-    pipelineCreateInfo.pStages = shaderStagesInfo;
+    pipelineCreateInfo.stageCount = m_shaderStagesInfo.size();
+    pipelineCreateInfo.pStages = m_shaderStagesInfo.data();
     pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
     pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
     pipelineCreateInfo.pViewportState = &viewportStateInfo;

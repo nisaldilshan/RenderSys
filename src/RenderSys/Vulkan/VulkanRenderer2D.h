@@ -59,6 +59,7 @@ namespace GraphicsAPI
         VkDescriptorSet m_DescriptorSet;
         VkShaderModule m_shaderModuleVertex = 0;
         VkShaderModule m_shaderModuleFragment = 0;
+        std::vector<VkPipelineShaderStageCreateInfo> m_shaderStagesInfo;
         VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
         VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
         uint32_t m_vertexCount = 0;
