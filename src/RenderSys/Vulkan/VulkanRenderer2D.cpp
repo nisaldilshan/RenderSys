@@ -287,34 +287,13 @@ void VulkanRenderer2D::CreatePipeline()
 {
     std::cout << "Creating render pipeline..." << std::endl;
 
-    
-
     /* assemble the graphics pipeline itself */
-    VkVertexInputBindingDescription mainBinding{};
-    mainBinding.binding = 0;
-    mainBinding.stride = sizeof(RenderSysVkVertex);
-    mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-    VkVertexInputAttributeDescription positionAttribute{};
-    positionAttribute.binding = 0;
-    positionAttribute.location = 0;
-    positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    positionAttribute.offset = offsetof(RenderSysVkVertex, position);
-
-    VkVertexInputAttributeDescription uvAttribute{};
-    uvAttribute.binding = 0;
-    uvAttribute.location = 1;
-    uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
-    uvAttribute.offset = offsetof(RenderSysVkVertex, uv);
-
-    VkVertexInputAttributeDescription attributes[] = { positionAttribute, uvAttribute };
-
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.pVertexBindingDescriptions = &mainBinding;
-    vertexInputInfo.vertexAttributeDescriptionCount = 2;
-    vertexInputInfo.pVertexAttributeDescriptions = attributes;
+    vertexInputInfo.vertexBindingDescriptionCount = m_vertextBindingDescs.size();
+    vertexInputInfo.pVertexBindingDescriptions = m_vertextBindingDescs.data();
+    vertexInputInfo.vertexAttributeDescriptionCount = m_vertextAttribDescs.size();
+    vertexInputInfo.pVertexAttributeDescriptions = m_vertextAttribDescs.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
     inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -443,56 +422,26 @@ void VulkanRenderer2D::CreateFrameBuffer()
 void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
 {
     std::cout << "Creating vertex buffer..." << std::endl;
+
+    VkVertexInputBindingDescription mainBinding{};
+    mainBinding.binding = 0;
+    mainBinding.stride = sizeof(RenderSysVkVertex);
+    mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    VkVertexInputAttributeDescription positionAttribute{};
+    positionAttribute.binding = 0;
+    positionAttribute.location = 0;
+    positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+    positionAttribute.offset = offsetof(RenderSysVkVertex, position);
+
+    VkVertexInputAttributeDescription uvAttribute{};
+    uvAttribute.binding = 0;
+    uvAttribute.location = 1;
+    uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+    uvAttribute.offset = offsetof(RenderSysVkVertex, uv);
+
+    VkVertexInputAttributeDescription attributes[] = { positionAttribute, uvAttribute };
     
-    VkBufferCreateInfo bufferInfo{};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = bufferLength;
-    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-
-    //std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
-}
-
-void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData)
-{
-}
-
-uint32_t VulkanRenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
-{
-
-
-    return 0;
-}
-
-void VulkanRenderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform)
-{
-
-}
-
-void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIndex)
-{
-
-}
-
-VkCommandBuffer commandBufferForReal;
-VkBuffer VertBuffer;
-void VulkanRenderer2D::SimpleRender()
-{
-    vkCmdBindPipeline(commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
-
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(m_width);
-    viewport.height = static_cast<float>(m_height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(commandBufferForReal, 0, 1, &viewport);
-
-    VkRect2D scissor{};
-    scissor.offset = { 0, 0 };
-    scissor.extent = { m_width, m_height };
-    vkCmdSetScissor(commandBufferForReal, 0, 1, &scissor);
-
     VkDeviceMemory VertMemory;
     static bool vertBufCreated = false;
     if (!vertBufCreated)
@@ -502,14 +451,14 @@ void VulkanRenderer2D::SimpleRender()
 		buf_info.size = 3 * sizeof(float);
 		buf_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-        auto res = vkCreateBuffer(Vulkan::GetDevice(), &buf_info, NULL, &VertBuffer);
+        auto res = vkCreateBuffer(Vulkan::GetDevice(), &buf_info, NULL, &m_vertexBuffer);
 		if (res != VK_SUCCESS) {
 			fprintf(stderr, "vkCreateBuffer() failed (%d)\n", res);
 			return;
 		}
 
         VkMemoryRequirements mem_reqs;
-		vkGetBufferMemoryRequirements(Vulkan::GetDevice(), VertBuffer, &mem_reqs);
+		vkGetBufferMemoryRequirements(Vulkan::GetDevice(), m_vertexBuffer, &mem_reqs);
 
         VkPhysicalDeviceMemoryProperties gpu_mem;
 	    vkGetPhysicalDeviceMemoryProperties(Vulkan::GetPhysicalDevice(), &gpu_mem);
@@ -552,7 +501,7 @@ void VulkanRenderer2D::SimpleRender()
 		//memcpy(buf, data[i].bytes, data[i].size);
 		vkUnmapMemory(Vulkan::GetDevice(), VertMemory);
 
-        res = vkBindBufferMemory(Vulkan::GetDevice(), VertBuffer, VertMemory, 0);
+        res = vkBindBufferMemory(Vulkan::GetDevice(), m_vertexBuffer, VertMemory, 0);
 		if (res != VK_SUCCESS) {
 			fprintf(stderr, "vkBindBufferMemory() failed (%d)\n", res);
 			return;
@@ -560,38 +509,73 @@ void VulkanRenderer2D::SimpleRender()
         vertBufCreated = true;
     }
 
-    VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(commandBufferForReal, 0, 1, &VertBuffer, &offset);
-    //vkCmdBindDescriptorSets(g_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelineLayout, 0, 1, &mRenderData.rdDescriptorSet, 0, nullptr);
+    std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
+}
+
+void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData)
+{
+}
+
+uint32_t VulkanRenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
+{
+
+
+    return 0;
+}
+
+void VulkanRenderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform)
+{
+
+}
+
+void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIndex)
+{
+
+}
+
+void VulkanRenderer2D::SimpleRender()
+{
+    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(m_commandBufferForReal, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = { m_width, m_height };
+    vkCmdSetScissor(m_commandBufferForReal, 0, 1, &scissor);
 
     const auto triangleCount = 1;
-    vkCmdDraw(commandBufferForReal, triangleCount * 3, 1, 0, 0);
+    vkCmdDraw(m_commandBufferForReal, triangleCount * 3, 1, 0, 0);
 }
 
 void VulkanRenderer2D::Render()
 {
-    // /* the rendering itself happens here */
-    // vkCmdBindPipeline(g_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
+    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
 
-    // /* required for dynamic viewport */
-    // VkViewport viewport{};
-    // viewport.x = 0.0f;
-    // viewport.y = 0.0f;
-    // viewport.width = static_cast<float>(m_width);
-    // viewport.height = static_cast<float>(m_height);
-    // viewport.minDepth = 0.0f;
-    // viewport.maxDepth = 1.0f;
-    // vkCmdSetViewport(g_commandBuffer, 0, 1, &viewport);
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(m_commandBufferForReal, 0, 1, &viewport);
 
-    // VkRect2D scissor{};
-    // scissor.offset = { 0, 0 };
-    // scissor.extent = { m_width, m_height };
-    // vkCmdSetScissor(g_commandBuffer, 0, 1, &scissor);
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = { m_width, m_height };
+    vkCmdSetScissor(m_commandBufferForReal, 0, 1, &scissor);
 
-    // /* the triangle drawing itself */
-    // VkDeviceSize offset = 0;
-    // vkCmdBindVertexBuffers(g_commandBuffer, 0, 1, &g_vertexBuffer, &offset);
-    // //vkCmdBindDescriptorSets(g_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelineLayout, 0, 1, &mRenderData.rdDescriptorSet, 0, nullptr);
+    VkDeviceSize offset = 0;
+	vkCmdBindVertexBuffers(m_commandBufferForReal, 0, 1, &m_vertexBuffer, &offset);
+    //vkCmdBindDescriptorSets(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelineLayout, 0, 1, &mRenderData.rdDescriptorSet, 0, nullptr);
 
     // vkCmdDraw(g_commandBuffer, g_triangleCount * 3, 1, 0, 0);
 }
@@ -652,7 +636,7 @@ void VulkanRenderer2D::BeginRenderPass()
 
     VkClearValue clearValues[] = { colorClearValue, depthValue };
 
-    commandBufferForReal = GraphicsAPI::Vulkan::GetCommandBuffer(true);
+    m_commandBufferForReal = GraphicsAPI::Vulkan::GetCommandBuffer(true);
 
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
@@ -665,13 +649,13 @@ void VulkanRenderer2D::BeginRenderPass()
     rpInfo.clearValueCount = 2;
     rpInfo.pClearValues = clearValues;
 
-    vkCmdBeginRenderPass(commandBufferForReal, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(m_commandBufferForReal, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanRenderer2D::EndRenderPass()
 {
-	vkCmdEndRenderPass(commandBufferForReal);
-    GraphicsAPI::Vulkan::FlushCommandBuffer(commandBufferForReal);
+	vkCmdEndRenderPass(m_commandBufferForReal);
+    GraphicsAPI::Vulkan::FlushCommandBuffer(m_commandBufferForReal);
 }
 
 void VulkanRenderer2D::SubmitCommandBuffer()

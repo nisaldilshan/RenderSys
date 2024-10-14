@@ -41,7 +41,7 @@ public:
 
     void Init();
     void OnResize(uint32_t width, uint32_t height);
-    void SetShaderAsString(RenderSys::Shader& shader);
+    void SetShader(RenderSys::Shader& shader);
     void SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
     void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);

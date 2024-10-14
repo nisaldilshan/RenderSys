@@ -33,7 +33,7 @@ void Renderer2D::Init()
     m_rendererBackend->Init();
 }
 
-void Renderer2D::SetShaderAsString(RenderSys::Shader& shader)
+void Renderer2D::SetShader(RenderSys::Shader& shader)
 {
     m_rendererBackend->CreateShaders(shader);
 }

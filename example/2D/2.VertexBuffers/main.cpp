@@ -2,6 +2,7 @@
 #include "Walnut/EntryPoint.h"
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
+#include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer2D.h>
 
@@ -32,26 +33,76 @@ public:
 			
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			const char* shaderSource = R"(
-			// The `@location(0)` attribute means that this input variable is described
-			// by the vertex buffer layout at index 0 in the `pipelineDesc.vertex.buffers`
-			// array.
-			// The type `vec2f` must comply with what we will declare in the layout.
-			// The argument name `in_vertex_position` is up to you, it is only internal to
-			// the shader code!
-				@vertex
-				fn vs_main(@location(0) in_vertex_position: vec2f) -> @builtin(position) vec4f {
-					return vec4f(in_vertex_position, 0.0, 1.0);
-				}
+			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+			{
+				RenderSys::Shader vertexShader("Vertext");
+				const char* vertexShaderSource = R"(
+					#version 450
 
-				@fragment
-				fn fs_main() -> @location(0) vec4f {
-					return vec4f(1.0, 0.4, 0.0, 1.0);
-				}
-			)";
+					vec2 positions[3] = vec2[](
+						vec2(0.0, -0.5),
+						vec2(0.5, 0.5),
+						vec2(-0.5, 0.5)
+					);
 
-			const auto shaderSourceStr = std::string(shaderSource);
-			m_renderer->SetShaderAsString(shaderSource);
+					void main() {
+						gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
+					}
+				)";
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.shaderSrc = vertexShaderSource;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				m_renderer->SetStandaloneShader(vertexShader, 3);
+
+				RenderSys::Shader fragmentShader("Fragment");
+				const char* fragmentShaderSource = R"(
+					#version 450
+
+					layout(location = 0) out vec4 FragColor;
+					layout(location = 0) in vec2 texCoord;
+
+					void main()
+					{
+						FragColor = vec4(1.0, 0.4000000059604644775390625, 0.0, 1.0);
+					}
+				)";
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.shaderSrc = fragmentShaderSource;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				m_renderer->SetStandaloneShader(fragmentShader, 3);
+			}
+			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+			{
+				RenderSys::Shader shader("Combined");
+				const char* shaderSource = R"(
+				// The `@location(0)` attribute means that this input variable is described
+				// by the vertex buffer layout at index 0 in the `pipelineDesc.vertex.buffers`
+				// array.
+				// The type `vec2f` must comply with what we will declare in the layout.
+				// The argument name `in_vertex_position` is up to you, it is only internal to
+				// the shader code!
+					@vertex
+					fn vs_main(@location(0) in_vertex_position: vec2f) -> @builtin(position) vec4f {
+						return vec4f(in_vertex_position, 0.0, 1.0);
+					}
+
+					@fragment
+					fn fs_main() -> @location(0) vec4f {
+						return vec4f(1.0, 0.4, 0.0, 1.0);
+					}
+				)";
+
+				shader.type = RenderSys::ShaderType::WGSL;
+				shader.shaderSrc = shaderSource;
+				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+				m_renderer->SetShader(shader);
+			}
+			else
+			{
+				assert(false);
+			}
+
+			
 
 			// Vertex buffer
 			// There are 2 floats per vertex, one for x and one for y.
