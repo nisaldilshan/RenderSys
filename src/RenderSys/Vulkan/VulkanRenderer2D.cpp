@@ -423,37 +423,40 @@ void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
 {
     std::cout << "Creating vertex buffer..." << std::endl;
 
-    VkVertexInputBindingDescription mainBinding{};
-    mainBinding.binding = 0;
-    mainBinding.stride = sizeof(RenderSysVkVertex);
-    mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-    VkVertexInputAttributeDescription positionAttribute{};
-    positionAttribute.binding = 0;
-    positionAttribute.location = 0;
-    positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    positionAttribute.offset = offsetof(RenderSysVkVertex, position);
-
-    VkVertexInputAttributeDescription uvAttribute{};
-    uvAttribute.binding = 0;
-    uvAttribute.location = 1;
-    uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
-    uvAttribute.offset = offsetof(RenderSysVkVertex, uv);
-
-    VkVertexInputAttributeDescription attributes[] = { positionAttribute, uvAttribute };
+    m_vertexCount = bufferLength/8;
     
-    VkDeviceMemory VertMemory;
     static bool vertBufCreated = false;
     if (!vertBufCreated)
     {
-        VkBufferCreateInfo buf_info = {0};
-		buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		buf_info.size = 3 * sizeof(float);
-		buf_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        VkVertexInputBindingDescription mainBinding{};
+        mainBinding.binding = 0;
+        mainBinding.stride = 8;
+        mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        m_vertextBindingDescs.push_back(mainBinding);
 
-        auto res = vkCreateBuffer(Vulkan::GetDevice(), &buf_info, NULL, &m_vertexBuffer);
+        VkVertexInputAttributeDescription positionAttribute{};
+        positionAttribute.binding = 0;
+        positionAttribute.location = 0;
+        positionAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+        positionAttribute.offset = 0;
+
+        // VkVertexInputAttributeDescription uvAttribute{};
+        // uvAttribute.binding = 0;
+        // uvAttribute.location = 1;
+        // uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+        // uvAttribute.offset = offsetof(RenderSysVkVertex, uv);
+
+        m_vertextAttribDescs.push_back(positionAttribute);
+
+        VkBufferCreateInfo bufferInfo = {};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = bufferLength;
+		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        auto res = vkCreateBuffer(Vulkan::GetDevice(), &bufferInfo, nullptr, &m_vertexBuffer);
 		if (res != VK_SUCCESS) {
-			fprintf(stderr, "vkCreateBuffer() failed (%d)\n", res);
+			std::cout << "vkCreateBuffer() failed!" << std::endl;
 			return;
 		}
 
@@ -476,36 +479,41 @@ void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
 		}
 
 		if (mem_type_idx < 0) {
-			fprintf(stderr, "Could not find an appropriate memory type \n");
+			std::cout << "Could not find an appropriate memory type" << std::endl;
 			return;
 		}
 
-        VkMemoryAllocateInfo alloc_info = {0};
-		alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		alloc_info.allocationSize = mem_reqs.size;
-		alloc_info.memoryTypeIndex = mem_type_idx;
+        VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = mem_reqs.size;
+		allocInfo.memoryTypeIndex = mem_type_idx;
 
-		res = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, NULL, &VertMemory);
+        VkDeviceMemory VertMemory;
+		res = vkAllocateMemory(Vulkan::GetDevice(), &allocInfo, NULL, &VertMemory);
 		if (res != VK_SUCCESS) {
-			fprintf(stderr, "vkAllocateMemory() failed (%d)\n", res);
+			std::cout << "vkAllocateMemory() failed" << std::endl;
 			return;
 		}
 
-		void *buf;
-		res = vkMapMemory(Vulkan::GetDevice(), VertMemory, 0, alloc_info.allocationSize, 0, &buf);
-		if (res != VK_SUCCESS) {
-			fprintf(stderr, "vkMapMemory() failed (%d)\n", res);
-			return;
-		}
-
-		//memcpy(buf, data[i].bytes, data[i].size);
-		vkUnmapMemory(Vulkan::GetDevice(), VertMemory);
-
+        // If memory allocation was successful, then we can now associate this memory with the buffer using vkBindBufferMemory
         res = vkBindBufferMemory(Vulkan::GetDevice(), m_vertexBuffer, VertMemory, 0);
 		if (res != VK_SUCCESS) {
-			fprintf(stderr, "vkBindBufferMemory() failed (%d)\n", res);
+			std::cout << "vkBindBufferMemory() failed" << std::endl;
 			return;
 		}
+
+        // copy data to the buffer
+		void *buf;
+		res = vkMapMemory(Vulkan::GetDevice(), VertMemory, 0, allocInfo.allocationSize, 0, &buf);
+		if (res != VK_SUCCESS) {
+			std::cout << "vkMapMemory() failed" << std::endl;
+			return;
+		}
+
+		memcpy(buf, bufferData, bufferLength);
+		vkUnmapMemory(Vulkan::GetDevice(), VertMemory);
+
+        
         vertBufCreated = true;
     }
 
@@ -577,7 +585,7 @@ void VulkanRenderer2D::Render()
 	vkCmdBindVertexBuffers(m_commandBufferForReal, 0, 1, &m_vertexBuffer, &offset);
     //vkCmdBindDescriptorSets(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelineLayout, 0, 1, &mRenderData.rdDescriptorSet, 0, nullptr);
 
-    // vkCmdDraw(g_commandBuffer, g_triangleCount * 3, 1, 0, 0);
+    vkCmdDraw(m_commandBufferForReal, m_vertexCount, 1, 0, 0);
 }
 
 void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffsetCount)
