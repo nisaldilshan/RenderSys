@@ -10,19 +10,8 @@
 #include "../RenderUtil.h"
 #include "../Shader.h"
 
-class VkPipelineLayoutCreateInfo;
-
 namespace GraphicsAPI
 {
-    struct RenderSysVkVertex
-    {
-        glm::vec3 position;
-        glm::vec2 uv;
-    };
-
-    struct RenderSysVkMesh {
-        std::vector<RenderSysVkVertex> vertices;
-    };
     class VulkanRenderer2D
     {
     public:

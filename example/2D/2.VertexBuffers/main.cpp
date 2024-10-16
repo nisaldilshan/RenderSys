@@ -35,7 +35,7 @@ public:
 
 			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 			{
-				RenderSys::Shader vertexShader("Vertext");
+				RenderSys::Shader vertexShader("Vertex");
 				const char* vertexShaderSource = R"(
 					#version 450 core
 					layout (location = 0) in vec2 aPos;
@@ -119,7 +119,7 @@ public:
 			RenderSys::VertexAttribute vertexAttrib;
 			// == Per attribute ==
 			// Corresponds to @location(...)
-			vertexAttrib.shaderLocation = 0;
+			vertexAttrib.location = 0;
 			// Means vec2f in the shader
 			vertexAttrib.format = RenderSys::VertexFormat::Float32x2;
 			// Index of the first element

@@ -34,7 +34,7 @@ public:
 			
 			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 			{
-				RenderSys::Shader vertexShader("Vertext");
+				RenderSys::Shader vertexShader("Vertex");
 				const char* vertexShaderSource = R"(
 					#version 450
 

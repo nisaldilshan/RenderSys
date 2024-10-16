@@ -11,7 +11,7 @@ namespace RenderSys
         VertexBufferNotUsed = 0x00000002,
     };
 
-        enum class VertexFormat
+    enum class VertexFormat
     {
         Undefined = 0,
         Uint8x2,
@@ -50,7 +50,7 @@ namespace RenderSys
     {
         VertexFormat format;
         uint64_t offset;
-        uint32_t shaderLocation;
+        uint32_t location;
     };
 
     struct VertexBufferLayout

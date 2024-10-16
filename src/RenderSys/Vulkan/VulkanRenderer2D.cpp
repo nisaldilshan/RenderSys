@@ -12,6 +12,16 @@ constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
 VkRenderPass g_renderpass = VK_NULL_HANDLE;
 VkPipeline g_pipeline = VK_NULL_HANDLE;
 
+VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
+{
+    switch (format)
+    {
+    case RenderSys::VertexFormat::Float32x2: return VK_FORMAT_R32G32_SFLOAT;
+    default: assert(false);
+    }
+    return (VkFormat)0;
+}
+
 bool createRenderPass()
 {
     if (g_renderpass)
@@ -179,7 +189,6 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
 void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
 {
     assert(shader.type == RenderSys::ShaderType::SPIRV);
-    std::cout << "Creating shader module : " << shader.GetName() << std::endl;
     std::vector<uint32_t> compiledShader;
     auto shaderMapIter = m_shaderMap.find(shader.GetName());
     if (shaderMapIter == m_shaderMap.end())
@@ -209,7 +218,7 @@ void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
         return;
     }
 
-    std::cout << "Created Shader module: " << shaderModule << std::endl;
+    std::cout << "Created Shader module, Name:" << shader.GetName() << ", Ptr:" << shaderModule << std::endl;
 
     VkShaderStageFlagBits shaderStageBits;
     if (shader.stage == RenderSys::ShaderStage::Vertex)
@@ -423,30 +432,36 @@ void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
 {
     std::cout << "Creating vertex buffer..." << std::endl;
 
-    m_vertexCount = bufferLength/8;
+    assert(bufferLayout.arrayStride > 0);
+    m_vertexCount = bufferLength/bufferLayout.arrayStride;
+    assert(m_vertexCount > 0);
     
     static bool vertBufCreated = false;
     if (!vertBufCreated)
     {
         VkVertexInputBindingDescription mainBinding{};
         mainBinding.binding = 0;
-        mainBinding.stride = 8;
+        mainBinding.stride = bufferLayout.arrayStride;
         mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         m_vertextBindingDescs.push_back(mainBinding);
 
-        VkVertexInputAttributeDescription positionAttribute{};
-        positionAttribute.binding = 0;
-        positionAttribute.location = 0;
-        positionAttribute.format = VK_FORMAT_R32G32_SFLOAT;
-        positionAttribute.offset = 0;
+        for (size_t i = 0; i < bufferLayout.attributeCount; i++)
+        {
+            RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
+            VkVertexInputAttributeDescription vkAttribute{};
+            vkAttribute.binding = 0;
+            vkAttribute.location = attrib.location;
+            vkAttribute.format = RenderSysFormatToVulkanFormat(attrib.format);
+            vkAttribute.offset = attrib.offset;
+
+            m_vertextAttribDescs.push_back(vkAttribute);
+        }
 
         // VkVertexInputAttributeDescription uvAttribute{};
         // uvAttribute.binding = 0;
         // uvAttribute.location = 1;
         // uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
         // uvAttribute.offset = offsetof(RenderSysVkVertex, uv);
-
-        m_vertextAttribDescs.push_back(positionAttribute);
 
         VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
