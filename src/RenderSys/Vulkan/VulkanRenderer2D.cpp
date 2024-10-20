@@ -17,6 +17,7 @@ VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
     switch (format)
     {
     case RenderSys::VertexFormat::Float32x2: return VK_FORMAT_R32G32_SFLOAT;
+    case RenderSys::VertexFormat::Float32x3: return VK_FORMAT_R32G32B32_SFLOAT;
     default: assert(false);
     }
     return (VkFormat)0;
@@ -194,7 +195,7 @@ void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
     if (shaderMapIter == m_shaderMap.end())
     {
         compiledShader = RenderSys::ShaderUtils::compile_file(shader.GetName(), shader);
-        assert(compiledShader.size() > 0);
+        assert(compiledShader.size() > 0, shader.GetName());
         m_shaderMap.emplace(shader.GetName(), compiledShader);
     }
     else

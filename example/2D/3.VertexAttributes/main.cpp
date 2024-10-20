@@ -37,12 +37,13 @@ public:
 				const char* vertexShaderSource = R"(
 					#version 450 core
 					layout (location = 0) in vec2 aPos;
-					layout (location = 1) in vec3 color;
+					layout (location = 1) in vec3 aColor; // Add color attribute
+					layout (location = 0) out vec3 vColor; // Add color attribute
 
 					void main() {
 						gl_Position = vec4(aPos, 0.0, 1.0);
+						vColor = aColor; // Pass color to fragment shader
 					}
-
 				)";
 				RenderSys::Shader vertexShader("Vertex");
 				vertexShader.type = RenderSys::ShaderType::SPIRV;
@@ -52,11 +53,12 @@ public:
 
 				const char* fragmentShaderSource = R"(
 					#version 450
+					layout(location = 0) in vec3 vColor;
 					layout(location = 0) out vec4 FragColor;
 
 					void main()
 					{
-						FragColor = vec4(1.0, 0.4000000059604644775390625, 0.0, 1.0);
+						FragColor = vec4(vColor, 1.0); // Use the color from the vertex shader
 					}
 				)";
 				RenderSys::Shader fragmentShader("Fragment");
@@ -116,21 +118,16 @@ public:
 			}
 
 
-
-
 			// Vertex buffer
 			// There are 2 floats per vertex, one for x and one for y.
 			// But in the end this is just a bunch of floats to the eyes of the GPU,
 			// the *layout* will tell how to interpret this.
 			std::vector<float> vertexData = {
-				// x0,  y0,  r0,  g0,  b0
+				// x ,  y ,  r ,  g ,  b
 				-0.5, -0.5, 1.0, 0.0, 0.0,
-
-				// x1,  y1,  r1,  g1,  b1
 				+0.5, -0.5, 0.0, 1.0, 0.0,
+				+0.0, +0.5, 0.0, 0.0, 1.0,
 
-				// ...
-				+0.0,   +0.5, 0.0, 0.0, 1.0,
 				-0.55f, -0.5, 1.0, 1.0, 0.0,
 				-0.05f, +0.5, 1.0, 0.0, 1.0,
 				-0.55f, +0.5, 0.0, 1.0, 1.0

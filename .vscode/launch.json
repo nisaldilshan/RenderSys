@@ -28,15 +28,14 @@
         },
         {
             "name": "VertexAttributes",
-            "type": "lldb",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/example/2D/3.VertexAttributes/VertexAttributes",
+            "program": "${workspaceFolder}/build/example/2D/3.VertexAttributes/Debug/VertexAttributes",
             "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/example/2D/3.VertexAttributes",
-            "env": { 
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-            },
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/2D/3.VertexAttributes/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
         },
         {
             "name": "IndexBuffers",
