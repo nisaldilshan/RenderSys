@@ -2,7 +2,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 add_subdirectory(2D/1.FirstTriangle)
 add_subdirectory(2D/2.VertexBuffers)
-# add_subdirectory(2D/3.VertexAttributes)
+add_subdirectory(2D/3.VertexAttributes)
 # add_subdirectory(2D/4.IndexBuffers)
 # add_subdirectory(2D/5.UniformBuffers)
 # add_subdirectory(2D/6.DynamicUniforms)
