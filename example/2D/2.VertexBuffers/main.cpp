@@ -47,7 +47,7 @@ public:
 				vertexShader.type = RenderSys::ShaderType::SPIRV;
 				vertexShader.shaderSrc = vertexShaderSource;
 				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				m_renderer->SetStandaloneShader(vertexShader, 3);
+				m_renderer->SetShader(vertexShader);
 
 				RenderSys::Shader fragmentShader("Fragment");
 				const char* fragmentShaderSource = R"(
@@ -63,7 +63,7 @@ public:
 				fragmentShader.type = RenderSys::ShaderType::SPIRV;
 				fragmentShader.shaderSrc = fragmentShaderSource;
 				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				m_renderer->SetStandaloneShader(fragmentShader, 3);
+				m_renderer->SetShader(fragmentShader);
 			}
 			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 			{

@@ -65,7 +65,7 @@ public:
 				fragmentShader.type = RenderSys::ShaderType::SPIRV;
 				fragmentShader.shaderSrc = fragmentShaderSource;
 				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				m_renderer->SetStandaloneShader(fragmentShader, 3);
+				m_renderer->SetShader(fragmentShader);
 			}
 			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 			{
