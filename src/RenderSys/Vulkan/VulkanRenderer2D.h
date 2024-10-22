@@ -37,8 +37,9 @@ namespace GraphicsAPI
         ImTextureID GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();
-        
+        void Destroy();
     private:
+        void DestroyBuffers();
         void DestroyShaders();
         void SubmitCommandBuffer();
         uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
@@ -52,11 +53,17 @@ namespace GraphicsAPI
         std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
         VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
         VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
+
         VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory m_vertexBufferMemory = VK_NULL_HANDLE;
         std::vector<VkVertexInputBindingDescription> m_vertextBindingDescs;
         std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
         uint32_t m_vertexCount = 0;
-        uint64_t m_vertexBufferSize = 0;
+
+        VkBuffer m_indexBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory m_indexBufferMemory = VK_NULL_HANDLE;
+        uint32_t m_indexCount = 0;
+
         std::unique_ptr<VkPipelineLayoutCreateInfo> m_bindGroupLayout;
         uint32_t m_width, m_height;
     };

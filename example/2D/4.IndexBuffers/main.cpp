@@ -16,7 +16,8 @@ public:
 
 	virtual void OnDetach() override
 	{
-
+		if (m_renderer)
+			m_renderer->Destroy();
 	}
 
 	virtual void OnUpdate(float ts) override

@@ -79,6 +79,11 @@ void* Renderer2D::GetDescriptorSet() const
     return m_rendererBackend->GetDescriptorSet();
 }
 
+void RenderSys::Renderer2D::Destroy()
+{
+    return m_rendererBackend->Destroy();
+}
+
 void Renderer2D::SimpleRender()
 {
     m_rendererBackend->SimpleRender();
