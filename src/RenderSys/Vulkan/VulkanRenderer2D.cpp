@@ -676,18 +676,27 @@ void VulkanRenderer2D::Render()
 
 void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffsetCount)
 {
-    // // Set vertex buffer while encoding the render pass
-    // m_renderPass.setVertexBuffer(0, m_vertexBuffer, 0, m_vertexBufferSize);
-    // // Set index buffer while encoding the render pass
-    // m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexCount * sizeof(uint16_t));
+    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
 
-    // // Set binding group
-    // uint32_t dynamicOffset = 0;
-    // if (uniformIndex > 0)
-    //     dynamicOffset = uniformIndex * GetOffset(1, m_sizeOfUniform);
-    
-    // m_renderPass.setBindGroup(0, m_bindGroup, dynamicOffsetCount, &dynamicOffset);
-    // m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(m_commandBufferForReal, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = { m_width, m_height };
+    vkCmdSetScissor(m_commandBufferForReal, 0, 1, &scissor);
+
+    VkDeviceSize offset = 0;
+	vkCmdBindVertexBuffers(m_commandBufferForReal, 0, 1, &m_vertexBuffer, &offset);
+    vkCmdBindIndexBuffer(m_commandBufferForReal, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
+
+    vkCmdDrawIndexed(m_commandBufferForReal, m_indexCount, 1, 0, 0, 0);
 }
 
 void VulkanRenderer2D::CreateTextureSampler()
