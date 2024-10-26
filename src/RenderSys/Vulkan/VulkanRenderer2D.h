@@ -39,6 +39,7 @@ namespace GraphicsAPI
         void EndRenderPass();
         void Destroy();
     private:
+        void CreatePipelineLayout();
         void DestroyBuffers();
         void DestroyShaders();
         void SubmitCommandBuffer();
@@ -51,7 +52,9 @@ namespace GraphicsAPI
         VkCommandBuffer m_commandBufferForReal = VK_NULL_HANDLE;
         std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
         std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
+
         VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+        VkPipeline m_pipeline = VK_NULL_HANDLE;
         VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
 
         VkBuffer m_vertexBuffer = VK_NULL_HANDLE;

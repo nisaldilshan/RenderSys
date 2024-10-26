@@ -10,7 +10,6 @@ VkSemaphore g_renderSemaphore = VK_NULL_HANDLE;
 VkFence g_renderFence = VK_NULL_HANDLE;
 constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
 VkRenderPass g_renderpass = VK_NULL_HANDLE;
-VkPipeline g_pipeline = VK_NULL_HANDLE;
 
 VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
 {
@@ -151,8 +150,6 @@ bool VulkanRenderer2D::Init()
     if (!createSyncObjects()) {
         return false;
     }
-
-    CreateBindGroup();
 
     return true;
 }
@@ -296,31 +293,31 @@ void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry b
 
 void VulkanRenderer2D::CreateBindGroup()
 {
+    // Create a bind group layout
     if (!m_bindGroupLayout)
     {
-        // Create a bind group layout
-        m_bindGroupLayout = std::make_unique<VkPipelineLayoutCreateInfo>();
-        m_bindGroupLayout->sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        m_bindGroupLayout->setLayoutCount = 0; // was 1
-        //m_bindGroupLayout->pSetLayouts = &renderData.rdTextureLayout;
-        m_bindGroupLayout->pushConstantRangeCount = 0;
+        
     }
+    else
+    {
+        //std::cout << "No bind group layout" << std::endl;
+    }
+}
 
+void VulkanRenderer2D::CreatePipelineLayout()
+{
     if (!m_pipelineLayout)
     {
-        if (m_bindGroupLayout)
-        {
-            if (vkCreatePipelineLayout(Vulkan::GetDevice(), m_bindGroupLayout.get(), nullptr, &m_pipelineLayout) != VK_SUCCESS) {
-                std::cout << "error: could not create pipeline layout" << std::endl;
-            }
-            assert(m_pipelineLayout);
-        }
-        else
-        {
-            std::cout << "No bind group layout" << std::endl;
-        }
-    }
+        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+        pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineLayoutCreateInfo.setLayoutCount = 0; // was 1
+        //m_bindGroupLayout->pSetLayouts = &renderData.rdTextureLayout;
+        pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 
+        if (vkCreatePipelineLayout(Vulkan::GetDevice(), &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
+            std::cout << "error: could not create pipeline layout" << std::endl;
+        }        
+    }
 }
 
 void VulkanRenderer2D::CreatePipeline()
@@ -420,12 +417,14 @@ void VulkanRenderer2D::CreatePipeline()
     pipelineCreateInfo.pColorBlendState = &colorBlendingInfo;
     pipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
     pipelineCreateInfo.pDynamicState = &dynStatesInfo;
+
+    CreatePipelineLayout();
     pipelineCreateInfo.layout = m_pipelineLayout;
     pipelineCreateInfo.renderPass = g_renderpass;
     pipelineCreateInfo.subpass = 0;
     pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-    if (vkCreateGraphicsPipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &g_pipeline) != VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipeline) != VK_SUCCESS) {
         std::cout << "error: could not create rendering pipeline" << std::endl;
         vkDestroyPipelineLayout(Vulkan::GetDevice(), m_pipelineLayout, nullptr);
     }
@@ -433,7 +432,7 @@ void VulkanRenderer2D::CreatePipeline()
     /* it is save to destroy the shader modules after pipeline has been created */
     DestroyShaders();
     
-    std::cout << "Render pipeline: " << g_pipeline << std::endl;
+    std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
 void VulkanRenderer2D::CreateFrameBuffer()
@@ -629,7 +628,7 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
 
 void VulkanRenderer2D::SimpleRender()
 {
-    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
+    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -651,7 +650,7 @@ void VulkanRenderer2D::SimpleRender()
 
 void VulkanRenderer2D::Render()
 {
-    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
+    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -676,7 +675,7 @@ void VulkanRenderer2D::Render()
 
 void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffsetCount)
 {
-    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipeline);
+    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
