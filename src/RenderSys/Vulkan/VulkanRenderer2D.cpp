@@ -22,7 +22,7 @@ VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
     return (VkFormat)0;
 }
 
-std::pair<int, VkDeviceSize> FindAppropriateMemoryType(VkBuffer& buffer, unsigned int flags)
+std::pair<int, VkDeviceSize> FindAppropriateMemoryType(const VkBuffer& buffer, unsigned int flags)
 {
     VkMemoryRequirements mem_reqs;
     vkGetBufferMemoryRequirements(Vulkan::GetDevice(), buffer, &mem_reqs);
@@ -296,7 +296,21 @@ void VulkanRenderer2D::CreateBindGroup()
     // Create a bind group layout
     if (!m_bindGroupLayout)
     {
-        
+        VkDescriptorSetLayoutBinding uboLayoutBinding{};
+        uboLayoutBinding.binding = 0;
+        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uboLayoutBinding.descriptorCount = 1;
+        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        uboLayoutBinding.pImmutableSamplers = nullptr;
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = 1;
+        layoutInfo.pBindings = &uboLayoutBinding;
+
+        if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor set layout!");
+        }
     }
     else
     {
@@ -310,8 +324,16 @@ void VulkanRenderer2D::CreatePipelineLayout()
     {
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
         pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutCreateInfo.setLayoutCount = 0; // was 1
-        //m_bindGroupLayout->pSetLayouts = &renderData.rdTextureLayout;
+        if (!m_bindGroupLayout)
+        {
+            pipelineLayoutCreateInfo.setLayoutCount = 0;
+            pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+        }
+        else
+        {
+            pipelineLayoutCreateInfo.setLayoutCount = 1;
+            pipelineLayoutCreateInfo.pSetLayouts = &m_bindGroupLayout;
+        }
         pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 
         if (vkCreatePipelineLayout(Vulkan::GetDevice(), &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
@@ -618,7 +640,27 @@ uint32_t VulkanRenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_
 
 void VulkanRenderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform)
 {
+    m_uniformBuffers.resize(1);
+    m_uniformBuffersMemory.resize(1);
+    m_uniformBuffersMapped.resize(1);
 
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = bufferLength * sizeOfUniform;
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    auto res = vkCreateBuffer(Vulkan::GetDevice(), &bufferInfo, nullptr, &m_uniformBuffers[0]);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkCreateBuffer() failed!" << std::endl;
+        return;
+    }
+
+    auto [memTypeIdx, matchedSize] = FindAppropriateMemoryType(m_uniformBuffers[0], VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (memTypeIdx < 0) {
+        std::cout << "Could not find an appropriate memory type" << std::endl;
+        return;
+    }
 }
 
 void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIndex)

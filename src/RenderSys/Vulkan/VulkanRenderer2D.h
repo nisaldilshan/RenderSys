@@ -45,6 +45,8 @@ namespace GraphicsAPI
         void SubmitCommandBuffer();
         uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
+        uint32_t m_width = 0;
+        uint32_t m_height = 0;
         VkImage m_ImageToRenderInto = VK_NULL_HANDLE;
         VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
         VkSampler m_textureSampler;
@@ -67,7 +69,9 @@ namespace GraphicsAPI
         VkDeviceMemory m_indexBufferMemory = VK_NULL_HANDLE;
         uint32_t m_indexCount = 0;
 
-        std::unique_ptr<VkPipelineLayoutCreateInfo> m_bindGroupLayout;
-        uint32_t m_width, m_height;
+        VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
+        std::vector<VkBuffer> m_uniformBuffers;
+        std::vector<VkDeviceMemory> m_uniformBuffersMemory;
+        std::vector<void*> m_uniformBuffersMapped;
     };
 }
