@@ -24,7 +24,7 @@ namespace GraphicsAPI
         void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
         void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
         void CreateBindGroup();
-        void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
+        void CreateUniformBuffer(size_t uniformCountInBuffer, uint32_t sizeOfOneUniform);
         void SetUniformData(const void* bufferData, uint32_t uniformIndex);
         void SimpleRender();
         void Render();

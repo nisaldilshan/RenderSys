@@ -29,7 +29,7 @@ namespace GraphicsAPI
         void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
         void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
         void CreateBindGroup();
-        void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
+        void CreateUniformBuffer(size_t uniformCountInBuffer, uint32_t sizeOfOneUniform);
         void SetUniformData(const void* bufferData, uint32_t uniformIndex);
         void SimpleRender();
         void Render();
@@ -43,7 +43,7 @@ namespace GraphicsAPI
         void DestroyBuffers();
         void DestroyShaders();
         void SubmitCommandBuffer();
-        uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
+        uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
         uint32_t m_width = 0;
         uint32_t m_height = 0;
@@ -72,6 +72,7 @@ namespace GraphicsAPI
         VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
         std::vector<VkDescriptorSet> m_bindGroups;
+        uint32_t m_sizeOfOneUniform = 0;
         std::vector<VkBuffer> m_uniformBuffers;
         std::vector<VkDeviceMemory> m_uniformBuffersMemory;
         std::vector<void*> m_uniformBuffersMapped;

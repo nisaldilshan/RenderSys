@@ -656,22 +656,46 @@ void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
     std::cout << "Index buffer: " << m_indexBuffer << std::endl;
 }
 
-uint32_t VulkanRenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
+uint32_t VulkanRenderer2D::GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
 {
+    if (uniformIndex == 0)
+        return 0;
 
+    static VkDeviceSize minUniformBufferOffsetAlignment = 0;
+    if (minUniformBufferOffsetAlignment == 0)
+    {
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
+        minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
+        std::cout << "VulkanRenderer2D::GetUniformStride - " << minUniformBufferOffsetAlignment << std::endl;
+    }
 
-    return 0;
+    assert(sizeOfUniform > 0);
+    auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
+    {
+        uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
+        return step * divide_and_ceil;
+    };
+
+    uint32_t uniformStride = ceilToNextMultiple(
+        (uint32_t)sizeOfUniform,
+        (uint32_t)minUniformBufferOffsetAlignment
+    );
+
+    return uniformStride;
 }
 
-void VulkanRenderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform)
+void VulkanRenderer2D::CreateUniformBuffer(size_t uniformCountInBuffer, uint32_t sizeOfOneUniform)
 {
+    m_sizeOfOneUniform = sizeOfOneUniform;
     m_uniformBuffers.resize(1);
     m_uniformBuffersMemory.resize(1);
     m_uniformBuffersMapped.resize(1);
 
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = bufferLength * sizeOfUniform;
+    const size_t maximumUniformIndex = uniformCountInBuffer - 1;
+    bufferInfo.size = m_sizeOfOneUniform + GetUniformStride(maximumUniformIndex, m_sizeOfOneUniform);
     bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -714,14 +738,21 @@ void VulkanRenderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfU
 
 void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIndex)
 {
+    assert(m_uniformBuffers[0] && m_uniformBuffersMapped[0]);
+    assert(m_sizeOfOneUniform > 0);
+
+    auto offset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
     // copy data to the buffer
-    memcpy(m_uniformBuffersMapped[0], bufferData, 32);
+    const auto* ptr = static_cast<const char*>(bufferData) + offset;
+    memcpy(m_uniformBuffersMapped[0], ptr, m_sizeOfOneUniform);
+
+    // TODO: Find a good place to do unmapping
     //vkUnmapMemory(Vulkan::GetDevice(), m_indexBufferMemory);
 
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer = m_uniformBuffers[0];
     bufferInfo.offset = 0;
-    bufferInfo.range = 32; // sizeof(UniformBufferObject);
+    bufferInfo.range = m_sizeOfOneUniform;
 
     VkWriteDescriptorSet descriptorWrite{};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

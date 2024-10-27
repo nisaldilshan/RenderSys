@@ -265,7 +265,7 @@ uint32_t WebGPURenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_
     return uniformStride * uniformIndex;
 }
 
-void WebGPURenderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform)
+void WebGPURenderer2D::CreateUniformBuffer(size_t uniformCountInBuffer, uint32_t sizeOfOneUniform)
 {
     assert(sizeOfUniform > 0);
     // Create uniform buffer
