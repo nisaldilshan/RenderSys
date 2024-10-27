@@ -311,6 +311,31 @@ void VulkanRenderer2D::CreateBindGroup()
         if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor set layout!");
         }
+
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = 1;
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = 1;
+
+        if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor pool!");
+        }
+
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = m_bindGroupPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &m_bindGroupLayout;
+
+        m_bindGroups.resize(1);
+        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, m_bindGroups.data()) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate descriptor sets!");
+        }
     }
     else
     {
@@ -661,11 +686,55 @@ void VulkanRenderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfU
         std::cout << "Could not find an appropriate memory type" << std::endl;
         return;
     }
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = matchedSize;
+    allocInfo.memoryTypeIndex = memTypeIdx;
+
+    res = vkAllocateMemory(Vulkan::GetDevice(), &allocInfo, NULL, &m_uniformBuffersMemory[0]);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkAllocateMemory() failed" << std::endl;
+        return;
+    }
+
+    // If memory allocation was successful, then we can now associate this memory with the buffer using vkBindBufferMemory
+    res = vkBindBufferMemory(Vulkan::GetDevice(), m_uniformBuffers[0], m_uniformBuffersMemory[0], 0);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkBindBufferMemory() failed" << std::endl;
+        return;
+    }
+
+    res = vkMapMemory(Vulkan::GetDevice(), m_uniformBuffersMemory[0], 0, allocInfo.allocationSize, 0, &m_uniformBuffersMapped[0]);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkMapMemory() failed" << std::endl;
+        return;
+    }
 }
 
 void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIndex)
 {
+    // copy data to the buffer
+    memcpy(m_uniformBuffersMapped[0], bufferData, 32);
+    //vkUnmapMemory(Vulkan::GetDevice(), m_indexBufferMemory);
 
+    VkDescriptorBufferInfo bufferInfo{};
+    bufferInfo.buffer = m_uniformBuffers[0];
+    bufferInfo.offset = 0;
+    bufferInfo.range = 32; // sizeof(UniformBufferObject);
+
+    VkWriteDescriptorSet descriptorWrite{};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = m_bindGroups[0];
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+    descriptorWrite.pImageInfo = nullptr; // Optional
+    descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+    vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanRenderer2D::SimpleRender()
@@ -736,6 +805,7 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     VkDeviceSize offset = 0;
 	vkCmdBindVertexBuffers(m_commandBufferForReal, 0, 1, &m_vertexBuffer, &offset);
     vkCmdBindIndexBuffer(m_commandBufferForReal, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
+    vkCmdBindDescriptorSets(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroups[0], 0, nullptr);
 
     vkCmdDrawIndexed(m_commandBufferForReal, m_indexCount, 1, 0, 0, 0);
 }

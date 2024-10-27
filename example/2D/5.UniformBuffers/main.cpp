@@ -50,12 +50,19 @@ public:
 			{
 				const char* vertexShaderSource = R"(
 					#version 450 core
+					layout(binding = 0) uniform UniformBufferObject {
+						vec4 color;
+						float time;
+						float _pad[3];
+					} ubo;
 					layout (location = 0) in vec2 aPos;
 					layout (location = 1) in vec3 aColor; // Add color attribute
 					layout (location = 0) out vec3 vColor; // Add color attribute
 
 					void main() {
-						gl_Position = vec4(aPos, 0.0, 1.0);
+						vec2 offset = vec2(-0.6875, -0.463);
+						offset += 0.3 * vec2(cos(ubo.time), sin(ubo.time));
+						gl_Position = vec4(aPos+offset, 0.0, 1.0);
 						vColor = aColor; // Pass color to fragment shader
 					}
 				)";
