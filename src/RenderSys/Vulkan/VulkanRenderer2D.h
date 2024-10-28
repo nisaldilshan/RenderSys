@@ -71,7 +71,8 @@ namespace GraphicsAPI
 
         VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
-        std::vector<VkDescriptorSet> m_bindGroups;
+        VkDescriptorSet m_bindGroup = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSetLayoutBinding> m_bindGroupBindings;
         uint32_t m_sizeOfOneUniform = 0;
         std::vector<VkBuffer> m_uniformBuffers;
         std::vector<VkDeviceMemory> m_uniformBuffersMemory;

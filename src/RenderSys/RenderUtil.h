@@ -83,7 +83,7 @@ namespace RenderSys
         BufferBindingType type = BufferBindingType::Undefined;
         bool hasDynamicOffset = false;
         uint64_t minBindingSize = 0;
-        std::string bufferName; // added by Nisal
+        std::string bufferName;
 
         void setDefault() {
             type = BufferBindingType::Uniform;

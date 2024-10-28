@@ -286,21 +286,50 @@ void VulkanRenderer2D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_
     m_vertexCount = vertexShaderCallCount;
 }
 
-void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
+VkShaderStageFlags GetVulkanShaderStageVisibility(RenderSys::ShaderStage shaderStage)
 {
+    VkShaderStageFlags result;
+    if (static_cast<uint32_t>(shaderStage) == 1) // RenderSys::ShaderStage::Vertex
+    {
+        result = VK_SHADER_STAGE_VERTEX_BIT;
+    }
+    else if (static_cast<uint32_t>(shaderStage) == 2) // RenderSys::ShaderStage::Fragment
+    {
+        result = VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    else if (static_cast<uint32_t>(shaderStage) == 3) // RenderSys::ShaderStage::Vertex | RenderSys::ShaderStage::Fragment
+    {
+        result = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    else if (static_cast<uint32_t>(shaderStage) == 4) // RenderSys::ShaderStage::Vertex | RenderSys::ShaderStage::Fragment
+    {
+        result = VK_SHADER_STAGE_COMPUTE_BIT;
+    }
+    else
+    {
+        assert(false);
+    }
     
+    return result;
 }
 
-void VulkanRenderer2D::CreateBindGroup()
+void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
     // Create a bind group layout
     if (!m_bindGroupLayout)
     {
-        VkDescriptorSetLayoutBinding uboLayoutBinding{};
+        auto& uboLayoutBinding = m_bindGroupBindings.emplace_back();
         uboLayoutBinding.binding = 0;
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        if (bindGroupLayoutEntry.buffer.hasDynamicOffset)
+        {
+            uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        }
+        else
+        {
+            uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        }
         uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        uboLayoutBinding.stageFlags = GetVulkanShaderStageVisibility(bindGroupLayoutEntry.visibility);
         uboLayoutBinding.pImmutableSamplers = nullptr;
 
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -313,7 +342,7 @@ void VulkanRenderer2D::CreateBindGroup()
         }
 
         VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.type = uboLayoutBinding.descriptorType;
         poolSize.descriptorCount = 1;
 
         VkDescriptorPoolCreateInfo poolInfo{};
@@ -325,15 +354,20 @@ void VulkanRenderer2D::CreateBindGroup()
         if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
         }
+    }
+}
 
+void VulkanRenderer2D::CreateBindGroup()
+{
+    if (!m_bindGroup)
+    {
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = m_bindGroupPool;
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &m_bindGroupLayout;
 
-        m_bindGroups.resize(1);
-        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, m_bindGroups.data()) != VK_SUCCESS) {
+        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
             throw std::runtime_error("failed to allocate descriptor sets!");
         }
     }
@@ -743,8 +777,8 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
 
     auto offset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
     // copy data to the buffer
-    const auto* ptr = static_cast<const char*>(bufferData) + offset;
-    memcpy(m_uniformBuffersMapped[0], ptr, m_sizeOfOneUniform);
+    auto* ptr = static_cast<char*>(m_uniformBuffersMapped[0]) + offset;
+    memcpy(static_cast<void*>(ptr), bufferData, m_sizeOfOneUniform);
 
     // TODO: Find a good place to do unmapping
     //vkUnmapMemory(Vulkan::GetDevice(), m_indexBufferMemory);
@@ -756,10 +790,11 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
 
     VkWriteDescriptorSet descriptorWrite{};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = m_bindGroups[0];
+    descriptorWrite.dstSet = m_bindGroup;
     descriptorWrite.dstBinding = 0;
     descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    assert(m_bindGroupBindings.size() > 0);
+    descriptorWrite.descriptorType = m_bindGroupBindings[0].descriptorType; //VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorWrite.descriptorCount = 1;
     descriptorWrite.pBufferInfo = &bufferInfo;
     descriptorWrite.pImageInfo = nullptr; // Optional
@@ -810,8 +845,6 @@ void VulkanRenderer2D::Render()
 
     VkDeviceSize offset = 0;
 	vkCmdBindVertexBuffers(m_commandBufferForReal, 0, 1, &m_vertexBuffer, &offset);
-    //vkCmdBindDescriptorSets(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelineLayout, 0, 1, &mRenderData.rdDescriptorSet, 0, nullptr);
-
     vkCmdDraw(m_commandBufferForReal, m_vertexCount, 1, 0, 0);
 }
 
@@ -836,7 +869,14 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     VkDeviceSize offset = 0;
 	vkCmdBindVertexBuffers(m_commandBufferForReal, 0, 1, &m_vertexBuffer, &offset);
     vkCmdBindIndexBuffer(m_commandBufferForReal, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
-    vkCmdBindDescriptorSets(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroups[0], 0, nullptr);
+
+    if (m_bindGroup)
+    {
+        uint32_t dynamicOffset = 0;
+        if (uniformIndex > 0)
+            dynamicOffset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
+        vkCmdBindDescriptorSets(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
+    }
 
     vkCmdDrawIndexed(m_commandBufferForReal, m_indexCount, 1, 0, 0, 0);
 }

@@ -200,8 +200,7 @@ public:
 			bGLayoutEntry.visibility = RenderSys::ShaderStage::Vertex;
 			bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
 			bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
-			// Make this binding dynamic so we can offset it between draw calls
-			bGLayoutEntry.buffer.hasDynamicOffset = true;
+			bGLayoutEntry.buffer.hasDynamicOffset = false;
 
 			m_renderer->CreateUniformBuffer(1, sizeof(MyUniforms));
 			m_renderer->CreateBindGroup(bGLayoutEntry);
@@ -215,7 +214,7 @@ public:
 			m_uniformData.time = static_cast<float>(glfwGetTime()); // glfwGetTime returns a double
 			m_renderer->SetUniformBufferData(&m_uniformData, 0);
 
-			m_renderer->RenderIndexed(0, 1);
+			m_renderer->RenderIndexed(0, 0);
 			m_renderer->EndRenderPass();
 		}
        		
