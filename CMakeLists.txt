@@ -5,6 +5,18 @@ find_package(walnut REQUIRED)
 message(STATUS "RENDERER: " ${RENDERER})
 
 if(RENDERER STREQUAL "Vulkan")
+    include(FetchContent)
+    set(VulkanMemoryAllocatorURL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git)
+    message(STATUS "Fetching: " ${VulkanMemoryAllocatorURL})
+    FetchContent_Declare(
+        vulkanmemoryallocator
+        GIT_REPOSITORY ${VulkanMemoryAllocatorURL}
+        GIT_TAG        v3.1.0
+    )
+    FetchContent_MakeAvailable(vulkanmemoryallocator) 
+    message(STATUS "vulkanmemoryallocator sourceDir: ${vulkanmemoryallocator_SOURCE_DIR}")
+    message(STATUS "vulkanmemoryallocator buildDir: ${vulkanmemoryallocator_BINARY_DIR}") 
+
     add_compile_definitions(RENDERER_BACKEND=2)
     find_package(shaderc REQUIRED)
     add_library (RenderSys2D STATIC
@@ -13,6 +25,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/vkb/VkBootstrap.cpp
                     src/RenderSys/Shader.cpp
     )
+    target_link_libraries(RenderSys2D PRIVATE GPUOpen::VulkanMemoryAllocator)
     # add_library (RenderSys3D STATIC
     #                 src/RenderSys/Renderer3D.cpp
     #                 src/Vulkan/VulkanRenderer3D.cpp
