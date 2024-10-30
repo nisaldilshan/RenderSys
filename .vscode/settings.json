@@ -101,6 +101,7 @@
         "coroutine": "cpp",
         "resumable": "cpp",
         "ranges": "cpp",
-        "stack": "cpp"
+        "stack": "cpp",
+        "numeric": "cpp"
     }
 }

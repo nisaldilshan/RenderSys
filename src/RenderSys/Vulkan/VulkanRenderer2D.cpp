@@ -2,6 +2,9 @@
 
 #include <iostream>
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 namespace GraphicsAPI
 {
 
@@ -142,6 +145,18 @@ bool createSyncObjects()
 
 bool VulkanRenderer2D::Init()
 {
+    if (!vma)
+    {
+        VmaAllocatorCreateInfo allocatorInfo{};
+        allocatorInfo.physicalDevice = Vulkan::GetPhysicalDevice();
+        allocatorInfo.device = Vulkan::GetDevice();
+        allocatorInfo.instance = Vulkan::GetInstance();
+        if (vmaCreateAllocator(&allocatorInfo, &vma) != VK_SUCCESS) {
+            std::cout << "error: could not init VMA" << std::endl;
+            return false;
+        }
+    }
+
     if (!createRenderPass())
     {
         return false;

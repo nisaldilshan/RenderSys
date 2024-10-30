@@ -10,6 +10,7 @@
 #include "../RenderUtil.h"
 #include "../Shader.h"
 
+#include <vk_mem_alloc.h>
 namespace GraphicsAPI
 {
     class VulkanRenderer2D
@@ -77,5 +78,7 @@ namespace GraphicsAPI
         std::vector<VkBuffer> m_uniformBuffers;
         std::vector<VkDeviceMemory> m_uniformBuffersMemory;
         std::vector<void*> m_uniformBuffersMapped;
+
+        VmaAllocator vma = VK_NULL_HANDLE;
     };
 }
