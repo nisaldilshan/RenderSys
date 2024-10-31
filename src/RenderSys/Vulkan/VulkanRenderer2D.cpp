@@ -145,13 +145,13 @@ bool createSyncObjects()
 
 bool VulkanRenderer2D::Init()
 {
-    if (!vma)
+    if (!m_vma)
     {
         VmaAllocatorCreateInfo allocatorInfo{};
         allocatorInfo.physicalDevice = Vulkan::GetPhysicalDevice();
         allocatorInfo.device = Vulkan::GetDevice();
         allocatorInfo.instance = Vulkan::GetInstance();
-        if (vmaCreateAllocator(&allocatorInfo, &vma) != VK_SUCCESS) {
+        if (vmaCreateAllocator(&allocatorInfo, &m_vma) != VK_SUCCESS) {
             std::cout << "error: could not init VMA" << std::endl;
             return false;
         }
@@ -280,8 +280,12 @@ void VulkanRenderer2D::DestroyBuffers()
 {
     if (m_vertexBuffer != VK_NULL_HANDLE && m_vertexBufferMemory != VK_NULL_HANDLE)
     {
-        vkDestroyBuffer(Vulkan::GetDevice(), m_vertexBuffer, nullptr);
-        vkFreeMemory(Vulkan::GetDevice(), m_vertexBufferMemory, nullptr);
+        vmaDestroyBuffer(m_vma, m_vertexBuffer, m_vertexBufferMemory);
+    }
+
+    if (m_indexBuffer != VK_NULL_HANDLE && m_indexBufferMemory != VK_NULL_HANDLE)
+    {
+        vmaDestroyBuffer(m_vma, m_indexBuffer, m_indexBufferMemory);
     }
 }
 
@@ -590,51 +594,28 @@ void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
         // uvAttribute.offset = offsetof(RenderSysVkVertex, uv);
 
         VkBufferCreateInfo bufferInfo = {};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferInfo.size = bufferLength;
 		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VmaAllocationCreateInfo vmaAllocInfo{};
+        vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-        auto res = vkCreateBuffer(Vulkan::GetDevice(), &bufferInfo, nullptr, &m_vertexBuffer);
-		if (res != VK_SUCCESS) {
-			std::cout << "vkCreateBuffer() failed!" << std::endl;
-			return;
-		}
-
-        auto [memTypeIdx, matchedSize] = FindAppropriateMemoryType(m_vertexBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		if (memTypeIdx < 0) {
-			std::cout << "Could not find an appropriate memory type" << std::endl;
-			return;
-		}
-
-        VkMemoryAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = matchedSize;
-		allocInfo.memoryTypeIndex = memTypeIdx;
-
-		res = vkAllocateMemory(Vulkan::GetDevice(), &allocInfo, NULL, &m_vertexBufferMemory);
-		if (res != VK_SUCCESS) {
-			std::cout << "vkAllocateMemory() failed" << std::endl;
-			return;
-		}
-
-        // If memory allocation was successful, then we can now associate this memory with the buffer using vkBindBufferMemory
-        res = vkBindBufferMemory(Vulkan::GetDevice(), m_vertexBuffer, m_vertexBufferMemory, 0);
-		if (res != VK_SUCCESS) {
-			std::cout << "vkBindBufferMemory() failed" << std::endl;
-			return;
-		}
+        if (vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_vertexBuffer, &m_vertexBufferMemory, nullptr) != VK_SUCCESS) {
+            std::cout << "vkCreateBuffer() failed!" << std::endl;
+            return;
+        }
 
         // copy data to the buffer
 		void *buf;
-		res = vkMapMemory(Vulkan::GetDevice(), m_vertexBufferMemory, 0, allocInfo.allocationSize, 0, &buf);
+		auto res = vmaMapMemory(m_vma, m_vertexBufferMemory, &buf);
 		if (res != VK_SUCCESS) {
 			std::cout << "vkMapMemory() failed" << std::endl;
 			return;
 		}
 
-		memcpy(buf, bufferData, bufferLength);
-		vkUnmapMemory(Vulkan::GetDevice(), m_vertexBufferMemory);
+		std::memcpy(buf, bufferData, bufferLength);
+		vmaUnmapMemory(m_vma, m_vertexBufferMemory);
         
         vertBufCreated = true;
     }
@@ -657,47 +638,25 @@ void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
 		bufferInfo.size = m_indexCount * sizeof(bufferData[0]);
 		bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VmaAllocationCreateInfo vmaAllocInfo{};
+        vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-        auto res = vkCreateBuffer(Vulkan::GetDevice(), &bufferInfo, nullptr, &m_indexBuffer);
+        auto res = vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_indexBuffer, &m_indexBufferMemory, nullptr);
 		if (res != VK_SUCCESS) {
 			std::cout << "vkCreateBuffer() failed!" << std::endl;
 			return;
 		}
 
-        auto [memTypeIdx, matchedSize] = FindAppropriateMemoryType(m_indexBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		if (memTypeIdx < 0) {
-			std::cout << "Could not find an appropriate memory type" << std::endl;
-			return;
-		}
-
-        VkMemoryAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = matchedSize;
-		allocInfo.memoryTypeIndex = memTypeIdx;
-
-		res = vkAllocateMemory(Vulkan::GetDevice(), &allocInfo, NULL, &m_indexBufferMemory);
-		if (res != VK_SUCCESS) {
-			std::cout << "vkAllocateMemory() failed" << std::endl;
-			return;
-		}
-
-        // If memory allocation was successful, then we can now associate this memory with the buffer using vkBindBufferMemory
-        res = vkBindBufferMemory(Vulkan::GetDevice(), m_indexBuffer, m_indexBufferMemory, 0);
-		if (res != VK_SUCCESS) {
-			std::cout << "vkBindBufferMemory() failed" << std::endl;
-			return;
-		}
-
         // copy data to the buffer
 		void *buf;
-		res = vkMapMemory(Vulkan::GetDevice(), m_indexBufferMemory, 0, allocInfo.allocationSize, 0, &buf);
+		res = vmaMapMemory(m_vma, m_indexBufferMemory, &buf);
 		if (res != VK_SUCCESS) {
 			std::cout << "vkMapMemory() failed" << std::endl;
 			return;
 		}
 
-		memcpy(buf, bufferData.data(), bufferInfo.size);
-		vkUnmapMemory(Vulkan::GetDevice(), m_indexBufferMemory);
+		std::memcpy(buf, bufferData.data(), bufferInfo.size);
+		vmaUnmapMemory(m_vma, m_indexBufferMemory);
         
         indexBufCreated = true;
     }
@@ -747,56 +706,33 @@ void VulkanRenderer2D::CreateUniformBuffer(size_t uniformCountInBuffer, uint32_t
     bufferInfo.size = m_sizeOfOneUniform + GetUniformStride(maximumUniformIndex, m_sizeOfOneUniform);
     bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VmaAllocationCreateInfo vmaAllocInfo{};
+    vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-    auto res = vkCreateBuffer(Vulkan::GetDevice(), &bufferInfo, nullptr, &m_uniformBuffers[0]);
+    auto res = vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_uniformBuffers[0], &m_uniformBuffersMemory[0], nullptr);
     if (res != VK_SUCCESS) {
         std::cout << "vkCreateBuffer() failed!" << std::endl;
-        return;
-    }
-
-    auto [memTypeIdx, matchedSize] = FindAppropriateMemoryType(m_uniformBuffers[0], VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    if (memTypeIdx < 0) {
-        std::cout << "Could not find an appropriate memory type" << std::endl;
-        return;
-    }
-
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = matchedSize;
-    allocInfo.memoryTypeIndex = memTypeIdx;
-
-    res = vkAllocateMemory(Vulkan::GetDevice(), &allocInfo, NULL, &m_uniformBuffersMemory[0]);
-    if (res != VK_SUCCESS) {
-        std::cout << "vkAllocateMemory() failed" << std::endl;
-        return;
-    }
-
-    // If memory allocation was successful, then we can now associate this memory with the buffer using vkBindBufferMemory
-    res = vkBindBufferMemory(Vulkan::GetDevice(), m_uniformBuffers[0], m_uniformBuffersMemory[0], 0);
-    if (res != VK_SUCCESS) {
-        std::cout << "vkBindBufferMemory() failed" << std::endl;
-        return;
-    }
-
-    res = vkMapMemory(Vulkan::GetDevice(), m_uniformBuffersMemory[0], 0, allocInfo.allocationSize, 0, &m_uniformBuffersMapped[0]);
-    if (res != VK_SUCCESS) {
-        std::cout << "vkMapMemory() failed" << std::endl;
         return;
     }
 }
 
 void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIndex)
 {
-    assert(m_uniformBuffers[0] && m_uniformBuffersMapped[0]);
+    assert(m_uniformBuffers[0]);
     assert(m_sizeOfOneUniform > 0);
+
+    auto res = vmaMapMemory(m_vma, m_uniformBuffersMemory[0], &m_uniformBuffersMapped[0]);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkMapMemory() failed" << std::endl;
+        return;
+    }
 
     auto offset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
     // copy data to the buffer
     auto* ptr = static_cast<char*>(m_uniformBuffersMapped[0]) + offset;
     memcpy(static_cast<void*>(ptr), bufferData, m_sizeOfOneUniform);
 
-    // TODO: Find a good place to do unmapping
-    //vkUnmapMemory(Vulkan::GetDevice(), m_indexBufferMemory);
+    vmaUnmapMemory(m_vma, m_uniformBuffersMemory[0]);
 
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer = m_uniformBuffers[0];
@@ -961,6 +897,9 @@ void VulkanRenderer2D::EndRenderPass()
 void VulkanRenderer2D::Destroy()
 {
     DestroyBuffers();
+
+    // Destroy VMA instance
+    vmaDestroyAllocator(m_vma);
 }
 
 void VulkanRenderer2D::SubmitCommandBuffer()

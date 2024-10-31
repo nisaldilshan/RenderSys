@@ -5,12 +5,12 @@
 #include <stddef.h>
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <vk_mem_alloc.h>
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 
 #include "../RenderUtil.h"
 #include "../Shader.h"
 
-#include <vk_mem_alloc.h>
 namespace GraphicsAPI
 {
     class VulkanRenderer2D
@@ -61,13 +61,13 @@ namespace GraphicsAPI
         VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
 
         VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
-        VkDeviceMemory m_vertexBufferMemory = VK_NULL_HANDLE;
+        VmaAllocation m_vertexBufferMemory = VK_NULL_HANDLE;
         std::vector<VkVertexInputBindingDescription> m_vertextBindingDescs;
         std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
         uint32_t m_vertexCount = 0;
 
         VkBuffer m_indexBuffer = VK_NULL_HANDLE;
-        VkDeviceMemory m_indexBufferMemory = VK_NULL_HANDLE;
+        VmaAllocation m_indexBufferMemory = VK_NULL_HANDLE;
         uint32_t m_indexCount = 0;
 
         VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
@@ -76,9 +76,9 @@ namespace GraphicsAPI
         std::vector<VkDescriptorSetLayoutBinding> m_bindGroupBindings;
         uint32_t m_sizeOfOneUniform = 0;
         std::vector<VkBuffer> m_uniformBuffers;
-        std::vector<VkDeviceMemory> m_uniformBuffersMemory;
+        std::vector<VmaAllocation> m_uniformBuffersMemory;
         std::vector<void*> m_uniformBuffersMapped;
 
-        VmaAllocator vma = VK_NULL_HANDLE;
+        VmaAllocator m_vma = VK_NULL_HANDLE;
     };
 }
