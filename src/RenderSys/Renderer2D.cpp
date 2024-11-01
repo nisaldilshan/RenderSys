@@ -1,13 +1,13 @@
 #include "Renderer2D.h"
 
-
 #if (RENDERER_BACKEND == 1)
-//#include <Walnut/GraphicsAPI/OpenGLGraphics.h>
+static_assert(false);
 #elif (RENDERER_BACKEND == 2)
 #include "Vulkan/VulkanRenderer2D.h"
 #elif (RENDERER_BACKEND == 3)
 #include "WebGPU/WebGPURenderer2D.h"
 #else
+static_assert(false);
 #endif
 
 using namespace RenderSys;

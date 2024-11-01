@@ -393,6 +393,7 @@ uint32_t VulkanRenderer3D::GetOffset(const uint32_t& uniformIndex, const uint32_
     // );
 
     // return uniformStride * uniformIndex;
+    return 0;
 }
 
 void VulkanRenderer3D::CreateUniformBuffer(size_t bufferLength, UniformBuf::UniformType type, uint32_t sizeOfUniform, uint32_t bindingIndex)

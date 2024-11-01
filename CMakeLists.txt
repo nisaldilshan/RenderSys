@@ -22,15 +22,17 @@ if(RENDERER STREQUAL "Vulkan")
     add_library (RenderSys2D STATIC
                     src/RenderSys/Renderer2D.cpp
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
-                    src/RenderSys/Vulkan/vkb/VkBootstrap.cpp
                     src/RenderSys/Shader.cpp
     )
     target_link_libraries(RenderSys2D PRIVATE GPUOpen::VulkanMemoryAllocator)
-    # add_library (RenderSys3D STATIC
-    #                 src/RenderSys/Renderer3D.cpp
-    #                 src/Vulkan/VulkanRenderer3D.cpp
-    #                 src/Camera.cpp
-    # )
+    add_library (RenderSys3D STATIC
+                    src/RenderSys/Renderer3D.cpp
+                    src/RenderSys/Vulkan/VulkanRenderer3D.cpp
+    )
+    add_library (ComputeSys STATIC
+                    src/RenderSys/Compute.cpp
+                    src/RenderSys/Vulkan/VulkanCompute.cpp
+    )
 else()
     add_compile_definitions(RENDERER_BACKEND=3)
     add_library (RenderSys2D STATIC
@@ -65,8 +67,8 @@ target_sources(RenderSys2D
 #                 FILES src/RenderSys/Compute.h src/RenderSys/Buffer.h)
 
 target_link_libraries(RenderSys2D PRIVATE walnut::walnut shaderc::shaderc)
-# target_link_libraries(RenderSys3D PRIVATE walnut::walnut)
-# target_link_libraries(ComputeSys PRIVATE walnut::walnut)
+target_link_libraries(RenderSys3D PRIVATE walnut::walnut)
+target_link_libraries(ComputeSys PRIVATE walnut::walnut)
 
 install(TARGETS RenderSys2D
     FILE_SET renderSysFileSet

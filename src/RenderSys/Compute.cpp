@@ -1,11 +1,19 @@
 #include "Compute.h"
 
+#if (RENDERER_BACKEND == 1)
+static_assert(false);
+#elif (RENDERER_BACKEND == 2)
+#include "Vulkan/VulkanCompute.h"
+#elif (RENDERER_BACKEND == 3)
 #include "WebGPU/WebGPUCompute.h"
+#else
+static_assert(false);
+#endif
 
 using namespace RenderSys;
 
 Compute::Compute()
-    : m_computeBackend(std::make_unique<GraphicsAPI::WebGPUCompute>())
+    : m_computeBackend(std::make_unique<GraphicsAPI::ComputeType>())
 {
 }
 
