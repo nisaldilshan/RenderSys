@@ -23,6 +23,7 @@ wgpu::VertexFormat GetWebGPUVertexFormat(RenderSys::VertexFormat renderSysFormat
     else
     {
         assert(false);
+        return wgpu::VertexFormat::Undefined;
     }
 }
 
@@ -52,7 +53,7 @@ wgpu::VertexBufferLayout GetWebGPUVertexBufferLayout(RenderSys::VertexBufferLayo
     {
         vAttrib.format = GetWebGPUVertexFormat(renderSysBufferLayout.attributes[attribCounter].format);
         vAttrib.offset = renderSysBufferLayout.attributes[attribCounter].offset;
-        vAttrib.shaderLocation = renderSysBufferLayout.attributes[attribCounter].shaderLocation;
+        vAttrib.shaderLocation = renderSysBufferLayout.attributes[attribCounter].location;
         attribCounter++;
     }
     
@@ -110,6 +111,7 @@ wgpu::BufferBindingType GetWebGPUBufferBindingType(RenderSys::BufferBindingType 
     else
     {
         assert(false);
+        return wgpu::BufferBindingType::Undefined;
     }
 }
 
@@ -137,6 +139,7 @@ wgpu::TextureSampleType GetWebGPUTextureSamplingType(RenderSys::TextureSampleTyp
     else
     {
         assert(false);
+        return wgpu::TextureSampleType::Undefined;
     }
 }
 

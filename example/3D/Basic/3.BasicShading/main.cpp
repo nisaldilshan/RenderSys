@@ -1,3 +1,5 @@
+#include <array>
+
 #include "Walnut/Application.h"
 #include "Walnut/EntryPoint.h"
 #include "Walnut/Random.h"
@@ -139,17 +141,17 @@ public:
 			std::vector<RenderSys::VertexAttribute> vertexAttribs(3);
 
 			// Position attribute
-			vertexAttribs[0].shaderLocation = 0;
+			vertexAttribs[0].location = 0;
 			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
 			vertexAttribs[0].offset = 0;
 
 			// Normal attribute
-			vertexAttribs[1].shaderLocation = 1;
+			vertexAttribs[1].location = 1;
 			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
 			vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
 
 			// Color attribute
-			vertexAttribs[2].shaderLocation = 2;
+			vertexAttribs[2].location = 2;
 			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3; // different type!
 			vertexAttribs[2].offset = offsetof(VertexAttributes, color);
 

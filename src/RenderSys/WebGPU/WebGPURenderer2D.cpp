@@ -40,7 +40,7 @@ void WebGPURenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     m_textureToRenderInto = texture.createView(tex_view_desc);
 }
 
-void WebGPURenderer2D::CreateShaders(const char* shaderSource)
+void WebGPURenderer2D::CreateShaders(RenderSys::Shader& shader)
 {
     std::cout << "Creating shader module..." << std::endl;
 
@@ -54,7 +54,7 @@ void WebGPURenderer2D::CreateShaders(const char* shaderSource)
     // Set the chained struct's header
     shaderCodeDesc.chain.next = nullptr;
     shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
-    shaderCodeDesc.code = shaderSource;
+    shaderCodeDesc.code = shader.shaderSrc.c_str();
     // Connect the chain
     shaderDesc.nextInChain = &shaderCodeDesc.chain;
     m_shaderModule = WebGPU::GetDevice().createShaderModule(shaderDesc);
@@ -62,9 +62,9 @@ void WebGPURenderer2D::CreateShaders(const char* shaderSource)
     std::cout << "Shader module: " << m_shaderModule << std::endl;
 }
 
-void WebGPURenderer2D::CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount)
+void WebGPURenderer2D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount)
 {
-    CreateShaders(shaderSource);
+    CreateShaders(shader);
     m_vertexCount = vertexShaderCallCount;
 }
 
@@ -267,17 +267,17 @@ uint32_t WebGPURenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_
 
 void WebGPURenderer2D::CreateUniformBuffer(size_t uniformCountInBuffer, uint32_t sizeOfOneUniform)
 {
-    assert(sizeOfUniform > 0);
+    assert(sizeOfOneUniform > 0);
     // Create uniform buffer
     // The buffer will only contain 1 float with the value of uTime
     wgpu::BufferDescriptor bufferDesc;
-    const size_t maxUniformIndex = bufferLength - 1;
-    bufferDesc.size = sizeOfUniform + GetOffset(maxUniformIndex, sizeOfUniform);
+    const size_t maxUniformIndex = uniformCountInBuffer - 1;
+    bufferDesc.size = sizeOfOneUniform + GetOffset(maxUniformIndex, sizeOfOneUniform);
     // Make sure to flag the buffer as BufferUsage::Uniform
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufferDesc.mappedAtCreation = false;
     m_uniformBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
-    m_sizeOfUniform = sizeOfUniform;
+    m_sizeOfUniform = sizeOfOneUniform;
 }
 
 void WebGPURenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIndex)
@@ -377,6 +377,10 @@ void WebGPURenderer2D::EndRenderPass()
 {
     m_renderPass.end();
     SubmitCommandBuffer();
+}
+
+void WebGPURenderer2D::Destroy()
+{
 }
 
 void WebGPURenderer2D::SubmitCommandBuffer()

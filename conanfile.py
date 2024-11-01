@@ -1,5 +1,6 @@
-from conans import ConanFile, tools
+from conans import ConanFile
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from conan.errors import ConanInvalidConfiguration
 
 class RenderSysConan(ConanFile):
     name = "RenderSys"
@@ -10,17 +11,33 @@ class RenderSysConan(ConanFile):
     author = "Nisal Dilshan"
     settings = "os", "compiler", "build_type", "arch"
     generators = 'VirtualBuildEnv'
+    options = {
+        'rendering_backend': ["OpenGL", "Vulkan", "WebGPU"],
+        'fPIC': [True, False]
+    }
+    default_options = {
+        'rendering_backend': "WebGPU",
+        'fPIC': True
+    }
     
     def requirements(self):
         self.requires('walnut/latest')
-        self.requires('shaderc/2023.6')
+        if self.options.rendering_backend == "Vulkan":
+            self.requires('shaderc/2023.6')
+        elif self.options.rendering_backend == "WebGPU":
+            self.requires("WebGPU/latest")
+        else:
+            raise ConanInvalidConfiguration("Unsupported Renderer Type")
 
     def build_requirements(self):
         self.tool_requires('cmake/3.25.3')
 
+    def config_options(self):
+        self.options['walnut'].rendering_backend = self.options.rendering_backend
+
     def generate(self):
         tc = CMakeToolchain(self)
-        rendererName = self.dependencies['walnut'].options.rendering_backend
+        rendererName = self.options.rendering_backend
         print("Using Renderer - " + str(rendererName))
         tc.variables["RENDERER"] = rendererName
         tc.generate()
