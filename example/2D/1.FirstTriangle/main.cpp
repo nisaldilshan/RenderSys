@@ -72,7 +72,6 @@ public:
 			}
 			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 			{
-				RenderSys::Shader shader("Combined");
 				const char* shaderSource = R"(
 					@vertex
 					fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
@@ -92,6 +91,7 @@ public:
 						return vec4f(0.0, 0.4, 1.0, 1.0);
 					}
 				)";
+				RenderSys::Shader shader("Combined");
 				shader.type = RenderSys::ShaderType::WGSL;
 				shader.shaderSrc = shaderSource;
 				shader.stage = RenderSys::ShaderStage::VertexAndFragment;

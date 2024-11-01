@@ -1,4 +1,4 @@
-#define DAWN_DEBUG_BREAK_ON_ERROR 1
+#include <array>
 
 #include "Walnut/Application.h"
 #include "Walnut/EntryPoint.h"
@@ -267,32 +267,32 @@ private:
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(6);
 
 		// Position attribute
-		vertexAttribs[0].shaderLocation = 0;
+		vertexAttribs[0].location = 0;
 		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[0].offset = 0;
 
 		// Normal attribute
-		vertexAttribs[1].shaderLocation = 1;
+		vertexAttribs[1].location = 1;
 		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
 
 		// Color attribute
-		vertexAttribs[2].shaderLocation = 2;
+		vertexAttribs[2].location = 2;
 		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[2].offset = offsetof(VertexAttributes, color);
 
 		// UV attribute
-		vertexAttribs[3].shaderLocation = 3;
+		vertexAttribs[3].location = 3;
 		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
 		vertexAttribs[3].offset = offsetof(VertexAttributes, uv);
 
 		// Tangent attribute
-		vertexAttribs[4].shaderLocation = 4;
+		vertexAttribs[4].location = 4;
 		vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[4].offset = offsetof(VertexAttributes, tangent);
 
 		// Bitangent attribute
-		vertexAttribs[5].shaderLocation = 5;
+		vertexAttribs[5].location = 5;
 		vertexAttribs[5].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[5].offset = offsetof(VertexAttributes, bitangent);
 

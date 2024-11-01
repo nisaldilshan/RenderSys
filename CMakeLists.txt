@@ -213,7 +213,7 @@ else()
     
     target_link_libraries(RenderSys2D PRIVATE WEBGPU-WHOLEARCHIVE)
     target_link_libraries(RenderSys3D PRIVATE WEBGPU-WHOLEARCHIVE)
-
+    target_link_libraries(ComputeSys PRIVATE WEBGPU-WHOLEARCHIVE)
     
 endif()
 

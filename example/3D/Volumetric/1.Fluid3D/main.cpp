@@ -5,7 +5,7 @@
 #include <GLFW/glfw3.h>
 
 #include <RenderSys/Renderer3D.h>
-#include "../../../../src/Camera.h"
+#include <RenderSys/Camera.h>
 
 /**
  * A structure that describes the data layout in the vertex buffer
