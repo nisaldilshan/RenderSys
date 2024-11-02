@@ -1,0 +1,228 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "FirstTriangle",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/2D/1.FirstTriangle/Debug/FirstTriangle",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/2D/1.FirstTriangle/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "VertexBuffers",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/2D/2.VertexBuffers/Debug/VertexBuffers",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/2D/2.VertexBuffers/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "VertexAttributes",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/2D/3.VertexAttributes/Debug/VertexAttributes",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/2D/3.VertexAttributes/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "IndexBuffers",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/2D/4.IndexBuffers/Debug/IndexBuffers",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/2D/4.IndexBuffers/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "UniformBuffers",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/2D/5.UniformBuffers/Debug/UniformBuffers",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/2D/5.UniformBuffers/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "DynamicUniforms",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/2D/6.DynamicUniforms/Debug/DynamicUniforms",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/2D/6.DynamicUniforms/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Fluid2D",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/2D/7.Fluid2D/Fluid2D",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/2D/7.Fluid2D",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
+            },
+        },
+        {
+            "name": "BasicCompute",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/Compute/1.BasicCompute/BasicCompute",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/Compute/1.BasicCompute",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
+            },
+        },
+        {
+            "name": "Noise",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/Compute/2.Noise/Noise",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/Compute/2.Noise",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
+            },
+        },
+        {
+            "name": "First3DShape",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Basic/1.First3DShape/Debug/First3DShape",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/1.First3DShape/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "TransformationMatrices",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Basic/2.TransformationMatrices/TransformationMatrices",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/2.TransformationMatrices",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
+        },
+        {
+            "name": "BasicShading",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Basic/3.BasicShading/BasicShading",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/3.BasicShading",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
+        },
+        {
+            "name": "FirstTexture",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Basic/4.FirstTexture/FirstTexture",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/4.FirstTexture",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
+        },
+        {
+            "name": "TextureSampler",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Basic/5.TextureSampler/TextureSampler",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/5.TextureSampler",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
+        },
+        {
+            "name": "TextureLoader",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Basic/6.TextureLoader/TextureLoader",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/6.TextureLoader",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
+        },
+        {
+            "name": "CameraControls",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Basic/7.CameraControls/CameraControls",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/7.CameraControls",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
+        },
+        {
+            "name": "Lighting",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Basic/8.Lighting/Lighting",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/8.Lighting",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
+        },
+        {
+            "name": "NormalMapping",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Basic/9.NormalMapping/Debug/NormalMapping",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/9.NormalMapping/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "RayMarching",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Advanced/1.RayMarching/RayMarching",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Advanced/1.RayMarching",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
+        }
+    ]
+}

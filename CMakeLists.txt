@@ -38,6 +38,7 @@ else()
     find_package(WebGPU REQUIRED)
     add_library(WEBGPU-WHOLEARCHIVE INTERFACE)
     target_link_directories(WEBGPU-WHOLEARCHIVE INTERFACE $<$<CONFIG:DEBUG>:${WebGPU_LIB_DIRS_DEBUG}>) # TODO: add lib dir for non debug configurations as well
+    if(WIN32)
     target_link_libraries(WEBGPU-WHOLEARCHIVE INTERFACE
                             absl_bad_any_cast_impl.lib
                             absl_bad_optional_access.lib
@@ -195,6 +196,8 @@ else()
                             tint_utils_traits.lib
                             webgpu_dawn.lib
                     )
+    else()
+    endif()
 
     add_compile_definitions(RENDERER_BACKEND=3)
     add_library (RenderSys2D STATIC
