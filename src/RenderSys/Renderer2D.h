@@ -1,12 +1,14 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include <stdint.h>
 #include <imgui_impl_glfw.h>
 #include <Walnut/ImageFormat.h>
 
 
 #include "RenderUtil.h"
+#include "Shader.h"
 
 namespace GraphicsAPI
 {
@@ -20,6 +22,7 @@ typedef VulkanRenderer2D RendererType;
 class WebGPURenderer2D;
 typedef WebGPURenderer2D RendererType;
 #else
+static_assert(false);
 #endif
 }
 
@@ -38,9 +41,8 @@ public:
 
     void Init();
     void OnResize(uint32_t width, uint32_t height);
-    void SetShaderFile(const char* shaderFile);
-    void SetShaderAsString(const std::string& shaderSource);
-    void SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount);
+    void SetShader(RenderSys::Shader& shader);
+    void SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
     void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
     void CreatePipeline();
@@ -57,6 +59,7 @@ public:
     void EndRenderPass();
 
     void* GetDescriptorSet() const;
+    void Destroy();
 private:
     uint32_t m_Width = 0, m_Height = 0;
     std::unique_ptr<GraphicsAPI::RendererType> m_rendererBackend;

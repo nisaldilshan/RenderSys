@@ -95,7 +95,11 @@ public:
 		}
 
 		)";
-		m_renderer->SetShaderAsString(shaderSource);
+		RenderSys::Shader shader("Combined");
+		shader.type = RenderSys::ShaderType::WGSL;
+		shader.shaderSrc = shaderSource;
+		shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+		m_renderer->SetShader(shader);
 
 		m_finalImage = std::make_shared<Walnut::Image>(1, 1, Walnut::ImageFormat::RGBA);
 		m_fluid = std::make_unique<FluidPlane>(simulationDimension);
@@ -138,12 +142,12 @@ public:
 			std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
 
 			// Position attribute
-			vertexAttribs[0].shaderLocation = 0;
+			vertexAttribs[0].location = 0;
 			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x2;
 			vertexAttribs[0].offset = 0;
 
 			// UV attribute
-			vertexAttribs[1].shaderLocation = 1;
+			vertexAttribs[1].location = 1;
 			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x2;
 			vertexAttribs[1].offset = offsetof(VertexAttributes, uv);
 

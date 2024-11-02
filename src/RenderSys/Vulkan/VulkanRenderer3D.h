@@ -18,6 +18,7 @@ namespace GraphicsAPI
         VulkanRenderer3D() = default;
         ~VulkanRenderer3D() = default;
 
+        bool Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
         void CreateShaders(const char* shaderSource);
         void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);

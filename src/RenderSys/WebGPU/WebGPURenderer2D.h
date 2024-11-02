@@ -6,6 +6,7 @@
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
 #include "../RenderUtil.h"
+#include "../Shader.h"
 
 namespace GraphicsAPI
 {
@@ -17,14 +18,14 @@ namespace GraphicsAPI
 
         void Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
-        void CreateShaders(const char* shaderSource);
-        void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);
+        void CreateShaders(RenderSys::Shader& shader);
+        void CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
         void CreatePipeline();
         void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
         void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
         void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
         void CreateBindGroup();
-        void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
+        void CreateUniformBuffer(size_t uniformCountInBuffer, uint32_t sizeOfOneUniform);
         void SetUniformData(const void* bufferData, uint32_t uniformIndex);
         void SimpleRender();
         void Render();
@@ -32,6 +33,7 @@ namespace GraphicsAPI
         ImTextureID GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();
+        void Destroy();
         
     private:
         void SubmitCommandBuffer();

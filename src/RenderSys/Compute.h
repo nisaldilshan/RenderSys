@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include <stdint.h>
 #include <imgui_impl_glfw.h>
 
@@ -12,11 +13,13 @@ namespace GraphicsAPI
 #if (RENDERER_BACKEND == 1)
 static_assert(false);
 #elif (RENDERER_BACKEND == 2)
-static_assert(false);
+class VulkanCompute;
+typedef VulkanCompute ComputeType;
 #elif (RENDERER_BACKEND == 3)
 class WebGPUCompute;
 typedef WebGPUCompute ComputeType;
 #else
+static_assert(false);
 #endif
 }
 

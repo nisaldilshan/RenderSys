@@ -2,6 +2,7 @@
 #include "Walnut/EntryPoint.h"
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
+#include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer2D.h>
 
@@ -30,27 +31,77 @@ public:
         {
 			m_renderer->Init();
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
+			
+			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+			{
+				RenderSys::Shader vertexShader("Vertex");
+				const char* vertexShaderSource = R"(
+					#version 450
 
-			const char* shaderSource = R"(
-				@vertex
-				fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
-					var p = vec2f(0.0, 0.0);
-					if (in_vertex_index == 0u) {
-						p = vec2f(-0.5, -0.5);
-					} else if (in_vertex_index == 1u) {
-						p = vec2f(0.5, -0.5);
-					} else {
-						p = vec2f(0.0, 0.5);
+					vec2 positions[3] = vec2[](
+						vec2(0.0, -0.5),
+						vec2(0.5, 0.5),
+						vec2(-0.5, 0.5)
+					);
+
+					void main() {
+						gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
 					}
-					return vec4f(p, 0.0, 1.0);
-				}
+				)";
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.shaderSrc = vertexShaderSource;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				m_renderer->SetStandaloneShader(vertexShader, 3);
 
-				@fragment
-				fn fs_main() -> @location(0) vec4f {
-					return vec4f(0.0, 0.4, 1.0, 1.0);
-				}
-			)";
-			m_renderer->SetStandaloneShader(shaderSource, 3);
+				RenderSys::Shader fragmentShader("Fragment");
+				const char* fragmentShaderSource = R"(
+					#version 450
+
+					layout(location = 0) out vec4 FragColor;
+					layout(location = 0) in vec2 texCoord;
+
+					void main()
+					{
+						FragColor = vec4(1.0, 0.4000000059604644775390625, 0.0, 1.0);
+					}
+				)";
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.shaderSrc = fragmentShaderSource;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				m_renderer->SetStandaloneShader(fragmentShader, 3);
+			}
+			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+			{
+				const char* shaderSource = R"(
+					@vertex
+					fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
+						var p = vec2f(0.0, 0.0);
+						if (in_vertex_index == 0u) {
+							p = vec2f(-0.5, -0.5);
+						} else if (in_vertex_index == 1u) {
+							p = vec2f(0.5, -0.5);
+						} else {
+							p = vec2f(0.0, 0.5);
+						}
+						return vec4f(p, 0.0, 1.0);
+					}
+
+					@fragment
+					fn fs_main() -> @location(0) vec4f {
+						return vec4f(0.0, 0.4, 1.0, 1.0);
+					}
+				)";
+				RenderSys::Shader shader("Combined");
+				shader.type = RenderSys::ShaderType::WGSL;
+				shader.shaderSrc = shaderSource;
+				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+				m_renderer->SetStandaloneShader(shader, 3);
+			}
+			else
+			{
+				assert(false);
+			}
+			
 			m_renderer->CreatePipeline();
         }
 
