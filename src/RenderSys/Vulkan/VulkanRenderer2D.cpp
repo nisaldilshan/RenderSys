@@ -8,9 +8,6 @@
 namespace GraphicsAPI
 {
 
-VkSemaphore g_presentSemaphore = VK_NULL_HANDLE;
-VkSemaphore g_renderSemaphore = VK_NULL_HANDLE;
-VkFence g_renderFence = VK_NULL_HANDLE;
 constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
 VkRenderPass g_renderpass = VK_NULL_HANDLE;
 
@@ -123,26 +120,6 @@ bool createRenderPass()
     return true;
 }
 
-bool createSyncObjects()
-{
-    if (g_presentSemaphore && g_renderSemaphore)
-        return true;
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-    if (vkCreateSemaphore(Vulkan::GetDevice(), &semaphoreInfo, nullptr, &g_presentSemaphore) != VK_SUCCESS ||
-        vkCreateSemaphore(Vulkan::GetDevice(), &semaphoreInfo, nullptr, &g_renderSemaphore) != VK_SUCCESS ||
-        vkCreateFence(Vulkan::GetDevice(), &fenceInfo, nullptr, &g_renderFence) != VK_SUCCESS) {
-        std::cout << "error: failed to init sync objects" << std::endl;
-        return false;
-    }
-    return true;
-}
-
 bool VulkanRenderer2D::Init()
 {
     if (!m_vma)
@@ -159,10 +136,6 @@ bool VulkanRenderer2D::Init()
 
     if (!createRenderPass())
     {
-        return false;
-    }
-
-    if (!createSyncObjects()) {
         return false;
     }
 
@@ -228,7 +201,7 @@ void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
     if (shaderMapIter == m_shaderMap.end())
     {
         compiledShader = RenderSys::ShaderUtils::compile_file(shader.GetName(), shader);
-        assert(compiledShader.size() > 0, shader.GetName());
+        assert(compiledShader.size() > 0);
         m_shaderMap.emplace(shader.GetName(), compiledShader);
     }
     else
@@ -872,7 +845,7 @@ void VulkanRenderer2D::BeginRenderPass()
 
     VkClearValue clearValues[] = { colorClearValue, depthValue };
 
-    m_commandBufferForReal = GraphicsAPI::Vulkan::GetCommandBuffer(true);
+    m_commandBufferForReal = GraphicsAPI::Vulkan::GetCommandBuffer(true); // CRITICAL: only call once in the renderer
 
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
@@ -891,7 +864,7 @@ void VulkanRenderer2D::BeginRenderPass()
 void VulkanRenderer2D::EndRenderPass()
 {
 	vkCmdEndRenderPass(m_commandBufferForReal);
-    GraphicsAPI::Vulkan::FlushCommandBuffer(m_commandBufferForReal);
+    SubmitCommandBuffer();
 }
 
 void VulkanRenderer2D::Destroy()
@@ -904,18 +877,19 @@ void VulkanRenderer2D::Destroy()
 
 void VulkanRenderer2D::SubmitCommandBuffer()
 {
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    GraphicsAPI::Vulkan::FlushCommandBuffer(m_commandBufferForReal);
 
-    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    submitInfo.pWaitDstStageMask = &waitStage;
-    submitInfo.commandBufferCount = 1;
-    //submitInfo.pCommandBuffers = &g_commandBuffer;
+    // VkSubmitInfo submitInfo{};
+    // submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    // VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    // submitInfo.pWaitDstStageMask = &waitStage;
+    // submitInfo.commandBufferCount = 1;
+    // submitInfo.pCommandBuffers = &m_commandBufferForReal;
 
-    if (vkQueueSubmit(Vulkan::GetDeviceQueue(), 1, &submitInfo, g_renderFence) != VK_SUCCESS) {
-        std::cout << "error: failed to submit draw command buffer" << std::endl;
-        return;
-    }
+    // if (vkQueueSubmit(Vulkan::GetDeviceQueue(), 1, &submitInfo, g_renderFence) != VK_SUCCESS) {
+    //     std::cout << "error: failed to submit draw command buffer" << std::endl;
+    //     return;
+    // }
 }
 
 } // namespace GraphicsAPI
