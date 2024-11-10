@@ -1,6 +1,7 @@
 #pragma once
 
-#include "WebGPURenderer2D.h"
+namespace GraphicsAPI
+{
 
 wgpu::VertexFormat GetWebGPUVertexFormat(RenderSys::VertexFormat renderSysFormat)
 {
@@ -174,4 +175,6 @@ wgpu::BindGroupLayoutEntry* GetWebGPUBindGroupLayoutEntriesPtr(const std::vector
     }
     
     return &bGroupLayoutArr[0];
+}
+
 }

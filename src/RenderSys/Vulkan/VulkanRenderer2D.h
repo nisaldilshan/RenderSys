@@ -41,6 +41,7 @@ namespace GraphicsAPI
         void Destroy();
     private:
         void CreatePipelineLayout();
+        bool CreateRenderPass();
         void DestroyBuffers();
         void DestroyShaders();
         void SubmitCommandBuffer();

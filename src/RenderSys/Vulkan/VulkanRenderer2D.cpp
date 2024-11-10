@@ -1,4 +1,5 @@
 #include "VulkanRenderer2D.h"
+#include "VulkanRendererUtils.h"
 
 #include <iostream>
 
@@ -10,115 +11,6 @@ namespace GraphicsAPI
 
 constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
 VkRenderPass g_renderpass = VK_NULL_HANDLE;
-
-VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
-{
-    switch (format)
-    {
-    case RenderSys::VertexFormat::Float32x2: return VK_FORMAT_R32G32_SFLOAT;
-    case RenderSys::VertexFormat::Float32x3: return VK_FORMAT_R32G32B32_SFLOAT;
-    default: assert(false);
-    }
-    return (VkFormat)0;
-}
-
-std::pair<int, VkDeviceSize> FindAppropriateMemoryType(const VkBuffer& buffer, unsigned int flags)
-{
-    VkMemoryRequirements mem_reqs;
-    vkGetBufferMemoryRequirements(Vulkan::GetDevice(), buffer, &mem_reqs);
-
-    VkPhysicalDeviceMemoryProperties gpu_mem;
-    vkGetPhysicalDeviceMemoryProperties(Vulkan::GetPhysicalDevice(), &gpu_mem);
-
-    int mem_type_idx = -1;
-    for (int j = 0; j < gpu_mem.memoryTypeCount; j++) {
-        if ((mem_reqs.memoryTypeBits & (1 << j)) &&
-            (gpu_mem.memoryTypes[j].propertyFlags & flags) == flags)
-        {
-            mem_type_idx = j;
-            break;
-        }
-    }
-
-    return std::make_pair(mem_type_idx, mem_reqs.size);
-}
-
-bool createRenderPass()
-{
-    if (g_renderpass)
-        return true;
-
-    VkAttachmentDescription colorAtt{};
-    colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
-    colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAtt.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-    VkAttachmentReference colorAttRef{};
-    colorAttRef.attachment = 0;
-    colorAttRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentDescription depthAtt{};
-    depthAtt.flags = 0;
-    depthAtt.format = g_rdDepthFormat;
-    depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depthAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAtt.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentReference depthAttRef{};
-    depthAttRef.attachment = 1;
-    depthAttRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription subpassDesc{};
-    subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpassDesc.colorAttachmentCount = 1;
-    subpassDesc.pColorAttachments = &colorAttRef;
-    // subpassDesc.pDepthStencilAttachment = &depthAttRef;
-
-    VkSubpassDependency subpassDep{};
-    subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-    subpassDep.dstSubpass = 0;
-    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDep.srcAccessMask = 0;
-    subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-    VkSubpassDependency depthDep{};
-    depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-    depthDep.dstSubpass = 0;
-    depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    depthDep.srcAccessMask = 0;
-    depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-    VkSubpassDependency dependencies[] = {subpassDep, depthDep};
-    VkAttachmentDescription attachments[] = {colorAtt};
-
-    VkRenderPassCreateInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 1;
-    renderPassInfo.pAttachments = attachments;
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpassDesc;
-    //   renderPassInfo.dependencyCount = 2;
-    //   renderPassInfo.pDependencies = dependencies;
-
-    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &g_renderpass) != VK_SUCCESS)
-    {
-        std::cout << "error; could not create renderpass" << std::endl;
-        return false;
-    }
-
-    return true;
-}
 
 bool VulkanRenderer2D::Init()
 {
@@ -134,9 +26,12 @@ bool VulkanRenderer2D::Init()
         }
     }
 
-    if (!createRenderPass())
+    if (!g_renderpass)
     {
-        return false;
+        if (!CreateRenderPass())
+        {
+            return false;
+        }
     }
 
     return true;
@@ -391,6 +286,80 @@ void VulkanRenderer2D::CreatePipelineLayout()
             std::cout << "error: could not create pipeline layout" << std::endl;
         }        
     }
+}
+
+bool VulkanRenderer2D::CreateRenderPass()
+{
+    VkAttachmentDescription colorAtt{};
+    colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
+    colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAtt.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    VkAttachmentReference colorAttRef{};
+    colorAttRef.attachment = 0;
+    colorAttRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentDescription depthAtt{};
+    depthAtt.flags = 0;
+    depthAtt.format = g_rdDepthFormat;
+    depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    depthAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAtt.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depthAttRef{};
+    depthAttRef.attachment = 1;
+    depthAttRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpassDesc{};
+    subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassDesc.colorAttachmentCount = 1;
+    subpassDesc.pColorAttachments = &colorAttRef;
+    // subpassDesc.pDepthStencilAttachment = &depthAttRef;
+
+    VkSubpassDependency subpassDep{};
+    subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpassDep.dstSubpass = 0;
+    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.srcAccessMask = 0;
+    subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    VkSubpassDependency depthDep{};
+    depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    depthDep.dstSubpass = 0;
+    depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    depthDep.srcAccessMask = 0;
+    depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+    VkSubpassDependency dependencies[] = {subpassDep, depthDep};
+    VkAttachmentDescription attachments[] = {colorAtt};
+
+    VkRenderPassCreateInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = attachments;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpassDesc;
+    //   renderPassInfo.dependencyCount = 2;
+    //   renderPassInfo.pDependencies = dependencies;
+
+    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &g_renderpass) != VK_SUCCESS)
+    {
+        std::cout << "error; could not create renderpass" << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 void VulkanRenderer2D::CreatePipeline()
