@@ -4,6 +4,11 @@
 namespace GraphicsAPI
 {
 
+bool VulkanRenderer3D::Init()
+{
+    return false;
+}
+
 void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
 {
     m_width = width;
