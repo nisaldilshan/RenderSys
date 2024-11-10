@@ -30,6 +30,8 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Renderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
     )
+    target_link_libraries(RenderSys3D PRIVATE GPUOpen::VulkanMemoryAllocator)
+    target_link_libraries(RenderSys3D PRIVATE shaderc::shaderc)
     add_library (ComputeSys STATIC
                     src/RenderSys/Compute.cpp
                     src/RenderSys/Vulkan/VulkanCompute.cpp

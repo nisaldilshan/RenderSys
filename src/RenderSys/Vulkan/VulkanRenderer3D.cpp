@@ -29,18 +29,18 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT; // WGPUTextureUsage_CopyDst | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_image);
+    VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_ImageToRenderInto);
     Vulkan::check_vk_result(err);
 
     VkMemoryRequirements req;
-    vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_image, &req);
+    vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_ImageToRenderInto, &req);
     VkMemoryAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = req.size;
     alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_imageMemory);
+    //err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_imageMemory);
     Vulkan::check_vk_result(err);
-    err = vkBindImageMemory(Vulkan::GetDevice(), m_image, m_imageMemory, 0);
+    //err = vkBindImageMemory(Vulkan::GetDevice(), m_image, m_imageMemory, 0);
     Vulkan::check_vk_result(err);
 
     //// Create the image view
@@ -48,13 +48,13 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
         VkResult err;
         VkImageViewCreateInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        info.image = m_image;
+        info.image = m_ImageToRenderInto;
         info.viewType = VK_IMAGE_VIEW_TYPE_2D;
         info.format = VK_FORMAT_R8G8B8A8_UNORM;
         info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         info.subresourceRange.levelCount = 1;
         info.subresourceRange.layerCount = 1;
-        err = vkCreateImageView(Vulkan::GetDevice(), &info, nullptr, &m_imageView);
+        err = vkCreateImageView(Vulkan::GetDevice(), &info, nullptr, &m_imageViewToRenderInto);
         Vulkan::check_vk_result(err);
     }
 
@@ -71,15 +71,15 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
         info.minLod = -1000;
         info.maxLod = 1000;
         info.maxAnisotropy = 1.0f;
-        VkResult err = vkCreateSampler(Vulkan::GetDevice(), &info, nullptr, &m_imageSampler);
+        VkResult err = vkCreateSampler(Vulkan::GetDevice(), &info, nullptr, &m_textureSampler);
         Vulkan::check_vk_result(err);
     }
 
     //// create the descriptor set
-    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_imageSampler, m_imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
-void VulkanRenderer3D::CreateShaders(const char* shaderSource)
+void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
 {
     std::cout << "Creating shader module..." << std::endl;
 
@@ -101,9 +101,9 @@ void VulkanRenderer3D::CreateShaders(const char* shaderSource)
 //     std::cout << "Shader module: " << m_shaderModule << std::endl;
 }
 
-void VulkanRenderer3D::CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount)
+void VulkanRenderer3D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount)
 {
-    CreateShaders(shaderSource);
+    CreateShaders(shader);
     m_vertexCount = vertexShaderCallCount;
 }
 
@@ -372,7 +372,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     // }
 }
 
-uint32_t VulkanRenderer3D::GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
+uint32_t VulkanRenderer3D::GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
 {
     if (uniformIndex == 0)
         return 0;
@@ -560,7 +560,7 @@ void VulkanRenderer3D::EndRenderPass()
     // SubmitCommandBuffer();
 }
 
-void VulkanRenderer3D::Reset()
+void VulkanRenderer3D::Destroy()
 {
     // m_vertexBuffer.destroy();
 	// m_vertexBuffer.release();

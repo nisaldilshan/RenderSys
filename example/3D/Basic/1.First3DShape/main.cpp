@@ -119,7 +119,11 @@ public:
 				return vec4f(corrected_color, uMyUniforms.color.a);
 			}
 			)";
-			m_renderer->SetShaderAsString(shaderSource);
+			RenderSys::Shader shader("Combined");
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+			m_renderer->SetShader(shader);
 
 			//
 			std::vector<float> vertexData;

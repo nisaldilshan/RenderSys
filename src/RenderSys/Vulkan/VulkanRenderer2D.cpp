@@ -76,7 +76,7 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     Vulkan::check_vk_result(err);
 
     CreateTextureSampler();
-    m_DescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
 
 
     CreateFrameBuffer();
@@ -797,7 +797,7 @@ void VulkanRenderer2D::CreateTextureSampler()
 
 ImTextureID VulkanRenderer2D::GetDescriptorSet()
 {
-    return m_DescriptorSet;
+    return m_descriptorSet;
 }
 
 void VulkanRenderer2D::BeginRenderPass()

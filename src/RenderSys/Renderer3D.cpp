@@ -34,19 +34,14 @@ void Renderer3D::Init()
     m_rendererBackend->Init();
 }
 
-void Renderer3D::SetShaderFile(const char* shaderFile)
+void Renderer3D::SetShader(RenderSys::Shader& shader)
 {
-    m_rendererBackend->CreateShaders(shaderFile);
+    m_rendererBackend->CreateShaders(shader);
 }
 
-void Renderer3D::SetShaderAsString(const std::string& shaderSource)
+void Renderer3D::SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount)
 {
-    m_rendererBackend->CreateShaders(shaderSource.c_str());
-}
-
-void Renderer3D::SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount)
-{
-    m_rendererBackend->CreateStandaloneShader(shaderSource, vertexShaderCallCount);
+    m_rendererBackend->CreateStandaloneShader(shader, vertexShaderCallCount);
 }
 
 void Renderer3D::SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)

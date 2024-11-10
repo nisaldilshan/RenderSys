@@ -1,10 +1,8 @@
 #pragma once
 
-#include <memory>
 #include <stdint.h>
 #include <stddef.h>
 #include <glm/ext.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include <vk_mem_alloc.h>
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 
@@ -52,7 +50,7 @@ namespace GraphicsAPI
         VkImage m_ImageToRenderInto = VK_NULL_HANDLE;
         VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
         VkSampler m_textureSampler;
-        VkDescriptorSet m_DescriptorSet;
+        VkDescriptorSet m_descriptorSet;
         VkCommandBuffer m_commandBufferForReal = VK_NULL_HANDLE;
         std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
         std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
