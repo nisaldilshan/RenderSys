@@ -60,6 +60,7 @@ namespace GraphicsAPI
         VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
         VkPipeline m_pipeline = VK_NULL_HANDLE;
         VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
+        VkRenderPass m_renderpass = VK_NULL_HANDLE;
 
         VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
         VmaAllocation m_vertexBufferMemory = VK_NULL_HANDLE;

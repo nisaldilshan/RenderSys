@@ -9,9 +9,6 @@
 namespace GraphicsAPI
 {
 
-constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
-VkRenderPass g_renderpass = VK_NULL_HANDLE;
-
 bool VulkanRenderer2D::Init()
 {
     if (!m_vma)
@@ -26,12 +23,9 @@ bool VulkanRenderer2D::Init()
         }
     }
 
-    if (!g_renderpass)
+    if (!CreateRenderPass())
     {
-        if (!CreateRenderPass())
-        {
-            return false;
-        }
+        return false;
     }
 
     return true;
@@ -290,6 +284,8 @@ void VulkanRenderer2D::CreatePipelineLayout()
 
 bool VulkanRenderer2D::CreateRenderPass()
 {
+    assert(!m_renderpass);
+
     VkAttachmentDescription colorAtt{};
     colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
     colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -306,7 +302,7 @@ bool VulkanRenderer2D::CreateRenderPass()
 
     VkAttachmentDescription depthAtt{};
     depthAtt.flags = 0;
-    depthAtt.format = g_rdDepthFormat;
+    depthAtt.format = VK_FORMAT_D32_SFLOAT;
     depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
     depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -353,7 +349,7 @@ bool VulkanRenderer2D::CreateRenderPass()
     //   renderPassInfo.dependencyCount = 2;
     //   renderPassInfo.pDependencies = dependencies;
 
-    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &g_renderpass) != VK_SUCCESS)
+    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
     {
         std::cout << "error; could not create renderpass" << std::endl;
         return false;
@@ -462,7 +458,7 @@ void VulkanRenderer2D::CreatePipeline()
 
     CreatePipelineLayout();
     pipelineCreateInfo.layout = m_pipelineLayout;
-    pipelineCreateInfo.renderPass = g_renderpass;
+    pipelineCreateInfo.renderPass = m_renderpass;
     pipelineCreateInfo.subpass = 0;
     pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -484,12 +480,12 @@ void VulkanRenderer2D::CreateFrameBuffer()
         vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
     }
 
-    VkImageView attachments1[] = { m_imageViewToRenderInto };
+    VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto };
     VkFramebufferCreateInfo FboInfo{};
     FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    FboInfo.renderPass = g_renderpass;
+    FboInfo.renderPass = m_renderpass;
     FboInfo.attachmentCount = 1;
-    FboInfo.pAttachments = attachments1;
+    FboInfo.pAttachments = frameBufferAttachments;
     FboInfo.width = m_width;
     FboInfo.height = m_height;
     FboInfo.layers = 1;
@@ -819,7 +815,7 @@ void VulkanRenderer2D::BeginRenderPass()
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rpInfo.renderPass = g_renderpass;
+    rpInfo.renderPass = m_renderpass;
     rpInfo.renderArea.offset.x = 0;
     rpInfo.renderArea.offset.y = 0;
     rpInfo.renderArea.extent = { m_width, m_height };
