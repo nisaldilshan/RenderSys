@@ -30,10 +30,10 @@ namespace GraphicsAPI
         void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
         void SetClearColor(glm::vec4 clearColor);
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-        void CreateUniformBuffer(size_t bufferLength, UniformBuf::UniformType type, uint32_t sizeOfUniform, uint32_t bindingIndex);
+        void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
         void CreateDepthTexture();
         void CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
-        void SetUniformData(UniformBuf::UniformType type, const void* bufferData, uint32_t uniformIndex);
+        void SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
         void SimpleRender();
         void Render(uint32_t uniformIndex);
         void RenderIndexed(uint32_t uniformIndex);
@@ -56,7 +56,7 @@ namespace GraphicsAPI
         VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
         VkSampler m_textureSampler;
         VkDescriptorSet m_descriptorSet;
-        VkCommandBuffer m_commandBufferForReal = VK_NULL_HANDLE;
+        VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
         std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
         std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
 
@@ -79,10 +79,7 @@ namespace GraphicsAPI
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
         VkDescriptorSet m_bindGroup = VK_NULL_HANDLE;
         std::vector<VkDescriptorSetLayoutBinding> m_bindGroupBindings;
-        uint32_t m_sizeOfOneUniform = 0;
-        std::vector<VkBuffer> m_uniformBuffers;
-        std::vector<VmaAllocation> m_uniformBuffersMemory;
-        std::vector<void*> m_uniformBuffersMapped;
+        std::unordered_map<uint32_t, std::tuple<VkBuffer, VmaAllocation, void*, uint32_t>> m_uniformBuffers; // tuple -> <uniformBuffer, uniformBufferMemory, mappedBuffer, sizeOfOneUniform>
 
         VmaAllocator m_vma = VK_NULL_HANDLE;
     };

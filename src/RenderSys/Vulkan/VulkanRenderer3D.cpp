@@ -36,7 +36,7 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     m_width = width;
     m_height = height;
 
-    // Create the image
+    static VkDeviceMemory m_Memory;
     VkImageCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     info.imageType = VK_IMAGE_TYPE_2D;
@@ -48,57 +48,37 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     info.arrayLayers = 1;
     info.samples = VK_SAMPLE_COUNT_1_BIT;
     info.tiling = VK_IMAGE_TILING_OPTIMAL;
-    info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT; // WGPUTextureUsage_CopyDst | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment;
+    info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_ImageToRenderInto);
     Vulkan::check_vk_result(err);
-
     VkMemoryRequirements req;
     vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_ImageToRenderInto, &req);
     VkMemoryAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = req.size;
     alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-    //err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_imageMemory);
+    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
     Vulkan::check_vk_result(err);
-    //err = vkBindImageMemory(Vulkan::GetDevice(), m_image, m_imageMemory, 0);
+    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
     Vulkan::check_vk_result(err);
 
-    //// Create the image view
-    {
-        VkResult err;
-        VkImageViewCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        info.image = m_ImageToRenderInto;
-        info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        info.format = VK_FORMAT_R8G8B8A8_UNORM;
-        info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        info.subresourceRange.levelCount = 1;
-        info.subresourceRange.layerCount = 1;
-        err = vkCreateImageView(Vulkan::GetDevice(), &info, nullptr, &m_imageViewToRenderInto);
-        Vulkan::check_vk_result(err);
-    }
+    VkImageViewCreateInfo viewinfo = {};
+    viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewinfo.image = m_ImageToRenderInto;
+    viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewinfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+    viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewinfo.subresourceRange.levelCount = 1;
+    viewinfo.subresourceRange.layerCount = 1;
+    err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &m_imageViewToRenderInto);
+    Vulkan::check_vk_result(err);
 
-    //// Create the sampler
-    {
-        VkSamplerCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        info.magFilter = VK_FILTER_LINEAR;
-        info.minFilter = VK_FILTER_LINEAR;
-        info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        info.minLod = -1000;
-        info.maxLod = 1000;
-        info.maxAnisotropy = 1.0f;
-        VkResult err = vkCreateSampler(Vulkan::GetDevice(), &info, nullptr, &m_textureSampler);
-        Vulkan::check_vk_result(err);
-    }
+    CreateTextureSampler();
+    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
 
-    //// create the descriptor set
-    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    CreateFrameBuffer();
 }
 
 void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
@@ -155,6 +135,19 @@ void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
     vertexStageInfo.pName = "main";
 
     m_shaderStageInfos.push_back(vertexStageInfo);
+}
+
+void VulkanRenderer3D::DestroyBuffers()
+{
+    if (m_vertexBuffer != VK_NULL_HANDLE && m_vertexBufferMemory != VK_NULL_HANDLE)
+    {
+        vmaDestroyBuffer(m_vma, m_vertexBuffer, m_vertexBufferMemory);
+    }
+
+    if (m_indexBuffer != VK_NULL_HANDLE && m_indexBufferMemory != VK_NULL_HANDLE)
+    {
+        vmaDestroyBuffer(m_vma, m_indexBuffer, m_indexBufferMemory);
+    }
 }
 
 void VulkanRenderer3D::DestroyShaders()
@@ -413,20 +406,67 @@ void VulkanRenderer3D::CreateFrameBuffer()
 
 void VulkanRenderer3D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
 {
-    // std::cout << "Creating vertex buffer..." << std::endl;
-    // m_vertexCount = bufferLength / bufferLayout.arrayStride;
-    // m_vertexBufferSize = bufferLength;
-    // m_vertexBufferLayout = bufferLayout;
-    // wgpu::BufferDescriptor bufferDesc;
-    // bufferDesc.size = m_vertexBufferSize;
-    // bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
-    // bufferDesc.mappedAtCreation = false;
-    // bufferDesc.label = "Vertex Buffer";
-    // m_vertexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    std::cout << "Creating vertex buffer..." << std::endl;
 
-    // // Upload vertex data to the buffer
-    // WebGPU::GetQueue().writeBuffer(m_vertexBuffer, 0, bufferData, bufferDesc.size);
-    // std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
+    assert(bufferLayout.arrayStride > 0);
+    m_vertexCount = bufferLength/bufferLayout.arrayStride;
+    assert(m_vertexCount > 0);
+    
+    static bool vertBufCreated = false;
+    if (!vertBufCreated)
+    {
+        VkVertexInputBindingDescription mainBinding{};
+        mainBinding.binding = 0;
+        mainBinding.stride = bufferLayout.arrayStride;
+        mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        m_vertextBindingDescs.push_back(mainBinding);
+
+        for (size_t i = 0; i < bufferLayout.attributeCount; i++)
+        {
+            RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
+            VkVertexInputAttributeDescription vkAttribute{};
+            vkAttribute.binding = 0;
+            vkAttribute.location = attrib.location;
+            vkAttribute.format = RenderSysFormatToVulkanFormat(attrib.format);
+            vkAttribute.offset = attrib.offset;
+
+            m_vertextAttribDescs.push_back(vkAttribute);
+        }
+
+        // VkVertexInputAttributeDescription uvAttribute{};
+        // uvAttribute.binding = 0;
+        // uvAttribute.location = 1;
+        // uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+        // uvAttribute.offset = offsetof(RenderSysVkVertex, uv);
+
+        VkBufferCreateInfo bufferInfo = {};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = bufferLength;
+		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VmaAllocationCreateInfo vmaAllocInfo{};
+        vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+        if (vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_vertexBuffer, &m_vertexBufferMemory, nullptr) != VK_SUCCESS) {
+            std::cout << "vkCreateBuffer() failed!" << std::endl;
+            return;
+        }
+
+        // copy data to the buffer
+		void *buf;
+		auto res = vmaMapMemory(m_vma, m_vertexBufferMemory, &buf);
+		if (res != VK_SUCCESS) {
+			std::cout << "vkMapMemory() failed" << std::endl;
+			return;
+		}
+
+		std::memcpy(buf, bufferData, bufferLength);
+		vmaUnmapMemory(m_vma, m_vertexBufferMemory);
+        
+        vertBufCreated = true;
+    }
+
+    std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
 }
 
 void VulkanRenderer3D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData)
@@ -581,75 +621,129 @@ uint32_t VulkanRenderer3D::GetUniformStride(const uint32_t& uniformIndex, const 
     if (uniformIndex == 0)
         return 0;
 
-    // // Get device limits
-    // wgpu::SupportedLimits deviceSupportedLimits;
-    // WebGPU::GetDevice().getLimits(&deviceSupportedLimits);
-    // wgpu::Limits deviceLimits = deviceSupportedLimits.limits;
-    
-    // /** Round 'value' up to the next multiplier of 'step' */
-    // auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
-    // {
-    //     uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
-    //     return step * divide_and_ceil;
-    // };
+    static VkDeviceSize minUniformBufferOffsetAlignment = 0;
+    if (minUniformBufferOffsetAlignment == 0)
+    {
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
+        minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
+        std::cout << "VulkanRenderer2D::GetUniformStride - " << minUniformBufferOffsetAlignment << std::endl;
+    }
 
-    // // Create uniform buffer
-    // // Subtility
-    // assert(sizeOfUniform > 0);
-    // uint32_t uniformStride = ceilToNextMultiple(
-    //     (uint32_t)sizeOfUniform,
-    //     (uint32_t)deviceLimits.minUniformBufferOffsetAlignment
-    // );
+    assert(sizeOfUniform > 0);
+    auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
+    {
+        uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
+        return step * divide_and_ceil;
+    };
 
-    // return uniformStride * uniformIndex;
-    return 0;
+    uint32_t uniformStride = ceilToNextMultiple(
+        (uint32_t)sizeOfUniform,
+        (uint32_t)minUniformBufferOffsetAlignment
+    );
+
+    return uniformStride;
 }
 
-void VulkanRenderer3D::CreateUniformBuffer(size_t bufferLength, UniformBuf::UniformType type, uint32_t sizeOfUniform, uint32_t bindingIndex)
+void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer)
 {
-    // // Create uniform buffer
-    // // The buffer will only contain 1 float with the value of uTime
-    // wgpu::BufferDescriptor bufferDesc;
-    // const size_t maxUniformIndex = bufferLength - 1;
-    // bufferDesc.size = sizeOfUniform + GetOffset(maxUniformIndex, sizeOfUniform);
-    // // Make sure to flag the buffer as BufferUsage::Uniform
-    // bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
-    // bufferDesc.mappedAtCreation = false;
+    const auto& [uniformBufferIter, inserted] = m_uniformBuffers.insert({binding, std::make_tuple(VK_NULL_HANDLE, VK_NULL_HANDLE, nullptr, sizeOfOneUniform)});
+    if (!inserted)
+    {
+        std::cout << "VulkanRenderer3D::CreateUniformBuffer() failed!" << std::endl;
+        return;
+    }
 
-    // if (type == UniformBuf::UniformType::ModelViewProjection)
-    // {
-    //     bufferDesc.label = "ModelViewProjection";
-    // }
-    // else
-    // {
-    //     bufferDesc.label = "Lighting";
-    // }
+    auto& uniformBufferTuple = (*uniformBufferIter).second;
+    auto& uniformBuffer = std::get<0>(uniformBufferTuple);
+    auto& uniformBufferMemory = std::get<1>(uniformBufferTuple);
+    auto* mappedBuffer = std::get<2>(uniformBufferTuple);
+    static_assert(std::is_same_v<decltype(uniformBuffer), VkBuffer&>); 
+    static_assert(std::is_same_v<decltype(uniformBufferMemory), VmaAllocation&>);
+    static_assert(std::is_same_v<decltype(mappedBuffer), void*>);
 
-    // auto buffer = WebGPU::GetDevice().createBuffer(bufferDesc);
-    // m_uniformBuffers.insert({type, std::make_tuple(bindingIndex, buffer, sizeOfUniform)});
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    const size_t maximumUniformIndex = uniformCountInBuffer - 1;
+    bufferInfo.size = sizeOfOneUniform + GetUniformStride(maximumUniformIndex, sizeOfOneUniform);
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VmaAllocationCreateInfo vmaAllocInfo{};
+    vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+    auto res = vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &uniformBuffer, &uniformBufferMemory, nullptr);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkCreateBuffer() failed!" << std::endl;
+        return;
+    }
 }
 
-void VulkanRenderer3D::SetUniformData(UniformBuf::UniformType type, const void* bufferData, uint32_t uniformIndex)
+void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex)
 {
-    // auto uniformBuffer = m_uniformBuffers.find(type);
-    // if (uniformBuffer != m_uniformBuffers.end())
-    // {
-    //     const auto buffer = std::get<1>(uniformBuffer->second);
-    //     const auto bufferSize = std::get<2>(uniformBuffer->second);
+    auto uniformBufferIter = m_uniformBuffers.find(binding);
+    if (uniformBufferIter == m_uniformBuffers.end())
+    {
+        assert(false);
+    }
+    auto& uniformBufferTuple = (*uniformBufferIter).second;
+    auto& uniformBuffer = std::get<0>(uniformBufferTuple);
+    auto& uniformBufferMemory = std::get<1>(uniformBufferTuple);
+    auto* mappedBuffer = std::get<2>(uniformBufferTuple);
+    const auto sizeOfOneUniform = std::get<3>(uniformBufferTuple);
 
-    //     auto offset = GetOffset(uniformIndex, bufferSize);
-    //     assert(bufferSize > 0);
-    //     WebGPU::GetQueue().writeBuffer(buffer, offset, bufferData, bufferSize);
-    // }
-    // else
-    // {
-    //     assert(false);
-    // }
+    auto res = vmaMapMemory(m_vma, uniformBufferMemory, &mappedBuffer);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkMapMemory() failed" << std::endl;
+        return;
+    }
+
+    auto offset = GetUniformStride(uniformIndex, sizeOfOneUniform);
+    // copy data to the buffer
+    auto* ptr = static_cast<char*>(mappedBuffer) + offset;
+    memcpy(static_cast<void*>(ptr), bufferData, sizeOfOneUniform);
+
+    vmaUnmapMemory(m_vma, uniformBufferMemory);
+
+    VkDescriptorBufferInfo bufferInfo{};
+    bufferInfo.buffer = uniformBuffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeOfOneUniform;
+
+    VkWriteDescriptorSet descriptorWrite{};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = m_bindGroup;
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstArrayElement = 0;
+    assert(m_bindGroupBindings.size() > 0);
+    descriptorWrite.descriptorType = m_bindGroupBindings[0].descriptorType;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+    descriptorWrite.pImageInfo = nullptr; // Optional
+    descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+    vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanRenderer3D::SimpleRender()
 {
-    // m_renderPass.draw(m_vertexCount, 1, 0, 0);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = { m_width, m_height };
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
+
+    const auto triangleCount = 1;
+    vkCmdDraw(m_commandBuffer, triangleCount * 3, 1, 0, 0);
 }
 
 void VulkanRenderer3D::Render(uint32_t uniformIndex)
@@ -706,83 +800,47 @@ ImTextureID VulkanRenderer3D::GetDescriptorSet()
 
 void VulkanRenderer3D::BeginRenderPass()
 {
-//     if (!m_textureToRenderInto)
-//         std::cerr << "Cannot acquire texture to render into" << std::endl;
+    VkClearValue colorClearValue;
+    colorClearValue.color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
 
-//     wgpu::CommandEncoderDescriptor commandEncoderDesc;
-//     commandEncoderDesc.label = "Renderer Command Encoder";
-//     m_currentCommandEncoder = WebGPU::GetDevice().createCommandEncoder(commandEncoderDesc);
+    VkClearValue depthValue;
+    depthValue.depthStencil.depth = 1.0f;
 
-//     wgpu::RenderPassDescriptor renderPassDesc;
+    VkClearValue clearValues[] = { colorClearValue, depthValue };
 
-//     wgpu::RenderPassColorAttachment renderPassColorAttachment;
-//     renderPassColorAttachment.view = m_textureToRenderInto;
-//     renderPassColorAttachment.resolveTarget = nullptr;
-//     renderPassColorAttachment.loadOp = wgpu::LoadOp::Clear;
-//     renderPassColorAttachment.storeOp = wgpu::StoreOp::Store;
-//     renderPassColorAttachment.clearValue = m_clearColor;
-//     renderPassDesc.colorAttachmentCount = 1;
-//     renderPassDesc.colorAttachments = &renderPassColorAttachment;
+    m_commandBuffer = GraphicsAPI::Vulkan::GetCommandBuffer(true); // CRITICAL: only call once in the renderer
 
-//     // We now add a depth/stencil attachment:
-//     wgpu::RenderPassDepthStencilAttachment depthStencilAttachment;
-//     // The view of the depth texture
-//     depthStencilAttachment.view = m_depthTextureView;
-//     // The initial value of the depth buffer, meaning "far"
-//     depthStencilAttachment.depthClearValue = 1.0f;
-//     // Operation settings comparable to the color attachment
-//     depthStencilAttachment.depthLoadOp = wgpu::LoadOp::Clear;
-//     depthStencilAttachment.depthStoreOp = wgpu::StoreOp::Store;
-//     // we could turn off writing to the depth buffer globally here
-//     depthStencilAttachment.depthReadOnly = false;
+    assert(m_frameBuffer);
+    VkRenderPassBeginInfo rpInfo{};
+    rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rpInfo.renderPass = m_renderpass;
+    rpInfo.renderArea.offset.x = 0;
+    rpInfo.renderArea.offset.y = 0;
+    rpInfo.renderArea.extent = { m_width, m_height };
+    rpInfo.framebuffer = m_frameBuffer;
+    rpInfo.clearValueCount = 2;
+    rpInfo.pClearValues = clearValues;
 
-//     // Stencil setup, mandatory but unused
-//     depthStencilAttachment.stencilClearValue = 0;
-// #ifdef WEBGPU_BACKEND_WGPU
-//     depthStencilAttachment.stencilLoadOp = wgpu::LoadOp::Clear;
-//     depthStencilAttachment.stencilStoreOp = wgpu::StoreOp::Store;
-// #else
-//     depthStencilAttachment.stencilLoadOp = wgpu::LoadOp::Undefined;
-//     depthStencilAttachment.stencilStoreOp = wgpu::StoreOp::Undefined;
-// #endif
-//     depthStencilAttachment.stencilReadOnly = true;
-
-//     renderPassDesc.depthStencilAttachment = &depthStencilAttachment;
-//     renderPassDesc.timestampWriteCount = 0;
-//     renderPassDesc.timestampWrites = nullptr;
-
-//     m_renderPass = m_currentCommandEncoder.beginRenderPass(renderPassDesc);
-
-//     // In its overall outline, drawing a triangle is as simple as this:
-//     // Select which render pipeline to use
-//     m_renderPass.setPipeline(m_pipeline);
+    vkCmdBeginRenderPass(m_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanRenderer3D::EndRenderPass()
 {
-    // m_renderPass.end();
-    // SubmitCommandBuffer();
+    vkCmdEndRenderPass(m_commandBuffer);
+    SubmitCommandBuffer();
 }
 
 void VulkanRenderer3D::Destroy()
 {
-    // m_vertexBuffer.destroy();
-	// m_vertexBuffer.release();
-	// m_indexBuffer.destroy();
-	// m_indexBuffer.release();
+    DestroyBuffers();
 
-    // // Destroy the depth texture and its view
-	// m_depthTextureView.release();
-	// m_depthTexture.destroy();
-	// m_depthTexture.release();
+    // Destroy VMA instance
+    vmaDestroyAllocator(m_vma);
 }
 
 void VulkanRenderer3D::SubmitCommandBuffer()
 {
-    // wgpu::CommandBufferDescriptor cmdBufferDescriptor;
-    // cmdBufferDescriptor.label = "Command buffer";
-    // wgpu::CommandBuffer commands = m_currentCommandEncoder.finish(cmdBufferDescriptor);
-    // WebGPU::GetQueue().submit(commands);
+    GraphicsAPI::Vulkan::FlushCommandBuffer(m_commandBuffer);
 }
 
 void VulkanRenderer3D::CreateDepthTexture()
