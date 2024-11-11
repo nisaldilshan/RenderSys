@@ -27,6 +27,7 @@ typedef VulkanRenderer3D RendererType;
 class WebGPURenderer3D;
 typedef WebGPURenderer3D RendererType;
 #else
+static_assert(false);
 #endif
 }
 
@@ -66,6 +67,7 @@ public:
     void EndRenderPass();
 
     void* GetDescriptorSet() const;
+    void Destroy();
 private:
     uint32_t m_Width = 0, m_Height = 0;
     std::unique_ptr<GraphicsAPI::RendererType> m_rendererBackend;

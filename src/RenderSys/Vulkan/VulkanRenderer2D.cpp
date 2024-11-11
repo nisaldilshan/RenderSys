@@ -167,33 +167,6 @@ void VulkanRenderer2D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_
     m_vertexCount = vertexShaderCallCount;
 }
 
-VkShaderStageFlags GetVulkanShaderStageVisibility(RenderSys::ShaderStage shaderStage)
-{
-    VkShaderStageFlags result;
-    if (static_cast<uint32_t>(shaderStage) == 1) // RenderSys::ShaderStage::Vertex
-    {
-        result = VK_SHADER_STAGE_VERTEX_BIT;
-    }
-    else if (static_cast<uint32_t>(shaderStage) == 2) // RenderSys::ShaderStage::Fragment
-    {
-        result = VK_SHADER_STAGE_FRAGMENT_BIT;
-    }
-    else if (static_cast<uint32_t>(shaderStage) == 3) // RenderSys::ShaderStage::Vertex | RenderSys::ShaderStage::Fragment
-    {
-        result = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    }
-    else if (static_cast<uint32_t>(shaderStage) == 4) // RenderSys::ShaderStage::Vertex | RenderSys::ShaderStage::Fragment
-    {
-        result = VK_SHADER_STAGE_COMPUTE_BIT;
-    }
-    else
-    {
-        assert(false);
-    }
-    
-    return result;
-}
-
 void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
     // Create a bind group layout

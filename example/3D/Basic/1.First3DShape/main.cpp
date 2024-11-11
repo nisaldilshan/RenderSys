@@ -1,13 +1,11 @@
 #include <array>
-
-#include "Walnut/Application.h"
-#include "Walnut/EntryPoint.h"
-#include "Walnut/Random.h"
+#include <Walnut/Application.h>
+#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
+#include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
-#include <GLFW/glfw3.h>
 
 /**
  * The same structure as in the shader, replicated in C++
@@ -30,6 +28,7 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
+		m_renderer = std::make_shared<RenderSys::Renderer3D>();
 	}
 
 	virtual void OnDetach() override
@@ -47,9 +46,6 @@ public:
             m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
-			m_renderer.reset();
-			m_renderer = std::make_shared<RenderSys::Renderer3D>();
-
 			m_renderer->Init();	
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 

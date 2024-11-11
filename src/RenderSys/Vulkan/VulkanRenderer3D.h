@@ -42,6 +42,10 @@ namespace GraphicsAPI
         void EndRenderPass();
         void Destroy();
     private:
+        void CreatePipelineLayout();
+        bool CreateRenderPass();
+        void DestroyBuffers();
+        void DestroyShaders();
         void UploadTexture(VkImage texture, RenderSys::TextureDescriptor textureDesc, const void* textureData);
         void SubmitCommandBuffer();
         uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);

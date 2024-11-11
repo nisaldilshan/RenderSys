@@ -1,12 +1,34 @@
 #include "VulkanRenderer3D.h"
+#include "VulkanRendererUtils.h"
+
 #include <iostream>
+
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
 
 namespace GraphicsAPI
 {
 
 bool VulkanRenderer3D::Init()
 {
-    return false;
+    if (!m_vma)
+    {
+        VmaAllocatorCreateInfo allocatorInfo{};
+        allocatorInfo.physicalDevice = Vulkan::GetPhysicalDevice();
+        allocatorInfo.device = Vulkan::GetDevice();
+        allocatorInfo.instance = Vulkan::GetInstance();
+        if (vmaCreateAllocator(&allocatorInfo, &m_vma) != VK_SUCCESS) {
+            std::cout << "error: could not init VMA" << std::endl;
+            return false;
+        }
+    }
+
+    if (!CreateRenderPass())
+    {
+        return false;
+    }
+
+    return true;
 }
 
 void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
@@ -81,24 +103,68 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
 
 void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
 {
-    std::cout << "Creating shader module..." << std::endl;
+    assert(shader.type == RenderSys::ShaderType::SPIRV);
+    std::vector<uint32_t> compiledShader;
+    auto shaderMapIter = m_shaderMap.find(shader.GetName());
+    if (shaderMapIter == m_shaderMap.end())
+    {
+        compiledShader = RenderSys::ShaderUtils::compile_file(shader.GetName(), shader);
+        assert(compiledShader.size() > 0);
+        m_shaderMap.emplace(shader.GetName(), compiledShader);
+    }
+    else
+    {
+        compiledShader = shaderMapIter->second;
+    }
 
-//     wgpu::ShaderModuleDescriptor shaderDesc;
-// #ifdef WEBGPU_BACKEND_WGPU
-//     shaderDesc.hintCount = 0;
-//     shaderDesc.hints = nullptr;
-// #endif
+    VkShaderModuleCreateInfo shaderCreateInfo{};
+    shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shaderCreateInfo.codeSize = sizeof(uint32_t) * compiledShader.size();
+    shaderCreateInfo.pCode = compiledShader.data();
 
-//     wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
-//     // Set the chained struct's header
-//     shaderCodeDesc.chain.next = nullptr;
-//     shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
-//     shaderCodeDesc.code = shaderSource;
-//     // Connect the chain
-//     shaderDesc.nextInChain = &shaderCodeDesc.chain;
-//     m_shaderModule = WebGPU::GetDevice().createShaderModule(shaderDesc);
+    VkShaderModule shaderModule = 0;
+    if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+        std::cout << "could not load vertex shader" << std::endl;
+        return;
+    }
 
-//     std::cout << "Shader module: " << m_shaderModule << std::endl;
+    if (shaderModule == VK_NULL_HANDLE) {
+        std::cout << "error: could not load shaders" << std::endl;
+        return;
+    }
+
+    std::cout << "Created Shader module, Name:" << shader.GetName() << ", Ptr:" << shaderModule << std::endl;
+
+    VkShaderStageFlagBits shaderStageBits;
+    if (shader.stage == RenderSys::ShaderStage::Vertex)
+    {
+        shaderStageBits = VK_SHADER_STAGE_VERTEX_BIT;
+    }
+    else if (shader.stage == RenderSys::ShaderStage::Fragment)
+    {
+        shaderStageBits = VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    else
+    {
+        assert(false);
+    }
+    VkPipelineShaderStageCreateInfo vertexStageInfo{};
+    vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertexStageInfo.stage = shaderStageBits;
+    vertexStageInfo.module = shaderModule;
+    vertexStageInfo.pName = "main";
+
+    m_shaderStageInfos.push_back(vertexStageInfo);
+}
+
+void VulkanRenderer3D::DestroyShaders()
+{
+    for (auto& shaderStageInfo : m_shaderStageInfos)
+    {
+        vkDestroyShaderModule(Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
+    }
+
+    m_shaderStageInfos.clear();
 }
 
 void VulkanRenderer3D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount)
@@ -107,104 +173,242 @@ void VulkanRenderer3D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_
     m_vertexCount = vertexShaderCallCount;
 }
 
+void VulkanRenderer3D::CreatePipelineLayout()
+{
+    if (!m_pipelineLayout)
+    {
+        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+        pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        if (!m_bindGroupLayout)
+        {
+            pipelineLayoutCreateInfo.setLayoutCount = 0;
+            pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+        }
+        else
+        {
+            pipelineLayoutCreateInfo.setLayoutCount = 1;
+            pipelineLayoutCreateInfo.pSetLayouts = &m_bindGroupLayout;
+        }
+        pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+
+        if (vkCreatePipelineLayout(Vulkan::GetDevice(), &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
+            std::cout << "error: could not create pipeline layout" << std::endl;
+        }        
+    }
+}
+
+bool VulkanRenderer3D::CreateRenderPass()
+{
+    assert(!m_renderpass);
+
+    VkAttachmentDescription colorAtt{};
+    colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
+    colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAtt.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    VkAttachmentReference colorAttRef{};
+    colorAttRef.attachment = 0;
+    colorAttRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentDescription depthAtt{};
+    depthAtt.flags = 0;
+    depthAtt.format = VK_FORMAT_D32_SFLOAT;
+    depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    depthAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAtt.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depthAttRef{};
+    depthAttRef.attachment = 1;
+    depthAttRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpassDesc{};
+    subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassDesc.colorAttachmentCount = 1;
+    subpassDesc.pColorAttachments = &colorAttRef;
+    // subpassDesc.pDepthStencilAttachment = &depthAttRef;
+
+    VkSubpassDependency subpassDep{};
+    subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpassDep.dstSubpass = 0;
+    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.srcAccessMask = 0;
+    subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    VkSubpassDependency depthDep{};
+    depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    depthDep.dstSubpass = 0;
+    depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    depthDep.srcAccessMask = 0;
+    depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+    VkSubpassDependency dependencies[] = {subpassDep, depthDep};
+    VkAttachmentDescription attachments[] = {colorAtt};
+
+    VkRenderPassCreateInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = attachments;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpassDesc;
+    //   renderPassInfo.dependencyCount = 2;
+    //   renderPassInfo.pDependencies = dependencies;
+
+    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
+    {
+        std::cout << "error; could not create renderpass" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 void VulkanRenderer3D::CreatePipeline()
 {
     std::cout << "Creating render pipeline..." << std::endl;
 
-    // wgpu::RenderPipelineDescriptor pipelineDesc;
+    /* assemble the graphics pipeline itself */
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.vertexBindingDescriptionCount = m_vertextBindingDescs.size();
+    vertexInputInfo.pVertexBindingDescriptions = m_vertextBindingDescs.data();
+    vertexInputInfo.vertexAttributeDescriptionCount = m_vertextAttribDescs.size();
+    vertexInputInfo.pVertexAttributeDescriptions = m_vertextAttribDescs.data();
 
-    // // Vertex fetch
-    // if (m_vertexBufferSize > 0)
-    // {
-    //     pipelineDesc.vertex.bufferCount = 1;
-    //     pipelineDesc.vertex.buffers = &m_vertexBufferLayout;
-    // }
-    // else
-    // {
-    //     pipelineDesc.vertex.bufferCount = 0;
-    //     pipelineDesc.vertex.buffers = nullptr;
-    // }
-    // // Vertex shader
-    // pipelineDesc.vertex.module = m_shaderModule;
-	// pipelineDesc.vertex.entryPoint = "vs_main";
-    // pipelineDesc.vertex.constantCount = 0;
-	// pipelineDesc.vertex.constants = nullptr;
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
+    inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
-    // // Primitive assembly and rasterization
-	// // Each sequence of 3 vertices is considered as a triangle
-	// pipelineDesc.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
-	// // We'll see later how to specify the order in which vertices should be
-	// // connected. When not specified, vertices are considered sequentially.
-	// pipelineDesc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
-	// // The face orientation is defined by assuming that when looking
-	// // from the front of the face, its corner vertices are enumerated
-	// // in the counter-clockwise (CCW) order.
-	// pipelineDesc.primitive.frontFace = wgpu::FrontFace::CCW;
-	// // But the face orientation does not matter much because we do not
-	// // cull (i.e. "hide") the faces pointing away from us (which is often
-	// // used for optimization).
-	// pipelineDesc.primitive.cullMode = wgpu::CullMode::None;
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
 
-    // // Fragment shader
-	// wgpu::FragmentState fragmentState;
-	// pipelineDesc.fragment = &fragmentState;
-	// fragmentState.module = m_shaderModule;
-	// fragmentState.entryPoint = "fs_main";
-	// fragmentState.constantCount = 0;
-	// fragmentState.constants = nullptr;
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = {m_width, m_height};
 
-    // // Configure blend state
-	// wgpu::BlendState blendState;
-	// // Usual alpha blending for the color:
-	// blendState.color.srcFactor = wgpu::BlendFactor::SrcAlpha;
-	// blendState.color.dstFactor = wgpu::BlendFactor::OneMinusSrcAlpha;
-	// blendState.color.operation = wgpu::BlendOperation::Add;
-	// // We leave the target alpha untouched:
-	// blendState.alpha.srcFactor = wgpu::BlendFactor::Zero;
-	// blendState.alpha.dstFactor = wgpu::BlendFactor::One;
-	// blendState.alpha.operation = wgpu::BlendOperation::Add;
+    VkPipelineViewportStateCreateInfo viewportStateInfo{};
+    viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportStateInfo.viewportCount = 1;
+    viewportStateInfo.pViewports = &viewport;
+    viewportStateInfo.scissorCount = 1;
+    viewportStateInfo.pScissors = &scissor;
 
-    // wgpu::ColorTargetState colorTarget;
-	// colorTarget.format = WebGPU::GetSwapChainFormat();
-	// colorTarget.blend = &blendState;
-	// colorTarget.writeMask = wgpu::ColorWriteMask::All; // We could write to only some of the color channels.
+    VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
+    rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizerInfo.depthClampEnable = VK_FALSE;
+    rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;
+    rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizerInfo.lineWidth = 1.0f;
+    rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizerInfo.depthBiasEnable = VK_FALSE;
 
-	// // We have only one target because our render pass has only one output color
-	// // attachment.
-	// fragmentState.targetCount = 1;
-	// fragmentState.targets = &colorTarget;
-	
-	// // We setup a depth buffer state for the render pipeline
-	// wgpu::DepthStencilState depthStencilState = wgpu::Default;
-	// // Keep a fragment only if its depth is lower than the previously blended one
-	// depthStencilState.depthCompare = wgpu::CompareFunction::Less;
-    // // Each time a fragment is blended into the target, we update the value of the Z-buffer
-	// depthStencilState.depthWriteEnabled = true;
-	// // Store the format in a variable as later parts of the code depend on it
-	// m_depthTextureFormat = wgpu::TextureFormat::Depth24Plus;
-	// depthStencilState.format = m_depthTextureFormat;
-	// // Deactivate the stencil alltogether
-	// depthStencilState.stencilReadMask = 0;
-	// depthStencilState.stencilWriteMask = 0;
+    VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
+    multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisamplingInfo.sampleShadingEnable = VK_FALSE;
+    multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-    // pipelineDesc.depthStencil = &depthStencilState;
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
 
-    // // Multi-sampling
-	// // Samples per pixel
-	// pipelineDesc.multisample.count = 1;
-	// // Default value for the mask, meaning "all bits on"
-	// pipelineDesc.multisample.mask = ~0u;
-	// // Default value as well (irrelevant for count = 1 anyways)
-	// pipelineDesc.multisample.alphaToCoverageEnabled = false;
+    VkPipelineColorBlendStateCreateInfo colorBlendingInfo{};
+    colorBlendingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlendingInfo.logicOpEnable = VK_FALSE;
+    colorBlendingInfo.logicOp = VK_LOGIC_OP_COPY;
+    colorBlendingInfo.attachmentCount = 1;
+    colorBlendingInfo.pAttachments = &colorBlendAttachment;
+    colorBlendingInfo.blendConstants[0] = 0.0f;
+    colorBlendingInfo.blendConstants[1] = 0.0f;
+    colorBlendingInfo.blendConstants[2] = 0.0f;
+    colorBlendingInfo.blendConstants[3] = 0.0f;
 
-	// // Pipeline layout
-    // if (m_pipelineLayout)
-	//     pipelineDesc.layout = m_pipelineLayout;
-    // else
-    //     pipelineDesc.layout = nullptr;
+    VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
+    depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencilInfo.depthTestEnable = VK_TRUE;
+    depthStencilInfo.depthWriteEnable = VK_TRUE;
+    depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
+    depthStencilInfo.minDepthBounds = 0.0f;
+    depthStencilInfo.maxDepthBounds = 1.0f;
+    depthStencilInfo.stencilTestEnable = VK_FALSE;
 
-    // m_pipeline = WebGPU::GetDevice().createRenderPipeline(pipelineDesc);
-    // std::cout << "Render pipeline: " << m_pipeline << std::endl;
+    std::vector<VkDynamicState> dynStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+
+    VkPipelineDynamicStateCreateInfo dynStatesInfo{};
+    dynStatesInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynStatesInfo.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
+    dynStatesInfo.pDynamicStates = dynStates.data();
+
+    assert(m_shaderStageInfos.size() > 0);
+    VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
+    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineCreateInfo.stageCount = m_shaderStageInfos.size();
+    pipelineCreateInfo.pStages = m_shaderStageInfos.data();
+    pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+    pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
+    pipelineCreateInfo.pViewportState = &viewportStateInfo;
+    pipelineCreateInfo.pRasterizationState = &rasterizerInfo;
+    pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
+    pipelineCreateInfo.pColorBlendState = &colorBlendingInfo;
+    pipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
+    pipelineCreateInfo.pDynamicState = &dynStatesInfo;
+
+    CreatePipelineLayout();
+    pipelineCreateInfo.layout = m_pipelineLayout;
+    pipelineCreateInfo.renderPass = m_renderpass;
+    pipelineCreateInfo.subpass = 0;
+    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+    if (vkCreateGraphicsPipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipeline) != VK_SUCCESS) {
+        std::cout << "error: could not create rendering pipeline" << std::endl;
+        vkDestroyPipelineLayout(Vulkan::GetDevice(), m_pipelineLayout, nullptr);
+    }
+
+    /* it is save to destroy the shader modules after pipeline has been created */
+    DestroyShaders();
+    
+    std::cout << "Render pipeline: " << m_pipeline << std::endl;
+}
+
+void VulkanRenderer3D::CreateFrameBuffer()
+{
+    if (m_frameBuffer)
+    {
+        vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
+    }
+
+    VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto };
+    VkFramebufferCreateInfo FboInfo{};
+    FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    FboInfo.renderPass = m_renderpass;
+    FboInfo.attachmentCount = 1;
+    FboInfo.pAttachments = frameBufferAttachments;
+    FboInfo.width = m_width;
+    FboInfo.height = m_height;
+    FboInfo.layers = 1;
+
+    if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &m_frameBuffer) != VK_SUCCESS) {
+        std::cout << "error: failed to create framebuffer" << std::endl;
+        return ;
+    }
 }
 
 void VulkanRenderer3D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)

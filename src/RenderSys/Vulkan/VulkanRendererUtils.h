@@ -35,4 +35,31 @@ std::pair<int, VkDeviceSize> FindAppropriateMemoryType(const VkBuffer& buffer, u
     return std::make_pair(mem_type_idx, mem_reqs.size);
 }
 
+VkShaderStageFlags GetVulkanShaderStageVisibility(RenderSys::ShaderStage shaderStage)
+{
+    VkShaderStageFlags result;
+    if (static_cast<uint32_t>(shaderStage) == 1) // RenderSys::ShaderStage::Vertex
+    {
+        result = VK_SHADER_STAGE_VERTEX_BIT;
+    }
+    else if (static_cast<uint32_t>(shaderStage) == 2) // RenderSys::ShaderStage::Fragment
+    {
+        result = VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    else if (static_cast<uint32_t>(shaderStage) == 3) // RenderSys::ShaderStage::Vertex | RenderSys::ShaderStage::Fragment
+    {
+        result = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    else if (static_cast<uint32_t>(shaderStage) == 4) // RenderSys::ShaderStage::Vertex | RenderSys::ShaderStage::Fragment
+    {
+        result = VK_SHADER_STAGE_COMPUTE_BIT;
+    }
+    else
+    {
+        assert(false);
+    }
+    
+    return result;
+}
+
 }
