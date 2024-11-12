@@ -167,7 +167,7 @@ void VulkanRenderer2D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_
     m_vertexCount = vertexShaderCallCount;
 }
 
-void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
+void VulkanRenderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
     // Create a bind group layout
     if (!m_bindGroupLayout)
@@ -208,26 +208,21 @@ void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry b
         if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
         }
+
+        CreateBindGroup();
     }
 }
 
 void VulkanRenderer2D::CreateBindGroup()
 {
-    if (!m_bindGroup)
-    {
-        VkDescriptorSetAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = m_bindGroupPool;
-        allocInfo.descriptorSetCount = 1;
-        allocInfo.pSetLayouts = &m_bindGroupLayout;
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = m_bindGroupPool;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = &m_bindGroupLayout;
 
-        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        }
-    }
-    else
-    {
-        //std::cout << "No bind group layout" << std::endl;
+    if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
     }
 }
 

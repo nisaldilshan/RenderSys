@@ -49,82 +49,136 @@ public:
 			m_renderer->Init();	
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			const char* shaderSource = R"(
-			/**
-			 * A structure with fields labeled with vertex attribute locations can be used
-			 * as input to the entry point of a shader.
-			 */
-			struct VertexInput {
-				@location(0) position: vec3f,
-				@location(1) color: vec3f,
-			};
+			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+			{
+				const char* vertexShaderSource = R"(
+					#version 450 core
+					layout(binding = 0) uniform UniformBufferObject {
+						vec4 color;
+						float time;
+						float _pad[3];
+					} ubo;
+					layout (location = 0) in vec2 aPos;
+					layout (location = 1) in vec3 aColor; // Add color attribute
+					layout (location = 0) out vec3 vColor; // Add color attribute
 
-			/**
-			 * A structure with fields labeled with builtins and locations can also be used
-			 * as *output* of the vertex shader, which is also the input of the fragment
-			 * shader.
-			 */
-			struct VertexOutput {
-				@builtin(position) position: vec4f,
-				// The location here does not refer to a vertex attribute, it just means
-				// that this field must be handled by the rasterizer.
-				// (It can also refer to another field of another struct that would be used
-				// as input to the fragment shader.)
-				@location(0) color: vec3f,
-			};
+					void main() {
+						vec2 offset = vec2(-0.6875, -0.463);
+						offset += 0.3 * vec2(cos(ubo.time), sin(ubo.time));
+						gl_Position = vec4(aPos+offset, 0.0, 1.0);
+						vColor = aColor; // Pass color to fragment shader
+					}
+				)";
+				RenderSys::Shader vertexShader("Vertex");
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.shaderSrc = vertexShaderSource;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				m_renderer->SetShader(vertexShader);
 
-			/**
-			 * A structure holding the value of our uniforms
-			 */
-			struct MyUniforms {
-				color: vec4f,
-				time: f32,
-			};
+				const char* fragmentShaderSource = R"(
+					#version 450
+					layout(binding = 0) uniform UniformBufferObject {
+						vec4 color;
+						float time;
+						float _pad[3];
+					} ubo;
+					layout(location = 0) in vec3 vColor;
+					layout(location = 0) out vec4 FragColor;
 
-			// Instead of the simple uTime variable, our uniform variable is a struct
-			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
-
-			@vertex
-			fn vs_main(in: VertexInput) -> VertexOutput {
-				var out: VertexOutput;
-				let ratio = 640.0 / 480.0;
-				var offset = vec2f(0.0);
-
-				let angle = uMyUniforms.time; // you can multiply it go rotate faster
-
-				// Rotate the position around the X axis by "mixing" a bit of Y and Z in
-				// the original Y and Z.
-				let alpha = cos(angle);
-				let beta = sin(angle);
-				var position = vec3f(
-					in.position.x,
-					alpha * in.position.y + beta * in.position.z,
-					alpha * in.position.z - beta * in.position.y,
-				);
-				out.position = vec4f(position.x, position.y * ratio, position.z * 0.5 + 0.5, 1.0);
-				
-				out.color = in.color;
-				return out;
+					void main()
+					{
+						FragColor = vec4(vColor, 1.0) * ubo.color;
+					}
+				)";
+				RenderSys::Shader fragmentShader("Fragment");
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.shaderSrc = fragmentShaderSource;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				m_renderer->SetShader(fragmentShader);
 			}
+			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+			{
+				const char* shaderSource = R"(
+				/**
+				 * A structure with fields labeled with vertex attribute locations can be used
+				 * as input to the entry point of a shader.
+				 */
+				struct VertexInput {
+					@location(0) position: vec3f,
+					@location(1) color: vec3f,
+				};
 
-			@fragment
-			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-				let color = in.color * uMyUniforms.color.rgb;
-				// Gamma-correction
-				let corrected_color = pow(color, vec3f(2.2));
-				return vec4f(corrected_color, uMyUniforms.color.a);
+				/**
+				 * A structure with fields labeled with builtins and locations can also be used
+				 * as *output* of the vertex shader, which is also the input of the fragment
+				 * shader.
+				 */
+				struct VertexOutput {
+					@builtin(position) position: vec4f,
+					// The location here does not refer to a vertex attribute, it just means
+					// that this field must be handled by the rasterizer.
+					// (It can also refer to another field of another struct that would be used
+					// as input to the fragment shader.)
+					@location(0) color: vec3f,
+				};
+
+				/**
+				 * A structure holding the value of our uniforms
+				 */
+				struct MyUniforms {
+					color: vec4f,
+					time: f32,
+				};
+
+				// Instead of the simple uTime variable, our uniform variable is a struct
+				@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
+
+				@vertex
+				fn vs_main(in: VertexInput) -> VertexOutput {
+					var out: VertexOutput;
+					let ratio = 640.0 / 480.0;
+					var offset = vec2f(0.0);
+
+					let angle = uMyUniforms.time; // you can multiply it go rotate faster
+
+					// Rotate the position around the X axis by "mixing" a bit of Y and Z in
+					// the original Y and Z.
+					let alpha = cos(angle);
+					let beta = sin(angle);
+					var position = vec3f(
+						in.position.x,
+						alpha * in.position.y + beta * in.position.z,
+						alpha * in.position.z - beta * in.position.y,
+					);
+					out.position = vec4f(position.x, position.y * ratio, position.z * 0.5 + 0.5, 1.0);
+					
+					out.color = in.color;
+					return out;
+				}
+
+				@fragment
+				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+					let color = in.color * uMyUniforms.color.rgb;
+					// Gamma-correction
+					let corrected_color = pow(color, vec3f(2.2));
+					return vec4f(corrected_color, uMyUniforms.color.a);
+				}
+				)";
+				RenderSys::Shader shader("Combined");
+				shader.type = RenderSys::ShaderType::WGSL;
+				shader.shaderSrc = shaderSource;
+				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+				m_renderer->SetShader(shader);
+
 			}
-			)";
-			RenderSys::Shader shader("Combined");
-			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = shaderSource;
-			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
-			m_renderer->SetShader(shader);
-
-			//
+			else
+			{
+				assert(false);
+			}
+			
 			std::vector<float> vertexData;
 			std::vector<uint16_t> indexData;
-			auto success = Geometry::load3DGeometry(RESOURCE_DIR "/webgpu.txt", vertexData, indexData, 3);
+			auto success = Geometry::load3DGeometry(RESOURCE_DIR "/model.txt", vertexData, indexData, 3);
 			if (!success) 
 			{
 				std::cerr << "Could not load geometry!" << std::endl;
@@ -143,16 +197,14 @@ public:
 
 			// Color attribute
 			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; // different type!
-			vertexAttribs[1].offset = 3 * sizeof(float); // non null offset!
+			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; 
+			vertexAttribs[1].offset = 3 * sizeof(float);
 
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
-			// stride
 			vertexBufferLayout.arrayStride = 6 * sizeof(float);
 			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
-
 
 			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * sizeof(float), vertexBufferLayout);
 			m_renderer->SetIndexBufferData(indexData);

@@ -42,6 +42,7 @@ namespace GraphicsAPI
         void EndRenderPass();
         void Destroy();
     private:
+        void CreateBindGroup();
         void CreatePipelineLayout();
         bool CreateRenderPass();
         void DestroyBuffers();

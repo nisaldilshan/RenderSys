@@ -166,6 +166,65 @@ void VulkanRenderer3D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_
     m_vertexCount = vertexShaderCallCount;
 }
 
+void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
+{
+    assert(bindGroupLayoutEntries.size() == 1);
+    if (!m_bindGroupLayout)
+    {
+        auto& uboLayoutBinding = m_bindGroupBindings.emplace_back();
+        uboLayoutBinding.binding = 0;
+        if (bindGroupLayoutEntries[0].buffer.hasDynamicOffset)
+        {
+            uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        }
+        else
+        {
+            uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        }
+        uboLayoutBinding.descriptorCount = 1;
+        uboLayoutBinding.stageFlags = GetVulkanShaderStageVisibility(bindGroupLayoutEntries[0].visibility);
+        uboLayoutBinding.pImmutableSamplers = nullptr;
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = 1;
+        layoutInfo.pBindings = &uboLayoutBinding;
+
+        if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor set layout!");
+        }
+
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = uboLayoutBinding.descriptorType;
+        poolSize.descriptorCount = 1;
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = 1;
+
+        if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor pool!");
+        }
+
+        CreateBindGroup();
+    }
+}
+
+void VulkanRenderer3D::CreateBindGroup()
+{
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = m_bindGroupPool;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = &m_bindGroupLayout;
+
+    if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+}
+
 void VulkanRenderer3D::CreatePipelineLayout()
 {
     if (!m_pipelineLayout)
@@ -473,147 +532,46 @@ void VulkanRenderer3D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
 {
     std::cout << "Creating index buffer..." << std::endl;
 
-    // m_indexCount = bufferData.size();
+    m_indexCount = bufferData.size();
+    assert(m_indexCount > 0);
+    
+    static bool indexBufCreated = false;
+    if (!indexBufCreated)
+    {
+        VkBufferCreateInfo bufferInfo = {};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = m_indexCount * sizeof(bufferData[0]);
+		bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VmaAllocationCreateInfo vmaAllocInfo{};
+        vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-    // wgpu::BufferDescriptor bufferDesc;
-    // bufferDesc.size = bufferData.size() * sizeof(float);
-    // bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
-    // bufferDesc.label = "Index Buffer";
-    // m_indexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+        auto res = vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_indexBuffer, &m_indexBufferMemory, nullptr);
+		if (res != VK_SUCCESS) {
+			std::cout << "vkCreateBuffer() failed!" << std::endl;
+			return;
+		}
 
-    // // Upload index data to the buffer
-    // WebGPU::GetQueue().writeBuffer(m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
-    // std::cout << "Index buffer: " << m_indexBuffer << std::endl;
+        // copy data to the buffer
+		void *buf;
+		res = vmaMapMemory(m_vma, m_indexBufferMemory, &buf);
+		if (res != VK_SUCCESS) {
+			std::cout << "vkMapMemory() failed" << std::endl;
+			return;
+		}
+
+		std::memcpy(buf, bufferData.data(), bufferInfo.size);
+		vmaUnmapMemory(m_vma, m_indexBufferMemory);
+        
+        indexBufCreated = true;
+    }
+
+    std::cout << "Index buffer: " << m_indexBuffer << std::endl;
 }
 
 void VulkanRenderer3D::SetClearColor(glm::vec4 clearColor)
 {
-    // m_clearColor = wgpu::Color{clearColor.x, clearColor.y, clearColor.z, clearColor.w};
-}
-
-void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
-{
-    // // Create a bind group layout using a vector of layout entries
-    // auto bindGroupLayoutEntryCount = (uint32_t)bindGroupLayoutEntries.size();
-	// wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
-	// bindGroupLayoutDesc.entryCount = bindGroupLayoutEntryCount;
-	// bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
-    // bindGroupLayoutDesc.label = "MainBindGroupLayout";
-	// m_bindGroupLayout = WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
-
-    // if (m_bindGroupLayout)
-    // {
-    //     // Create the pipeline layout
-    //     wgpu::PipelineLayoutDescriptor pipelineLayoutDesc;
-    //     pipelineLayoutDesc.bindGroupLayoutCount = 1;
-    //     pipelineLayoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*)&m_bindGroupLayout;
-    //     pipelineLayoutDesc.label = "PipelineLayout";
-    //     m_pipelineLayout = WebGPU::GetDevice().createPipelineLayout(pipelineLayoutDesc);
-
-    //     assert(bindGroupLayoutEntryCount > 0);
-    //     std::vector<wgpu::BindGroupEntry> bindings;
-    //     bindings.resize(bindGroupLayoutEntryCount);
-
-    //     for (const auto& bindGroupLayoutEntry : bindGroupLayoutEntries)
-    //     {
-    //         auto bindingIndex = bindGroupLayoutEntry.binding;
-    //         bindings[bindingIndex].binding = bindingIndex;
-
-    //         if (bindGroupLayoutEntry.buffer.type == wgpu::BufferBindingType::Uniform)
-    //         {
-    //             bool uniformBufferFound = false;
-    //             for (const auto& uniformBuffer : m_uniformBuffers)
-    //             {
-    //                 auto bindingOfUniform = std::get<0>(uniformBuffer.second);
-    //                 if (bindingOfUniform == bindingIndex)
-    //                 {
-    //                     uniformBufferFound = true;
-    //                     const auto buffer = std::get<1>(uniformBuffer.second);
-    //                     const auto bufferSize = std::get<2>(uniformBuffer.second);
-    //                     bindings[bindingIndex].buffer = buffer;
-    //                     bindings[bindingIndex].offset = 0;
-    //                     bindings[bindingIndex].size = bufferSize;
-    //                     break;
-    //                 }
-    //             }
-
-    //             assert(uniformBufferFound);
-    //         }
-    //         else if (bindGroupLayoutEntry.sampler.type == wgpu::SamplerBindingType::Filtering)
-    //         {
-    //             bindings[bindingIndex].sampler = m_textureSampler;
-    //         }
-    //         else if (bindGroupLayoutEntry.texture.viewDimension == wgpu::TextureViewDimension::_2D)
-    //         {
-    //             if (bindingIndex == 1) // this is base color texture
-    //             {
-    //                 bindings[bindingIndex].textureView = m_texturesAndViews[0].second; // m_texturesAndViews[0] is the base color texture
-    //             }
-    //             else // this is normal texture
-    //             {
-    //                 bindings[bindingIndex].textureView = m_texturesAndViews[1].second; // m_texturesAndViews[0] is the normal texture
-    //             }
-    //         }
-    //         else
-    //         {
-    //             assert(false);
-    //         }
-    //     }
-        
-
-    //     // auto modelViewProjectionUniformBuffer = m_uniformBuffers.find(Uniform::UniformType::ModelViewProjection);
-    //     // if (modelViewProjectionUniformBuffer != m_uniformBuffers.end())
-    //     // {
-    //     //     const auto buffer = modelViewProjectionUniformBuffer->second.first;
-    //     //     const auto bufferSize = modelViewProjectionUniformBuffer->second.second;
-    //     //     assert(bufferSize > 0);
-    //     //     bindings[0].binding = 0;
-    //     //     bindings[0].buffer = buffer;
-    //     //     bindings[0].offset = 0;
-    //     //     bindings[0].size = bufferSize;
-    //     // }
-
-    //     // if (m_texturesAndViews.size() > 0)
-    //     // {
-    //     //     assert(bindGroupLayoutEntryCount > 1);
-    //     //     bindings[1].binding = 1;
-	//     //     bindings[1].textureView = m_texturesAndViews[0].second; // m_texturesAndViews[0] is the base color texture
-    //     // }
-
-    //     // if (m_texturesAndViews.size() > 1)
-    //     // {
-    //     //     assert(bindGroupLayoutEntryCount > 2);
-    //     //     bindings[2].binding = 2;
-    //     //     bindings[2].textureView = m_texturesAndViews[1].second;
-    //     // }
-
-    //     // if (m_textureSampler)
-    //     // {
-    //     //     assert(bindGroupLayoutEntryCount > 3);
-    //     //     bindings[3].binding = 3;
-    //     //     bindings[3].sampler = m_textureSampler;
-    //     // }
-
-    //     // auto lightingUniformBuffer = m_uniformBuffers.find(Uniform::UniformType::Lighting);
-    //     // if (lightingUniformBuffer != m_uniformBuffers.end())
-    //     // {
-    //     //     const auto buffer = lightingUniformBuffer->second.first;
-    //     //     const auto bufferSize = lightingUniformBuffer->second.second;
-    //     //     assert(bufferSize > 0);
-    //     //     bindings[4].binding = 4;
-    //     //     bindings[4].buffer = buffer;
-    //     //     bindings[4].offset = 0;
-    //     //     bindings[4].size = bufferSize;
-    //     // }
-
-    //     // A bind group contains one or multiple bindings
-    //     wgpu::BindGroupDescriptor bindGroupDesc;
-    //     bindGroupDesc.layout = m_bindGroupLayout;
-    //     // There must be as many bindings as declared in the layout!
-    //     bindGroupDesc.entryCount = (uint32_t)bindings.size();
-    //     bindGroupDesc.entries = bindings.data();
-    //     m_bindGroup = WebGPU::GetDevice().createBindGroup(bindGroupDesc);
-    // }
+    Vulkan::SetClearColor(ImVec4(clearColor.x, clearColor.y, clearColor.z, clearColor.w));
 }
 
 uint32_t VulkanRenderer3D::GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)

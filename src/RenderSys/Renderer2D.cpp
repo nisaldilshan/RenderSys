@@ -63,10 +63,9 @@ void Renderer2D::CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform
     m_rendererBackend->CreateUniformBuffer(bufferLength, sizeOfUniform);
 }
 
-void Renderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntries)
+void Renderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
-    m_rendererBackend->SetBindGroupLayoutEntry(bindGroupLayoutEntries);
-    m_rendererBackend->CreateBindGroup();
+    m_rendererBackend->CreateBindGroup(bindGroupLayoutEntry);
 }
 
 void Renderer2D::SetUniformBufferData(const void* bufferData, uint32_t uniformIndex)
