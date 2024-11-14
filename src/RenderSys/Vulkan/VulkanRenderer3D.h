@@ -21,6 +21,7 @@ namespace GraphicsAPI
 
         bool Init();
         void CreateTextureToRenderInto(uint32_t width, uint32_t height);
+        void CreateDepthImage();
         void CreateTextureSampler();
         void CreateShaders(RenderSys::Shader& shader);
         void CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
@@ -31,7 +32,6 @@ namespace GraphicsAPI
         void SetClearColor(glm::vec4 clearColor);
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
-        void CreateDepthTexture();
         void CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
         void SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
         void SimpleRender();
@@ -54,7 +54,12 @@ namespace GraphicsAPI
         uint32_t m_width = 0;
         uint32_t m_height = 0;
         VkImage m_ImageToRenderInto = VK_NULL_HANDLE;
+        VkDeviceMemory m_ImageMemory = VK_NULL_HANDLE;
         VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
+        VkImage m_depthimageToRenderInto = VK_NULL_HANDLE;
+        VkDeviceMemory m_depthimageMemory = VK_NULL_HANDLE;
+        VkImageView m_depthimageViewToRenderInto = VK_NULL_HANDLE;
+
         VkSampler m_textureSampler;
         VkDescriptorSet m_descriptorSet;
         VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;

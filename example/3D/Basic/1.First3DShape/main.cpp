@@ -48,7 +48,6 @@ public:
         {
 			m_renderer->Init();	
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
 			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 			{
 				const char* vertexShaderSource = R"(
@@ -58,14 +57,14 @@ public:
 						float time;
 						float _pad[3];
 					} ubo;
-					layout (location = 0) in vec2 aPos;
+					layout (location = 0) in vec3 aPos;
 					layout (location = 1) in vec3 aColor; // Add color attribute
 					layout (location = 0) out vec3 vColor; // Add color attribute
 
 					void main() {
-						vec2 offset = vec2(-0.6875, -0.463);
-						offset += 0.3 * vec2(cos(ubo.time), sin(ubo.time));
-						gl_Position = vec4(aPos+offset, 0.0, 1.0);
+						vec3 offset = vec3(-0.6875, -0.463, 0.0);
+						offset += 0.3 * vec3(cos(ubo.time), sin(ubo.time), 0.0);
+						gl_Position = vec4(aPos+offset, 1.0);
 						vColor = aColor; // Pass color to fragment shader
 					}
 				)";
@@ -164,12 +163,12 @@ public:
 					return vec4f(corrected_color, uMyUniforms.color.a);
 				}
 				)";
+
 				RenderSys::Shader shader("Combined");
 				shader.type = RenderSys::ShaderType::WGSL;
 				shader.shaderSrc = shaderSource;
 				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 				m_renderer->SetShader(shader);
-
 			}
 			else
 			{
@@ -223,7 +222,7 @@ public:
 			// Make this binding dynamic so we can offset it between draw calls
 			bGLayoutEntry.buffer.hasDynamicOffset = true;
 
-			m_renderer->CreateUniformBuffer(bGLayoutEntry.binding, 2, sizeof(MyUniforms));
+			m_renderer->CreateUniformBuffer(bGLayoutEntry.binding, sizeof(MyUniforms), 2);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();
         }

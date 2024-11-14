@@ -36,7 +36,6 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     m_width = width;
     m_height = height;
 
-    static VkDeviceMemory m_Memory;
     VkImageCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     info.imageType = VK_IMAGE_TYPE_2D;
@@ -59,9 +58,9 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = req.size;
     alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
+    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_ImageMemory);
     Vulkan::check_vk_result(err);
-    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
+    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_ImageMemory, 0);
     Vulkan::check_vk_result(err);
 
     VkImageViewCreateInfo viewinfo = {};
@@ -77,8 +76,54 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
 
     CreateTextureSampler();
     m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+}
 
-    CreateFrameBuffer();
+void VulkanRenderer3D::CreateDepthImage()
+{
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width = m_width;
+    imageInfo.extent.height = m_height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.format = VK_FORMAT_D32_SFLOAT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkResult err = vkCreateImage(Vulkan::GetDevice(), &imageInfo, nullptr, &m_depthimageToRenderInto);
+    Vulkan::check_vk_result(err);
+    VkMemoryRequirements req;
+    vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_depthimageToRenderInto, &req);
+    VkMemoryAllocateInfo alloc_info = {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc_info.allocationSize = req.size;
+    alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
+    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_depthimageMemory);
+    Vulkan::check_vk_result(err);
+    err = vkBindImageMemory(Vulkan::GetDevice(), m_depthimageToRenderInto, m_depthimageMemory, 0);
+    Vulkan::check_vk_result(err);
+
+	std::cout << "Depth image: " << m_depthimageToRenderInto << std::endl;
+
+	// Create the view of the depth texture manipulated by the rasterizer
+	VkImageViewCreateInfo viewinfo = {};
+    viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewinfo.image = m_depthimageToRenderInto;
+    viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewinfo.format = VK_FORMAT_D32_SFLOAT;
+    viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    viewinfo.subresourceRange.levelCount = 1;
+    viewinfo.subresourceRange.layerCount = 1;
+    err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &m_depthimageViewToRenderInto);
+    Vulkan::check_vk_result(err);
+	std::cout << "Depth image view: " << m_depthimageViewToRenderInto << std::endl;
+
+    
 }
 
 void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
@@ -251,7 +296,8 @@ void VulkanRenderer3D::CreatePipelineLayout()
 
 bool VulkanRenderer3D::CreateRenderPass()
 {
-    assert(!m_renderpass);
+    if (m_renderpass)
+        return true;
 
     VkAttachmentDescription colorAtt{};
     colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -286,30 +332,30 @@ bool VulkanRenderer3D::CreateRenderPass()
     subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpassDesc.colorAttachmentCount = 1;
     subpassDesc.pColorAttachments = &colorAttRef;
-    // subpassDesc.pDepthStencilAttachment = &depthAttRef;
+    subpassDesc.pDepthStencilAttachment = &depthAttRef;
 
-    VkSubpassDependency subpassDep{};
-    subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-    subpassDep.dstSubpass = 0;
-    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDep.srcAccessMask = 0;
-    subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    // VkSubpassDependency subpassDep{};
+    // subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    // subpassDep.dstSubpass = 0;
+    // subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    // subpassDep.srcAccessMask = 0;
+    // subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    // subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    VkSubpassDependency depthDep{};
-    depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-    depthDep.dstSubpass = 0;
-    depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    depthDep.srcAccessMask = 0;
-    depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    // VkSubpassDependency depthDep{};
+    // depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    // depthDep.dstSubpass = 0;
+    // depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    // depthDep.srcAccessMask = 0;
+    // depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    // depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-    VkSubpassDependency dependencies[] = {subpassDep, depthDep};
-    VkAttachmentDescription attachments[] = {colorAtt};
+    //VkSubpassDependency dependencies[] = {subpassDep, depthDep};
+    VkAttachmentDescription attachments[] = {colorAtt, depthAtt};
 
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.attachmentCount = 2;
     renderPassInfo.pAttachments = attachments;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpassDesc;
@@ -447,11 +493,13 @@ void VulkanRenderer3D::CreateFrameBuffer()
         vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
     }
 
-    VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto };
+    assert(m_imageViewToRenderInto);
+    assert(m_depthimageViewToRenderInto);
+    VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto, m_depthimageViewToRenderInto };
     VkFramebufferCreateInfo FboInfo{};
     FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     FboInfo.renderPass = m_renderpass;
-    FboInfo.attachmentCount = 1;
+    FboInfo.attachmentCount = 2;
     FboInfo.pAttachments = frameBufferAttachments;
     FboInfo.width = m_width;
     FboInfo.height = m_height;
@@ -623,6 +671,7 @@ void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneU
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     const size_t maximumUniformIndex = uniformCountInBuffer - 1;
+    assert(sizeOfOneUniform == 32);
     bufferInfo.size = sizeOfOneUniform + GetUniformStride(maximumUniformIndex, sizeOfOneUniform);
     bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -733,22 +782,39 @@ void VulkanRenderer3D::Render(uint32_t uniformIndex)
 
 void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
 {
-    // assert(m_indexBuffer);
-    // // Set vertex buffer while encoding the render pass
-    // m_renderPass.setVertexBuffer(0, m_vertexBuffer, 0, m_vertexBufferSize);
-    // // Set index buffer while encoding the render pass
-    // m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexCount * sizeof(uint16_t));
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
-    // // Set binding group
-    // uint32_t dynamicOffset = 0;
-    // auto modelViewProjectionUniformBuffer = m_uniformBuffers.find(UniformBuf::UniformType::ModelViewProjection);
-    // if (modelViewProjectionUniformBuffer != m_uniformBuffers.end())
-    // {
-    //     dynamicOffset = uniformIndex * GetOffset(1, std::get<2>(modelViewProjectionUniformBuffer->second)); // TODO: better to use a array of offsets and select a offset from it
-    // }
-    // uint32_t dynamicOffsetCount = 1; // because we have enabled dynamic offset in only one binding in the bind group
-    // m_renderPass.setBindGroup(0, m_bindGroup, dynamicOffsetCount, &dynamicOffset);
-    // m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = { m_width, m_height };
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
+
+    VkDeviceSize offset = 0;
+	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &offset);
+    vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
+
+    if (m_bindGroup)
+    {
+        std::vector dynamicOffsets = {0, GetUniformStride(1, 32)};
+        for (const auto& dynamicOffset : dynamicOffsets)
+        {
+            vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, 1, &dynamicOffset);
+            vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
+        }
+    }
+    else
+    {
+        vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
+    }
 }
 
 ImTextureID VulkanRenderer3D::GetDescriptorSet()
@@ -801,33 +867,7 @@ void VulkanRenderer3D::SubmitCommandBuffer()
     GraphicsAPI::Vulkan::FlushCommandBuffer(m_commandBuffer);
 }
 
-void VulkanRenderer3D::CreateDepthTexture()
-{
-    // // Create the depth texture
-	// wgpu::TextureDescriptor depthTextureDesc;
-	// depthTextureDesc.dimension = wgpu::TextureDimension::_2D;
-	// depthTextureDesc.format = m_depthTextureFormat;
-	// depthTextureDesc.mipLevelCount = 1;
-	// depthTextureDesc.sampleCount = 1;
-	// depthTextureDesc.size = {m_width, m_height, 1};
-	// depthTextureDesc.usage = wgpu::TextureUsage::RenderAttachment;
-	// depthTextureDesc.viewFormatCount = 1;
-	// depthTextureDesc.viewFormats = (WGPUTextureFormat*)&m_depthTextureFormat;
-	// m_depthTexture = WebGPU::GetDevice().createTexture(depthTextureDesc);
-	// std::cout << "Depth texture: " << m_depthTexture << std::endl;
 
-	// // Create the view of the depth texture manipulated by the rasterizer
-	// wgpu::TextureViewDescriptor depthTextureViewDesc;
-	// depthTextureViewDesc.aspect = wgpu::TextureAspect::DepthOnly;
-	// depthTextureViewDesc.baseArrayLayer = 0;
-	// depthTextureViewDesc.arrayLayerCount = 1;
-	// depthTextureViewDesc.baseMipLevel = 0;
-	// depthTextureViewDesc.mipLevelCount = 1;
-	// depthTextureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
-	// depthTextureViewDesc.format = m_depthTextureFormat;
-	// m_depthTextureView = m_depthTexture.createView(depthTextureViewDesc);
-	// std::cout << "Depth texture view: " << m_depthTextureView << std::endl;
-}
 
 void VulkanRenderer3D::CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount)
 {
@@ -917,18 +957,27 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, RenderSys::TextureDescript
 
 void VulkanRenderer3D::CreateTextureSampler()
 {
-    // wgpu::SamplerDescriptor samplerDesc;
-    // samplerDesc.addressModeU = wgpu::AddressMode::Repeat;
-    // samplerDesc.addressModeV = wgpu::AddressMode::Repeat;
-    // samplerDesc.addressModeW = wgpu::AddressMode::Repeat;
-    // samplerDesc.magFilter = wgpu::FilterMode::Linear;
-    // samplerDesc.minFilter = wgpu::FilterMode::Linear;
-    // samplerDesc.mipmapFilter = wgpu::MipmapFilterMode::Linear;
-    // samplerDesc.lodMinClamp = 0.0f;
-    // samplerDesc.lodMaxClamp = 8.0f;
-    // samplerDesc.compare = wgpu::CompareFunction::Undefined;
-    // samplerDesc.maxAnisotropy = 1;
-    // m_textureSampler = WebGPU::GetDevice().createSampler(samplerDesc);
+    VkSamplerCreateInfo texSamplerInfo{};
+    texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    texSamplerInfo.magFilter = VK_FILTER_LINEAR;
+    texSamplerInfo.minFilter = VK_FILTER_LINEAR;
+    texSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    texSamplerInfo.unnormalizedCoordinates = VK_FALSE;
+    texSamplerInfo.compareEnable = VK_FALSE;
+    texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    texSamplerInfo.mipLodBias = 0.0f;
+    texSamplerInfo.minLod = 0.0f;
+    texSamplerInfo.maxLod = 0.0f;
+    texSamplerInfo.anisotropyEnable = VK_FALSE;
+    texSamplerInfo.maxAnisotropy = 1.0f;
+
+    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_textureSampler) != VK_SUCCESS) {
+        std::cout << "error: could not create sampler for texture" << std::endl;
+    }
 }
 
 } // namespace GraphicsAPI

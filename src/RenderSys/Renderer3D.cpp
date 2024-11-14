@@ -26,7 +26,8 @@ void Renderer3D::OnResize(uint32_t width, uint32_t height)
     m_Width = width;
     m_Height = height;
     m_rendererBackend->CreateTextureToRenderInto(m_Width, m_Height);
-    m_rendererBackend->CreateDepthTexture();
+    m_rendererBackend->CreateDepthImage();
+    m_rendererBackend->CreateFrameBuffer();
 }
 
 void Renderer3D::Init()
