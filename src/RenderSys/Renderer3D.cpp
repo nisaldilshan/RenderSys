@@ -95,11 +95,6 @@ void* Renderer3D::GetDescriptorSet() const
     return m_rendererBackend->GetDescriptorSet();
 }
 
-void Renderer3D::SimpleRender()
-{
-    m_rendererBackend->SimpleRender();
-}
-
 void Renderer3D::Render(uint32_t uniformIndex)
 {
     m_rendererBackend->Render(uniformIndex);

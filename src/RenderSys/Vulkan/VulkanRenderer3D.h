@@ -34,7 +34,6 @@ namespace GraphicsAPI
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
         void CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
         void SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
-        void SimpleRender();
         void Render(uint32_t uniformIndex);
         void RenderIndexed(uint32_t uniformIndex);
         ImTextureID GetDescriptorSet();

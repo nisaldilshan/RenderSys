@@ -710,47 +710,6 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData, 
     memcpy(static_cast<void*>(ptr), bufferData, sizeOfOneUniform);
 
     vmaUnmapMemory(m_vma, uniformBufferMemory);
-
-    VkDescriptorBufferInfo bufferInfo{};
-    bufferInfo.buffer = uniformBuffer;
-    bufferInfo.offset = 0;
-    bufferInfo.range = sizeOfOneUniform;
-
-    VkWriteDescriptorSet descriptorWrite{};
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = m_bindGroup;
-    descriptorWrite.dstBinding = 0;
-    descriptorWrite.dstArrayElement = 0;
-    assert(m_bindGroupBindings.size() > 0);
-    descriptorWrite.descriptorType = m_bindGroupBindings[0].descriptorType;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pBufferInfo = &bufferInfo;
-    descriptorWrite.pImageInfo = nullptr; // Optional
-    descriptorWrite.pTexelBufferView = nullptr; // Optional
-
-    vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
-}
-
-void VulkanRenderer3D::SimpleRender()
-{
-    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(m_width);
-    viewport.height = static_cast<float>(m_height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
-
-    VkRect2D scissor{};
-    scissor.offset = { 0, 0 };
-    scissor.extent = { m_width, m_height };
-    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
-
-    const auto triangleCount = 1;
-    vkCmdDraw(m_commandBuffer, triangleCount * 3, 1, 0, 0);
 }
 
 void VulkanRenderer3D::Render(uint32_t uniformIndex)
@@ -782,6 +741,26 @@ void VulkanRenderer3D::Render(uint32_t uniformIndex)
 
 void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
 {
+    uint32_t sizeOfOneUniform = 0;
+    for (auto& [_ , uniformBufferTuple] : m_uniformBuffers)
+    {
+        auto& uniformBuffer = std::get<0>(uniformBufferTuple);
+        sizeOfOneUniform = std::get<3>(uniformBufferTuple);
+        VkDescriptorBufferInfo bufferInfo{uniformBuffer, 0, sizeOfOneUniform};
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = m_bindGroup;
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        assert(m_bindGroupBindings.size() > 0);
+        descriptorWrite.descriptorType = m_bindGroupBindings[0].descriptorType;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+        descriptorWrite.pImageInfo = nullptr; // Optional
+        descriptorWrite.pTexelBufferView = nullptr; // Optional
+        vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
+    }
+
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
@@ -793,9 +772,7 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
 
-    VkRect2D scissor{};
-    scissor.offset = { 0, 0 };
-    scissor.extent = { m_width, m_height };
+    VkRect2D scissor{{ 0, 0 }, { m_width, m_height }};
     vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
     VkDeviceSize offset = 0;
@@ -804,10 +781,13 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
 
     if (m_bindGroup)
     {
-        std::vector dynamicOffsets = {0, GetUniformStride(1, 32)};
+        std::vector dynamicOffsets = {0, GetUniformStride(1, sizeOfOneUniform)};
+        const uint32_t noOfDynamicOffsetEnabledbindings = 1; // Number of dynamic Offset enabled bindings in the bind group
         for (const auto& dynamicOffset : dynamicOffsets)
         {
-            vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, 1, &dynamicOffset);
+            vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
+                                    , 1, &m_bindGroup
+                                    , noOfDynamicOffsetEnabledbindings, &dynamicOffset);
             vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
         }
     }
@@ -866,8 +846,6 @@ void VulkanRenderer3D::SubmitCommandBuffer()
 {
     GraphicsAPI::Vulkan::FlushCommandBuffer(m_commandBuffer);
 }
-
-
 
 void VulkanRenderer3D::CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount)
 {
