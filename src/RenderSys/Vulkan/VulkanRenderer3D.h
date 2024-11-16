@@ -34,6 +34,7 @@ namespace GraphicsAPI
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
         void CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
         void SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
+        void BindResources();
         void Render(uint32_t uniformIndex);
         void RenderIndexed(uint32_t uniformIndex);
         ImTextureID GetDescriptorSet();
@@ -84,7 +85,7 @@ namespace GraphicsAPI
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
         VkDescriptorSet m_bindGroup = VK_NULL_HANDLE;
         std::vector<VkDescriptorSetLayoutBinding> m_bindGroupBindings;
-        std::unordered_map<uint32_t, std::tuple<VkBuffer, VmaAllocation, void*, uint32_t>> m_uniformBuffers; // tuple -> <uniformBuffer, uniformBufferMemory, mappedBuffer, sizeOfOneUniform>
+        std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers; // tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
 
         VmaAllocator m_vma = VK_NULL_HANDLE;
     };

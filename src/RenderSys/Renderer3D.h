@@ -45,6 +45,8 @@ public:
 	Renderer3D(Renderer3D&&) = delete;
 	Renderer3D &operator=(Renderer3D&&) = delete;
 
+    uint32_t GetWidth() const { return m_Width; }
+	uint32_t GetHeight() const { return m_Height; }
     void Init();
     void OnResize(uint32_t width, uint32_t height);
     void SetShader(RenderSys::Shader& shader);
@@ -58,8 +60,7 @@ public:
     void SetClearColor(glm::vec4 clearColor);
     void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, size_t bufferLength);
     void SetUniformBufferData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
-    uint32_t GetWidth() const { return m_Width; }
-	uint32_t GetHeight() const { return m_Height; }
+    void BindResources();
     void Render(uint32_t uniformIndex);
     void RenderIndexed(uint32_t uniformIndex);
     void BeginRenderPass();

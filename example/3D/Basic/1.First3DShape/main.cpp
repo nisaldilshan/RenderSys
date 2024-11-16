@@ -247,6 +247,8 @@ public:
 			m_renderer->SetUniformBufferData(0, &m_uniformData, 1);
 			//                               				^^^^^^^^^^^^^ beware of the non-null offset!
 
+			m_renderer->BindResources();
+			
 			m_renderer->RenderIndexed(0);
 			m_renderer->RenderIndexed(1);
 			m_renderer->EndRenderPass();

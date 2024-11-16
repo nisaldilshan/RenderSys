@@ -654,31 +654,38 @@ uint32_t VulkanRenderer3D::GetUniformStride(const uint32_t& uniformIndex, const 
 
 void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer)
 {
-    const auto& [uniformBufferIter, inserted] = m_uniformBuffers.insert({binding, std::make_tuple(VK_NULL_HANDLE, VK_NULL_HANDLE, nullptr, sizeOfOneUniform)});
+    const auto& [uniformBufferIter, inserted] = m_uniformBuffers.insert(
+                                                    {
+                                                        binding, 
+                                                        std::make_tuple(
+                                                            VkDescriptorBufferInfo{VK_NULL_HANDLE, 0, sizeOfOneUniform}, 
+                                                            VK_NULL_HANDLE, 
+                                                            nullptr
+                                                        )
+                                                    }
+                                                );
     if (!inserted)
     {
         return;
     }
 
     auto& uniformBufferTuple = (*uniformBufferIter).second;
-    auto& uniformBuffer = std::get<0>(uniformBufferTuple);
-    auto& uniformBufferMemory = std::get<1>(uniformBufferTuple);
+    VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferTuple);
+    VmaAllocation& uniformBufferMemory = std::get<1>(uniformBufferTuple);
     auto* mappedBuffer = std::get<2>(uniformBufferTuple);
-    static_assert(std::is_same_v<decltype(uniformBuffer), VkBuffer&>); 
-    static_assert(std::is_same_v<decltype(uniformBufferMemory), VmaAllocation&>);
     static_assert(std::is_same_v<decltype(mappedBuffer), void*>);
 
-    VkBufferCreateInfo bufferInfo = {};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    VkBufferCreateInfo bufferCreateInfo = {};
+    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     const size_t maximumUniformIndex = uniformCountInBuffer - 1;
     assert(sizeOfOneUniform == 32);
-    bufferInfo.size = sizeOfOneUniform + GetUniformStride(maximumUniformIndex, sizeOfOneUniform);
-    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferCreateInfo.size = sizeOfOneUniform + GetUniformStride(maximumUniformIndex, sizeOfOneUniform);
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     VmaAllocationCreateInfo vmaAllocInfo{};
     vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-    auto res = vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &uniformBuffer, &uniformBufferMemory, nullptr);
+    auto res = vmaCreateBuffer(m_vma, &bufferCreateInfo, &vmaAllocInfo, &bufferInfo.buffer, &uniformBufferMemory, nullptr);
     if (res != VK_SUCCESS) {
         std::cout << "vkCreateBuffer() failed!" << std::endl;
         return;
@@ -693,10 +700,10 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData, 
         assert(false);
     }
     auto& uniformBufferTuple = (*uniformBufferIter).second;
-    auto& uniformBuffer = std::get<0>(uniformBufferTuple);
+    VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferTuple);
     auto& uniformBufferMemory = std::get<1>(uniformBufferTuple);
     auto* mappedBuffer = std::get<2>(uniformBufferTuple);
-    const auto sizeOfOneUniform = std::get<3>(uniformBufferTuple);
+    const auto sizeOfOneUniform = bufferInfo.range;
 
     auto res = vmaMapMemory(m_vma, uniformBufferMemory, &mappedBuffer);
     if (res != VK_SUCCESS) {
@@ -712,41 +719,11 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData, 
     vmaUnmapMemory(m_vma, uniformBufferMemory);
 }
 
-void VulkanRenderer3D::Render(uint32_t uniformIndex)
+void VulkanRenderer3D::BindResources()
 {
-    // // Set vertex buffer while encoding the render pass
-    // m_renderPass.setVertexBuffer(0, m_vertexBuffer, 0, m_vertexBufferSize);
-
-    // // Set binding group
-    // if (m_bindGroup)
-    // {
-    //     uint32_t dynamicOffset = 0;
-    //     auto modelViewProjectionUniformBuffer = m_uniformBuffers.find(UniformBuf::UniformType::ModelViewProjection);
-    //     if (modelViewProjectionUniformBuffer != m_uniformBuffers.end())
-    //     {
-    //         dynamicOffset = uniformIndex * GetOffset(1, std::get<2>(modelViewProjectionUniformBuffer->second)); // TODO: better to use a array of offsets and select a offset from it
-    //     }
-    //     uint32_t dynamicOffsetCount = 1; // because we have enabled dynamic offset in only one binding in the bind group
-    //     m_renderPass.setBindGroup(0, m_bindGroup, dynamicOffsetCount, &dynamicOffset);
-    // }
-
-    // if (m_indexCount > 0)
-    // {
-    //     m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexCount * sizeof(uint16_t));
-    //     m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
-    // }
-    // else
-    //     m_renderPass.draw(m_vertexCount, 1, 0, 0);
-}
-
-void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
-{
-    uint32_t sizeOfOneUniform = 0;
     for (auto& [_ , uniformBufferTuple] : m_uniformBuffers)
     {
-        auto& uniformBuffer = std::get<0>(uniformBufferTuple);
-        sizeOfOneUniform = std::get<3>(uniformBufferTuple);
-        VkDescriptorBufferInfo bufferInfo{uniformBuffer, 0, sizeOfOneUniform};
+        VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferTuple);
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = m_bindGroup;
@@ -778,9 +755,41 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
     VkDeviceSize offset = 0;
 	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &offset);
     vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
+}
 
+void VulkanRenderer3D::Render(uint32_t uniformIndex)
+{
+    // // Set vertex buffer while encoding the render pass
+    // m_renderPass.setVertexBuffer(0, m_vertexBuffer, 0, m_vertexBufferSize);
+
+    // // Set binding group
+    // if (m_bindGroup)
+    // {
+    //     uint32_t dynamicOffset = 0;
+    //     auto modelViewProjectionUniformBuffer = m_uniformBuffers.find(UniformBuf::UniformType::ModelViewProjection);
+    //     if (modelViewProjectionUniformBuffer != m_uniformBuffers.end())
+    //     {
+    //         dynamicOffset = uniformIndex * GetOffset(1, std::get<2>(modelViewProjectionUniformBuffer->second)); // TODO: better to use a array of offsets and select a offset from it
+    //     }
+    //     uint32_t dynamicOffsetCount = 1; // because we have enabled dynamic offset in only one binding in the bind group
+    //     m_renderPass.setBindGroup(0, m_bindGroup, dynamicOffsetCount, &dynamicOffset);
+    // }
+
+    // if (m_indexCount > 0)
+    // {
+    //     m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexCount * sizeof(uint16_t));
+    //     m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
+    // }
+    // else
+    //     m_renderPass.draw(m_vertexCount, 1, 0, 0);
+}
+
+void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
+{
     if (m_bindGroup)
     {
+        auto& uniformBufferTuple = m_uniformBuffers[0]; // this is working because we have dynamicOffsetys only in binding 0;
+        const auto sizeOfOneUniform = std::get<0>(uniformBufferTuple).range;
         const uint32_t dynamicOffset = GetUniformStride(uniformIndex, sizeOfOneUniform);
         constexpr uint32_t noOfDynamicOffsetEnabledbindings = 1; // Number of dynamic Offset enabled bindings in the bind group
         vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0

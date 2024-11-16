@@ -90,6 +90,11 @@ void Renderer3D::SetUniformBufferData(uint32_t binding, const void* bufferData, 
     m_rendererBackend->SetUniformData(binding, bufferData, uniformIndex);
 }
 
+void RenderSys::Renderer3D::BindResources()
+{
+    m_rendererBackend->BindResources();
+}
+
 void* Renderer3D::GetDescriptorSet() const
 {
     return m_rendererBackend->GetDescriptorSet();
