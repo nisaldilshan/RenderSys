@@ -252,7 +252,8 @@ void VulkanRenderer2D::CreatePipelineLayout()
 
 bool VulkanRenderer2D::CreateRenderPass()
 {
-    assert(!m_renderpass);
+    if (m_renderpass)
+        return true;
 
     VkAttachmentDescription colorAtt{};
     colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -729,13 +730,14 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
 
     if (m_bindGroup)
     {
-        uint32_t dynamicOffset = 0;
-        if (uniformIndex > 0)
-            dynamicOffset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
+        uint32_t dynamicOffset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
         vkCmdBindDescriptorSets(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
+        vkCmdDrawIndexed(m_commandBufferForReal, m_indexCount, 1, 0, 0, 0);
     }
-
-    vkCmdDrawIndexed(m_commandBufferForReal, m_indexCount, 1, 0, 0, 0);
+    else
+    {
+        vkCmdDrawIndexed(m_commandBufferForReal, m_indexCount, 1, 0, 0, 0);
+    }
 }
 
 void VulkanRenderer2D::CreateTextureSampler()
