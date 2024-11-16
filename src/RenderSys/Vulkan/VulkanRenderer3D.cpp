@@ -64,16 +64,7 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_ImageMemory, 0);
     Vulkan::check_vk_result(err);
 
-    VkImageViewCreateInfo viewinfo = {};
-    viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewinfo.image = m_ImageToRenderInto;
-    viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewinfo.format = VK_FORMAT_R8G8B8A8_UNORM;
-    viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewinfo.subresourceRange.levelCount = 1;
-    viewinfo.subresourceRange.layerCount = 1;
-    err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &m_imageViewToRenderInto);
-    Vulkan::check_vk_result(err);
+    m_imageViewToRenderInto = CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 
     CreateTextureSampler();
     m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
@@ -111,20 +102,7 @@ void VulkanRenderer3D::CreateDepthImage()
 
 	std::cout << "Depth image: " << m_depthimageToRenderInto << std::endl;
 
-	// Create the view of the depth texture manipulated by the rasterizer
-	VkImageViewCreateInfo viewinfo = {};
-    viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewinfo.image = m_depthimageToRenderInto;
-    viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewinfo.format = VK_FORMAT_D32_SFLOAT;
-    viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    viewinfo.subresourceRange.levelCount = 1;
-    viewinfo.subresourceRange.layerCount = 1;
-    err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &m_depthimageViewToRenderInto);
-    Vulkan::check_vk_result(err);
-	std::cout << "Depth image view: " << m_depthimageViewToRenderInto << std::endl;
-
-    
+    m_depthimageViewToRenderInto = CreateImageView(m_depthimageToRenderInto, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)

@@ -64,16 +64,7 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
     Vulkan::check_vk_result(err);
 
-    VkImageViewCreateInfo viewinfo = {};
-    viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewinfo.image = m_ImageToRenderInto;
-    viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewinfo.format = VK_FORMAT_R8G8B8A8_UNORM;
-    viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewinfo.subresourceRange.levelCount = 1;
-    viewinfo.subresourceRange.layerCount = 1;
-    err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &m_imageViewToRenderInto);
-    Vulkan::check_vk_result(err);
+    m_imageViewToRenderInto = CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 
     CreateTextureSampler();
     m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
