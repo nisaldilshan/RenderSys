@@ -1,6 +1,7 @@
 #include "VulkanRenderer3D.h"
 #include "VulkanRendererUtils.h"
 
+#include <array>
 #include <iostream>
 
 #define VMA_IMPLEMENTATION
@@ -334,23 +335,23 @@ bool VulkanRenderer3D::CreateRenderPass()
     subpassDesc.pColorAttachments = &colorAttRef;
     subpassDesc.pDepthStencilAttachment = &depthAttRef;
 
-    // VkSubpassDependency subpassDep{};
-    // subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-    // subpassDep.dstSubpass = 0;
-    // subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    // subpassDep.srcAccessMask = 0;
-    // subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    // subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    VkSubpassDependency subpassDep{};
+    subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpassDep.dstSubpass = 0;
+    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.srcAccessMask = 0;
+    subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    // VkSubpassDependency depthDep{};
-    // depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-    // depthDep.dstSubpass = 0;
-    // depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    // depthDep.srcAccessMask = 0;
-    // depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    // depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    VkSubpassDependency depthDep{};
+    depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    depthDep.dstSubpass = 0;
+    depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    depthDep.srcAccessMask = 0;
+    depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-    //VkSubpassDependency dependencies[] = {subpassDep, depthDep};
+    VkSubpassDependency dependencies[] = {subpassDep, depthDep};
     VkAttachmentDescription attachments[] = {colorAtt, depthAtt};
 
     VkRenderPassCreateInfo renderPassInfo{};
@@ -359,8 +360,8 @@ bool VulkanRenderer3D::CreateRenderPass()
     renderPassInfo.pAttachments = attachments;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpassDesc;
-    //   renderPassInfo.dependencyCount = 2;
-    //   renderPassInfo.pDependencies = dependencies;
+    renderPassInfo.dependencyCount = 2;
+    renderPassInfo.pDependencies = dependencies;
 
     if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
     {
@@ -413,7 +414,7 @@ void VulkanRenderer3D::CreatePipeline()
     rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;
     rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizerInfo.lineWidth = 1.0f;
-    rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizerInfo.cullMode = VK_CULL_MODE_NONE;
     rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterizerInfo.depthBiasEnable = VK_FALSE;
 
@@ -656,7 +657,6 @@ void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneU
     const auto& [uniformBufferIter, inserted] = m_uniformBuffers.insert({binding, std::make_tuple(VK_NULL_HANDLE, VK_NULL_HANDLE, nullptr, sizeOfOneUniform)});
     if (!inserted)
     {
-        std::cout << "VulkanRenderer3D::CreateUniformBuffer() failed!" << std::endl;
         return;
     }
 
@@ -781,15 +781,12 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
 
     if (m_bindGroup)
     {
-        std::vector dynamicOffsets = {0, GetUniformStride(1, sizeOfOneUniform)};
-        const uint32_t noOfDynamicOffsetEnabledbindings = 1; // Number of dynamic Offset enabled bindings in the bind group
-        for (const auto& dynamicOffset : dynamicOffsets)
-        {
-            vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
+        const uint32_t dynamicOffset = GetUniformStride(uniformIndex, sizeOfOneUniform);
+        constexpr uint32_t noOfDynamicOffsetEnabledbindings = 1; // Number of dynamic Offset enabled bindings in the bind group
+        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
                                     , 1, &m_bindGroup
                                     , noOfDynamicOffsetEnabledbindings, &dynamicOffset);
-            vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
-        }
+        vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
     }
     else
     {
@@ -804,13 +801,9 @@ ImTextureID VulkanRenderer3D::GetDescriptorSet()
 
 void VulkanRenderer3D::BeginRenderPass()
 {
-    VkClearValue colorClearValue;
-    colorClearValue.color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
-
-    VkClearValue depthValue;
-    depthValue.depthStencil.depth = 1.0f;
-
-    VkClearValue clearValues[] = { colorClearValue, depthValue };
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+    clearValues[1].depthStencil = {1.0f, 0};
 
     m_commandBuffer = GraphicsAPI::Vulkan::GetCommandBuffer(true); // CRITICAL: only call once in the renderer
 
@@ -823,7 +816,7 @@ void VulkanRenderer3D::BeginRenderPass()
     rpInfo.renderArea.extent = { m_width, m_height };
     rpInfo.framebuffer = m_frameBuffer;
     rpInfo.clearValueCount = 2;
-    rpInfo.pClearValues = clearValues;
+    rpInfo.pClearValues = clearValues.data();
 
     vkCmdBeginRenderPass(m_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 }

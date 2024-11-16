@@ -61,10 +61,17 @@ public:
 					layout (location = 1) in vec3 aColor; // Add color attribute
 					layout (location = 0) out vec3 vColor; // Add color attribute
 
-					void main() {
-						vec3 offset = vec3(-0.6875, -0.463, 0.0);
-						offset += 0.3 * vec3(cos(ubo.time), sin(ubo.time), 0.0);
-						gl_Position = vec4(aPos+offset, 1.0);
+					void main() 
+					{
+						float angle = ubo.time;
+						float alpha = cos(angle);
+						float beta = sin(angle);
+						vec3 pos = vec3(
+							aPos.x,
+							alpha * aPos.y + beta * aPos.z,
+							alpha * aPos.z - beta * aPos.y
+						);
+						gl_Position = vec4(pos.x, pos.y, pos.z*0.5 + 0.5, 1.0);
 						vColor = aColor; // Pass color to fragment shader
 					}
 				)";
@@ -136,8 +143,6 @@ public:
 				fn vs_main(in: VertexInput) -> VertexOutput {
 					var out: VertexOutput;
 					let ratio = 640.0 / 480.0;
-					var offset = vec2f(0.0);
-
 					let angle = uMyUniforms.time; // you can multiply it go rotate faster
 
 					// Rotate the position around the X axis by "mixing" a bit of Y and Z in
@@ -147,7 +152,7 @@ public:
 					var position = vec3f(
 						in.position.x,
 						alpha * in.position.y + beta * in.position.z,
-						alpha * in.position.z - beta * in.position.y,
+						alpha * in.position.z - beta * in.position.y
 					);
 					out.position = vec4f(position.x, position.y * ratio, position.z * 0.5 + 0.5, 1.0);
 					
