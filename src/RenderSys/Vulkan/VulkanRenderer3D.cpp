@@ -139,13 +139,13 @@ void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
     {
         assert(false);
     }
-    VkPipelineShaderStageCreateInfo vertexStageInfo{};
-    vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertexStageInfo.stage = shaderStageBits;
-    vertexStageInfo.module = shaderModule;
-    vertexStageInfo.pName = "main";
+    VkPipelineShaderStageCreateInfo stageInfo{};
+    stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stageInfo.stage = shaderStageBits;
+    stageInfo.module = shaderModule;
+    stageInfo.pName = "main"; // entrypoint
 
-    m_shaderStageInfos.push_back(vertexStageInfo);
+    m_shaderStageInfos.push_back(stageInfo);
 }
 
 void VulkanRenderer3D::DestroyImages()
@@ -154,30 +154,42 @@ void VulkanRenderer3D::DestroyImages()
     {
         vkQueueWaitIdle(Vulkan::GetDeviceQueue());
         ImGui_ImplVulkan_RemoveTexture(m_descriptorSet);
+        m_descriptorSet = VK_NULL_HANDLE;
     }
 
     if (m_frameBuffer)
     {
         vkDeviceWaitIdle(Vulkan::GetDevice());
         vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
+        m_frameBuffer = VK_NULL_HANDLE;
     }
     
     if (m_imageViewToRenderInto != VK_NULL_HANDLE)
     {
         vkDestroyImageView(Vulkan::GetDevice(), m_imageViewToRenderInto, nullptr);
+        m_imageViewToRenderInto = VK_NULL_HANDLE;
     }
     if (m_ImageToRenderInto != VK_NULL_HANDLE)
     {
         vmaDestroyImage(m_vma, m_ImageToRenderInto, m_renderImageMemory);
+        m_ImageToRenderInto = VK_NULL_HANDLE;
     }
 
     if (m_depthimageView != VK_NULL_HANDLE)
     {
         vkDestroyImageView(Vulkan::GetDevice(), m_depthimageView, nullptr);
+        m_depthimageView = VK_NULL_HANDLE;
     }
     if (m_depthimage != VK_NULL_HANDLE)
     {
         vmaDestroyImage(m_vma, m_depthimage, m_depthimageMemory);
+        m_depthimage = VK_NULL_HANDLE;
+    }
+
+    if (m_textureSampler)
+    {
+        vkDestroySampler(Vulkan::GetDevice(), m_textureSampler, nullptr);
+        m_textureSampler = VK_NULL_HANDLE;
     }
 }
 
@@ -186,11 +198,13 @@ void VulkanRenderer3D::DestroyPipeline()
     if (m_pipeline)
     {
         vkDestroyPipeline(Vulkan::GetDevice(), m_pipeline, nullptr);
+        m_pipeline = VK_NULL_HANDLE;
     }
 
     if (m_pipelineLayout)
     {
         vkDestroyPipelineLayout(Vulkan::GetDevice(), m_pipelineLayout, nullptr);
+        m_pipelineLayout = VK_NULL_HANDLE;
     }
 }
 
@@ -199,11 +213,13 @@ void VulkanRenderer3D::DestroyBuffers()
     if (m_vertexBuffer != VK_NULL_HANDLE && m_vertexBufferMemory != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(m_vma, m_vertexBuffer, m_vertexBufferMemory);
+        m_vertexBuffer = VK_NULL_HANDLE;
     }
 
     if (m_indexBuffer != VK_NULL_HANDLE && m_indexBufferMemory != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(m_vma, m_indexBuffer, m_indexBufferMemory);
+        m_indexBuffer = VK_NULL_HANDLE;
     }
 
     for (auto& [_ , uniformBufferTuple] : m_uniformBuffers)
@@ -401,7 +417,7 @@ void VulkanRenderer3D::CreatePipeline()
 {
     if (m_pipeline)
         return;
-        
+
     std::cout << "Creating render pipeline..." << std::endl;
 
     /* assemble the graphics pipeline itself */

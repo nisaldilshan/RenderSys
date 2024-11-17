@@ -63,8 +63,8 @@ namespace GraphicsAPI
         VmaAllocation m_depthimageMemory = VK_NULL_HANDLE;
         VkImageView m_depthimageView = VK_NULL_HANDLE;
 
-        VkSampler m_textureSampler;
-        VkDescriptorSet m_descriptorSet;
+        VkSampler m_textureSampler = VK_NULL_HANDLE;
+        VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE;
         std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
         std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
 
