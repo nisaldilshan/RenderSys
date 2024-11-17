@@ -32,37 +32,32 @@ bool VulkanRenderer3D::Init()
     return true;
 }
 
-void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
+void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
 {
     m_width = width;
     m_height = height;
 
-    VkImageCreateInfo info = {};
-    info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    info.imageType = VK_IMAGE_TYPE_2D;
-    info.format = VK_FORMAT_R8G8B8A8_UNORM;
-    info.extent.width = m_width;
-    info.extent.height = m_height;
-    info.extent.depth = 1;
-    info.mipLevels = 1;
-    info.arrayLayers = 1;
-    info.samples = VK_SAMPLE_COUNT_1_BIT;
-    info.tiling = VK_IMAGE_TILING_OPTIMAL;
-    info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_ImageToRenderInto);
-    Vulkan::check_vk_result(err);
-    VkMemoryRequirements req;
-    vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_ImageToRenderInto, &req);
-    VkMemoryAllocateInfo alloc_info = {};
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.allocationSize = req.size;
-    alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_ImageMemory);
-    Vulkan::check_vk_result(err);
-    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_ImageMemory, 0);
-    Vulkan::check_vk_result(err);
+    VkImageCreateInfo renderImageInfo{};
+    renderImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    renderImageInfo.imageType = VK_IMAGE_TYPE_2D;
+    renderImageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+    renderImageInfo.extent = VkExtent3D{m_width, m_height, 1};
+    renderImageInfo.mipLevels = 1;
+    renderImageInfo.arrayLayers = 1;
+    renderImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    renderImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    renderImageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    renderImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    renderImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    if (vmaCreateImage(m_vma, &renderImageInfo, &allocInfo, &m_ImageToRenderInto, &m_renderImageMemory, nullptr) != VK_SUCCESS) 
+    {
+        assert(false);
+    }
 
     m_imageViewToRenderInto = CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -72,37 +67,29 @@ void VulkanRenderer3D::CreateTextureToRenderInto(uint32_t width, uint32_t height
 
 void VulkanRenderer3D::CreateDepthImage()
 {
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.extent.width = m_width;
-    imageInfo.extent.height = m_height;
-    imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = 1;
-    imageInfo.format = VK_FORMAT_D32_SFLOAT;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VkImageCreateInfo depthImageInfo{};
+    depthImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    depthImageInfo.imageType = VK_IMAGE_TYPE_2D;
+    depthImageInfo.format = VK_FORMAT_D32_SFLOAT;
+    depthImageInfo.extent = VkExtent3D{m_width, m_height, 1};
+    depthImageInfo.mipLevels = 1;
+    depthImageInfo.arrayLayers = 1;
+    depthImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    depthImageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    depthImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    depthImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    VkResult err = vkCreateImage(Vulkan::GetDevice(), &imageInfo, nullptr, &m_depthimageToRenderInto);
-    Vulkan::check_vk_result(err);
-    VkMemoryRequirements req;
-    vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_depthimageToRenderInto, &req);
-    VkMemoryAllocateInfo alloc_info = {};
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.allocationSize = req.size;
-    alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_depthimageMemory);
-    Vulkan::check_vk_result(err);
-    err = vkBindImageMemory(Vulkan::GetDevice(), m_depthimageToRenderInto, m_depthimageMemory, 0);
-    Vulkan::check_vk_result(err);
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	std::cout << "Depth image: " << m_depthimageToRenderInto << std::endl;
+    if (vmaCreateImage(m_vma, &depthImageInfo, &allocInfo, &m_depthimage, &m_depthimageMemory, nullptr) != VK_SUCCESS) 
+    {
+        assert(false);
+    }
 
-    m_depthimageViewToRenderInto = CreateImageView(m_depthimageToRenderInto, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
+    m_depthimageView = CreateImageView(m_depthimage, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
@@ -473,8 +460,8 @@ void VulkanRenderer3D::CreateFrameBuffer()
     }
 
     assert(m_imageViewToRenderInto);
-    assert(m_depthimageViewToRenderInto);
-    VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto, m_depthimageViewToRenderInto };
+    assert(m_depthimageView);
+    VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto, m_depthimageView };
     VkFramebufferCreateInfo FboInfo{};
     FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     FboInfo.renderPass = m_renderpass;

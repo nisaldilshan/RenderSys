@@ -20,7 +20,7 @@ namespace GraphicsAPI
         ~VulkanRenderer3D() = default;
 
         bool Init();
-        void CreateTextureToRenderInto(uint32_t width, uint32_t height);
+        void CreateImageToRender(uint32_t width, uint32_t height);
         void CreateDepthImage();
         void CreateTextureSampler();
         void CreateShaders(RenderSys::Shader& shader);
@@ -54,11 +54,11 @@ namespace GraphicsAPI
         uint32_t m_width = 0;
         uint32_t m_height = 0;
         VkImage m_ImageToRenderInto = VK_NULL_HANDLE;
-        VkDeviceMemory m_ImageMemory = VK_NULL_HANDLE;
+        VmaAllocation m_renderImageMemory = VK_NULL_HANDLE;
         VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
-        VkImage m_depthimageToRenderInto = VK_NULL_HANDLE;
-        VkDeviceMemory m_depthimageMemory = VK_NULL_HANDLE;
-        VkImageView m_depthimageViewToRenderInto = VK_NULL_HANDLE;
+        VkImage m_depthimage = VK_NULL_HANDLE;
+        VmaAllocation m_depthimageMemory = VK_NULL_HANDLE;
+        VkImageView m_depthimageView = VK_NULL_HANDLE;
 
         VkSampler m_textureSampler;
         VkDescriptorSet m_descriptorSet;
