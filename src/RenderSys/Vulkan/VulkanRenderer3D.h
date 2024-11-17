@@ -40,6 +40,7 @@ namespace GraphicsAPI
         ImTextureID GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();
+        void DestroyImages();
         void Destroy();
     private:
         void CreateBindGroup();

@@ -148,6 +148,33 @@ void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
     m_shaderStageInfos.push_back(vertexStageInfo);
 }
 
+void VulkanRenderer3D::DestroyImages()
+{
+    if (m_descriptorSet)
+    {
+        vkQueueWaitIdle(Vulkan::GetDeviceQueue());
+        ImGui_ImplVulkan_RemoveTexture(m_descriptorSet);
+    }
+    
+    if (m_imageViewToRenderInto != VK_NULL_HANDLE)
+    {
+        vkDestroyImageView(Vulkan::GetDevice(), m_imageViewToRenderInto, nullptr);
+    }
+    if (m_ImageToRenderInto != VK_NULL_HANDLE)
+    {
+        vmaDestroyImage(m_vma, m_ImageToRenderInto, m_renderImageMemory);
+    }
+
+    if (m_depthimageView != VK_NULL_HANDLE)
+    {
+        vkDestroyImageView(Vulkan::GetDevice(), m_depthimageView, nullptr);
+    }
+    if (m_depthimage != VK_NULL_HANDLE)
+    {
+        vmaDestroyImage(m_vma, m_depthimage, m_depthimageMemory);
+    }
+}
+
 void VulkanRenderer3D::DestroyBuffers()
 {
     if (m_vertexBuffer != VK_NULL_HANDLE && m_vertexBufferMemory != VK_NULL_HANDLE)
@@ -158,6 +185,13 @@ void VulkanRenderer3D::DestroyBuffers()
     if (m_indexBuffer != VK_NULL_HANDLE && m_indexBufferMemory != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(m_vma, m_indexBuffer, m_indexBufferMemory);
+    }
+
+    for (auto& [_ , uniformBufferTuple] : m_uniformBuffers)
+    {
+        VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferTuple);
+        VmaAllocation& uniformBufferMemory = std::get<1>(uniformBufferTuple);
+        vmaDestroyBuffer(m_vma, bufferInfo.buffer, uniformBufferMemory);
     }
 }
 
@@ -836,6 +870,7 @@ void VulkanRenderer3D::EndRenderPass()
 void VulkanRenderer3D::Destroy()
 {
     DestroyBuffers();
+    DestroyImages();
 
     // Destroy VMA instance
     vmaDestroyAllocator(m_vma);

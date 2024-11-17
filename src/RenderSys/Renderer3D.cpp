@@ -23,6 +23,8 @@ Renderer3D::~Renderer3D()
 
 void Renderer3D::OnResize(uint32_t width, uint32_t height)
 {
+    m_rendererBackend->DestroyImages();
+
     m_Width = width;
     m_Height = height;
     m_rendererBackend->CreateImageToRender(m_Width, m_Height);
@@ -98,6 +100,11 @@ void RenderSys::Renderer3D::BindResources()
 void* Renderer3D::GetDescriptorSet() const
 {
     return m_rendererBackend->GetDescriptorSet();
+}
+
+void RenderSys::Renderer3D::Destroy()
+{
+    return m_rendererBackend->Destroy();
 }
 
 void Renderer3D::Render(uint32_t uniformIndex)

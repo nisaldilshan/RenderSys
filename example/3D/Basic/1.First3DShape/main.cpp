@@ -29,11 +29,12 @@ public:
 	virtual void OnAttach() override
 	{
 		m_renderer = std::make_shared<RenderSys::Renderer3D>();
+		m_renderer->Init();	
 	}
 
 	virtual void OnDetach() override
 	{
-
+		m_renderer->Destroy();
 	}
 
 	virtual void OnUpdate(float ts) override
@@ -46,7 +47,6 @@ public:
             m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
-			m_renderer->Init();	
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 			{
