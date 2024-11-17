@@ -654,7 +654,7 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
 
 void VulkanRenderer2D::SimpleRender()
 {
-    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -663,20 +663,20 @@ void VulkanRenderer2D::SimpleRender()
     viewport.height = static_cast<float>(m_height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_commandBufferForReal, 0, 1, &viewport);
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = { 0, 0 };
     scissor.extent = { m_width, m_height };
-    vkCmdSetScissor(m_commandBufferForReal, 0, 1, &scissor);
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
     const auto triangleCount = 1;
-    vkCmdDraw(m_commandBufferForReal, triangleCount * 3, 1, 0, 0);
+    vkCmdDraw(m_commandBuffer, triangleCount * 3, 1, 0, 0);
 }
 
 void VulkanRenderer2D::Render()
 {
-    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -685,21 +685,21 @@ void VulkanRenderer2D::Render()
     viewport.height = static_cast<float>(m_height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_commandBufferForReal, 0, 1, &viewport);
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = { 0, 0 };
     scissor.extent = { m_width, m_height };
-    vkCmdSetScissor(m_commandBufferForReal, 0, 1, &scissor);
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
     VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(m_commandBufferForReal, 0, 1, &m_vertexBuffer, &offset);
-    vkCmdDraw(m_commandBufferForReal, m_vertexCount, 1, 0, 0);
+	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &offset);
+    vkCmdDraw(m_commandBuffer, m_vertexCount, 1, 0, 0);
 }
 
 void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffsetCount)
 {
-    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -708,26 +708,26 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     viewport.height = static_cast<float>(m_height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_commandBufferForReal, 0, 1, &viewport);
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = { 0, 0 };
     scissor.extent = { m_width, m_height };
-    vkCmdSetScissor(m_commandBufferForReal, 0, 1, &scissor);
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
     VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(m_commandBufferForReal, 0, 1, &m_vertexBuffer, &offset);
-    vkCmdBindIndexBuffer(m_commandBufferForReal, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
+	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &offset);
+    vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
 
     if (m_bindGroup)
     {
         uint32_t dynamicOffset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
-        vkCmdBindDescriptorSets(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
-        vkCmdDrawIndexed(m_commandBufferForReal, m_indexCount, 1, 0, 0, 0);
+        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
+        vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
     }
     else
     {
-        vkCmdDrawIndexed(m_commandBufferForReal, m_indexCount, 1, 0, 0, 0);
+        vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
     }
 }
 
@@ -765,13 +765,43 @@ void VulkanRenderer2D::BeginRenderPass()
 {
     VkClearValue colorClearValue;
     colorClearValue.color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
-
     VkClearValue depthValue;
     depthValue.depthStencil.depth = 1.0f;
-
     VkClearValue clearValues[] = { colorClearValue, depthValue };
 
-    m_commandBufferForReal = GraphicsAPI::Vulkan::GetCommandBuffer(true); // CRITICAL: only call once in the renderer
+    // TODO: move commandpool/commandbuffer creation to constructor
+    if (!m_commandPool)
+    {
+        auto queueFamilyIndices = Vulkan::FindQueueFamilies();
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+        auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
+        Vulkan::check_vk_result(err);
+    }
+    
+    if (!m_commandBuffer)
+    {
+        VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
+        cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cmdBufAllocateInfo.commandPool = m_commandPool;
+        cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cmdBufAllocateInfo.commandBufferCount = 1;
+        auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+        Vulkan::check_vk_result(err);
+    }
+    else
+    {
+        auto err = vkResetCommandBuffer(m_commandBuffer, 0);
+        Vulkan::check_vk_result(err);
+    }
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    auto err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
+    Vulkan::check_vk_result(err);
 
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
@@ -784,12 +814,12 @@ void VulkanRenderer2D::BeginRenderPass()
     rpInfo.clearValueCount = 2;
     rpInfo.pClearValues = clearValues;
 
-    vkCmdBeginRenderPass(m_commandBufferForReal, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(m_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanRenderer2D::EndRenderPass()
 {
-	vkCmdEndRenderPass(m_commandBufferForReal);
+	vkCmdEndRenderPass(m_commandBuffer);
     SubmitCommandBuffer();
 }
 
@@ -803,19 +833,14 @@ void VulkanRenderer2D::Destroy()
 
 void VulkanRenderer2D::SubmitCommandBuffer()
 {
-    GraphicsAPI::Vulkan::FlushCommandBuffer(m_commandBufferForReal);
+    auto err = vkEndCommandBuffer(m_commandBuffer);
+    Vulkan::check_vk_result(err);
 
-    // VkSubmitInfo submitInfo{};
-    // submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    // VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    // submitInfo.pWaitDstStageMask = &waitStage;
-    // submitInfo.commandBufferCount = 1;
-    // submitInfo.pCommandBuffers = &m_commandBufferForReal;
-
-    // if (vkQueueSubmit(Vulkan::GetDeviceQueue(), 1, &submitInfo, g_renderFence) != VK_SUCCESS) {
-    //     std::cout << "error: failed to submit draw command buffer" << std::endl;
-    //     return;
-    // }
+    VkSubmitInfo end_info{};
+    end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    end_info.commandBufferCount = 1;
+    end_info.pCommandBuffers = &m_commandBuffer;
+    GraphicsAPI::Vulkan::QueueSubmit(end_info);
 }
 
 } // namespace GraphicsAPI

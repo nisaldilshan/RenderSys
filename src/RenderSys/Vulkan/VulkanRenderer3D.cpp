@@ -779,7 +779,39 @@ void VulkanRenderer3D::BeginRenderPass()
     clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
     clearValues[1].depthStencil = {1.0f, 0};
 
-    m_commandBuffer = GraphicsAPI::Vulkan::GetCommandBuffer(true); // CRITICAL: only call once in the renderer
+    // TODO: move commandpool/commandbuffer creation to constructor
+    if (!m_commandPool)
+    {
+        auto queueFamilyIndices = Vulkan::FindQueueFamilies();
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+        auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
+        Vulkan::check_vk_result(err);
+    }
+    
+    if (!m_commandBuffer)
+    {
+        VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
+        cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cmdBufAllocateInfo.commandPool = m_commandPool;
+        cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cmdBufAllocateInfo.commandBufferCount = 1;
+        auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+        Vulkan::check_vk_result(err);
+    }
+    else
+    {
+        auto err = vkResetCommandBuffer(m_commandBuffer, 0);
+        Vulkan::check_vk_result(err);
+    }
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    auto err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
+    Vulkan::check_vk_result(err);
 
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
@@ -811,7 +843,14 @@ void VulkanRenderer3D::Destroy()
 
 void VulkanRenderer3D::SubmitCommandBuffer()
 {
-    GraphicsAPI::Vulkan::FlushCommandBuffer(m_commandBuffer);
+    auto err = vkEndCommandBuffer(m_commandBuffer);
+    Vulkan::check_vk_result(err);
+
+    VkSubmitInfo end_info{};
+    end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    end_info.commandBufferCount = 1;
+    end_info.pCommandBuffers = &m_commandBuffer;
+    GraphicsAPI::Vulkan::QueueSubmit(end_info);
 }
 
 void VulkanRenderer3D::CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount)

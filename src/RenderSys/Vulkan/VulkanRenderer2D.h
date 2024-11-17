@@ -51,7 +51,6 @@ namespace GraphicsAPI
         VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
         VkSampler m_textureSampler;
         VkDescriptorSet m_descriptorSet;
-        VkCommandBuffer m_commandBufferForReal = VK_NULL_HANDLE;
         std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
         std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
 
@@ -59,6 +58,8 @@ namespace GraphicsAPI
         VkPipeline m_pipeline = VK_NULL_HANDLE;
         VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
         VkRenderPass m_renderpass = VK_NULL_HANDLE;
+        VkCommandPool m_commandPool = VK_NULL_HANDLE;
+        VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 
         VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
         VmaAllocation m_vertexBufferMemory = VK_NULL_HANDLE;
