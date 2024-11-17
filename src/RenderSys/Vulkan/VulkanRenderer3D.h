@@ -41,11 +41,13 @@ namespace GraphicsAPI
         void BeginRenderPass();
         void EndRenderPass();
         void DestroyImages();
+        void DestroyPipeline();
         void Destroy();
     private:
         void CreateBindGroup();
         void CreatePipelineLayout();
         bool CreateRenderPass();
+        void DestroyRenderPass();
         void DestroyBuffers();
         void DestroyShaders();
         void UploadTexture(VkImage texture, RenderSys::TextureDescriptor textureDesc, const void* textureData);

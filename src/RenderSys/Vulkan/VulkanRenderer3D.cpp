@@ -155,6 +155,12 @@ void VulkanRenderer3D::DestroyImages()
         vkQueueWaitIdle(Vulkan::GetDeviceQueue());
         ImGui_ImplVulkan_RemoveTexture(m_descriptorSet);
     }
+
+    if (m_frameBuffer)
+    {
+        vkDeviceWaitIdle(Vulkan::GetDevice());
+        vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
+    }
     
     if (m_imageViewToRenderInto != VK_NULL_HANDLE)
     {
@@ -172,6 +178,19 @@ void VulkanRenderer3D::DestroyImages()
     if (m_depthimage != VK_NULL_HANDLE)
     {
         vmaDestroyImage(m_vma, m_depthimage, m_depthimageMemory);
+    }
+}
+
+void VulkanRenderer3D::DestroyPipeline()
+{
+    if (m_pipeline)
+    {
+        vkDestroyPipeline(Vulkan::GetDevice(), m_pipeline, nullptr);
+    }
+
+    if (m_pipelineLayout)
+    {
+        vkDestroyPipelineLayout(Vulkan::GetDevice(), m_pipelineLayout, nullptr);
     }
 }
 
@@ -193,6 +212,7 @@ void VulkanRenderer3D::DestroyBuffers()
         VmaAllocation& uniformBufferMemory = std::get<1>(uniformBufferTuple);
         vmaDestroyBuffer(m_vma, bufferInfo.buffer, uniformBufferMemory);
     }
+    m_uniformBuffers.clear();
 }
 
 void VulkanRenderer3D::DestroyShaders()
@@ -371,8 +391,17 @@ bool VulkanRenderer3D::CreateRenderPass()
     return true;
 }
 
+void VulkanRenderer3D::DestroyRenderPass()
+{
+    vkDeviceWaitIdle(Vulkan::GetDevice());
+    vkDestroyRenderPass(Vulkan::GetDevice(), m_renderpass, nullptr);
+}
+
 void VulkanRenderer3D::CreatePipeline()
 {
+    if (m_pipeline)
+        return;
+        
     std::cout << "Creating render pipeline..." << std::endl;
 
     /* assemble the graphics pipeline itself */
@@ -477,7 +506,6 @@ void VulkanRenderer3D::CreatePipeline()
 
     if (vkCreateGraphicsPipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipeline) != VK_SUCCESS) {
         std::cout << "error: could not create rendering pipeline" << std::endl;
-        vkDestroyPipelineLayout(Vulkan::GetDevice(), m_pipelineLayout, nullptr);
     }
 
     /* it is save to destroy the shader modules after pipeline has been created */
@@ -488,11 +516,6 @@ void VulkanRenderer3D::CreatePipeline()
 
 void VulkanRenderer3D::CreateFrameBuffer()
 {
-    if (m_frameBuffer)
-    {
-        vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
-    }
-
     assert(m_imageViewToRenderInto);
     assert(m_depthimageView);
     VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto, m_depthimageView };
@@ -869,8 +892,11 @@ void VulkanRenderer3D::EndRenderPass()
 
 void VulkanRenderer3D::Destroy()
 {
+    DestroyPipeline();
     DestroyBuffers();
     DestroyImages();
+
+    DestroyRenderPass();
 
     // Destroy VMA instance
     vmaDestroyAllocator(m_vma);
