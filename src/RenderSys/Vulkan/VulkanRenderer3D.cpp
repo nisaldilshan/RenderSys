@@ -24,10 +24,9 @@ bool VulkanRenderer3D::Init()
         }
     }
 
-    if (!CreateRenderPass())
-    {
-        return false;
-    }
+    CreateRenderPass();
+    CreateCommandBuffers();
+
 
     return true;
 }
@@ -208,6 +207,26 @@ void VulkanRenderer3D::DestroyPipeline()
     }
 }
 
+void VulkanRenderer3D::DestroyBindGroup()
+{
+    if (m_bindGroup && m_bindGroupPool)
+    {
+        vkDeviceWaitIdle(Vulkan::GetDevice());
+        // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
+        vkDestroyDescriptorPool(Vulkan::GetDevice(), m_bindGroupPool, nullptr);
+        m_bindGroup = VK_NULL_HANDLE;
+        m_bindGroupPool = VK_NULL_HANDLE;
+    }
+
+    if (m_bindGroupLayout)
+    {
+        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_bindGroupLayout, nullptr);
+        m_bindGroupLayout = VK_NULL_HANDLE;
+    }
+
+    m_bindGroupBindings.clear();
+}
+
 void VulkanRenderer3D::DestroyBuffers()
 {
     if (m_vertexBuffer != VK_NULL_HANDLE && m_vertexBufferMemory != VK_NULL_HANDLE)
@@ -229,6 +248,15 @@ void VulkanRenderer3D::DestroyBuffers()
         vmaDestroyBuffer(m_vma, bufferInfo.buffer, uniformBufferMemory);
     }
     m_uniformBuffers.clear();
+
+    if (m_commandBuffer && m_commandPool)
+    {
+        vkDeviceWaitIdle(Vulkan::GetDevice());
+        // when you destroy a command pool, all command buffers allocated from that pool are automatically destroyed
+        vkDestroyCommandPool(Vulkan::GetDevice(), m_commandPool, nullptr);
+        m_commandBuffer = VK_NULL_HANDLE;
+        m_commandPool = VK_NULL_HANDLE;
+    }    
 }
 
 void VulkanRenderer3D::DestroyShaders()
@@ -250,51 +278,45 @@ void VulkanRenderer3D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_
 void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
     assert(bindGroupLayoutEntries.size() == 1);
-    if (!m_bindGroupLayout)
+    assert(!m_bindGroupLayout && !m_bindGroupPool && !m_bindGroup);
+
+    auto& uboLayoutBinding = m_bindGroupBindings.emplace_back();
+    uboLayoutBinding.binding = 0;
+    if (bindGroupLayoutEntries[0].buffer.hasDynamicOffset)
     {
-        auto& uboLayoutBinding = m_bindGroupBindings.emplace_back();
-        uboLayoutBinding.binding = 0;
-        if (bindGroupLayoutEntries[0].buffer.hasDynamicOffset)
-        {
-            uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        }
-        else
-        {
-            uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        }
-        uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.stageFlags = GetVulkanShaderStageVisibility(bindGroupLayoutEntries[0].visibility);
-        uboLayoutBinding.pImmutableSamplers = nullptr;
-
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = 1;
-        layoutInfo.pBindings = &uboLayoutBinding;
-
-        if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor set layout!");
-        }
-
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = uboLayoutBinding.descriptorType;
-        poolSize.descriptorCount = 1;
-
-        VkDescriptorPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = 1;
-        poolInfo.pPoolSizes = &poolSize;
-        poolInfo.maxSets = 1;
-
-        if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor pool!");
-        }
-
-        CreateBindGroup();
+        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     }
-}
+    else
+    {
+        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    }
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.stageFlags = GetVulkanShaderStageVisibility(bindGroupLayoutEntries[0].visibility);
+    uboLayoutBinding.pImmutableSamplers = nullptr;
 
-void VulkanRenderer3D::CreateBindGroup()
-{
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+
+    VkDescriptorPoolSize poolSize{};
+    poolSize.type = uboLayoutBinding.descriptorType;
+    poolSize.descriptorCount = 1;
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = 1;
+
+    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor pool!");
+    }
+
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = m_bindGroupPool;
@@ -330,11 +352,8 @@ void VulkanRenderer3D::CreatePipelineLayout()
     }
 }
 
-bool VulkanRenderer3D::CreateRenderPass()
+void VulkanRenderer3D::CreateRenderPass()
 {
-    if (m_renderpass)
-        return true;
-
     VkAttachmentDescription colorAtt{};
     colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
     colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -401,10 +420,27 @@ bool VulkanRenderer3D::CreateRenderPass()
     if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
     {
         std::cout << "error; could not create renderpass" << std::endl;
-        return false;
+        assert(false);
     }
+}
 
-    return true;
+void VulkanRenderer3D::CreateCommandBuffers()
+{
+    auto queueFamilyIndices = Vulkan::FindQueueFamilies();
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+    auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
+    Vulkan::check_vk_result(err);
+
+    VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
+    cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cmdBufAllocateInfo.commandPool = m_commandPool;
+    cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cmdBufAllocateInfo.commandBufferCount = 1;
+    err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+    Vulkan::check_vk_result(err);
 }
 
 void VulkanRenderer3D::DestroyRenderPass()
@@ -852,46 +888,20 @@ void VulkanRenderer3D::BeginRenderPass()
     clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
     clearValues[1].depthStencil = {1.0f, 0};
 
-    // TODO: move commandpool/commandbuffer creation to constructor
-    if (!m_commandPool)
-    {
-        auto queueFamilyIndices = Vulkan::FindQueueFamilies();
-        VkCommandPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-        auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
-        Vulkan::check_vk_result(err);
-    }
-    
-    if (!m_commandBuffer)
-    {
-        VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
-        cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cmdBufAllocateInfo.commandPool = m_commandPool;
-        cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cmdBufAllocateInfo.commandBufferCount = 1;
-        auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
-        Vulkan::check_vk_result(err);
-    }
-    else
-    {
-        auto err = vkResetCommandBuffer(m_commandBuffer, 0);
-        Vulkan::check_vk_result(err);
-    }
+    auto err = vkResetCommandBuffer(m_commandBuffer, 0);
+    Vulkan::check_vk_result(err);
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    auto err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
+    err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
     Vulkan::check_vk_result(err);
 
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rpInfo.renderPass = m_renderpass;
-    rpInfo.renderArea.offset.x = 0;
-    rpInfo.renderArea.offset.y = 0;
+    rpInfo.renderArea.offset = {0, 0};
     rpInfo.renderArea.extent = { m_width, m_height };
     rpInfo.framebuffer = m_frameBuffer;
     rpInfo.clearValueCount = 2;
@@ -908,6 +918,7 @@ void VulkanRenderer3D::EndRenderPass()
 
 void VulkanRenderer3D::Destroy()
 {
+    DestroyBindGroup();
     DestroyPipeline();
     DestroyBuffers();
     DestroyImages();

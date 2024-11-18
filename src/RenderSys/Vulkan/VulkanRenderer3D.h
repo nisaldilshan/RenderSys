@@ -42,11 +42,12 @@ namespace GraphicsAPI
         void EndRenderPass();
         void DestroyImages();
         void DestroyPipeline();
+        void DestroyBindGroup();
         void Destroy();
     private:
-        void CreateBindGroup();
         void CreatePipelineLayout();
-        bool CreateRenderPass();
+        void CreateRenderPass();
+        void CreateCommandBuffers();
         void DestroyRenderPass();
         void DestroyBuffers();
         void DestroyShaders();
@@ -89,6 +90,7 @@ namespace GraphicsAPI
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
         VkDescriptorSet m_bindGroup = VK_NULL_HANDLE;
         std::vector<VkDescriptorSetLayoutBinding> m_bindGroupBindings;
+        
         std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers; // tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
 
         VmaAllocator m_vma = VK_NULL_HANDLE;
