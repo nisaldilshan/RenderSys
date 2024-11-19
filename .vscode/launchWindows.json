@@ -119,15 +119,14 @@
         },
         {
             "name": "TransformationMatrices",
-            "type": "lldb",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/2.TransformationMatrices/TransformationMatrices",
+            "program": "${workspaceFolder}/build/example/3D/Basic/2.TransformationMatrices/Debug/TransformationMatrices",
             "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/2.TransformationMatrices",
-            "env": { 
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
-            },
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/2.TransformationMatrices/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
         },
         {
             "name": "BasicShading",

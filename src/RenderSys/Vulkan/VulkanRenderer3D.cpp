@@ -752,7 +752,6 @@ void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneU
     VkBufferCreateInfo bufferCreateInfo = {};
     bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     const size_t maximumUniformIndex = uniformCountInBuffer - 1;
-    assert(sizeOfOneUniform == 32);
     bufferCreateInfo.size = sizeOfOneUniform + GetUniformStride(maximumUniformIndex, sizeOfOneUniform);
     bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;

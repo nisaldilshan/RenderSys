@@ -8,6 +8,7 @@ add_subdirectory(2D/5.UniformBuffers)
 add_subdirectory(2D/6.DynamicUniforms)
 
 add_subdirectory(3D/Basic/1.First3DShape)
+add_subdirectory(3D/Basic/2.TransformationMatrices)
 
 if(RENDERER STREQUAL "WebGPU")
     add_subdirectory(Compute/1.BasicCompute)
@@ -15,7 +16,6 @@ if(RENDERER STREQUAL "WebGPU")
     add_subdirectory(Compute/3.Fluid2D)
     #add_subdirectory(Compute/4.Fluid3D)
 
-    add_subdirectory(3D/Basic/2.TransformationMatrices)
     add_subdirectory(3D/Basic/3.BasicShading)
     add_subdirectory(3D/Basic/4.FirstTexture)
     add_subdirectory(3D/Basic/5.TextureSampler)
