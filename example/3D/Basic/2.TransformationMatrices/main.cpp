@@ -60,6 +60,9 @@ public:
 				const char* vertexShaderSource = R"(
 					#version 450 core
 					layout(binding = 0) uniform UniformBufferObject {
+						mat4 projectionMatrix;
+						mat4 viewMatrix;
+						mat4 modelMatrix;
 						vec4 color;
 						float time;
 						float _pad[3];
@@ -70,15 +73,7 @@ public:
 
 					void main() 
 					{
-						float angle = ubo.time;
-						float alpha = cos(angle);
-						float beta = sin(angle);
-						vec3 pos = vec3(
-							aPos.x,
-							alpha * aPos.y + beta * aPos.z,
-							alpha * aPos.z - beta * aPos.y
-						);
-						gl_Position = vec4(pos.x, pos.y, pos.z*0.5 + 0.5, 1.0);
+						gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
 						vColor = aColor; // Pass color to fragment shader
 					}
 				)";
@@ -91,6 +86,9 @@ public:
 				const char* fragmentShaderSource = R"(
 					#version 450
 					layout(binding = 0) uniform UniformBufferObject {
+						mat4 projectionMatrix;
+						mat4 viewMatrix;
+						mat4 modelMatrix;
 						vec4 color;
 						float time;
 						float _pad[3];
@@ -122,9 +120,6 @@ public:
 					@location(0) color: vec3f,
 				};
 
-				/**
-				 * A structure holding the value of our uniforms
-				 */
 				struct MyUniforms {
 					projectionMatrix: mat4x4f,
 					viewMatrix: mat4x4f,
@@ -133,21 +128,7 @@ public:
 					time: f32,
 				};
 
-				// Instead of the simple uTime variable, our uniform variable is a struct
 				@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
-
-				const pi = 3.14159265359;
-
-				// Build a perspective projection matrix
-				fn makePerspectiveProj(ratio: f32, near: f32, far: f32, focalLength: f32) -> mat4x4f {
-					let divides = 1.0 / (far - near);
-					return transpose(mat4x4f(
-						focalLength,         0.0,              0.0,               0.0,
-							0.0,     focalLength * ratio,      0.0,               0.0,
-							0.0,             0.0,         far * divides, -far * near * divides,
-							0.0,             0.0,              1.0,               0.0,
-					));
-				}
 
 				fn vs_main_optionB(in: VertexInput) -> VertexOutput {
 					var out: VertexOutput;
@@ -279,7 +260,7 @@ public:
 			m_uniformData.color = { 1.0f, 1.0f, 1.0f, 0.7f };
 			m_renderer->SetUniformBufferData(0, &m_uniformData, 1);
 			m_renderer->BindResources();
-			
+
 			m_renderer->RenderIndexed(0);
 			m_renderer->RenderIndexed(1);
 			m_renderer->EndRenderPass();
