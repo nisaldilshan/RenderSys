@@ -1,16 +1,5 @@
 #pragma once
 
-namespace UniformBuf
-{
-
-enum class UniformType
-{
-    ModelViewProjection = 0,
-    Lighting
-};
-
-} // namespace Uniform
-
 namespace ComputeBuf
 {
 
