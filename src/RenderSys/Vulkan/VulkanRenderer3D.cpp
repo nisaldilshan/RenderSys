@@ -708,7 +708,6 @@ uint32_t VulkanRenderer3D::GetUniformStride(const uint32_t& uniformIndex, const 
         VkPhysicalDeviceProperties deviceProperties;
         vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
         minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
-        std::cout << "VulkanRenderer2D::GetUniformStride - " << minUniformBufferOffsetAlignment << std::endl;
     }
 
     assert(sizeOfUniform > 0);
@@ -827,34 +826,15 @@ void VulkanRenderer3D::BindResources()
 
     VkDeviceSize offset = 0;
 	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &offset);
-    vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
+    if (m_indexCount > 0)
+    {
+        vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
+    }
 }
 
 void VulkanRenderer3D::Render(uint32_t uniformIndex)
 {
-    // // Set vertex buffer while encoding the render pass
-    // m_renderPass.setVertexBuffer(0, m_vertexBuffer, 0, m_vertexBufferSize);
-
-    // // Set binding group
-    // if (m_bindGroup)
-    // {
-    //     uint32_t dynamicOffset = 0;
-    //     auto modelViewProjectionUniformBuffer = m_uniformBuffers.find(UniformBuf::UniformType::ModelViewProjection);
-    //     if (modelViewProjectionUniformBuffer != m_uniformBuffers.end())
-    //     {
-    //         dynamicOffset = uniformIndex * GetOffset(1, std::get<2>(modelViewProjectionUniformBuffer->second)); // TODO: better to use a array of offsets and select a offset from it
-    //     }
-    //     uint32_t dynamicOffsetCount = 1; // because we have enabled dynamic offset in only one binding in the bind group
-    //     m_renderPass.setBindGroup(0, m_bindGroup, dynamicOffsetCount, &dynamicOffset);
-    // }
-
-    // if (m_indexCount > 0)
-    // {
-    //     m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexCount * sizeof(uint16_t));
-    //     m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
-    // }
-    // else
-    //     m_renderPass.draw(m_vertexCount, 1, 0, 0);
+    RenderIndexed(uniformIndex);
 }
 
 void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
@@ -868,11 +848,15 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
         vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
                                     , 1, &m_bindGroup
                                     , noOfDynamicOffsetEnabledbindings, &dynamicOffset);
+    }
+
+    if (m_indexCount > 0)
+    {
         vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
     }
     else
     {
-        vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
+        vkCmdDraw(m_commandBuffer, m_vertexCount, 1, 0, 0);
     }
 }
 

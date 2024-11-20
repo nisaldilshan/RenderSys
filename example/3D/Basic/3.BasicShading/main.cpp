@@ -64,7 +64,92 @@ public:
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 			{
+				const char* vertexShaderSource = R"(
+					#version 450 core
 
+					struct VertexInput {
+						vec3 position;
+						vec3 normal;
+						vec3 color;
+					};
+
+					struct VertexOutput {
+						vec4 position;
+						vec3 color;
+						vec3 normal;
+					};
+
+					layout(binding = 0) uniform UniformBufferObject {
+						mat4 projectionMatrix;
+						mat4 viewMatrix;
+						mat4 modelMatrix;
+						vec4 color;
+						float time;
+						float _pad[3];
+					} ubo;
+					layout (location = 0) in vec3 aPos;
+					layout (location = 1) in vec3 in_normal;
+					layout (location = 2) in vec3 in_color;
+
+					layout (location = 0) out vec3 out_color;
+					layout (location = 1) out vec3 out_normal;
+
+					void main() 
+					{
+						gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
+						vec4 mult = ubo.modelMatrix * vec4(in_normal, 0.0);
+						out_normal = mult.xyz;
+						out_color = in_color;
+					}
+				)";
+				RenderSys::Shader vertexShader("Vertex");
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.shaderSrc = vertexShaderSource;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				m_renderer->SetShader(vertexShader);
+
+				const char* fragmentShaderSource = R"(
+					#version 450
+					struct VertexOutput {
+						vec3 color;
+						vec3 normal;
+					};
+
+					layout(binding = 0) uniform UniformBufferObject {
+						mat4 projectionMatrix;
+						mat4 viewMatrix;
+						mat4 modelMatrix;
+						vec4 color;
+						float time;
+						float _pad[3];
+					} ubo;
+
+					layout (location = 0) in vec3 in_color;
+					layout (location = 1) in vec3 in_normal;
+
+					layout (location = 0) out vec4 out_color;
+
+					void main()
+					{
+						vec3 normal = normalize(in_normal);
+
+						vec3 lightColor1 = vec3(1.0, 0.9, 0.6);
+						vec3 lightColor2 = vec3(0.6, 0.9, 1.0);
+						vec3 lightDirection1 = vec3(0.5, -0.9, 0.1);
+						vec3 lightDirection2 = vec3(0.2, 0.4, 0.3);
+						float shading1 = max(0.0, dot(lightDirection1, normal));
+						float shading2 = max(0.0, dot(lightDirection2, normal));
+						vec3 shading = shading1 * lightColor1 + shading2 * lightColor2;
+						vec3 color = in_color * shading;
+
+						out_color = vec4(color, ubo.color.a);
+					}
+				)";
+				RenderSys::Shader fragmentShader("Fragment");
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.shaderSrc = fragmentShaderSource;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				m_renderer->SetShader(fragmentShader);
 			}
 			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 			{
