@@ -84,4 +84,23 @@ VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags a
     return imageView;
 }
 
+VkDescriptorSetLayoutBinding GetVulkanBindGroupLayoutEntry(const RenderSys::BindGroupLayoutEntry& bindGroupLayoutEntry)
+{
+    VkDescriptorSetLayoutBinding layoutBinding;
+    layoutBinding.binding = 0;
+    if (bindGroupLayoutEntry.buffer.hasDynamicOffset)
+    {
+        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    }
+    else
+    {
+        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    }
+
+    layoutBinding.descriptorCount = 1;
+    layoutBinding.stageFlags = GetVulkanShaderStageVisibility(bindGroupLayoutEntry.visibility);
+    layoutBinding.pImmutableSamplers = nullptr;
+    return layoutBinding;
+}
+
 }

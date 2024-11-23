@@ -90,8 +90,9 @@ namespace GraphicsAPI
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
         VkDescriptorSet m_bindGroup = VK_NULL_HANDLE;
         std::vector<VkDescriptorSetLayoutBinding> m_bindGroupBindings;
-        
-        std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers; // tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
+
+        // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
+        std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
 
         VmaAllocator m_vma = VK_NULL_HANDLE;
     };

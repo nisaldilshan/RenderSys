@@ -284,29 +284,16 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
 
     for (const auto &bindGroupLayoutEntry : bindGroupLayoutEntries)
     {
-        auto& layoutBinding = m_bindGroupBindings.emplace_back();
-        layoutBinding.binding = 0;
-        if (bindGroupLayoutEntry.buffer.hasDynamicOffset)
-        {
-            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        }
-        else
-        {
-            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        }
-
-        if (descriptorTypeCountMap.find(layoutBinding.descriptorType) != descriptorTypeCountMap.end())
+        auto vkBinding = GetVulkanBindGroupLayoutEntry(bindGroupLayoutEntry);
+        m_bindGroupBindings.push_back(vkBinding);
+        if (descriptorTypeCountMap.find(vkBinding.descriptorType) != descriptorTypeCountMap.end())
         {
 
         }
         else
         {
-            descriptorTypeCountMap.insert({layoutBinding.descriptorType, 1});
+            descriptorTypeCountMap.insert({vkBinding.descriptorType, 1});
         }
-
-        layoutBinding.descriptorCount = 1;
-        layoutBinding.stageFlags = GetVulkanShaderStageVisibility(bindGroupLayoutEntry.visibility);
-        layoutBinding.pImmutableSamplers = nullptr;
     }
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -810,16 +797,23 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData, 
 
 void VulkanRenderer3D::BindResources()
 {
-    for (auto& [_ , uniformBufferTuple] : m_uniformBuffers)
+    assert(m_bindGroupBindings.size() > 0);
+
+    for (auto& bindGroupBinding : m_bindGroupBindings)
     {
-        VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferTuple);
+        auto& uniformBufferTupleIter = m_uniformBuffers.find(bindGroupBinding.binding);
+        if (uniformBufferTupleIter == m_uniformBuffers.end())
+        {
+            continue;
+        }
+
+        VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferTupleIter->second);
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = m_bindGroup;
-        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstBinding = bindGroupBinding.binding;
         descriptorWrite.dstArrayElement = 0;
-        assert(m_bindGroupBindings.size() > 0);
-        descriptorWrite.descriptorType = m_bindGroupBindings[0].descriptorType;
+        descriptorWrite.descriptorType = bindGroupBinding.descriptorType;
         descriptorWrite.descriptorCount = 1;
         descriptorWrite.pBufferInfo = &bufferInfo;
         descriptorWrite.pImageInfo = nullptr; // Optional
