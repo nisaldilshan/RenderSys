@@ -94,6 +94,9 @@ namespace GraphicsAPI
         // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
         std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
 
+        // map bindingNumber to tuple -> <VkDescriptorImageInfo, textureMemory>
+        std::unordered_map<uint32_t, std::tuple<VkDescriptorImageInfo, VmaAllocation>> m_textures;
+
         VmaAllocator m_vma = VK_NULL_HANDLE;
     };
 }

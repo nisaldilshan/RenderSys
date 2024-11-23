@@ -801,13 +801,6 @@ void VulkanRenderer3D::BindResources()
 
     for (auto& bindGroupBinding : m_bindGroupBindings)
     {
-        auto& uniformBufferTupleIter = m_uniformBuffers.find(bindGroupBinding.binding);
-        if (uniformBufferTupleIter == m_uniformBuffers.end())
-        {
-            continue;
-        }
-
-        VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferTupleIter->second);
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = m_bindGroup;
@@ -815,9 +808,24 @@ void VulkanRenderer3D::BindResources()
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.descriptorType = bindGroupBinding.descriptorType;
         descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pBufferInfo = &bufferInfo;
-        descriptorWrite.pImageInfo = nullptr; // Optional
+        descriptorWrite.pBufferInfo = nullptr;
+        descriptorWrite.pImageInfo = nullptr;
         descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+        auto& uniformBufferIter = m_uniformBuffers.find(bindGroupBinding.binding);
+        if (uniformBufferIter != m_uniformBuffers.end())
+        {
+            VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferIter->second);
+            descriptorWrite.pBufferInfo = &bufferInfo;
+        }
+        
+        auto& textureIter = m_textures.find(bindGroupBinding.binding);
+        if (textureIter != m_textures.end())
+        {
+            VkDescriptorImageInfo& imageInfo = std::get<0>(textureIter->second);
+            descriptorWrite.pImageInfo = &imageInfo;
+        }
+        
         vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
     }
 

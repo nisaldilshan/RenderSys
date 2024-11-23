@@ -66,18 +66,6 @@ public:
 				const char* vertexShaderSource = R"(
 					#version 450 core
 
-					struct VertexInput {
-						vec3 position;
-						vec3 normal;
-						vec3 color;
-					};
-
-					struct VertexOutput {
-						vec4 position;
-						vec3 color;
-						vec3 normal;
-					};
-
 					layout(binding = 0) uniform UniformBufferObject {
 						mat4 projectionMatrix;
 						mat4 viewMatrix;
@@ -109,10 +97,6 @@ public:
 
 				const char* fragmentShaderSource = R"(
 					#version 450
-					struct VertexOutput {
-						vec3 color;
-						vec3 normal;
-					};
 
 					layout(binding = 0) uniform UniformBufferObject {
 						mat4 projectionMatrix;

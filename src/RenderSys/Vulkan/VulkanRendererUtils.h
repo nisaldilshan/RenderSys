@@ -87,15 +87,29 @@ VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags a
 VkDescriptorSetLayoutBinding GetVulkanBindGroupLayoutEntry(const RenderSys::BindGroupLayoutEntry& bindGroupLayoutEntry)
 {
     VkDescriptorSetLayoutBinding layoutBinding;
-    layoutBinding.binding = 0;
-    if (bindGroupLayoutEntry.buffer.hasDynamicOffset)
+    layoutBinding.binding = bindGroupLayoutEntry.binding;
+    assert(layoutBinding.binding >= 0 && layoutBinding.binding <= 1);
+    if (bindGroupLayoutEntry.buffer.type == RenderSys::BufferBindingType::Uniform) // A uniform buffer
     {
-        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        if (bindGroupLayoutEntry.buffer.hasDynamicOffset)
+        {
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        }
+        else
+        {
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        }
+    }
+    else if (bindGroupLayoutEntry.texture.sampleType != RenderSys::TextureSampleType::Undefined && 
+        bindGroupLayoutEntry.texture.viewDimension != RenderSys::TextureViewDimension::Undefined) // A texture
+    {
+        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;//VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;//VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     }
     else
     {
-        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        assert(false);
     }
+    
 
     layoutBinding.descriptorCount = 1;
     layoutBinding.stageFlags = GetVulkanShaderStageVisibility(bindGroupLayoutEntry.visibility);
