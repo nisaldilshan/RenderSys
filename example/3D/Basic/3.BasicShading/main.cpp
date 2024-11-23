@@ -7,7 +7,6 @@
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
-#include <GLFW/glfw3.h>
 
 struct VertexAttributes {
 	glm::vec3 position;
@@ -274,8 +273,8 @@ public:
 		if (m_renderer)
 		{
 			m_renderer->BeginRenderPass();
-
-			float time = static_cast<float>(glfwGetTime());
+			
+			const float time = static_cast<float>(glfwGetTime());
 
 
 			constexpr float PI = 3.14159265358979323846f;

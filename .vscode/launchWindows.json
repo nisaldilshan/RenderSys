@@ -130,39 +130,36 @@
         },
         {
             "name": "BasicShading",
-            "type": "lldb",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/3.BasicShading/BasicShading",
+            "program": "${workspaceFolder}/build/example/3D/Basic/3.BasicShading/Debug/BasicShading",
             "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/3.BasicShading",
-            "env": { 
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
-            },
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/3.BasicShading/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
         },
         {
             "name": "FirstTexture",
-            "type": "lldb",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/4.FirstTexture/FirstTexture",
+            "program": "${workspaceFolder}/build/example/3D/Basic/4.FirstTexture/Debug/FirstTexture",
             "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/4.FirstTexture",
-            "env": { 
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
-            },
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/4.FirstTexture/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
         },
         {
             "name": "TextureSampler",
-            "type": "lldb",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/5.TextureSampler/TextureSampler",
+            "program": "${workspaceFolder}/build/example/3D/Basic/5.TextureSampler/Debug/TextureSampler",
             "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/5.TextureSampler",
-            "env": { 
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
-            },
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/5.TextureSampler/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
         },
         {
             "name": "TextureLoader",

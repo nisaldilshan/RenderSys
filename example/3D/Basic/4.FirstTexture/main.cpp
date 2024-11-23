@@ -1,17 +1,12 @@
 #include <array>
-#include "Walnut/Application.h"
-#include "Walnut/EntryPoint.h"
-#include "Walnut/Random.h"
+#include <Walnut/Application.h>
+#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
+#include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
-#include <GLFW/glfw3.h>
 
-/**
- * A structure that describes the data layout in the vertex buffer
- * We do not instantiate it but use it in `sizeof` and `offsetof`
- */
 struct VertexAttributes {
 	glm::vec3 position;
 	glm::vec3 normal;
@@ -29,14 +24,19 @@ struct MyUniforms {
     float _pad[3];
 };
 
-class Renderer2DLayer : public Walnut::Layer
+class Renderer3DLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
-	{}
+	{
+		m_renderer = std::make_shared<RenderSys::Renderer3D>();
+		m_renderer->Init();	
+	}
 
 	virtual void OnDetach() override
-	{}
+	{
+		m_renderer->Destroy();
+	}
 
 	virtual void OnUpdate(float ts) override
 	{
@@ -48,69 +48,163 @@ public:
             m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
-			m_renderer.reset();
-			m_renderer = std::make_shared<RenderSys::Renderer3D>();
-
-			m_renderer->Init();
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
+			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+			{
+				const char* vertexShaderSource = R"(
+					#version 450 core
 
-			const char* shaderSource = R"(
-			struct VertexInput {
-				@location(0) position: vec3f,
-				@location(1) normal: vec3f,
-				@location(2) color: vec3f,
-				@location(3) uv: vec2f,
-			};
+					struct VertexInput {
+						vec3 position;
+						vec3 normal;
+						vec3 color;
+					};
 
-			struct VertexOutput {
-				@builtin(position) position: vec4f,
-				@location(0) color: vec3f,
-				@location(1) normal: vec3f,
-				@location(2) uv: vec2f,
-			};
+					struct VertexOutput {
+						vec4 position;
+						vec3 color;
+						vec3 normal;
+					};
 
-			/**
-			 * A structure holding the value of our uniforms
-			 */
-			struct MyUniforms {
-				projectionMatrix: mat4x4f,
-				viewMatrix: mat4x4f,
-				modelMatrix: mat4x4f,
-				color: vec4f,
-				time: f32,
-			};
+					layout(binding = 0) uniform UniformBufferObject {
+						mat4 projectionMatrix;
+						mat4 viewMatrix;
+						mat4 modelMatrix;
+						vec4 color;
+						float time;
+						float _pad[3];
+					} ubo;
+					layout (location = 0) in vec3 aPos;
+					layout (location = 1) in vec3 in_normal;
+					layout (location = 2) in vec3 in_color;
 
-			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
+					layout (location = 0) out vec3 out_color;
+					layout (location = 1) out vec3 out_normal;
 
-			// The texture binding
-			@group(0) @binding(1) var gradientTexture: texture_2d<f32>;
+					void main() 
+					{
+						gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
+						vec4 mult = ubo.modelMatrix * vec4(in_normal, 0.0);
+						out_normal = mult.xyz;
+						out_color = in_color;
+					}
+				)";
+				RenderSys::Shader vertexShader("Vertex");
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.shaderSrc = vertexShaderSource;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				m_renderer->SetShader(vertexShader);
 
-			@vertex
-			fn vs_main(in: VertexInput) -> VertexOutput {
-				var out: VertexOutput;
-				out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4f(in.position, 1.0);
-				// Forward the normal
-				out.normal = (uMyUniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
-				out.color = in.color;
-				out.uv = in.uv;
+				const char* fragmentShaderSource = R"(
+					#version 450
+					struct VertexOutput {
+						vec3 color;
+						vec3 normal;
+					};
 
-				return out;
+					layout(binding = 0) uniform UniformBufferObject {
+						mat4 projectionMatrix;
+						mat4 viewMatrix;
+						mat4 modelMatrix;
+						vec4 color;
+						float time;
+						float _pad[3];
+					} ubo;
+
+					layout (location = 0) in vec3 in_color;
+					layout (location = 1) in vec3 in_normal;
+
+					layout (location = 0) out vec4 out_color;
+
+					void main()
+					{
+						vec3 normal = normalize(in_normal);
+
+						vec3 lightColor1 = vec3(1.0, 0.9, 0.6);
+						vec3 lightColor2 = vec3(0.6, 0.9, 1.0);
+						vec3 lightDirection1 = vec3(0.5, -0.9, 0.1);
+						vec3 lightDirection2 = vec3(0.2, 0.4, 0.3);
+						float shading1 = max(0.0, dot(lightDirection1, normal));
+						float shading2 = max(0.0, dot(lightDirection2, normal));
+						vec3 shading = shading1 * lightColor1 + shading2 * lightColor2;
+						vec3 color = in_color * shading;
+
+						out_color = vec4(color, ubo.color.a);
+					}
+				)";
+				RenderSys::Shader fragmentShader("Fragment");
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.shaderSrc = fragmentShaderSource;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				m_renderer->SetShader(fragmentShader);
 			}
+			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+			{
+				const char* shaderSource = R"(
+				struct VertexInput {
+					@location(0) position: vec3f,
+					@location(1) normal: vec3f,
+					@location(2) color: vec3f,
+					@location(3) uv: vec2f,
+				};
 
-			@fragment
-			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-				// We remap UV coords to actual texel coordinates
-				let texelCoords = vec2i(in.uv * vec2f(textureDimensions(gradientTexture)));
-    			let color = textureLoad(gradientTexture, texelCoords, 0).rgb;
+				struct VertexOutput {
+					@builtin(position) position: vec4f,
+					@location(0) color: vec3f,
+					@location(1) normal: vec3f,
+					@location(2) uv: vec2f,
+				};
 
-				// Gamma-correction
-				let corrected_color = pow(color, vec3f(2.2));
-				return vec4f(corrected_color, uMyUniforms.color.a);
+				/**
+				 * A structure holding the value of our uniforms
+				 */
+				struct MyUniforms {
+					projectionMatrix: mat4x4f,
+					viewMatrix: mat4x4f,
+					modelMatrix: mat4x4f,
+					color: vec4f,
+					time: f32,
+				};
+
+				@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
+
+				// The texture binding
+				@group(0) @binding(1) var gradientTexture: texture_2d<f32>;
+
+				@vertex
+				fn vs_main(in: VertexInput) -> VertexOutput {
+					var out: VertexOutput;
+					out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4f(in.position, 1.0);
+					// Forward the normal
+					out.normal = (uMyUniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
+					out.color = in.color;
+					out.uv = in.uv;
+
+					return out;
+				}
+
+				@fragment
+				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+					// We remap UV coords to actual texel coordinates
+					let texelCoords = vec2i(in.uv * vec2f(textureDimensions(gradientTexture)));
+					let color = textureLoad(gradientTexture, texelCoords, 0).rgb;
+
+					// Gamma-correction
+					let corrected_color = pow(color, vec3f(2.2));
+					return vec4f(corrected_color, uMyUniforms.color.a);
+				}
+				)";
+				RenderSys::Shader shader("Combined");
+				shader.type = RenderSys::ShaderType::WGSL;
+				shader.shaderSrc = shaderSource;
+				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+				m_renderer->SetShader(shader);
 			}
-			)";
-			m_renderer->SetShaderAsString(shaderSource);
-
-			//
+			else
+			{
+				assert(false);
+			}
+			
 			std::vector<VertexAttributes> vertexData;
 			bool success = Geometry::loadGeometryFromObjWithUV<VertexAttributes>(RESOURCE_DIR "/Meshes/cube.obj", vertexData);
 			if (!success) 
@@ -119,7 +213,6 @@ public:
 				assert(false);
 				return;
 			}
-			//
 
 			std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
 
@@ -146,14 +239,10 @@ public:
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
-			// stride
 			vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
 			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-
 			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * sizeof(VertexAttributes), vertexBufferLayout);
-
-			// Create binding layouts
 
 			// Since we now have 2 bindings, we use a vector to store them
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
@@ -174,7 +263,7 @@ public:
 			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
 			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
-			m_renderer->CreateUniformBuffer(2, UniformBuf::UniformType::ModelViewProjection, sizeof(MyUniforms), uniformBindingLayout.binding);
+			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 2);
 
 			constexpr uint32_t texWidth = 256;
 			constexpr uint32_t texHeight = 256;
@@ -193,30 +282,27 @@ public:
 
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();
-			
         }
 
 		if (m_renderer)
 		{
 			m_renderer->BeginRenderPass();
+
 			const float time = static_cast<float>(glfwGetTime());
 			constexpr float PI = 3.14159265358979323846f;		
 			m_uniformData.viewMatrix = glm::lookAt(glm::vec3(-2.0f, -3.0f, 2.0f), glm::vec3(0.0f), glm::vec3(0, 0, 1));
 			m_uniformData.projectionMatrix = glm::perspective(30 * (PI / 180), (float)(m_viewportWidth / m_viewportHeight), 0.01f, 100.0f);
 
-			// Upload first value
-			float angle1 = 2.0f;
 			glm::mat4x4 M1(1.0);
-			angle1 = time * 0.9f;
+			float angle1 = time * 0.9f;
 			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(1.0, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.3f));
 			m_uniformData.modelMatrix = M1;
 
-			m_uniformData.time = time; // glfwGetTime returns a double
+			m_uniformData.time = time;
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
-			m_renderer->SetUniformBufferData(UniformBuf::UniformType::ModelViewProjection, &m_uniformData, 0);
-			////
+			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
 
 			// Upload second value
 			glm::mat4x4 M2(1.0);
@@ -226,10 +312,10 @@ public:
 			M2 = glm::scale(M2, glm::vec3(0.3f));
 			m_uniformData.modelMatrix = M2;
 
-			m_uniformData.time = time; // glfwGetTime returns a double
+			m_uniformData.time = time;
 			m_uniformData.color = { 1.0f, 1.0f, 1.0f, 0.7f };
-			m_renderer->SetUniformBufferData(UniformBuf::UniformType::ModelViewProjection, &m_uniformData, 1);
-			////                         				^^^^^^^^^^^^^ beware of the non-null offset!
+			m_renderer->SetUniformBufferData(0, &m_uniformData, 1);
+			m_renderer->BindResources();
 
 			m_renderer->Render(0);
 			m_renderer->Render(1);
@@ -273,6 +359,6 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	spec.Name = "Renderer3D Example";
 
 	Walnut::Application* app = new Walnut::Application(spec);
-	app->PushLayer<Renderer2DLayer>();
+	app->PushLayer<Renderer3DLayer>();
 	return app;
 }
