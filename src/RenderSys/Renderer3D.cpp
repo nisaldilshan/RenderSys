@@ -69,9 +69,9 @@ void Renderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEnt
     m_rendererBackend->CreateBindGroup(bindGroupLayoutEntries);
 }
 
-void Renderer3D::CreateTexture(uint32_t width, uint32_t height, const void* textureData, uint32_t mipMapLevelCount)
+void Renderer3D::CreateTexture(uint32_t binding, uint32_t width, uint32_t height, const void* textureData, uint32_t mipMapLevelCount)
 {
-    m_rendererBackend->CreateTexture(width, height, textureData, mipMapLevelCount);
+    m_rendererBackend->CreateTexture(binding, width, height, textureData, mipMapLevelCount);
 }
 
 void Renderer3D::CreateTextureSampler()

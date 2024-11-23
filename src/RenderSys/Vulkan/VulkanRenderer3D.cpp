@@ -822,7 +822,7 @@ void VulkanRenderer3D::BindResources()
         auto& textureIter = m_textures.find(bindGroupBinding.binding);
         if (textureIter != m_textures.end())
         {
-            VkDescriptorImageInfo& imageInfo = std::get<0>(textureIter->second);
+            VkDescriptorImageInfo& imageInfo = std::get<2>(textureIter->second);
             descriptorWrite.pImageInfo = &imageInfo;
         }
         
@@ -943,34 +943,49 @@ void VulkanRenderer3D::SubmitCommandBuffer()
     GraphicsAPI::Vulkan::QueueSubmit(end_info);
 }
 
-void VulkanRenderer3D::CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount)
+void VulkanRenderer3D::CreateTexture(uint32_t binding, uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount)
 {
-	// wgpu::TextureDescriptor textureDesc;
-	// textureDesc.dimension = wgpu::TextureDimension::_2D;
-	// textureDesc.size = {textureWidth, textureHeight, 1};
-	// textureDesc.format = wgpu::TextureFormat::RGBA8Unorm;;
-	// textureDesc.mipLevelCount = mipMapLevelCount;
-	// textureDesc.sampleCount = 1;
-	// textureDesc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
-	// textureDesc.viewFormatCount = 0;
-	// textureDesc.viewFormats = nullptr;
-	// auto newTexture = WebGPU::GetDevice().createTexture(textureDesc);
-	// std::cout << "texture created: " << newTexture << std::endl;
+    const auto& [textureIter, inserted] = m_textures.insert(
+                                                    {
+                                                        binding, 
+                                                        std::make_tuple(
+                                                            VK_NULL_HANDLE,
+                                                            VK_NULL_HANDLE,
+                                                            VkDescriptorImageInfo{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED}
+                                                        )
+                                                    }
+                                                );
+    if (!inserted)
+    {
+        return;
+    }
 
-	// wgpu::TextureViewDescriptor textureViewDesc;
-	// textureViewDesc.aspect = wgpu::TextureAspect::All;
-	// textureViewDesc.baseArrayLayer = 0;
-	// textureViewDesc.arrayLayerCount = 1;
-	// textureViewDesc.baseMipLevel = 0;
-	// textureViewDesc.mipLevelCount = textureDesc.mipLevelCount;
-	// textureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
-	// textureViewDesc.format = textureDesc.format;
-	// auto newTextureView = newTexture.createView(textureViewDesc);
-	// std::cout << "texture view created: " << newTextureView << std::endl;
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+    imageInfo.extent.width = static_cast<uint32_t>(textureWidth);
+    imageInfo.extent.height = static_cast<uint32_t>(textureHeight);
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = mipMapLevelCount;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    // m_texturesAndViews.emplace_back(std::make_pair(newTexture, newTextureView));
+    VmaAllocationCreateInfo imageAllocInfo = {};
+    imageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-    // UploadTexture(newTexture, textureDesc, textureData);
+    auto& textureTuple = (*textureIter).second;
+    VkImage& image = std::get<0>(textureTuple);
+    VmaAllocation& imageMemory = std::get<1>(textureTuple);
+    if (vmaCreateImage(m_vma, &imageInfo, &imageAllocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create image!");
+    }
+
+    VkDescriptorImageInfo& descriptorImageInfo = std::get<2>(textureTuple);
 }
 
 void VulkanRenderer3D::UploadTexture(VkImage texture, RenderSys::TextureDescriptor textureDesc, const void* textureData)

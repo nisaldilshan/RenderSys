@@ -55,7 +55,7 @@ public:
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
     void CreatePipeline();
     void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-    void CreateTexture(uint32_t width, uint32_t height, const void* textureData, uint32_t mipMapLevelCount);
+    void CreateTexture(uint32_t binding, uint32_t width, uint32_t height, const void* textureData, uint32_t mipMapLevelCount);
     void CreateTextureSampler();
     void SetClearColor(glm::vec4 clearColor);
     void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, size_t bufferLength);

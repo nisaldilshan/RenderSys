@@ -54,18 +54,6 @@ public:
 				const char* vertexShaderSource = R"(
 					#version 450 core
 
-					struct VertexInput {
-						vec3 position;
-						vec3 normal;
-						vec3 color;
-					};
-
-					struct VertexOutput {
-						vec4 position;
-						vec3 color;
-						vec3 normal;
-					};
-
 					layout(binding = 0) uniform UniformBufferObject {
 						mat4 projectionMatrix;
 						mat4 viewMatrix;
@@ -77,9 +65,11 @@ public:
 					layout (location = 0) in vec3 aPos;
 					layout (location = 1) in vec3 in_normal;
 					layout (location = 2) in vec3 in_color;
+					layout (location = 3) in vec2 in_uv;
 
 					layout (location = 0) out vec3 out_color;
 					layout (location = 1) out vec3 out_normal;
+					layout (location = 2) out vec2 out_uv;
 
 					void main() 
 					{
@@ -87,6 +77,7 @@ public:
 						vec4 mult = ubo.modelMatrix * vec4(in_normal, 0.0);
 						out_normal = mult.xyz;
 						out_color = in_color;
+						out_uv = in_uv;
 					}
 				)";
 				RenderSys::Shader vertexShader("Vertex");
@@ -97,10 +88,6 @@ public:
 
 				const char* fragmentShaderSource = R"(
 					#version 450
-					struct VertexOutput {
-						vec3 color;
-						vec3 normal;
-					};
 
 					layout(binding = 0) uniform UniformBufferObject {
 						mat4 projectionMatrix;
@@ -111,8 +98,11 @@ public:
 						float _pad[3];
 					} ubo;
 
+					layout(binding = 1) uniform sampler2D texture;
+
 					layout (location = 0) in vec3 in_color;
 					layout (location = 1) in vec3 in_normal;
+					layout (location = 2) in vec2 in_uv;
 
 					layout (location = 0) out vec4 out_color;
 
@@ -278,7 +268,7 @@ public:
 					p[3] = 255; // a
 				}
 			}
-			m_renderer->CreateTexture(texWidth, texHeight, pixels.data(), 1);
+			m_renderer->CreateTexture(textureBindingLayout.binding, texWidth, texHeight, pixels.data(), 1);
 
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();

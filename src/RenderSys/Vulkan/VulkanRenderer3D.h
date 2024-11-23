@@ -32,7 +32,7 @@ namespace GraphicsAPI
         void SetClearColor(glm::vec4 clearColor);
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
-        void CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
+        void CreateTexture(uint32_t binding, uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
         void SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
         void BindResources();
         void Render(uint32_t uniformIndex);
@@ -94,8 +94,8 @@ namespace GraphicsAPI
         // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
         std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
 
-        // map bindingNumber to tuple -> <VkDescriptorImageInfo, textureMemory>
-        std::unordered_map<uint32_t, std::tuple<VkDescriptorImageInfo, VmaAllocation>> m_textures;
+        // map bindingNumber to tuple -> <image, textureMemory, VkDescriptorImageInfo>
+        std::unordered_map<uint32_t, std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_textures;
 
         VmaAllocator m_vma = VK_NULL_HANDLE;
     };
