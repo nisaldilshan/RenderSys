@@ -277,40 +277,57 @@ void VulkanRenderer3D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_
 
 void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
-    assert(bindGroupLayoutEntries.size() == 1);
+    assert(bindGroupLayoutEntries.size() >= 1);
     assert(!m_bindGroupLayout && !m_bindGroupPool && !m_bindGroup);
 
-    auto& uboLayoutBinding = m_bindGroupBindings.emplace_back();
-    uboLayoutBinding.binding = 0;
-    if (bindGroupLayoutEntries[0].buffer.hasDynamicOffset)
+    std::unordered_map<VkDescriptorType, uint32_t> descriptorTypeCountMap;
+
+    for (const auto &bindGroupLayoutEntry : bindGroupLayoutEntries)
     {
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        auto& layoutBinding = m_bindGroupBindings.emplace_back();
+        layoutBinding.binding = 0;
+        if (bindGroupLayoutEntry.buffer.hasDynamicOffset)
+        {
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        }
+        else
+        {
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        }
+
+        if (descriptorTypeCountMap.find(layoutBinding.descriptorType) != descriptorTypeCountMap.end())
+        {
+
+        }
+        else
+        {
+            descriptorTypeCountMap.insert({layoutBinding.descriptorType, 1});
+        }
+
+        layoutBinding.descriptorCount = 1;
+        layoutBinding.stageFlags = GetVulkanShaderStageVisibility(bindGroupLayoutEntry.visibility);
+        layoutBinding.pImmutableSamplers = nullptr;
     }
-    else
-    {
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    }
-    uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.stageFlags = GetVulkanShaderStageVisibility(bindGroupLayoutEntries[0].visibility);
-    uboLayoutBinding.pImmutableSamplers = nullptr;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &uboLayoutBinding;
+    layoutInfo.bindingCount = m_bindGroupBindings.size();
+    layoutInfo.pBindings = m_bindGroupBindings.data();
 
     if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 
-    VkDescriptorPoolSize poolSize{};
-    poolSize.type = uboLayoutBinding.descriptorType;
-    poolSize.descriptorCount = 1;
+    std::vector<VkDescriptorPoolSize> poolSizes;
+    poolSizes.reserve(descriptorTypeCountMap.size());
+    for (const auto& [type, size] : descriptorTypeCountMap) {
+        poolSizes.emplace_back(VkDescriptorPoolSize{type, size}); 
+    }
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.poolSizeCount = poolSizes.size();
+    poolInfo.pPoolSizes = poolSizes.data();
     poolInfo.maxSets = 1;
 
     if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
