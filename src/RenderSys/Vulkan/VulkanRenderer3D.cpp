@@ -986,62 +986,170 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, uint32_t textureWidth, ui
     }
 
     VkDescriptorImageInfo& descriptorImageInfo = std::get<2>(textureTuple);
+    descriptorImageInfo.imageView = CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
+    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    UploadTexture(image, textureWidth, textureHeight, textureData);
 }
 
-void VulkanRenderer3D::UploadTexture(VkImage texture, RenderSys::TextureDescriptor textureDesc, const void* textureData)
+void CreateBuffer(const VmaAllocator& vma, const void* bufferData, 
+                    VkDeviceSize bufferSize, 
+                    VkBufferUsageFlags usage, 
+                    VmaMemoryUsage memoryUsage, // Use VMA memory usage enum
+                    VkBuffer& buffer, 
+                    VmaAllocation& bufferAllocation) 
 {
-    // wgpu::ImageCopyTexture destination;
-    // destination.texture = texture;
-    // destination.origin = { 0, 0, 0 }; // equivalent of the offset argument of Queue::writeBuffer
-    // destination.aspect = wgpu::TextureAspect::All; // only relevant for depth/Stencil textures
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = bufferSize;
+    bufferInfo.usage = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    // // Arguments telling how the C++ side pixel memory is laid out
-    // wgpu::TextureDataLayout source;
-    // source.offset = 0;
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = memoryUsage;
+    // Use VMA to create and allocate memory for the buffer
+    if (vmaCreateBuffer(vma, &bufferInfo, &allocInfo, &buffer, &bufferAllocation, nullptr) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("failed to create buffer!");
+    }
 
-    // wgpu::Extent3D mipLevelSize = textureDesc.size;
-	// std::vector<uint8_t> previousLevelPixels;
-    // wgpu::Extent3D previousMipLevelSize;
-	// for (uint32_t level = 0; level < textureDesc.mipLevelCount; ++level) {
-	// 	// Create image data
-    //     std::vector<uint8_t> pixels(4 * mipLevelSize.width * mipLevelSize.height);
-    //     if (level == 0) 
-    //     {
-    //         memcpy(pixels.data(), textureData, 4 * mipLevelSize.width * mipLevelSize.height);
-    //     } 
-	// 	else
-    //     {
-    //         // Create mip level data
-    //         for (uint32_t i = 0; i < mipLevelSize.width; ++i)
-    //         {
-    //             for (uint32_t j = 0; j < mipLevelSize.height; ++j)
-    //             {
-    //                 uint8_t *p = &pixels[4 * (j * mipLevelSize.width + i)];
-    //                 // Get the corresponding 4 pixels from the previous level
-    //                 uint8_t *p00 = &previousLevelPixels[4 * ((2 * j + 0) * previousMipLevelSize.width + (2 * i + 0))];
-    //                 uint8_t *p01 = &previousLevelPixels[4 * ((2 * j + 0) * previousMipLevelSize.width + (2 * i + 1))];
-    //                 uint8_t *p10 = &previousLevelPixels[4 * ((2 * j + 1) * previousMipLevelSize.width + (2 * i + 0))];
-    //                 uint8_t *p11 = &previousLevelPixels[4 * ((2 * j + 1) * previousMipLevelSize.width + (2 * i + 1))];
-    //                 // Average
-    //                 p[0] = (p00[0] + p01[0] + p10[0] + p11[0]) / 4;
-    //                 p[1] = (p00[1] + p01[1] + p10[1] + p11[1]) / 4;
-    //                 p[2] = (p00[2] + p01[2] + p10[2] + p11[2]) / 4;
-    //                 p[3] = (p00[3] + p01[3] + p10[3] + p11[3]) / 4;
-    //             }
-    //         }
-    //     }
+    // Copy data to the buffer (if provided)
+    if (bufferData != nullptr) 
+    {
+        void* data;
+        vmaMapMemory(vma, bufferAllocation, &data);
+        memcpy(data, bufferData, static_cast<size_t>(bufferSize));
+        vmaUnmapMemory(vma, bufferAllocation);
+    }
+}
 
-    //     // Change this to the current level
-    //     destination.mipLevel = level;
-    //     source.bytesPerRow = 4 * mipLevelSize.width;
-    //     source.rowsPerImage = mipLevelSize.height;
-    //     WebGPU::GetQueue().writeTexture(destination, pixels.data(), pixels.size(), source, mipLevelSize);
+VkCommandBuffer BeginSingleTimeCommands(VkCommandPool commandPool) 
+{
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = commandPool; 
+    allocInfo.commandBufferCount = 1;
 
-    //     previousLevelPixels = std::move(pixels);
-    //     previousMipLevelSize = mipLevelSize;
-    //     mipLevelSize.width /= 2;
-    //     mipLevelSize.height /= 2;
-    // }
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(Vulkan::GetDevice(), &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    return commandBuffer;
+}
+
+void EndSingleTimeCommands(VkCommandBuffer commandBuffer, VkCommandPool commandPool) 
+{
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    vkQueueSubmit(Vulkan::GetDeviceQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(Vulkan::GetDeviceQueue()); // Wait for the command buffer to finish
+
+    vkFreeCommandBuffers(Vulkan::GetDevice(), commandPool, 1, &commandBuffer);
+}
+
+void TransitionImageLayout(VkImage image, VkFormat format, 
+                            VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipMapLevelCount, VkCommandPool commandPool) 
+{
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands(commandPool);
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = mipMapLevelCount;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    VkPipelineStageFlags sourceStage;
+    VkPipelineStageFlags destinationStage;
+
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) 
+    {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    } 
+    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) 
+    {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } 
+    else 
+    {
+        throw std::invalid_argument("unsupported layout transition!");
+    }
+
+    vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier);
+
+    EndSingleTimeCommands(commandBuffer, commandPool);
+}
+
+void VulkanRenderer3D::UploadTexture(VkImage texture, uint32_t textureWidth, uint32_t textureHeight, const void* textureData)
+{
+    VkBuffer stagingBuffer;
+    VmaAllocation stagingBufferAllocation;
+
+    CreateBuffer(m_vma, textureData, 
+                static_cast<VkDeviceSize>(textureWidth * textureHeight * 4), // Assuming 4 bytes per pixel
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+                VMA_MEMORY_USAGE_CPU_TO_GPU, 
+                stagingBuffer, 
+                stagingBufferAllocation);
+
+    // Transition Image to Shader Readable Layout
+    TransitionImageLayout(texture, 
+                        VK_FORMAT_R8G8B8A8_SRGB, 
+                        VK_IMAGE_LAYOUT_UNDEFINED, 
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, m_commandPool);
+
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = {textureWidth, textureHeight, 1};
+
+    auto currentCommandBuffer = BeginSingleTimeCommands(m_commandPool);
+
+    vkCmdCopyBufferToImage(currentCommandBuffer, stagingBuffer, texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    EndSingleTimeCommands(currentCommandBuffer, m_commandPool);
+
+    // Transition Image to Shader Readable Layout
+    TransitionImageLayout(texture, 
+                        VK_FORMAT_R8G8B8A8_SRGB, 
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, m_commandPool);
+
+    // // 5. Clean up Staging Buffer
+    vmaDestroyBuffer(m_vma, stagingBuffer, stagingBufferAllocation);
+
 }
 
 void VulkanRenderer3D::CreateTextureSampler()

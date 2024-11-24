@@ -15,7 +15,6 @@ struct VertexAttributes {
 };
 
 struct MyUniforms {
-	// We add transform matrices
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
     glm::mat4x4 modelMatrix;
@@ -68,14 +67,12 @@ public:
 					layout (location = 3) in vec2 in_uv;
 
 					layout (location = 0) out vec3 out_color;
-					layout (location = 1) out vec3 out_normal;
-					layout (location = 2) out vec2 out_uv;
+					layout (location = 1) out vec2 out_uv;
 
 					void main() 
 					{
 						gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
 						vec4 mult = ubo.modelMatrix * vec4(in_normal, 0.0);
-						out_normal = mult.xyz;
 						out_color = in_color;
 						out_uv = in_uv;
 					}
@@ -101,25 +98,16 @@ public:
 					layout(binding = 1) uniform sampler2D texture;
 
 					layout (location = 0) in vec3 in_color;
-					layout (location = 1) in vec3 in_normal;
-					layout (location = 2) in vec2 in_uv;
+					layout (location = 1) in vec2 in_uv;
 
 					layout (location = 0) out vec4 out_color;
 
 					void main()
 					{
-						vec3 normal = normalize(in_normal);
+						ivec2 texelCoords = ivec2(in_uv * vec2(textureSize(texture, 0)));
+  						vec3 texColor = texelFetch(texture, texelCoords, 0).rgb;
 
-						vec3 lightColor1 = vec3(1.0, 0.9, 0.6);
-						vec3 lightColor2 = vec3(0.6, 0.9, 1.0);
-						vec3 lightDirection1 = vec3(0.5, -0.9, 0.1);
-						vec3 lightDirection2 = vec3(0.2, 0.4, 0.3);
-						float shading1 = max(0.0, dot(lightDirection1, normal));
-						float shading2 = max(0.0, dot(lightDirection2, normal));
-						vec3 shading = shading1 * lightColor1 + shading2 * lightColor2;
-						vec3 color = in_color * shading;
-
-						out_color = vec4(color, ubo.color.a);
+						out_color = vec4(texColor, ubo.color.a);
 					}
 				)";
 				RenderSys::Shader fragmentShader("Fragment");
