@@ -103,7 +103,7 @@ VkDescriptorSetLayoutBinding GetVulkanBindGroupLayoutEntry(const RenderSys::Bind
     else if (bindGroupLayoutEntry.texture.sampleType != RenderSys::TextureSampleType::Undefined && 
         bindGroupLayoutEntry.texture.viewDimension != RenderSys::TextureViewDimension::Undefined) // A texture
     {
-        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;//VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;//VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;//VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     }
     else if (bindGroupLayoutEntry.sampler.type == RenderSys::SamplerBindingType::Filtering)
     {
