@@ -615,7 +615,8 @@ void WebGPURenderer3D::UploadTexture(wgpu::Texture texture, wgpu::TextureDescrip
     wgpu::Extent3D mipLevelSize = textureDesc.size;
 	std::vector<uint8_t> previousLevelPixels;
     wgpu::Extent3D previousMipLevelSize;
-	for (uint32_t level = 0; level < textureDesc.mipLevelCount; ++level) {
+	for (uint32_t level = 0; level < textureDesc.mipLevelCount; ++level) 
+    {
 		// Create image data
         std::vector<uint8_t> pixels(4 * mipLevelSize.width * mipLevelSize.height);
         if (level == 0) 
