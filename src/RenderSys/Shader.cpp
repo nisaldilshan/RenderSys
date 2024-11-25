@@ -31,6 +31,9 @@ std::vector<uint32_t> compile_file(const std::string &name,
     const std::string &source = shader.shaderSrc;
     shaderc::Compiler compiler;
     shaderc::CompileOptions options;
+    options.SetGenerateDebugInfo();
+    options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+    options.SetTargetSpirv(shaderc_spirv_version_1_0);
 
     // Like -DMY_DEFINE=1
     options.AddMacroDefinition("MY_DEFINE", "1");

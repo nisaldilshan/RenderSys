@@ -51,8 +51,7 @@ public:
 			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 			{
 				const char* vertexShaderSource = R"(
-					#version 460 core
-
+					#version 460
 					layout(binding = 0) uniform UniformBufferObject {
 						mat4 projectionMatrix;
 						mat4 viewMatrix;
