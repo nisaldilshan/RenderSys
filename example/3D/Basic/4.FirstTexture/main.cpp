@@ -51,7 +51,7 @@ public:
 			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 			{
 				const char* vertexShaderSource = R"(
-					#version 450 core
+					#version 460
 
 					layout(binding = 0) uniform UniformBufferObject {
 						mat4 projectionMatrix;
@@ -84,7 +84,7 @@ public:
 				m_renderer->SetShader(vertexShader);
 
 				const char* fragmentShaderSource = R"(
-					#version 450
+					#version 460
 
 					layout(binding = 0) uniform UniformBufferObject {
 						mat4 projectionMatrix;
@@ -95,7 +95,7 @@ public:
 						float _pad[3];
 					} ubo;
 
-					layout(binding = 1) uniform sampler2D texture;
+					layout(binding = 1) uniform sampler2D tex;
 
 					layout (location = 0) in vec3 in_color;
 					layout (location = 1) in vec2 in_uv;
@@ -104,8 +104,8 @@ public:
 
 					void main()
 					{
-						ivec2 texelCoords = ivec2(in_uv * vec2(textureSize(texture, 0)));
-  						vec3 texColor = texelFetch(texture, texelCoords, 0).rgb;
+						ivec2 texelCoords = ivec2(in_uv * vec2(textureSize(tex, 0)));
+  						vec3 texColor = texelFetch(tex, texelCoords, 0).rgb;
 
 						out_color = vec4(texColor, ubo.color.a);
 					}
