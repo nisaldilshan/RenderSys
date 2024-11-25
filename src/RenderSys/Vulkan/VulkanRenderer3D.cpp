@@ -184,12 +184,6 @@ void VulkanRenderer3D::DestroyImages()
         vmaDestroyImage(m_vma, m_depthimage, m_depthimageMemory);
         m_depthimage = VK_NULL_HANDLE;
     }
-
-    if (m_textureSampler)
-    {
-        vkDestroySampler(Vulkan::GetDevice(), m_textureSampler, nullptr);
-        m_textureSampler = VK_NULL_HANDLE;
-    }
 }
 
 void VulkanRenderer3D::DestroyPipeline()
@@ -925,12 +919,37 @@ void VulkanRenderer3D::EndRenderPass()
     SubmitCommandBuffer();
 }
 
+void VulkanRenderer3D::DestroyTextures()
+{
+    for (auto& texture : m_textures)
+    {
+        auto& textureTuple = texture.second;
+        if (std::get<2>(textureTuple).imageView != VK_NULL_HANDLE)
+        {
+            vkDestroyImageView(Vulkan::GetDevice(), std::get<2>(textureTuple).imageView, nullptr);
+        }
+        if (std::get<0>(textureTuple) != VK_NULL_HANDLE)
+        {
+            vmaDestroyImage(m_vma, std::get<0>(textureTuple), std::get<1>(textureTuple));
+        }
+    }
+    m_textures.clear();
+    
+
+    if (m_textureSampler)
+    {
+        vkDestroySampler(Vulkan::GetDevice(), m_textureSampler, nullptr);
+        m_textureSampler = VK_NULL_HANDLE;
+    }
+}
+
 void VulkanRenderer3D::Destroy()
 {
     DestroyBindGroup();
     DestroyPipeline();
     DestroyBuffers();
     DestroyImages();
+    DestroyTextures();
 
     DestroyRenderPass();
 
