@@ -44,11 +44,74 @@ public:
 
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
+			const char* vertexShaderSource = R"(
+					#version 460
+					layout(binding = 0) uniform UniformBufferObject {
+						mat4 projectionMatrix;
+						mat4 viewMatrix;
+						mat4 modelMatrix;
+						vec4 color;
+						float time;
+						float _pad[3];
+					} ubo;
+					layout (location = 0) in vec3 aPos;
+					layout (location = 1) in vec3 in_normal;
+					layout (location = 2) in vec3 in_color;
+					layout (location = 3) in vec2 in_uv;
 
+					layout (location = 0) out vec3 out_color;
+					layout (location = 1) out vec2 out_uv;
+
+					void main() 
+					{
+						gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
+						vec4 mult = ubo.modelMatrix * vec4(in_normal, 0.0);
+						out_color = in_color;
+						out_uv = in_uv;
+					}
+				)";
+				RenderSys::Shader vertexShader("Vertex");
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.shaderSrc = vertexShaderSource;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				m_renderer->SetShader(vertexShader);
+
+				const char* fragmentShaderSource = R"(
+					#version 460
+
+					layout(binding = 0) uniform UniformBufferObject {
+						mat4 projectionMatrix;
+						mat4 viewMatrix;
+						mat4 modelMatrix;
+						vec4 color;
+						float time;
+						float _pad[3];
+					} ubo;
+
+					layout(binding = 1) uniform texture2D tex;
+					layout(binding = 2) uniform sampler s;
+
+					layout (location = 0) in vec3 in_color;
+					layout (location = 1) in vec2 in_uv;
+
+					layout (location = 0) out vec4 out_color;
+
+					void main()
+					{
+						vec3 texColor = texture(sampler2D(tex, s), in_uv).rgb; 
+
+						out_color = vec4(texColor, ubo.color.a);
+					}
+				)";
+				RenderSys::Shader fragmentShader("Fragment");
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.shaderSrc = fragmentShaderSource;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				m_renderer->SetShader(fragmentShader);
 		}
 		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 		{
-			m_shaderSource = R"(
+			const char* shaderSource = R"(
 			struct VertexInput {
 				@location(0) position: vec3f,
 				@location(1) normal: vec3f,
@@ -100,10 +163,9 @@ public:
 				return vec4f(corrected_color, uMyUniforms.color.a);
 			}
 			)";
-			assert(m_shaderSource);
 			RenderSys::Shader shader("Combined");
 			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = m_shaderSource;
+			shader.shaderSrc = shaderSource;
 			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 			m_renderer->SetShader(shader);
 		}
@@ -252,7 +314,6 @@ private:
 	MyUniforms m_uniformData;
 	std::vector<VertexAttributes> m_vertexData;
 	std::unique_ptr<Texture::TextureHandle> m_texHandle = nullptr;
-	const char* m_shaderSource = nullptr;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

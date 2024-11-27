@@ -280,9 +280,11 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     {
         auto vkBinding = GetVulkanBindGroupLayoutEntry(bindGroupLayoutEntry);
         m_bindGroupBindings.push_back(vkBinding);
-        if (descriptorTypeCountMap.find(vkBinding.descriptorType) != descriptorTypeCountMap.end())
-        {
 
+        auto mapIter = descriptorTypeCountMap.find(vkBinding.descriptorType);
+        if (mapIter != descriptorTypeCountMap.end())
+        {
+            mapIter->second++;
         }
         else
         {
@@ -558,8 +560,8 @@ void VulkanRenderer3D::CreatePipeline()
         std::cout << "error: could not create rendering pipeline" << std::endl;
     }
 
-    /* it is save to destroy the shader modules after pipeline has been created */
-    DestroyShaders();
+    // can save memory by calling DestroyShaders() after pipeline have been created
+    // currently not possible, as pipeline get recreated every window get resized
     
     std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
@@ -864,7 +866,24 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
         auto& uniformBufferTuple = m_uniformBuffers[0]; // this is working because we have dynamicOffsetys only in binding 0;
         const auto sizeOfOneUniform = std::get<0>(uniformBufferTuple).range;
         const uint32_t dynamicOffset = GetUniformStride(uniformIndex, sizeOfOneUniform);
-        constexpr uint32_t noOfDynamicOffsetEnabledbindings = 1; // Number of dynamic Offset enabled bindings in the bind group
+
+        static uint32_t noOfDynamicOffsetEnabledbindings = 0; // Number of dynamic Offset enabled bindings in the bind group
+        static bool computedDynamicOffsetCount = false;
+        if (!computedDynamicOffsetCount)
+        {
+            int count = 0;
+            for (const auto& binding : m_bindGroupBindings)
+            {
+                if (binding.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+                {
+                    count++;
+                }
+            }
+
+            noOfDynamicOffsetEnabledbindings = count;
+            computedDynamicOffsetCount = true;
+        }
+
         vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
                                     , 1, &m_bindGroup
                                     , noOfDynamicOffsetEnabledbindings, &dynamicOffset);
@@ -945,6 +964,8 @@ void VulkanRenderer3D::DestroyTextures()
 
 void VulkanRenderer3D::Destroy()
 {
+    DestroyShaders();
+
     DestroyBindGroup();
     DestroyPipeline();
     DestroyBuffers();
