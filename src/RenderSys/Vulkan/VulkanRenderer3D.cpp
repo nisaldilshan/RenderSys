@@ -1027,6 +1027,8 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, uint32_t textureWidth, uin
     uint32_t mipLevelHeight = textureHeight;
     uint32_t previousMipLevelWidth = 0;
     std::vector<uint8_t> previousLevelPixels;
+
+    mipMapLevelCount = 1; // TODO - Fix mipmap generation
     for (uint32_t level = 0; level < mipMapLevelCount; level++)
     {
         // Create image data
