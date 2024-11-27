@@ -37,6 +37,113 @@ public:
 	{
 		m_renderer = std::make_shared<RenderSys::Renderer3D>();
 		m_renderer->Init();	
+
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			const char* vertexShaderSource = R"(
+				#version 450 core
+				layout(binding = 0) uniform UniformBufferObject {
+					mat4 projectionMatrix;
+					mat4 viewMatrix;
+					mat4 modelMatrix;
+					vec4 color;
+					float time;
+					float _pad[3];
+				} ubo;
+				layout (location = 0) in vec3 aPos;
+				layout (location = 1) in vec3 aColor; // Add color attribute
+				layout (location = 0) out vec3 vColor; // Add color attribute
+
+				void main() 
+				{
+					gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
+					vColor = aColor; // Pass color to fragment shader
+				}
+			)";
+			RenderSys::Shader vertexShader("Vertex");
+			vertexShader.type = RenderSys::ShaderType::SPIRV;
+			vertexShader.shaderSrc = vertexShaderSource;
+			vertexShader.stage = RenderSys::ShaderStage::Vertex;
+			m_renderer->SetShader(vertexShader);
+
+			const char* fragmentShaderSource = R"(
+				#version 450
+				layout(binding = 0) uniform UniformBufferObject {
+					mat4 projectionMatrix;
+					mat4 viewMatrix;
+					mat4 modelMatrix;
+					vec4 color;
+					float time;
+					float _pad[3];
+				} ubo;
+				layout(location = 0) in vec3 vColor;
+				layout(location = 0) out vec4 FragColor;
+
+				void main()
+				{
+					FragColor = vec4(vColor, 1.0) * ubo.color;
+				}
+			)";
+			RenderSys::Shader fragmentShader("Fragment");
+			fragmentShader.type = RenderSys::ShaderType::SPIRV;
+			fragmentShader.shaderSrc = fragmentShaderSource;
+			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+			m_renderer->SetShader(fragmentShader);
+		}
+		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+		{
+			const char* shaderSource = R"(
+			struct VertexInput {
+				@location(0) position: vec3f,
+				@location(1) color: vec3f,
+			};
+
+			struct VertexOutput {
+				@builtin(position) position: vec4f,
+				@location(0) color: vec3f,
+			};
+
+			struct MyUniforms {
+				projectionMatrix: mat4x4f,
+				viewMatrix: mat4x4f,
+				modelMatrix: mat4x4f,
+				color: vec4f,
+				time: f32,
+			};
+
+			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
+
+			fn vs_main_optionB(in: VertexInput) -> VertexOutput {
+				var out: VertexOutput;
+				out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4f(in.position, 1.0);
+				out.color = in.color;
+				return out;
+			}
+
+			@vertex
+			fn vs_main(in: VertexInput) -> VertexOutput {
+				return vs_main_optionB(in);
+			}
+
+			@fragment
+			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+				let color = in.color * uMyUniforms.color.rgb;
+				// Gamma-correction
+				let corrected_color = pow(color, vec3f(2.2));
+				return vec4f(corrected_color, uMyUniforms.color.a);
+			}
+			)";
+			
+			RenderSys::Shader shader("Combined");
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+			m_renderer->SetShader(shader);
+		}
+		else
+		{
+			assert(false);
+		}
 	}
 
 	virtual void OnDetach() override
@@ -55,112 +162,6 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-			{
-				const char* vertexShaderSource = R"(
-					#version 450 core
-					layout(binding = 0) uniform UniformBufferObject {
-						mat4 projectionMatrix;
-						mat4 viewMatrix;
-						mat4 modelMatrix;
-						vec4 color;
-						float time;
-						float _pad[3];
-					} ubo;
-					layout (location = 0) in vec3 aPos;
-					layout (location = 1) in vec3 aColor; // Add color attribute
-					layout (location = 0) out vec3 vColor; // Add color attribute
-
-					void main() 
-					{
-						gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
-						vColor = aColor; // Pass color to fragment shader
-					}
-				)";
-				RenderSys::Shader vertexShader("Vertex");
-				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.shaderSrc = vertexShaderSource;
-				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				m_renderer->SetShader(vertexShader);
-
-				const char* fragmentShaderSource = R"(
-					#version 450
-					layout(binding = 0) uniform UniformBufferObject {
-						mat4 projectionMatrix;
-						mat4 viewMatrix;
-						mat4 modelMatrix;
-						vec4 color;
-						float time;
-						float _pad[3];
-					} ubo;
-					layout(location = 0) in vec3 vColor;
-					layout(location = 0) out vec4 FragColor;
-
-					void main()
-					{
-						FragColor = vec4(vColor, 1.0) * ubo.color;
-					}
-				)";
-				RenderSys::Shader fragmentShader("Fragment");
-				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.shaderSrc = fragmentShaderSource;
-				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				m_renderer->SetShader(fragmentShader);
-			}
-			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
-			{
-				const char* shaderSource = R"(
-				struct VertexInput {
-					@location(0) position: vec3f,
-					@location(1) color: vec3f,
-				};
-
-				struct VertexOutput {
-					@builtin(position) position: vec4f,
-					@location(0) color: vec3f,
-				};
-
-				struct MyUniforms {
-					projectionMatrix: mat4x4f,
-					viewMatrix: mat4x4f,
-					modelMatrix: mat4x4f,
-					color: vec4f,
-					time: f32,
-				};
-
-				@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
-
-				fn vs_main_optionB(in: VertexInput) -> VertexOutput {
-					var out: VertexOutput;
-					out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4f(in.position, 1.0);
-					out.color = in.color;
-					return out;
-				}
-
-				@vertex
-				fn vs_main(in: VertexInput) -> VertexOutput {
-					return vs_main_optionB(in);
-				}
-
-				@fragment
-				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-					let color = in.color * uMyUniforms.color.rgb;
-					// Gamma-correction
-					let corrected_color = pow(color, vec3f(2.2));
-					return vec4f(corrected_color, uMyUniforms.color.a);
-				}
-				)";
-				
-				RenderSys::Shader shader("Combined");
-				shader.type = RenderSys::ShaderType::WGSL;
-				shader.shaderSrc = shaderSource;
-				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
-				m_renderer->SetShader(shader);
-			}
-			else
-			{
-				assert(false);
-			}
 
 			std::vector<float> vertexData;
 			std::vector<uint16_t> indexData;
