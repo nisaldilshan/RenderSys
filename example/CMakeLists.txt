@@ -13,6 +13,7 @@ add_subdirectory(3D/Basic/3.BasicShading)
 add_subdirectory(3D/Basic/4.FirstTexture)
 add_subdirectory(3D/Basic/5.TextureSampler)
 add_subdirectory(3D/Basic/6.TextureLoader)
+add_subdirectory(3D/Basic/7.CameraControls)
 
 if(RENDERER STREQUAL "WebGPU")
     add_subdirectory(Compute/1.BasicCompute)
@@ -20,7 +21,6 @@ if(RENDERER STREQUAL "WebGPU")
     add_subdirectory(Compute/3.Fluid2D)
     #add_subdirectory(Compute/4.Fluid3D)
 
-    add_subdirectory(3D/Basic/7.CameraControls)
     add_subdirectory(3D/Basic/8.Lighting)
     add_subdirectory(3D/Basic/9.NormalMapping)
 
