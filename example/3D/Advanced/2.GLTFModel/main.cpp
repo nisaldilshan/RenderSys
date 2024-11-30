@@ -11,10 +11,6 @@
 
 struct VertexAttributes {
 	glm::vec3 position;
-	// Texture mapping attributes represent the local frame in which
-	// normals sampled from the normal map are expressed.
-	glm::vec3 tangent; // T = local X axis
-	glm::vec3 bitangent; // B = local Y axis
 	glm::vec3 normal;
 	glm::vec3 color;
 	glm::vec2 uv;
@@ -34,8 +30,8 @@ struct LightingUniforms {
     std::array<glm::vec4, 2> directions;
     std::array<glm::vec4, 2> colors;
 	// Material properties
-	float hardness = 32.0f;
-	float kd = 1.0f;
+	float hardness = 16.0f;
+	float kd = 2.0f;
 	float ks = 0.3f;
 
 	float _pad;
@@ -47,15 +43,15 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
-		bool success = Geometry::loadGeometryFromObjWithUV<VertexAttributes>(RESOURCE_DIR "/Meshes/cylinder.obj", m_vertexData);
-		assert(success);
-		Geometry::populateTextureFrameAttributes(m_vertexData);
+		bool success = Geometry::loadGeometryFromObjWithUV<VertexAttributes>(RESOURCE_DIR "/Meshes/fourareen.obj", m_vertexData);
+		if (!success) 
+		{
+			std::cerr << "Could not load geometry!" << std::endl;
+			assert(false);
+		}
 
-		auto baseColorTexture = Texture::loadTexture(RESOURCE_DIR "/Textures/cobblestone_floor_08_diff_2k.jpg");
-		assert(baseColorTexture && baseColorTexture->GetWidth() > 0 && baseColorTexture->GetHeight() > 0 && baseColorTexture->GetMipLevelCount() > 0);
-
-		auto normalTexture = Texture::loadTexture(RESOURCE_DIR "/Textures/cobblestone_floor_08_nor_gl_2k.png");
-		assert(normalTexture && normalTexture->GetWidth() > 0 && normalTexture->GetHeight() > 0 && normalTexture->GetMipLevelCount() > 0);
+		m_texHandle = Texture::loadTexture(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
+		assert(m_texHandle && m_texHandle->GetWidth() > 0 && m_texHandle->GetHeight() > 0 && m_texHandle->GetMipLevelCount() > 0);
 
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 		m_renderer->Init();
@@ -170,8 +166,6 @@ public:
 				@location(1) normal: vec3f,
 				@location(2) color: vec3f,
 				@location(3) uv: vec2f,
-				@location(4) tangent: vec3f,
-				@location(5) bitangent: vec3f,
 			};
 
 			struct VertexOutput {
@@ -180,8 +174,6 @@ public:
 				@location(1) normal: vec3f,
 				@location(2) uv: vec2f,
 				@location(3) viewDirection: vec3<f32>,
-				@location(4) tangent: vec3f,
-				@location(5) bitangent: vec3f,
 			};
 
 			/**
@@ -209,17 +201,14 @@ public:
 
 			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
 			@group(0) @binding(1) var baseColorTexture: texture_2d<f32>;
-			@group(0) @binding(2) var normalTexture: texture_2d<f32>;
-			@group(0) @binding(3) var textureSampler: sampler;
-			@group(0) @binding(4) var<uniform> uLighting: LightingUniforms;
+			@group(0) @binding(2) var textureSampler: sampler;
+			@group(0) @binding(3) var<uniform> uLighting: LightingUniforms;
 
 			@vertex
 			fn vs_main(in: VertexInput) -> VertexOutput {
 				var out: VertexOutput;
 				let worldPosition = uMyUniforms.modelMatrix * vec4<f32>(in.position, 1.0);
 				out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * worldPosition;
-				out.tangent = (uMyUniforms.modelMatrix * vec4f(in.tangent, 0.0)).xyz;
-				out.bitangent = (uMyUniforms.modelMatrix * vec4f(in.bitangent, 0.0)).xyz;
 				out.normal = (uMyUniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
 				out.color = in.color;
 				out.uv = in.uv;
@@ -229,19 +218,8 @@ public:
 
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-				// Sample normal
-				let normalMapStrength = 1.0; // could be a uniform
-				let encodedN = textureSample(normalTexture, textureSampler, in.uv).rgb;
-				let localN = encodedN * 2.0 - 1.0;
-				// The TBN matrix converts directions from the local space to the world space
-				let localToWorld = mat3x3f(
-					normalize(in.tangent),
-					normalize(in.bitangent),
-					normalize(in.normal),
-				);
-				let worldN = localToWorld * localN;
-				let N = normalize(mix(in.normal, worldN, normalMapStrength));
-
+				// Compute shading
+				let N = normalize(in.normal);
 				let V = normalize(in.viewDirection);
 
 				// Sample texture
@@ -282,8 +260,7 @@ public:
 		}
 
 		m_renderer->CreateTextureSampler();
-		m_renderer->CreateTexture(1, baseColorTexture->GetWidth(), baseColorTexture->GetHeight(), baseColorTexture->GetData(), baseColorTexture->GetMipLevelCount());
-		m_renderer->CreateTexture(2, normalTexture->GetWidth(), normalTexture->GetHeight(), normalTexture->GetData(), normalTexture->GetMipLevelCount());
+		m_renderer->CreateTexture(1, m_texHandle->GetWidth(), m_texHandle->GetHeight(), m_texHandle->GetData(), m_texHandle->GetMipLevelCount());
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 	}
@@ -305,7 +282,7 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(6);
+			std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
 
 			// Position attribute
 			vertexAttribs[0].location = 0;
@@ -327,16 +304,6 @@ public:
 			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
 			vertexAttribs[3].offset = offsetof(VertexAttributes, uv);
 
-			// Tangent attribute
-			vertexAttribs[4].location = 4;
-			vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[4].offset = offsetof(VertexAttributes, tangent);
-
-			// Bitangent attribute
-			vertexAttribs[5].location = 5;
-			vertexAttribs[5].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[5].offset = offsetof(VertexAttributes, bitangent);
-
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
@@ -346,8 +313,8 @@ public:
 			assert(m_vertexData.size() > 0);
 			m_renderer->SetVertexBufferData(m_vertexData.data(), m_vertexData.size() * sizeof(VertexAttributes), vertexBufferLayout);
 
-			// Create binding layouts
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(5);
+			// Since we now have 2 bindings, we use a vector to store them
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(4);
 			// The uniform buffer binding that we already had
 			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 			uniformBindingLayout.setDefault();
@@ -365,25 +332,17 @@ public:
 			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
 			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
-			// The normal map binding
-			RenderSys::BindGroupLayoutEntry& normalTextureBindingLayout = bindingLayoutEntries[2];
-			normalTextureBindingLayout.setDefault();
-			normalTextureBindingLayout.binding = 2;
-			normalTextureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			normalTextureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
-			normalTextureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
-
 			// The sampler binding
-			RenderSys::BindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[3];
+			RenderSys::BindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[2];
 			samplerBindingLayout.setDefault();
-			samplerBindingLayout.binding = 3;
+			samplerBindingLayout.binding = 2;
 			samplerBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
 			samplerBindingLayout.sampler.type = RenderSys::SamplerBindingType::Filtering;
 
 			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[4];
+			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[3];
 			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 4;
+			lightingUniformLayout.binding = 3;
 			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
 			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
@@ -407,8 +366,8 @@ public:
 
 			const float time = static_cast<float>(glfwGetTime());
 			glm::mat4x4 M1(1.0);
-			float angle = time;
-			M1 = glm::rotate(M1, angle, glm::vec3(0.0, 0.0, 1.0));
+			float angle1 = time * 0.9f;
+			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.3f));
 			m_myUniformData.modelMatrix = M1;
@@ -419,11 +378,11 @@ public:
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
 
 			// Initial values
-			m_lightingUniformData.directions[0] = { 0.5f, -0.9f, 0.1f, 0.0f };
-			m_lightingUniformData.directions[1] = { 0.2f, 0.4f, 0.3f, 0.0f };
+			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
+			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
-			m_renderer->SetUniformBufferData(4, &m_lightingUniformData, 0);
+			m_renderer->SetUniformBufferData(3, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
 			m_renderer->Render(0);
@@ -468,6 +427,8 @@ private:
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
 	std::vector<VertexAttributes> m_vertexData;
+	std::unique_ptr<Texture::TextureHandle> m_texHandle = nullptr;
+	const char* m_shaderSource = nullptr;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 };
 

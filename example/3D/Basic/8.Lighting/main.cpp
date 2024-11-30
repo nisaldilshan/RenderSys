@@ -428,7 +428,6 @@ private:
 	LightingUniforms m_lightingUniformData;
 	std::vector<VertexAttributes> m_vertexData;
 	std::unique_ptr<Texture::TextureHandle> m_texHandle = nullptr;
-	const char* m_shaderSource = nullptr;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 };
 
