@@ -89,7 +89,7 @@ VkDescriptorSetLayoutBinding GetVulkanBindGroupLayoutEntry(const RenderSys::Bind
 {
     VkDescriptorSetLayoutBinding layoutBinding;
     layoutBinding.binding = bindGroupLayoutEntry.binding;
-    assert(layoutBinding.binding >= 0 && layoutBinding.binding <= 2);
+    assert(layoutBinding.binding >= 0 && layoutBinding.binding <= 3);
     if (bindGroupLayoutEntry.buffer.type == RenderSys::BufferBindingType::Uniform) // A uniform buffer
     {
         if (bindGroupLayoutEntry.buffer.hasDynamicOffset)
