@@ -31,10 +31,10 @@ struct LightingUniforms {
     std::array<glm::vec4, 2> colors;
 	// Material properties
 	float hardness = 16.0f;
-	float kd = 1.5f;
-	float ks = 0.5f;
+	float kd = 2.0f;
+	float ks = 0.3f;
 
-	float _pad[1];
+	float _pad;
 };
 static_assert(sizeof(LightingUniforms) % 16 == 0);
 
@@ -65,8 +65,8 @@ public:
 					mat4 viewMatrix;
 					mat4 modelMatrix;
 					vec4 color;
+					vec3 cameraWorldPosition;
 					float time;
-					float _pad[3];
 				} ubo;
 				layout (location = 0) in vec3 aPos;
 				layout (location = 1) in vec3 in_normal;
@@ -74,14 +74,20 @@ public:
 				layout (location = 3) in vec2 in_uv;
 
 				layout (location = 0) out vec3 out_color;
-				layout (location = 1) out vec2 out_uv;
+				layout (location = 1) out vec3 out_normal;
+				layout (location = 2) out vec2 out_uv;
+				layout (location = 3) out vec3 out_viewDirection;
 
 				void main() 
 				{
-					gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
+					vec4 worldPosition = ubo.modelMatrix * vec4(aPos, 1.0);
+					gl_Position = ubo.projectionMatrix * ubo.viewMatrix * worldPosition;
 					vec4 mult = ubo.modelMatrix * vec4(in_normal, 0.0);
 					out_color = in_color;
+					vec4 norm = ubo.modelMatrix * vec4(in_normal, 0.0);
+					out_normal = norm.xyz;
 					out_uv = in_uv;
+					out_viewDirection = ubo.cameraWorldPosition - worldPosition.xyz;
 				}
 			)";
 			RenderSys::Shader vertexShader("Vertex");
@@ -105,16 +111,45 @@ public:
 				layout(binding = 1) uniform texture2D tex;
 				layout(binding = 2) uniform sampler s;
 
+				layout(binding = 3) uniform LightingUniforms {
+					vec4 directions[2];
+					vec4 colors[2];
+					float hardness;
+					float kd;
+					float ks;
+					float _pad;
+				} lightingUbo;
+
 				layout (location = 0) in vec3 in_color;
-				layout (location = 1) in vec2 in_uv;
+				layout (location = 1) in vec3 in_normal;
+				layout (location = 2) in vec2 in_uv;
+				layout (location = 3) in vec3 in_viewDirection;
 
 				layout (location = 0) out vec4 out_color;
 
 				void main()
 				{
+					vec3 N = normalize(in_normal);
+					vec3 V = normalize(in_viewDirection);
 					vec3 texColor = texture(sampler2D(tex, s), in_uv).rgb; 
+					vec3 color = vec3(0.0);
+					for (int i = 0; i < 2; i++)
+					{
+						vec3 lightColor = lightingUbo.colors[i].rgb;
+						vec3 L = normalize(lightingUbo.directions[i].xyz);
+						vec3 R = reflect(-L, N); // equivalent to 2.0 * dot(N, L) * N - L
 
-					out_color = vec4(texColor, ubo.color.a);
+						vec3 diffuse = max(0.0, dot(L, N)) * lightColor;
+						float RoV = max(0.0, dot(R, V));
+						float specular = pow(RoV, lightingUbo.hardness);
+
+						vec3 ambient = vec3(0.05);
+						color += texColor * lightingUbo.kd * diffuse + lightingUbo.ks * specular + ambient;
+					}
+
+					// Gamma-correction
+					vec3 corrected_color = pow(color, vec3(2.2));
+					out_color = vec4(corrected_color, ubo.color.a);
 				}
 			)";
 			RenderSys::Shader fragmentShader("Fragment");
