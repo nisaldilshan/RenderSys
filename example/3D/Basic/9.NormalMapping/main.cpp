@@ -73,9 +73,11 @@ public:
 					float time;
 				} ubo;
 				layout (location = 0) in vec3 aPos;
-				layout (location = 1) in vec3 in_normal;
-				layout (location = 2) in vec3 in_color;
-				layout (location = 3) in vec2 in_uv;
+				layout (location = 1) in vec3 in_tangent;
+				layout (location = 2) in vec3 in_bitangent;
+				layout (location = 3) in vec3 in_normal;
+				layout (location = 4) in vec3 in_color;
+				layout (location = 5) in vec2 in_uv;
 
 				layout (location = 0) out vec3 out_color;
 				layout (location = 1) out vec3 out_normal;
@@ -113,9 +115,10 @@ public:
 				} ubo;
 
 				layout(binding = 1) uniform texture2D tex;
-				layout(binding = 2) uniform sampler s;
+				layout(binding = 2) uniform texture2D normal;
+				layout(binding = 3) uniform sampler s;
 
-				layout(binding = 3) uniform LightingUniforms {
+				layout(binding = 4) uniform LightingUniforms {
 					vec4 directions[2];
 					vec4 colors[2];
 					float hardness;
