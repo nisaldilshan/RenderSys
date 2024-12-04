@@ -426,8 +426,8 @@ public:
 
 			const float time = static_cast<float>(glfwGetTime());
 			glm::mat4x4 M1(1.0);
-			float angle = time;
-			M1 = glm::rotate(M1, angle, glm::vec3(0.0, 0.0, 1.0));
+			float angle1 = time;
+			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.3f));
 			m_myUniformData.modelMatrix = M1;
@@ -438,8 +438,8 @@ public:
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
 
 			// Initial values
-			m_lightingUniformData.directions[0] = { 0.5f, -0.9f, 0.1f, 0.0f };
-			m_lightingUniformData.directions[1] = { 0.2f, 0.4f, 0.3f, 0.0f };
+			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
+			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
 			m_renderer->SetUniformBufferData(4, &m_lightingUniformData, 0);
