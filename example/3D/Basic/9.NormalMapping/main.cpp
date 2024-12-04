@@ -73,16 +73,18 @@ public:
 					float time;
 				} ubo;
 				layout (location = 0) in vec3 aPos;
-				layout (location = 1) in vec3 in_tangent;
-				layout (location = 2) in vec3 in_bitangent;
-				layout (location = 3) in vec3 in_normal;
-				layout (location = 4) in vec3 in_color;
-				layout (location = 5) in vec2 in_uv;
+				layout (location = 1) in vec3 in_normal;
+				layout (location = 2) in vec3 in_color;
+				layout (location = 3) in vec2 in_uv;
+				layout (location = 4) in vec3 in_tangent;
+				layout (location = 5) in vec3 in_bitangent;
 
 				layout (location = 0) out vec3 out_color;
 				layout (location = 1) out vec3 out_normal;
 				layout (location = 2) out vec2 out_uv;
 				layout (location = 3) out vec3 out_viewDirection;
+				layout (location = 4) out vec3 out_tangent;
+				layout (location = 5) out vec3 out_bitangent;
 
 				void main() 
 				{
@@ -94,6 +96,8 @@ public:
 					out_normal = norm.xyz;
 					out_uv = in_uv;
 					out_viewDirection = ubo.cameraWorldPosition - worldPosition.xyz;
+					out_tangent = (ubo.modelMatrix * vec4(in_tangent, 0.0)).xyz;
+					out_bitangent = (ubo.modelMatrix * vec4(in_bitangent, 0.0)).xyz;
 				}
 			)";
 			RenderSys::Shader vertexShader("Vertex");
@@ -131,12 +135,24 @@ public:
 				layout (location = 1) in vec3 in_normal;
 				layout (location = 2) in vec2 in_uv;
 				layout (location = 3) in vec3 in_viewDirection;
+				layout (location = 4) in vec3 in_tangent;
+				layout (location = 5) in vec3 in_bitangent;
 
 				layout (location = 0) out vec4 out_color;
 
 				void main()
 				{
-					vec3 N = normalize(in_normal);
+					float normalMapStrength = 1.0; // could be a uniform
+					vec3 encodedN = texture(sampler2D(normal, s), in_uv).rgb;
+					vec3 localN = encodedN * 2.0 - 1.0;
+					// The TBN matrix converts directions from the local space to the world space
+					mat3 localToWorld = mat3(
+						normalize(in_tangent),
+						normalize(in_bitangent),
+						normalize(in_normal)
+					);
+					vec3 worldN = localToWorld * localN;
+					vec3 N = normalize(mix(in_normal, worldN, normalMapStrength));
 					vec3 V = normalize(in_viewDirection);
 					vec3 texColor = texture(sampler2D(tex, s), in_uv).rgb; 
 					vec3 color = vec3(0.0);
