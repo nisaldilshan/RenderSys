@@ -25,7 +25,6 @@ if(RENDERER STREQUAL "WebGPU")
     #add_subdirectory(Compute/4.Fluid3D)
 
     add_subdirectory(3D/Advanced/1.RayMarching)
-    add_subdirectory(3D/Advanced/2.GLTFModel)
     
 endif()
 

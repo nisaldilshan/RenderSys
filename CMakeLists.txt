@@ -2,8 +2,9 @@ cmake_minimum_required (VERSION 3.23.0)
 project (RenderSys)
 
 find_package(walnut REQUIRED)
-message(STATUS "RENDERER: " ${RENDERER})
+find_package(tinyobjloader REQUIRED)
 
+message(STATUS "RENDERER: " ${RENDERER})
 if(RENDERER STREQUAL "Vulkan")
     include(FetchContent)
     set(VulkanMemoryAllocatorURL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git)
@@ -24,18 +25,28 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
                     src/RenderSys/Shader.cpp
+                    src/RenderSys/Geometry.cpp
     )
-    target_link_libraries(RenderSys2D PRIVATE GPUOpen::VulkanMemoryAllocator)
-    target_link_libraries(RenderSys2D PRIVATE shaderc::shaderc)
+    target_link_libraries(RenderSys2D PRIVATE 
+                            GPUOpen::VulkanMemoryAllocator
+                            shaderc::shaderc 
+                            tinyobjloader::tinyobjloader
+    )
+
     add_library (RenderSys3D STATIC
                     src/RenderSys/Renderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
                     src/RenderSys/Shader.cpp
                     src/RenderSys/Camera.cpp
+                    src/RenderSys/Geometry.cpp
     )
-    target_link_libraries(RenderSys3D PRIVATE GPUOpen::VulkanMemoryAllocator)
-    target_link_libraries(RenderSys3D PRIVATE shaderc::shaderc)
+    target_link_libraries(RenderSys3D PRIVATE 
+                            GPUOpen::VulkanMemoryAllocator 
+                            shaderc::shaderc 
+                            tinyobjloader::tinyobjloader
+    )
+
     add_library (ComputeSys STATIC
                     src/RenderSys/Compute.cpp
                     src/RenderSys/Vulkan/VulkanCompute.cpp
