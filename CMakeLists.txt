@@ -3,6 +3,7 @@ project (RenderSys)
 
 find_package(walnut REQUIRED)
 find_package(tinyobjloader REQUIRED)
+find_package(tinygltf REQUIRED)
 
 message(STATUS "RENDERER: " ${RENDERER})
 if(RENDERER STREQUAL "Vulkan")
@@ -40,11 +41,13 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Shader.cpp
                     src/RenderSys/Camera.cpp
                     src/RenderSys/Geometry.cpp
+                    src/RenderSys/Scene.cpp
     )
     target_link_libraries(RenderSys3D PRIVATE 
                             GPUOpen::VulkanMemoryAllocator 
                             shaderc::shaderc 
                             tinyobjloader::tinyobjloader
+                            TinyGLTF::TinyGLTF
     )
 
     add_library (ComputeSys STATIC

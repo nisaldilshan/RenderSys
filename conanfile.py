@@ -23,6 +23,7 @@ class RenderSysConan(ConanFile):
     def requirements(self):
         self.requires('walnut/latest')
         self.requires('tinyobjloader/2.0.0-rc10')
+        self.requires('tinygltf/2.9.0')
         if self.options.rendering_backend == "Vulkan":
             self.requires('shaderc/2023.6')
         elif self.options.rendering_backend == "WebGPU":
