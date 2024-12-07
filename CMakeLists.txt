@@ -7,20 +7,9 @@ find_package(tinygltf REQUIRED)
 
 message(STATUS "RENDERER: " ${RENDERER})
 if(RENDERER STREQUAL "Vulkan")
-    include(FetchContent)
-    set(VulkanMemoryAllocatorURL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git)
-    message(STATUS "Fetching: " ${VulkanMemoryAllocatorURL})
-    FetchContent_Declare(
-        vulkanmemoryallocator
-        GIT_REPOSITORY ${VulkanMemoryAllocatorURL}
-        GIT_TAG        v3.1.0
-    )
-    FetchContent_MakeAvailable(vulkanmemoryallocator) 
-    message(STATUS "vulkanmemoryallocator sourceDir: ${vulkanmemoryallocator_SOURCE_DIR}")
-    message(STATUS "vulkanmemoryallocator buildDir: ${vulkanmemoryallocator_BINARY_DIR}") 
-
     add_compile_definitions(RENDERER_BACKEND=2)
     find_package(shaderc REQUIRED)
+    find_package(vulkan-memory-allocator REQUIRED)
     add_library (RenderSys2D STATIC
                     src/RenderSys/Renderer2D.cpp
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
@@ -29,7 +18,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Geometry.cpp
     )
     target_link_libraries(RenderSys2D PRIVATE 
-                            GPUOpen::VulkanMemoryAllocator
+                            vulkan-memory-allocator::vulkan-memory-allocator
                             shaderc::shaderc 
                             tinyobjloader::tinyobjloader
     )
@@ -44,7 +33,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Scene.cpp
     )
     target_link_libraries(RenderSys3D PRIVATE 
-                            GPUOpen::VulkanMemoryAllocator 
+                            vulkan-memory-allocator::vulkan-memory-allocator 
                             shaderc::shaderc 
                             tinyobjloader::tinyobjloader
                             TinyGLTF::TinyGLTF
