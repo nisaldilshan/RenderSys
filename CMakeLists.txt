@@ -30,7 +30,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Shader.cpp
                     src/RenderSys/Camera.cpp
                     src/RenderSys/Geometry.cpp
-                    src/RenderSys/Scene.cpp
+                    src/RenderSys/Scene/Scene.cpp
     )
     target_link_libraries(RenderSys3D PRIVATE 
                             vulkan-memory-allocator::vulkan-memory-allocator 
