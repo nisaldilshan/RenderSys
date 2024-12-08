@@ -206,6 +206,17 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "GLTFModel",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Advanced/2.GLTFModel/Debug/GLTFModel",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Advanced/2.GLTFModel/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "RayMarching",
             "type": "lldb",
             "request": "launch",
