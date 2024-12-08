@@ -102,6 +102,7 @@
         "resumable": "cpp",
         "ranges": "cpp",
         "stack": "cpp",
-        "numeric": "cpp"
+        "numeric": "cpp",
+        "any": "cpp"
     }
 }

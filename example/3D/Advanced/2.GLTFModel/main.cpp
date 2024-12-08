@@ -1,4 +1,5 @@
 #include <array>
+#include <fstream>
 #include <Walnut/Application.h>
 #include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
@@ -56,201 +57,57 @@ public:
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 		m_renderer->Init();
 
+		const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
+		assert(!shaderDir.empty());
+
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
-			const char* vertexShaderSource = R"(
-				#version 460
-				layout(binding = 0) uniform UniformBufferObject {
-					mat4 projectionMatrix;
-					mat4 viewMatrix;
-					mat4 modelMatrix;
-					vec4 color;
-					vec3 cameraWorldPosition;
-					float time;
-				} ubo;
-				layout (location = 0) in vec3 aPos;
-				layout (location = 1) in vec3 in_normal;
-				layout (location = 2) in vec3 in_color;
-				layout (location = 3) in vec2 in_uv;
+			{
+				std::ifstream file(shaderDir + "/vertex.glsl", std::ios::binary);
+				std::vector<char> content((std::istreambuf_iterator<char>(file)),
+											std::istreambuf_iterator<char>());
 
-				layout (location = 0) out vec3 out_color;
-				layout (location = 1) out vec3 out_normal;
-				layout (location = 2) out vec2 out_uv;
-				layout (location = 3) out vec3 out_viewDirection;
-
-				void main() 
-				{
-					vec4 worldPosition = ubo.modelMatrix * vec4(aPos, 1.0);
-					gl_Position = ubo.projectionMatrix * ubo.viewMatrix * worldPosition;
-					vec4 mult = ubo.modelMatrix * vec4(in_normal, 0.0);
-					out_color = in_color;
-					vec4 norm = ubo.modelMatrix * vec4(in_normal, 0.0);
-					out_normal = norm.xyz;
-					out_uv = in_uv;
-					out_viewDirection = ubo.cameraWorldPosition - worldPosition.xyz;
+				if (!file.is_open()) {
+					std::cerr << "Unable to open file." << std::endl;
+					assert(false);
 				}
-			)";
-			RenderSys::Shader vertexShader("Vertex");
-			vertexShader.type = RenderSys::ShaderType::SPIRV;
-			vertexShader.shaderSrc = vertexShaderSource;
-			vertexShader.stage = RenderSys::ShaderStage::Vertex;
-			m_renderer->SetShader(vertexShader);
+				RenderSys::Shader vertexShader("Vertex");
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.shaderSrc = std::string(content.data(), content.size());
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				m_renderer->SetShader(vertexShader);
+			}
 
-			const char* fragmentShaderSource = R"(
-				#version 460
+			{
+				std::ifstream file(shaderDir + "/fragment.glsl", std::ios::binary);
+				std::vector<char> content((std::istreambuf_iterator<char>(file)),
+											std::istreambuf_iterator<char>());
 
-				layout(binding = 0) uniform UniformBufferObject {
-					mat4 projectionMatrix;
-					mat4 viewMatrix;
-					mat4 modelMatrix;
-					vec4 color;
-					float time;
-					float _pad[3];
-				} ubo;
-
-				layout(binding = 1) uniform texture2D tex;
-				layout(binding = 2) uniform sampler s;
-
-				layout(binding = 3) uniform LightingUniforms {
-					vec4 directions[2];
-					vec4 colors[2];
-					float hardness;
-					float kd;
-					float ks;
-					float _pad;
-				} lightingUbo;
-
-				layout (location = 0) in vec3 in_color;
-				layout (location = 1) in vec3 in_normal;
-				layout (location = 2) in vec2 in_uv;
-				layout (location = 3) in vec3 in_viewDirection;
-
-				layout (location = 0) out vec4 out_color;
-
-				void main()
-				{
-					vec3 N = normalize(in_normal);
-					vec3 V = normalize(in_viewDirection);
-					vec3 texColor = texture(sampler2D(tex, s), in_uv).rgb; 
-					vec3 color = vec3(0.0);
-					for (int i = 0; i < 2; i++)
-					{
-						vec3 lightColor = lightingUbo.colors[i].rgb;
-						vec3 L = normalize(lightingUbo.directions[i].xyz);
-						vec3 R = reflect(-L, N); // equivalent to 2.0 * dot(N, L) * N - L
-
-						vec3 diffuse = max(0.0, dot(L, N)) * lightColor;
-						float RoV = max(0.0, dot(R, V));
-						float specular = pow(RoV, lightingUbo.hardness);
-
-						vec3 ambient = vec3(0.05);
-						color += texColor * lightingUbo.kd * diffuse + lightingUbo.ks * specular + ambient;
-					}
-
-					// Gamma-correction
-					vec3 corrected_color = pow(color, vec3(2.2));
-					out_color = vec4(corrected_color, ubo.color.a);
+				if (!file.is_open()) {
+					std::cerr << "Unable to open file." << std::endl;
+					assert(false);
 				}
-			)";
-			RenderSys::Shader fragmentShader("Fragment");
-			fragmentShader.type = RenderSys::ShaderType::SPIRV;
-			fragmentShader.shaderSrc = fragmentShaderSource;
-			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-			m_renderer->SetShader(fragmentShader);
+
+				RenderSys::Shader fragmentShader("Fragment");
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.shaderSrc = std::string(content.data(), content.size());
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				m_renderer->SetShader(fragmentShader);
+			}
 		}
 		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 		{
-			const char* shaderSource = R"(
-			struct VertexInput {
-				@location(0) position: vec3f,
-				@location(1) normal: vec3f,
-				@location(2) color: vec3f,
-				@location(3) uv: vec2f,
-			};
+			std::ifstream file(shaderDir + "/combined.wgsl", std::ios::binary);
+			std::vector<char> content((std::istreambuf_iterator<char>(file)),
+										std::istreambuf_iterator<char>());
 
-			struct VertexOutput {
-				@builtin(position) position: vec4f,
-				@location(0) color: vec3f,
-				@location(1) normal: vec3f,
-				@location(2) uv: vec2f,
-				@location(3) viewDirection: vec3<f32>,
-			};
-
-			/**
-			 * A structure holding the value of our uniforms
-			 */
-			struct MyUniforms {
-				projectionMatrix: mat4x4f,
-				viewMatrix: mat4x4f,
-				modelMatrix: mat4x4f,
-				color: vec4f,
-				cameraWorldPosition: vec3f,
-				time: f32,
-			};
-
-			/**
-			 * A structure holding the lighting settings
-			 */
-			struct LightingUniforms {
-				directions: array<vec4f, 2>,
-				colors: array<vec4f, 2>,
-				hardness: f32,
-				kd: f32,
-				ks: f32,
+			if (!file.is_open()) {
+				std::cerr << "Unable to open file." << std::endl;
+				assert(false);
 			}
-
-			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
-			@group(0) @binding(1) var baseColorTexture: texture_2d<f32>;
-			@group(0) @binding(2) var textureSampler: sampler;
-			@group(0) @binding(3) var<uniform> uLighting: LightingUniforms;
-
-			@vertex
-			fn vs_main(in: VertexInput) -> VertexOutput {
-				var out: VertexOutput;
-				let worldPosition = uMyUniforms.modelMatrix * vec4<f32>(in.position, 1.0);
-				out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * worldPosition;
-				out.normal = (uMyUniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
-				out.color = in.color;
-				out.uv = in.uv;
-				out.viewDirection = uMyUniforms.cameraWorldPosition - worldPosition.xyz;
-				return out;
-			}
-
-			@fragment
-			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-				// Compute shading
-				let N = normalize(in.normal);
-				let V = normalize(in.viewDirection);
-
-				// Sample texture
-				let baseColor = textureSample(baseColorTexture, textureSampler, in.uv).rgb;
-				let kd = uLighting.kd;
-				let ks = uLighting.ks;
-				let hardness = uLighting.hardness;
-
-				var color = vec3f(0.0);
-				for (var i: i32 = 0; i < 2; i++) {
-					let lightColor = uLighting.colors[i].rgb;
-					let L = normalize(uLighting.directions[i].xyz);
-					let R = reflect(-L, N); // equivalent to 2.0 * dot(N, L) * N - L
-
-					let diffuse = max(0.0, dot(L, N)) * lightColor;
-
-					// We clamp the dot product to 0 when it is negative
-					let RoV = max(0.0, dot(R, V));
-					let specular = pow(RoV, hardness);
-
-					color += baseColor * kd * diffuse + ks * specular;
-				}
-				
-				// Gamma-correction
-				let corrected_color = pow(color, vec3f(2.2));
-				return vec4f(corrected_color, uMyUniforms.color.a);
-			}
-			)";
 			RenderSys::Shader shader("Combined");
 			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = shaderSource;
+			shader.shaderSrc = std::string(content.data(), content.size());
 			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 			m_renderer->SetShader(shader);
 		}
