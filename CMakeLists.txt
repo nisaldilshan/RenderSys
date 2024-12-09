@@ -30,6 +30,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Shader.cpp
                     src/RenderSys/Camera.cpp
                     src/RenderSys/Geometry.cpp
+                    src/RenderSys/Scene/GLTFScene.cpp
                     src/RenderSys/Scene/Scene.cpp
     )
     target_link_libraries(RenderSys3D PRIVATE 

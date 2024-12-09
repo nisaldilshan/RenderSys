@@ -9,6 +9,7 @@
 #include <RenderSys/Geometry.h>
 #include <RenderSys/Texture.h>
 #include <RenderSys/Camera.h>
+#include <RenderSys/Scene/Scene.h>
 
 struct VertexAttributes {
 	glm::vec3 position;
@@ -120,6 +121,10 @@ public:
 		m_renderer->CreateTexture(1, m_texHandle->GetWidth(), m_texHandle->GetHeight(), m_texHandle->GetData(), m_texHandle->GetMipLevelCount());
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
+
+		m_scene = std::make_unique<RenderSys::Scene>();
+		m_scene->load(RESOURCE_DIR "/Scenes/Woman.gltf", "");
+
 	}
 
 	virtual void OnDetach() override
@@ -287,6 +292,7 @@ private:
 	std::unique_ptr<Texture::TextureHandle> m_texHandle = nullptr;
 	const char* m_shaderSource = nullptr;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
+	std::unique_ptr<RenderSys::Scene> m_scene;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

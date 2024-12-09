@@ -2,6 +2,7 @@
 
 #include <string>
 #include <memory>
+#include <filesystem>
 
 namespace tinygltf
 {
@@ -16,7 +17,7 @@ class GLTFScene
 public:
     GLTFScene();
     ~GLTFScene();
-    bool load(const std::string& modelFilename, const std::string& textureFilename);
+    bool load(const std::filesystem::path &filePath, const std::string& textureFilename);
 private:
     std::shared_ptr<tinygltf::Model> m_model;
 };

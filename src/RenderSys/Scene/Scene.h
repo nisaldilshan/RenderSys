@@ -9,7 +9,7 @@ class Scene
 public:
     Scene();
     ~Scene() = default;
-    bool load(const std::string& modelFilename, const std::string& textureFilename);
+    bool load(const std::filesystem::path &filePath, const std::string& textureFilename);
 private:
     std::unique_ptr<GLTFScene> m_scene;
 };
