@@ -123,7 +123,14 @@ public:
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 
 		m_scene = std::make_unique<RenderSys::Scene>();
-		m_scene->load(RESOURCE_DIR "/Scenes/Woman.gltf", "");
+		if (m_scene->load(RESOURCE_DIR "/Scenes/Woman.gltf", ""))
+		{
+			m_scene->allocateMemory();
+		}
+		else
+		{
+			std::cout << "Error loading GLTF model!" << std::endl;
+		}
 
 	}
 

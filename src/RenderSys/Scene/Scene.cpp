@@ -13,4 +13,11 @@ bool Scene::load(const std::filesystem::path &filePath, const std::string &textu
     return m_scene->load(filePath, textureFilename);
 }
 
+void Scene::allocateMemory()
+{
+    m_scene->computeProps();
+    m_vertexBuffer.resize(m_scene->getVertexCount());
+    m_indexBuffer.resize(m_scene->getIndexCount());
+}
+
 }
