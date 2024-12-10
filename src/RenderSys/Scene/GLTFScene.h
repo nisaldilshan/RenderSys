@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <filesystem>
+#include <glm/ext.hpp>
 
 namespace tinygltf
 {
@@ -13,6 +14,19 @@ class Node;
 namespace RenderSys
 {
 
+namespace Model
+{
+    struct Vertex {
+        glm::vec3 pos;
+        glm::vec3 normal;
+        glm::vec2 uv0;
+        glm::vec2 uv1;
+        glm::uvec4 joint0;
+        glm::vec4 weight0;
+        glm::vec4 color;
+    };
+}
+
 class GLTFScene
 {
 public:
@@ -22,6 +36,8 @@ public:
     void computeProps();
     size_t getVertexCount() const;
     size_t getIndexCount() const;
+    void loadVertexAttributes(std::vector<Model::Vertex>& vertexBuffer);
+    void loadIndices(std::vector<uint32_t>& indexBuffer);
 private:
     static void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount);
     std::shared_ptr<tinygltf::Model> m_model;

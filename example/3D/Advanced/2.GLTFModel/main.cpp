@@ -126,6 +126,7 @@ public:
 		if (m_scene->load(RESOURCE_DIR "/Scenes/Woman.gltf", ""))
 		{
 			m_scene->allocateMemory();
+			m_scene->populate();
 		}
 		else
 		{

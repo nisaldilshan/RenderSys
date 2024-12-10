@@ -20,4 +20,10 @@ void Scene::allocateMemory()
     m_indexBuffer.resize(m_scene->getIndexCount());
 }
 
+void Scene::populate()
+{
+    m_scene->loadVertexAttributes(m_vertexBuffer);
+    m_scene->loadIndices(m_indexBuffer);
+}
+
 }
