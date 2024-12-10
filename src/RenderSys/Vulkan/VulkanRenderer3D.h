@@ -28,7 +28,7 @@ namespace GraphicsAPI
         void CreatePipeline();
         void CreateFrameBuffer();
         void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
-        void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
+        void CreateIndexBuffer(const std::vector<uint32_t> &bufferData);
         void SetClearColor(glm::vec4 clearColor);
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);

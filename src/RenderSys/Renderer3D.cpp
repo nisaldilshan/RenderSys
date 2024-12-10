@@ -54,7 +54,7 @@ void Renderer3D::SetVertexBufferData(const void* bufferData, uint32_t bufferLeng
     m_rendererBackend->CreateVertexBuffer(bufferData, bufferLength, bufferLayout);
 }
 
-void Renderer3D::SetIndexBufferData(const std::vector<uint16_t>& bufferData)
+void Renderer3D::SetIndexBufferData(const std::vector<uint32_t>& bufferData)
 {
     m_rendererBackend->CreateIndexBuffer(bufferData);
 }

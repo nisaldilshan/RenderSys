@@ -45,11 +45,27 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
-		bool success = Geometry::loadGeometryFromObjWithUV<VertexAttributes>(RESOURCE_DIR "/Meshes/fourareen.obj", m_vertexData);
-		if (!success) 
+		m_scene = std::make_unique<RenderSys::Scene>();
+		if (m_scene->load(RESOURCE_DIR "/Scenes/Woman.gltf", ""))
 		{
-			std::cerr << "Could not load geometry!" << std::endl;
-			assert(false);
+			m_scene->allocateMemory();
+			m_scene->populate();
+
+			m_vertexData.resize(m_scene->m_vertexBuffer.size());
+			for (size_t i = 0; i < m_vertexData.size(); i++)
+			{
+				m_vertexData[i].position = m_scene->m_vertexBuffer[i].pos;
+			}
+			
+			m_indexData.resize(m_scene->m_indexBuffer.size());
+			for (size_t i = 0; i < m_vertexData.size(); i++)
+			{
+				m_indexData[i] = m_scene->m_indexBuffer[i];
+			}
+		}
+		else
+		{
+			std::cout << "Error loading GLTF model!" << std::endl;
 		}
 
 		m_texHandle = Texture::loadTexture(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
@@ -121,18 +137,6 @@ public:
 		m_renderer->CreateTexture(1, m_texHandle->GetWidth(), m_texHandle->GetHeight(), m_texHandle->GetData(), m_texHandle->GetMipLevelCount());
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
-
-		m_scene = std::make_unique<RenderSys::Scene>();
-		if (m_scene->load(RESOURCE_DIR "/Scenes/Woman.gltf", ""))
-		{
-			m_scene->allocateMemory();
-			m_scene->populate();
-		}
-		else
-		{
-			std::cout << "Error loading GLTF model!" << std::endl;
-		}
-
 	}
 
 	virtual void OnDetach() override
@@ -182,6 +186,8 @@ public:
 
 			assert(m_vertexData.size() > 0);
 			m_renderer->SetVertexBufferData(m_vertexData.data(), m_vertexData.size() * sizeof(VertexAttributes), vertexBufferLayout);
+			assert(m_indexData.size() > 0);
+			m_renderer->SetIndexBufferData(m_indexData);
 
 			// Since we now have 2 bindings, we use a vector to store them
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(4);
@@ -297,6 +303,7 @@ private:
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
 	std::vector<VertexAttributes> m_vertexData;
+	std::vector<uint32_t> m_indexData;
 	std::unique_ptr<Texture::TextureHandle> m_texHandle = nullptr;
 	const char* m_shaderSource = nullptr;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;

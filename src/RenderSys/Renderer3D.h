@@ -52,7 +52,7 @@ public:
     void SetShader(RenderSys::Shader& shader);
     void SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
     void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
-    void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
+    void SetIndexBufferData(const std::vector<uint32_t>& bufferData);
     void CreatePipeline();
     void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
     void CreateTexture(uint32_t binding, uint32_t width, uint32_t height, const void* textureData, uint32_t mipMapLevelCount);

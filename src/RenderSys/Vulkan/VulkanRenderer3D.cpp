@@ -651,7 +651,7 @@ void VulkanRenderer3D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
     std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
 }
 
-void VulkanRenderer3D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData)
+void VulkanRenderer3D::CreateIndexBuffer(const std::vector<uint32_t> &bufferData)
 {
     std::cout << "Creating index buffer..." << std::endl;
 
