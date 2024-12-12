@@ -33,6 +33,8 @@ private:
     glm::vec3 GetForwardDirection() const;
 
     float RotationSpeed() const;
+    float ZoomSpeed() const;
+    float PanSpeed() const;
 
     glm::mat4x4 m_view = glm::mat4(1.0f);
     glm::mat4x4 m_projection = glm::mat4(1.0f);
