@@ -663,7 +663,8 @@ void VulkanRenderer3D::CreateIndexBuffer(const std::vector<uint32_t> &bufferData
     {
         VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = m_indexCount * sizeof(bufferData[0]);
+        assert(sizeof(bufferData[0]) == 4); // because we are using type - VK_INDEX_TYPE_UINT32
+		bufferInfo.size = m_indexCount * 4;
 		bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         VmaAllocationCreateInfo vmaAllocInfo{};
@@ -850,7 +851,7 @@ void VulkanRenderer3D::BindResources()
 	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &offset);
     if (m_indexCount > 0)
     {
-        vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
+        vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, offset, VK_INDEX_TYPE_UINT32);
     }
 }
 

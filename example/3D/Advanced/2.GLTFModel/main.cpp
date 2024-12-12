@@ -240,17 +240,15 @@ public:
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
 			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
 
-			const float time = static_cast<float>(glfwGetTime());
 			glm::mat4x4 M1(1.0);
-			float angle1 = time * 0.9f;
-			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));
+			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.3f));
 			m_myUniformData.modelMatrix = M1;
 
 			m_myUniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
-			m_myUniformData.time = time;
+			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
 
 			// Initial values
@@ -261,7 +259,7 @@ public:
 			m_renderer->SetUniformBufferData(3, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
-			m_renderer->Render(0);
+			m_renderer->RenderIndexed(0);
 			m_renderer->EndRenderPass();
 		}
 
