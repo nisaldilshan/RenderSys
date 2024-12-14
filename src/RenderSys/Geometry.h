@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <glm/ext.hpp>
+#include "Buffer.h"
 
 namespace Geometry
 {
@@ -115,7 +116,7 @@ void populateTextureFrameAttributes(std::vector<T>& vertexData)
 }
 
 template<typename T>
-bool loadGeometryFromObjWithUV(const fs::path& path, std::vector<T>& vertexData)
+bool loadGeometryFromObjWithUV(const fs::path& path, RenderSys::VertexBuffer& vertexData)
 {
 	TinyObjLoader loader;
 	if (!loader.load(path.string()))
@@ -154,7 +155,7 @@ bool loadGeometryFromObjWithUV(const fs::path& path, std::vector<T>& vertexData)
 				loader.m_colors[3 * vertex_index + 2]
 			};
 
-			vertexData[offset + i].uv = {
+			vertexData[offset + i].texcoord0 = {
 				loader.m_texcoords[2 * texcoord_index + 0],
 				1 - loader.m_texcoords[2 * texcoord_index + 1]
 			};
