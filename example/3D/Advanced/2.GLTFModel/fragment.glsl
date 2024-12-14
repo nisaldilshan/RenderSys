@@ -22,13 +22,12 @@ layout(binding = 3) uniform LightingUniforms {
 } lightingUbo;
 
 layout (location = 0) in vec3 in_viewDirection;
+layout (location = 1) in vec2 in_uv;
 
 layout (location = 0) out vec4 out_color;
 
 void main()
 {
-    vec3 color = vec3(1.0, 1.0, 1.0);
-    // Gamma-correction
-    vec3 corrected_color = pow(color, vec3(2.2));
-    out_color = vec4(corrected_color, 1.0);
+    vec3 texColor = texture(sampler2D(tex, s), in_uv).rgb; 
+    out_color = vec4(texColor, 1.0);
 }

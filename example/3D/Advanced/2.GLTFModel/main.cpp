@@ -48,6 +48,7 @@ public:
 			for (size_t i = 0; i < m_vertexBuffer.size(); i++)
 			{
 				m_vertexBuffer[i].position = m_scene->m_vertexBuffer[i].pos;
+				m_vertexBuffer[i].texcoord0 = m_scene->m_vertexBuffer[i].uv0;
 			}
 			
 			m_indexData.resize(m_scene->m_indexBuffer.size());
@@ -61,7 +62,7 @@ public:
 			std::cout << "Error loading GLTF model!" << std::endl;
 		}
 
-		m_texHandle = Texture::loadTexture(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
+		m_texHandle = Texture::loadTexture(RESOURCE_DIR "/Textures/Woman.png");
 		assert(m_texHandle && m_texHandle->GetWidth() > 0 && m_texHandle->GetHeight() > 0 && m_texHandle->GetMipLevelCount() > 0);
 
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();

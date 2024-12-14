@@ -13,10 +13,12 @@ layout (location = 2) in vec3 in_color;
 layout (location = 3) in vec2 in_uv;
 
 layout (location = 0) out vec3 out_viewDirection;
+layout (location = 1) out vec2 out_uv;
 
 void main() 
 {
     vec4 worldPosition = ubo.modelMatrix * vec4(aPos, 1.0);
     gl_Position = ubo.projectionMatrix * ubo.viewMatrix * worldPosition;
     out_viewDirection = ubo.cameraWorldPosition - worldPosition.xyz;
+    out_uv = in_uv;
 }
