@@ -8,12 +8,6 @@
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
 
-struct VertexAttributes {
-	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec3 color;
-};
-
 struct MyUniforms {
 	// We add transform matrices
     glm::mat4x4 projectionMatrix;
@@ -204,8 +198,8 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			std::vector<VertexAttributes> vertexData;
-			bool success = Geometry::loadGeometryFromObj<VertexAttributes>(RESOURCE_DIR "/mammoth.obj", vertexData);
+			RenderSys::VertexBuffer vertexData;
+			bool success = Geometry::loadGeometryFromObj(RESOURCE_DIR "/mammoth.obj", vertexData);
 			if (!success) 
 			{
 				std::cerr << "Could not load geometry!" << std::endl;
@@ -222,20 +216,20 @@ public:
 			// Normal attribute
 			vertexAttribs[1].location = 1;
 			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
+			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
 
 			// Color attribute
 			vertexAttribs[2].location = 2;
 			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[2].offset = offsetof(VertexAttributes, color);
+			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
 
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
+			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * sizeof(VertexAttributes), vertexBufferLayout);
+			m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
 
 			// Create binding layout (don't forget to = Default)
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);
