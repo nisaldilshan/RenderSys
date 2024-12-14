@@ -9,13 +9,6 @@
 #include <RenderSys/Texture.h>
 #include <RenderSys/Camera.h>
 
-struct VertexAttributes {
-	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec3 color;
-	glm::vec2 uv;
-};
-
 struct MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
@@ -30,7 +23,7 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
-		bool success = Geometry::loadGeometryFromObjWithUV<VertexAttributes>(RESOURCE_DIR "/Meshes/fourareen.obj", m_vertexData);
+		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/fourareen.obj", m_vertexBuffer);
 		if (!success) 
 		{
 			std::cerr << "Could not load geometry!" << std::endl;
@@ -208,26 +201,26 @@ public:
 			// Normal attribute
 			vertexAttribs[1].location = 1;
 			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
+			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
 
 			// Color attribute
 			vertexAttribs[2].location = 2;
 			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[2].offset = offsetof(VertexAttributes, color);
+			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
 
 			// UV attribute
 			vertexAttribs[3].location = 3;
 			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[3].offset = offsetof(VertexAttributes, uv);
+			vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
 
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
+			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-			assert(m_vertexData.size() > 0);
-			m_renderer->SetVertexBufferData(m_vertexData.data(), m_vertexData.size() * sizeof(VertexAttributes), vertexBufferLayout);
+			assert(m_vertexBuffer.size() > 0);
+			m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
 
 			// Since we now have 2 bindings, we use a vector to store them
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
@@ -325,7 +318,7 @@ private:
 	glm::vec4 m_clearColor = glm::vec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	MyUniforms m_uniformData;
-	std::vector<VertexAttributes> m_vertexData;
+	RenderSys::VertexBuffer m_vertexBuffer;
 	std::unique_ptr<Texture::TextureHandle> m_texHandle = nullptr;
 	const char* m_shaderSource = nullptr;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;

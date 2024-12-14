@@ -12,6 +12,7 @@ struct Vertex {
     glm::vec2 texcoord0;
     glm::vec2 texcoord1;
     glm::vec3 color;
+    glm::vec3 tangent;
     glm::uvec4 joint0;
     glm::vec4 weight0;
 };
