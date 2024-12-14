@@ -26,4 +26,9 @@ void Scene::populate()
     m_scene->loadIndices(m_indexBuffer);
 }
 
+void Scene::prepareNodeGraph()
+{
+    m_nodeGraph = m_scene->getNodeGraph();
+}
+
 }

@@ -62,9 +62,6 @@ public:
 			std::cout << "Error loading GLTF model!" << std::endl;
 		}
 
-		m_texHandle = Texture::loadTexture(RESOURCE_DIR "/Textures/Woman.png");
-		assert(m_texHandle && m_texHandle->GetWidth() > 0 && m_texHandle->GetHeight() > 0 && m_texHandle->GetMipLevelCount() > 0);
-
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 		m_renderer->Init();
 
@@ -128,7 +125,10 @@ public:
 		}
 
 		m_renderer->CreateTextureSampler();
-		m_renderer->CreateTexture(1, m_texHandle->GetWidth(), m_texHandle->GetHeight(), m_texHandle->GetData(), m_texHandle->GetMipLevelCount());
+
+		auto texHandle = Texture::loadTexture(RESOURCE_DIR "/Textures/Woman.png");
+		assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
+		m_renderer->CreateTexture(1, texHandle->GetWidth(), texHandle->GetHeight(), texHandle->GetData(), texHandle->GetMipLevelCount());
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 	}
@@ -296,8 +296,6 @@ private:
 	LightingUniforms m_lightingUniformData;
 	RenderSys::VertexBuffer m_vertexBuffer;
 	std::vector<uint32_t> m_indexData;
-	std::unique_ptr<Texture::TextureHandle> m_texHandle = nullptr;
-	const char* m_shaderSource = nullptr;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 	std::unique_ptr<RenderSys::Scene> m_scene;
 };

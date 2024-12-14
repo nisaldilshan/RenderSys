@@ -181,4 +181,9 @@ void GLTFScene::loadIndices(std::vector<uint32_t>& indexBuffer)
     }
 }
 
+std::shared_ptr<SceneNode> GLTFScene::getNodeGraph()
+{
+    return std::shared_ptr<SceneNode>();
+}
+
 }
