@@ -9,17 +9,6 @@
 #include <RenderSys/Texture.h>
 #include <RenderSys/Camera.h>
 
-struct VertexAttributes {
-	glm::vec3 position;
-	// Texture mapping attributes represent the local frame in which
-	// normals sampled from the normal map are expressed.
-	glm::vec3 tangent; // T = local X axis
-	glm::vec3 bitangent; // B = local Y axis
-	glm::vec3 normal;
-	glm::vec3 color;
-	glm::vec2 uv;
-};
-
 struct MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
@@ -47,9 +36,9 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
-		bool success = Geometry::loadGeometryFromObjWithUV<VertexAttributes>(RESOURCE_DIR "/Meshes/cylinder.obj", m_vertexData);
+		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cylinder.obj", m_vertexBuffer);
 		assert(success);
-		Geometry::populateTextureFrameAttributes(m_vertexData);
+		Geometry::populateTextureFrameAttributes(m_vertexBuffer);
 
 		auto baseColorTexture = Texture::loadTexture(RESOURCE_DIR "/Textures/cobblestone_floor_08_diff_2k.jpg");
 		assert(baseColorTexture && baseColorTexture->GetWidth() > 0 && baseColorTexture->GetHeight() > 0 && baseColorTexture->GetMipLevelCount() > 0);
@@ -136,7 +125,7 @@ public:
 				layout (location = 2) in vec2 in_uv;
 				layout (location = 3) in vec3 in_viewDirection;
 				layout (location = 4) in vec3 in_tangent;
-				layout (location = 5) in vec3 in_bitangent;
+				//layout (location = 5) in vec3 in_bitangent;
 
 				layout (location = 0) out vec4 out_color;
 
@@ -148,7 +137,7 @@ public:
 					// The TBN matrix converts directions from the local space to the world space
 					mat3 localToWorld = mat3(
 						normalize(in_tangent),
-						normalize(in_bitangent),
+						normalize(cross(in_normal, in_tangent)),
 						normalize(in_normal)
 					);
 					vec3 worldN = localToWorld * localN;
@@ -324,7 +313,7 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(6);
+			std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
 			// Position attribute
 			vertexAttribs[0].location = 0;
@@ -334,36 +323,31 @@ public:
 			// Normal attribute
 			vertexAttribs[1].location = 1;
 			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
+			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
 
 			// Color attribute
 			vertexAttribs[2].location = 2;
 			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[2].offset = offsetof(VertexAttributes, color);
+			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
 
 			// UV attribute
 			vertexAttribs[3].location = 3;
 			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[3].offset = offsetof(VertexAttributes, uv);
+			vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
 
 			// Tangent attribute
 			vertexAttribs[4].location = 4;
 			vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[4].offset = offsetof(VertexAttributes, tangent);
-
-			// Bitangent attribute
-			vertexAttribs[5].location = 5;
-			vertexAttribs[5].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[5].offset = offsetof(VertexAttributes, bitangent);
+			vertexAttribs[4].offset = offsetof(RenderSys::Vertex, tangent);
 
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
+			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-			assert(m_vertexData.size() > 0);
-			m_renderer->SetVertexBufferData(m_vertexData.data(), m_vertexData.size() * sizeof(VertexAttributes), vertexBufferLayout);
+			assert(m_vertexBuffer.size() > 0);
+			m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
 
 			// Create binding layouts
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(5);
@@ -486,7 +470,7 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
-	std::vector<VertexAttributes> m_vertexData;
+	RenderSys::VertexBuffer m_vertexBuffer;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 };
 
