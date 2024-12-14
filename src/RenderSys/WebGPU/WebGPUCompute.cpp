@@ -106,7 +106,7 @@ void WebGPUCompute::CreatePipeline()
     std::cout << "Compute pipeline: " << m_pipeline << std::endl;
 }
 
-void WebGPUCompute::CreateBuffer(uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name)
+void WebGPUCompute::CreateBuffer(uint32_t bufferLength, RenderSys::ComputeBuf::BufferType type, const std::string& name)
 {
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.mappedAtCreation = false;

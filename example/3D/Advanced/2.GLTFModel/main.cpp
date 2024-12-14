@@ -11,13 +11,6 @@
 #include <RenderSys/Camera.h>
 #include <RenderSys/Scene/Scene.h>
 
-struct VertexAttributes {
-	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec3 color;
-	glm::vec2 uv;
-};
-
 struct MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
@@ -51,14 +44,14 @@ public:
 			m_scene->allocateMemory();
 			m_scene->populate();
 
-			m_vertexData.resize(m_scene->m_vertexBuffer.size());
-			for (size_t i = 0; i < m_vertexData.size(); i++)
+			m_vertexBuffer.resize(m_scene->m_vertexBuffer.size());
+			for (size_t i = 0; i < m_vertexBuffer.size(); i++)
 			{
-				m_vertexData[i].position = m_scene->m_vertexBuffer[i].pos;
+				m_vertexBuffer[i].position = m_scene->m_vertexBuffer[i].pos;
 			}
 			
 			m_indexData.resize(m_scene->m_indexBuffer.size());
-			for (size_t i = 0; i < m_vertexData.size(); i++)
+			for (size_t i = 0; i < m_vertexBuffer.size(); i++)
 			{
 				m_indexData[i] = m_scene->m_indexBuffer[i];
 			}
@@ -166,26 +159,26 @@ public:
 			// Normal attribute
 			vertexAttribs[1].location = 1;
 			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
+			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
 
 			// Color attribute
 			vertexAttribs[2].location = 2;
 			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[2].offset = offsetof(VertexAttributes, color);
+			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
 
 			// UV attribute
 			vertexAttribs[3].location = 3;
 			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[3].offset = offsetof(VertexAttributes, uv);
+			vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
 
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
+			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-			assert(m_vertexData.size() > 0);
-			m_renderer->SetVertexBufferData(m_vertexData.data(), m_vertexData.size() * sizeof(VertexAttributes), vertexBufferLayout);
+			assert(m_vertexBuffer.size() > 0);
+			m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
 			assert(m_indexData.size() > 0);
 			m_renderer->SetIndexBufferData(m_indexData);
 
@@ -300,7 +293,7 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
-	std::vector<VertexAttributes> m_vertexData;
+	RenderSys::VertexBuffer m_vertexBuffer;
 	std::vector<uint32_t> m_indexData;
 	std::unique_ptr<Texture::TextureHandle> m_texHandle = nullptr;
 	const char* m_shaderSource = nullptr;

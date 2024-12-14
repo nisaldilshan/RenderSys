@@ -49,9 +49,9 @@ void Renderer3D::SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexS
     m_rendererBackend->CreateStandaloneShader(shader, vertexShaderCallCount);
 }
 
-void Renderer3D::SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
+void Renderer3D::SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
 {
-    m_rendererBackend->CreateVertexBuffer(bufferData, bufferLength, bufferLayout);
+    m_rendererBackend->CreateVertexBuffer(bufferData, bufferLayout);
 }
 
 void Renderer3D::SetIndexBufferData(const std::vector<uint32_t>& bufferData)

@@ -6,12 +6,7 @@
 #include <imgui_impl_glfw.h>
 #include <Walnut/ImageFormat.h>
 
-#define GLM_FORCE_LEFT_HANDED
-#include <glm/ext.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include "Buffer.h"
-
-
 #include "RenderUtil.h"
 #include "Shader.h"
 
@@ -51,7 +46,7 @@ public:
     void OnResize(uint32_t width, uint32_t height);
     void SetShader(RenderSys::Shader& shader);
     void SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
-    void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
+    void SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint32_t>& bufferData);
     void CreatePipeline();
     void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);

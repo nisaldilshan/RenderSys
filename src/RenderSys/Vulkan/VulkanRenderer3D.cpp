@@ -586,10 +586,11 @@ void VulkanRenderer3D::CreateFrameBuffer()
     }
 }
 
-void VulkanRenderer3D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
+void VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
 {
     std::cout << "Creating vertex buffer..." << std::endl;
-
+    const auto bufferLength = bufferData.vertices.size() * sizeof(RenderSys::Vertex);
+    assert(bufferLength > 0);
     assert(bufferLayout.arrayStride > 0);
     m_vertexCount = bufferLength/bufferLayout.arrayStride;
     assert(m_vertexCount > 0);
@@ -642,7 +643,7 @@ void VulkanRenderer3D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
 			return;
 		}
 
-		std::memcpy(buf, bufferData, bufferLength);
+		std::memcpy(buf, bufferData.vertices.data(), bufferLength);
 		vmaUnmapMemory(m_vma, m_vertexBufferMemory);
         
         vertBufCreated = true;

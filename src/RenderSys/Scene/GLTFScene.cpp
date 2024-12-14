@@ -133,27 +133,26 @@ void GLTFScene::loadIndices(std::vector<uint32_t>& indexBuffer)
             assert(indexBuffer.size() == indexCount);
 
             const void *dataPtr = &(buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-            constexpr int vertexStart = 0;
 
             switch (accessor.componentType) {
             case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
                 const uint32_t *buf = static_cast<const uint32_t*>(dataPtr);
                 for (size_t index = 0; index < accessor.count; index++) {
-                    indexBuffer[index] = buf[index] + vertexStart;
+                    indexBuffer[index] = buf[index];
                 }
                 break;
             }
             case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
                 const uint16_t *buf = static_cast<const uint16_t*>(dataPtr);
                 for (size_t index = 0; index < accessor.count; index++) {
-                    indexBuffer[index] = buf[index] + vertexStart;
+                    indexBuffer[index] = buf[index];
                 }
                 break;
             }
             case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE: {
                 const uint8_t *buf = static_cast<const uint8_t*>(dataPtr);
                 for (size_t index = 0; index < accessor.count; index++) {
-                    indexBuffer[index] = buf[index] + vertexStart;
+                    indexBuffer[index] = buf[index];
                 }
                 break;
             }
