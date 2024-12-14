@@ -181,9 +181,9 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 			
-			std::vector<float> vertexData;
-			std::vector<uint16_t> indexData;
-			auto success = Geometry::load3DGeometry(RESOURCE_DIR "/model.txt", vertexData, indexData, 3);
+			RenderSys::VertexBuffer vertexData;
+			std::vector<uint32_t> indexData;
+			auto success = Geometry::load3DGeometry(RESOURCE_DIR "/model.txt", vertexData, indexData, 3, true);
 			if (!success) 
 			{
 				std::cerr << "Could not load geometry!" << std::endl;
@@ -203,15 +203,15 @@ public:
 			// Color attribute
 			vertexAttribs[1].location = 1;
 			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; 
-			vertexAttribs[1].offset = 3 * sizeof(float);
+			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, color);
 
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = 6 * sizeof(float);
+			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * sizeof(float), vertexBufferLayout);
+			m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
 			m_renderer->SetIndexBufferData(indexData);
 
 			// Create binding layout (don't forget to = Default)

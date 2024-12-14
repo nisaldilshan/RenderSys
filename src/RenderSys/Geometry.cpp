@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iostream>
 #include <string>
+#include <array>
 
 #define TINYOBJLOADER_IMPLEMENTATION // add this to exactly 1 of your C++ files
 #include <tiny_obj_loader.h>
@@ -113,13 +114,15 @@ bool load2DGeometry(const fs::path& path, std::vector<float>& vertexData, std::v
     return true;
 }
 
-bool load3DGeometry(const fs::path& path, std::vector<float>& pointData, std::vector<uint16_t>& indexData, int dimensions) {
+bool load3DGeometry(const fs::path& path, RenderSys::VertexBuffer& vertexData, std::vector<uint32_t>& indexData
+						, int dimensions, bool useColor) 
+{
 	std::ifstream file(path);
 	if (!file.is_open()) {
 		return false;
 	}
 
-	pointData.clear();
+	vertexData.clear();
 	indexData.clear();
 
 	enum class Section {
@@ -145,11 +148,27 @@ bool load3DGeometry(const fs::path& path, std::vector<float>& pointData, std::ve
 		}
 		else if (currentSection == Section::Points) {
 			std::istringstream iss(line);
-			// Get x, y, r, g, b
-			for (int i = 0; i < dimensions + 3; ++i) {
+			// Get x, y, z
+			std::array<float, 3> pos;
+			for (int i = 0; i < dimensions; ++i) {
 				iss >> value;
-				pointData.push_back(value);
+				pos[i] = value;
 			}
+
+			RenderSys::Vertex vert;
+			vert.position = glm::make_vec3(pos.data());
+			if (useColor)
+			{
+				// Get r, g, b
+				std::array<float, 3> color;
+				for (int i = 0; i < 3; ++i) {
+					iss >> value;
+					color[i] = value;
+				}
+				vert.color = glm::make_vec3(color.data());
+			}
+			
+			vertexData.vertices.push_back(vert);
 		}
 		else if (currentSection == Section::Indices) {
 			std::istringstream iss(line);

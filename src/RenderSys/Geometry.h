@@ -9,7 +9,8 @@ namespace Geometry
 namespace fs = std::filesystem;
 
 bool load2DGeometry(const fs::path& path, std::vector<float>& vertexData, std::vector<uint16_t>& indexData);
-bool load3DGeometry(const fs::path& path, std::vector<float>& pointData, std::vector<uint16_t>& indexData, int dimensions);
+bool load3DGeometry(const fs::path& path, RenderSys::VertexBuffer& vertexData, std::vector<uint32_t>& indexData,
+						 int dimensions, bool useColor);
 
 class TinyObjLoader
 {
