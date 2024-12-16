@@ -183,7 +183,15 @@ void GLTFScene::loadIndices(std::vector<uint32_t>& indexBuffer)
 
 std::shared_ptr<SceneNode> GLTFScene::getNodeGraph()
 {
-    return std::shared_ptr<SceneNode>();
+    assert(m_model);
+    const int nodeCount = m_model->nodes.size();
+    const int rootNodeNum = m_model->scenes.at(0).nodes.at(0);
+    assert(nodeCount > 0);
+    std::cout << "model has " << nodeCount << " nodes, root node is " << rootNodeNum << std::endl;
+
+    auto rootNode = std::make_shared<SceneNode>(rootNodeNum);
+    rootNode->setNodeName(m_model->nodes.at(rootNodeNum).name);
+    return rootNode;
 }
 
 }

@@ -32,6 +32,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Geometry.cpp
                     src/RenderSys/Scene/GLTFScene.cpp
                     src/RenderSys/Scene/Scene.cpp
+                    src/RenderSys/Scene/SceneNode.cpp
     )
     target_link_libraries(RenderSys3D PRIVATE 
                             vulkan-memory-allocator::vulkan-memory-allocator 
