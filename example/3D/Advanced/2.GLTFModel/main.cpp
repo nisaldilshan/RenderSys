@@ -56,6 +56,9 @@ public:
 			{
 				m_indexData[i] = m_scene->m_indexBuffer[i];
 			}
+
+			m_scene->prepareNodeGraph();
+			m_scene->printNodeGraph();
 		}
 		else
 		{

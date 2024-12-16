@@ -42,6 +42,7 @@ public:
     std::shared_ptr<SceneNode> getNodeGraph();
 private:
     static void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount);
+    std::shared_ptr<SceneNode> traverse(const tinygltf::Node &node, uint32_t nodeIndex);
     std::shared_ptr<tinygltf::Model> m_model;
     size_t m_vertexCount = 0;
     size_t m_indexCount = 0;

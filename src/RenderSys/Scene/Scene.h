@@ -15,6 +15,7 @@ public:
     void allocateMemory();
     void populate();
     void prepareNodeGraph();
+    void printNodeGraph();
 
     std::vector<Model::Vertex> m_vertexBuffer;
     std::vector<uint32_t> m_indexBuffer;

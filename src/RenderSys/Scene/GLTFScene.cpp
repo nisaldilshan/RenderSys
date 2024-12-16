@@ -188,10 +188,33 @@ std::shared_ptr<SceneNode> GLTFScene::getNodeGraph()
     const int rootNodeNum = m_model->scenes.at(0).nodes.at(0);
     assert(nodeCount > 0);
     std::cout << "model has " << nodeCount << " nodes, root node is " << rootNodeNum << std::endl;
-
-    auto rootNode = std::make_shared<SceneNode>(rootNodeNum);
-    rootNode->setNodeName(m_model->nodes.at(rootNodeNum).name);
+    const tinygltf::Node &node = m_model->nodes.at(rootNodeNum);
+    auto rootNode = traverse(node, rootNodeNum);
     return rootNode;
+}
+
+std::shared_ptr<SceneNode> GLTFScene::traverse(const tinygltf::Node &node, uint32_t nodeIndex)
+{
+    auto sceneNode = std::make_shared<SceneNode>(nodeIndex);
+    sceneNode->setNodeName(node.name);
+    if (node.translation.size()) {
+        sceneNode->setTranslation(glm::make_vec3(node.translation.data()));
+    }
+    if (node.rotation.size()) {
+        sceneNode->setRotation(glm::make_quat(node.rotation.data()));
+    }
+    if (node.scale.size()) {
+        sceneNode->setScale(glm::make_vec3(node.scale.data()));
+    }
+
+    if (node.children.size() > 0) {
+        for (size_t i = 0; i < node.children.size(); i++) 
+        {
+            sceneNode->m_childNodes.push_back(traverse(m_model->nodes[node.children[i]], node.children[i]));
+        }
+    }
+
+    return sceneNode;
 }
 
 }
