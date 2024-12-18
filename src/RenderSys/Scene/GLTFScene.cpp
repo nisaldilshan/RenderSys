@@ -181,6 +181,40 @@ void GLTFScene::loadIndices(std::vector<uint32_t>& indexBuffer)
     }
 }
 
+void GLTFScene::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::vector<int>& nodeToJoint, std::vector<glm::vec4> &weightVec)
+{
+    // Joints
+    {
+        int jointsAccessor = m_model->meshes.at(0).primitives.at(0).attributes.at("JOINTS_0");
+        const tinygltf::Accessor &accessor = m_model->accessors.at(jointsAccessor);
+        const tinygltf::BufferView &bufferView = m_model->bufferViews.at(accessor.bufferView);
+        const tinygltf::Buffer &buffer = m_model->buffers.at(bufferView.buffer);
+
+        assert(accessor.count > 0);
+        jointVec.resize(accessor.count);
+        std::memcpy(jointVec.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
+    }
+
+    nodeToJoint.resize(m_model->nodes.size());
+    const tinygltf::Skin &skin = m_model->skins.at(0);
+    for (int i = 0; i < skin.joints.size(); ++i) {
+        int destinationNode = skin.joints.at(i);
+        nodeToJoint.at(destinationNode) = i;
+    }
+
+    // Weights
+    {
+        int weightAccessor = m_model->meshes.at(0).primitives.at(0).attributes.at("WEIGHTS_0");
+        const tinygltf::Accessor &accessor = m_model->accessors.at(weightAccessor);
+        const tinygltf::BufferView &bufferView = m_model->bufferViews.at(accessor.bufferView);
+        const tinygltf::Buffer &buffer = m_model->buffers.at(bufferView.buffer);
+
+        assert(accessor.count > 0);
+        weightVec.resize(accessor.count);
+        std::memcpy(weightVec.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
+    }
+}
+
 std::shared_ptr<SceneNode> GLTFScene::getNodeGraph()
 {
     assert(m_model);
@@ -207,7 +241,8 @@ std::shared_ptr<SceneNode> GLTFScene::traverse(const tinygltf::Node &node, uint3
         sceneNode->setScale(glm::make_vec3(node.scale.data()));
     }
 
-    if (node.children.size() > 0) {
+    if (node.children.size() > 0) 
+    {
         for (size_t i = 0; i < node.children.size(); i++) 
         {
             sceneNode->m_childNodes.push_back(traverse(m_model->nodes[node.children[i]], node.children[i]));

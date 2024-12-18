@@ -39,10 +39,12 @@ public:
     size_t getIndexCount() const;
     void loadVertexAttributes(std::vector<Model::Vertex>& vertexBuffer);
     void loadIndices(std::vector<uint32_t>& indexBuffer);
+    void loadJointData(std::vector<glm::tvec4<uint16_t>>& jointVec, std::vector<int>& nodeToJoint, std::vector<glm::vec4>& weightVec);
     std::shared_ptr<SceneNode> getNodeGraph();
 private:
     static void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount);
     std::shared_ptr<SceneNode> traverse(const tinygltf::Node &node, uint32_t nodeIndex);
+
     std::shared_ptr<tinygltf::Model> m_model;
     size_t m_vertexCount = 0;
     size_t m_indexCount = 0;

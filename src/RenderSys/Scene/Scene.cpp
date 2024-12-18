@@ -25,6 +25,7 @@ void Scene::populate()
 {
     m_scene->loadVertexAttributes(m_vertexBuffer);
     m_scene->loadIndices(m_indexBuffer);
+    m_scene->loadJointData(m_jointVec, m_nodeToJoint, m_weightVec);
 }
 
 void Scene::prepareNodeGraph()
@@ -36,10 +37,6 @@ void Scene::printNodeGraph()
 {
     std::cout << "---- tree ----\n";
     m_nodeGraph->printHierarchy(1);
-    // Logger::log(1, "%s: parent : %i (%s)\n", __FUNCTION__, mNodeNum, mNodeName.c_str());
-    // for (const auto& childNode : m_nodeGraph->m_childNodes) {
-    //     GltfNode::printNodes(childNode, 1);
-    // }
     std::cout << " -- end tree --" << std::endl;
 }
 

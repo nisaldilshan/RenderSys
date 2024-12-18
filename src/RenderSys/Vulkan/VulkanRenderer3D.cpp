@@ -227,12 +227,14 @@ void VulkanRenderer3D::DestroyBuffers()
     {
         vmaDestroyBuffer(m_vma, m_vertexBuffer, m_vertexBufferMemory);
         m_vertexBuffer = VK_NULL_HANDLE;
+        m_vertexBufferMemory = VK_NULL_HANDLE;
     }
 
     if (m_indexBuffer != VK_NULL_HANDLE && m_indexBufferMemory != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(m_vma, m_indexBuffer, m_indexBufferMemory);
         m_indexBuffer = VK_NULL_HANDLE;
+        m_indexBufferMemory = VK_NULL_HANDLE;
     }
 
     for (auto& [_ , uniformBufferTuple] : m_uniformBuffers)
@@ -594,60 +596,61 @@ void VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& bufferD
     assert(bufferLayout.arrayStride > 0);
     m_vertexCount = bufferLength/bufferLayout.arrayStride;
     assert(m_vertexCount > 0);
-    
-    static bool vertBufCreated = false;
-    if (!vertBufCreated)
+
+    if (m_vertexBuffer != VK_NULL_HANDLE && m_vertexBufferMemory != VK_NULL_HANDLE)
     {
-        VkVertexInputBindingDescription mainBinding{};
-        mainBinding.binding = 0;
-        mainBinding.stride = bufferLayout.arrayStride;
-        mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        m_vertextBindingDescs.push_back(mainBinding);
-
-        for (size_t i = 0; i < bufferLayout.attributeCount; i++)
-        {
-            RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
-            VkVertexInputAttributeDescription vkAttribute{};
-            vkAttribute.binding = 0;
-            vkAttribute.location = attrib.location;
-            vkAttribute.format = RenderSysFormatToVulkanFormat(attrib.format);
-            vkAttribute.offset = attrib.offset;
-
-            m_vertextAttribDescs.push_back(vkAttribute);
-        }
-
-        // VkVertexInputAttributeDescription uvAttribute{};
-        // uvAttribute.binding = 0;
-        // uvAttribute.location = 1;
-        // uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
-        // uvAttribute.offset = offsetof(RenderSysVkVertex, uv);
-
-        VkBufferCreateInfo bufferInfo = {};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = bufferLength;
-		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        VmaAllocationCreateInfo vmaAllocInfo{};
-        vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-
-        if (vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_vertexBuffer, &m_vertexBufferMemory, nullptr) != VK_SUCCESS) {
-            std::cout << "vkCreateBuffer() failed!" << std::endl;
-            return;
-        }
-
-        // copy data to the buffer
-		void *buf;
-		auto res = vmaMapMemory(m_vma, m_vertexBufferMemory, &buf);
-		if (res != VK_SUCCESS) {
-			std::cout << "vkMapMemory() failed" << std::endl;
-			return;
-		}
-
-		std::memcpy(buf, bufferData.vertices.data(), bufferLength);
-		vmaUnmapMemory(m_vma, m_vertexBufferMemory);
-        
-        vertBufCreated = true;
+        // vertex buffer exists -> have to destroy
+        vmaDestroyBuffer(m_vma, m_vertexBuffer, m_vertexBufferMemory);
+        m_vertexBuffer = VK_NULL_HANDLE;
+        m_vertexBufferMemory = VK_NULL_HANDLE;
     }
+
+    assert(m_vertexBuffer == VK_NULL_HANDLE);
+    assert(m_vertexBufferMemory == VK_NULL_HANDLE);
+    
+    m_vertextBindingDescs.clear();
+    VkVertexInputBindingDescription mainBinding{};
+    mainBinding.binding = 0;
+    mainBinding.stride = bufferLayout.arrayStride;
+    mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    m_vertextBindingDescs.push_back(mainBinding);
+
+    m_vertextAttribDescs.clear();
+    for (size_t i = 0; i < bufferLayout.attributeCount; i++)
+    {
+        RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
+        VkVertexInputAttributeDescription vkAttribute{};
+        vkAttribute.binding = 0;
+        vkAttribute.location = attrib.location;
+        vkAttribute.format = RenderSysFormatToVulkanFormat(attrib.format);
+        vkAttribute.offset = attrib.offset;
+
+        m_vertextAttribDescs.push_back(vkAttribute);
+    }
+
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = bufferLength;
+    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VmaAllocationCreateInfo vmaAllocInfo{};
+    vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+    if (vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_vertexBuffer, &m_vertexBufferMemory, nullptr) != VK_SUCCESS) {
+        std::cout << "vkCreateBuffer() failed!" << std::endl;
+        return;
+    }
+
+    // copy data to the buffer
+    void *buf;
+    auto res = vmaMapMemory(m_vma, m_vertexBufferMemory, &buf);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkMapMemory() failed" << std::endl;
+        return;
+    }
+
+    std::memcpy(buf, bufferData.vertices.data(), bufferLength);
+    vmaUnmapMemory(m_vma, m_vertexBufferMemory);
 
     std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
 }
@@ -849,9 +852,11 @@ void VulkanRenderer3D::BindResources()
     vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
     VkDeviceSize offset = 0;
+    assert(m_vertexBuffer != VK_NULL_HANDLE);
 	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &offset);
     if (m_indexCount > 0)
     {
+        assert(m_indexBuffer != VK_NULL_HANDLE);
         vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, offset, VK_INDEX_TYPE_UINT32);
     }
 }
