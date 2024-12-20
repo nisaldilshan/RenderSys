@@ -16,8 +16,11 @@ public:
     void populate();
     void prepareNodeGraph();
     void printNodeGraph();
+    void applyVertexSkinning();
 
     std::vector<Model::Vertex> m_vertexBuffer;
+    std::vector<Model::Vertex> m_vertexBufferAltered;
+
     std::vector<uint32_t> m_indexBuffer;
     std::vector<glm::tvec4<uint16_t>> m_jointVec;
     std::vector<int> m_nodeToJoint;

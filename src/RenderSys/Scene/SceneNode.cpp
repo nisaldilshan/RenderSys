@@ -22,14 +22,50 @@ void SceneNode::setNodeName(std::string name)
 
 void SceneNode::setScale(glm::vec3 scale)
 {
+    m_scale = scale;
 }
 
 void SceneNode::setTranslation(glm::vec3 translation)
 {
+    m_translation = translation;
 }
 
 void SceneNode::setRotation(glm::quat rotation)
 {
+    m_rotation = rotation;
+}
+
+void SceneNode::calculateLocalTRSMatrix()
+{
+    glm::mat4 sMatrix = glm::scale(glm::mat4(1.0f), m_scale);
+    glm::mat4 rMatrix = glm::mat4_cast(m_rotation);
+    glm::mat4 tMatrix = glm::translate(glm::mat4(1.0f), m_translation);
+    mLocalTRSMatrix = tMatrix * rMatrix * sMatrix;
+}
+
+void SceneNode::calculateNodeMatrix(glm::mat4 parentNodeMatrix)
+{
+    m_nodeMatrix = parentNodeMatrix * mLocalTRSMatrix;
+    for (const auto& childNode : m_childNodes) 
+    {
+        childNode->calculateNodeMatrix(m_nodeMatrix);
+    }
+}
+
+void SceneNode::calculateJointMatrices(const std::vector<glm::mat4> &inverseBindMatrices, const std::vector<int> &nodeToJoint, std::vector<glm::mat4> &jointMatrices)
+{
+    auto placeHolder = nodeToJoint.at(m_nodeNum);
+    jointMatrices.at(placeHolder) = m_nodeMatrix * inverseBindMatrices.at(placeHolder);
+
+    for (const auto& childNode : m_childNodes)
+    {
+        childNode->calculateJointMatrices(inverseBindMatrices, nodeToJoint, jointMatrices);
+    }
+}
+
+glm::mat4 SceneNode::getNodeMatrix()
+{
+    return m_nodeMatrix;
 }
 
 void SceneNode::printHierarchy(int indent)

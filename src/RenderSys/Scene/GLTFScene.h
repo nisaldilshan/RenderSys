@@ -40,6 +40,7 @@ public:
     void loadVertexAttributes(std::vector<Model::Vertex>& vertexBuffer);
     void loadIndices(std::vector<uint32_t>& indexBuffer);
     void loadJointData(std::vector<glm::tvec4<uint16_t>>& jointVec, std::vector<int>& nodeToJoint, std::vector<glm::vec4>& weightVec);
+    void loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatrices);
     std::shared_ptr<SceneNode> getNodeGraph();
 private:
     static void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount);

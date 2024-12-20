@@ -17,6 +17,7 @@ class SceneNode {
 
     void calculateLocalTRSMatrix();
     void calculateNodeMatrix(glm::mat4 parentNodeMatrix);
+    void calculateJointMatrices(const std::vector<glm::mat4>& inverseBindMatrices, const std::vector<int>& nodeToJoint, std::vector<glm::mat4>& jointMatrices);
     glm::mat4 getNodeMatrix();
     void printHierarchy(int indent);
 
@@ -25,9 +26,9 @@ class SceneNode {
 
     int m_nodeNum = 0;
     std::string m_nodeName;
-    glm::vec3 mScale = glm::vec3(1.0f);
-    glm::vec3 mTranslation = glm::vec3(0.0f);
-    glm::quat mRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    glm::vec3 m_scale = glm::vec3(1.0f);
+    glm::vec3 m_translation = glm::vec3(0.0f);
+    glm::quat m_rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     glm::mat4 mLocalTRSMatrix = glm::mat4(1.0f);
-    glm::mat4 mNodeMatrix = glm::mat4(1.0f);
+    glm::mat4 m_nodeMatrix = glm::mat4(1.0f);
 };

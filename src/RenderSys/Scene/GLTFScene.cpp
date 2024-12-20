@@ -215,6 +215,11 @@ void GLTFScene::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::
     }
 }
 
+void GLTFScene::loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatrices)
+{
+
+}
+
 std::shared_ptr<SceneNode> GLTFScene::getNodeGraph()
 {
     assert(m_model);
@@ -240,6 +245,8 @@ std::shared_ptr<SceneNode> GLTFScene::traverse(const tinygltf::Node &node, uint3
     if (node.scale.size()) {
         sceneNode->setScale(glm::make_vec3(node.scale.data()));
     }
+
+    sceneNode->calculateLocalTRSMatrix();
 
     if (node.children.size() > 0) 
     {
