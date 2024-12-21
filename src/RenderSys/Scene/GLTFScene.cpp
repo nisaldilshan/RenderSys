@@ -217,7 +217,15 @@ void GLTFScene::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::
 
 void GLTFScene::loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatrices)
 {
+    const tinygltf::Skin &skin = m_model->skins.at(0);
 
+    int invBindMatAccessor = skin.inverseBindMatrices;
+    const tinygltf::Accessor &accessor = m_model->accessors.at(invBindMatAccessor);
+    const tinygltf::BufferView &bufferView = m_model->bufferViews.at(accessor.bufferView);
+    const tinygltf::Buffer &buffer = m_model->buffers.at(bufferView.buffer);
+
+    inverseBindMatrices.resize(skin.joints.size());
+    std::memcpy(inverseBindMatrices.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
 }
 
 std::shared_ptr<SceneNode> GLTFScene::getNodeGraph()

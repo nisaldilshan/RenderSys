@@ -43,22 +43,22 @@ public:
 		{
 			m_scene->allocateMemory();
 			m_scene->populate();
-
-			m_vertexBuffer.resize(m_scene->m_vertexBuffer.size());
-			for (size_t i = 0; i < m_vertexBuffer.size(); i++)
-			{
-				m_vertexBuffer[i].position = m_scene->m_vertexBuffer[i].pos;
-				m_vertexBuffer[i].texcoord0 = m_scene->m_vertexBuffer[i].uv0;
-			}
-			
-			m_indexData.resize(m_scene->m_indexBuffer.size());
-			for (size_t i = 0; i < m_vertexBuffer.size(); i++)
-			{
-				m_indexData[i] = m_scene->m_indexBuffer[i];
-			}
-
 			m_scene->prepareNodeGraph();
 			m_scene->printNodeGraph();
+			m_scene->applyVertexSkinning();
+
+			m_vertexBuffer.resize(m_scene->getVertexBuffer().size());
+			for (size_t i = 0; i < m_vertexBuffer.size(); i++)
+			{
+				m_vertexBuffer[i].position = m_scene->getVertexBuffer()[i].pos;
+				m_vertexBuffer[i].texcoord0 = m_scene->getVertexBuffer()[i].uv0;
+			}
+			
+			m_indexData.resize(m_scene->getIndexBuffer().size());
+			for (size_t i = 0; i < m_vertexBuffer.size(); i++)
+			{
+				m_indexData[i] = m_scene->getIndexBuffer()[i];
+			}
 		}
 		else
 		{
