@@ -17,6 +17,7 @@ add_subdirectory(3D/Basic/7.CameraControls)
 add_subdirectory(3D/Basic/8.Lighting)
 add_subdirectory(3D/Basic/9.NormalMapping)
 add_subdirectory(3D/Advanced/2.GLTFModel)
+add_subdirectory(3D/Advanced/3.FirstAnimation)
 
 if(RENDERER STREQUAL "WebGPU")
     add_subdirectory(Compute/1.BasicCompute)
