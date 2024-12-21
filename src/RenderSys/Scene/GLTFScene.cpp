@@ -96,35 +96,54 @@ void GLTFScene::loadVertexAttributes(std::vector<Model::Vertex>& vertexBuffer)
 
     for (const auto &primitive : mesh.primitives)
     {
-        assert(primitive.attributes.find("POSITION") != primitive.attributes.end());
-
-        const tinygltf::Accessor &posAccessor = m_model->accessors[primitive.attributes.find("POSITION")->second];
-        const tinygltf::BufferView &posView = m_model->bufferViews[posAccessor.bufferView];
-        const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[posView.buffer].data[posAccessor.byteOffset + posView.byteOffset]));
-        const auto vertexCount = static_cast<uint32_t>(posAccessor.count);
-        const auto posByteStride = posAccessor.ByteStride(posView) ? (posAccessor.ByteStride(posView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
-        assert(vertexBuffer.size() == vertexCount);
-
-        for (size_t v = 0; v < vertexCount; v++) 
         {
-            Model::Vertex& vert = vertexBuffer[v];
-			vert.pos = glm::vec4(glm::make_vec3(&bufferPos[v * posByteStride]), 1.0f);
+            assert(primitive.attributes.find("POSITION") != primitive.attributes.end());
+
+            const tinygltf::Accessor &posAccessor = m_model->accessors[primitive.attributes.find("POSITION")->second];
+            const tinygltf::BufferView &posView = m_model->bufferViews[posAccessor.bufferView];
+            const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[posView.buffer].data[posAccessor.byteOffset + posView.byteOffset]));
+            const auto vertexCount = static_cast<uint32_t>(posAccessor.count);
+            const auto posByteStride = posAccessor.ByteStride(posView) ? (posAccessor.ByteStride(posView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
+            assert(vertexBuffer.size() == vertexCount);
+
+            for (size_t v = 0; v < vertexCount; v++) 
+            {
+                Model::Vertex& vert = vertexBuffer[v];
+                vert.pos = glm::vec4(glm::make_vec3(&bufferPos[v * posByteStride]), 1.0f);
+            }
         }
 
         if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end())
         {
             std::cout << "GLTFScene::loadVertexAttributes found TEXCOORD_0" << std::endl;
-            const tinygltf::Accessor &posAccessor = m_model->accessors[primitive.attributes.find("TEXCOORD_0")->second];
-            const tinygltf::BufferView &posView = m_model->bufferViews[posAccessor.bufferView];
-            const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[posView.buffer].data[posAccessor.byteOffset + posView.byteOffset]));
-            const auto vertexCount = static_cast<uint32_t>(posAccessor.count);
-            const auto byteStride = posAccessor.ByteStride(posView) ? (posAccessor.ByteStride(posView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
+            const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("TEXCOORD_0")->second];
+            const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
+            const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
+            const auto vertexCount = static_cast<uint32_t>(accessor.count);
+            const auto byteStride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
             assert(vertexBuffer.size() == vertexCount);
 
             for (size_t v = 0; v < vertexCount; v++) 
             {
                 Model::Vertex& vert = vertexBuffer[v];
                 vert.uv0 = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
+            }
+        }
+
+        if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
+        {
+            std::cout << "GLTFScene::loadVertexAttributes found NORMAL" << std::endl;
+            const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("NORMAL")->second];
+            const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
+            const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
+            const auto vertexCount = static_cast<uint32_t>(accessor.count);
+            const auto byteStride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
+            assert(vertexBuffer.size() == vertexCount);
+
+            for (size_t v = 0; v < vertexCount; v++) 
+            {
+                Model::Vertex& vert = vertexBuffer[v];
+                vert.normal = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
             }
         }
     }

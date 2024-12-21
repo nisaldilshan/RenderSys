@@ -14,6 +14,7 @@ layout (location = 3) in vec2 in_uv;
 
 layout (location = 0) out vec3 out_viewDirection;
 layout (location = 1) out vec2 out_uv;
+layout (location = 2) out vec3 out_normal;
 
 void main() 
 {
@@ -21,4 +22,6 @@ void main()
     gl_Position = ubo.projectionMatrix * ubo.viewMatrix * worldPosition;
     out_viewDirection = ubo.cameraWorldPosition - worldPosition.xyz;
     out_uv = in_uv;
+    vec4 norm = ubo.modelMatrix * vec4(in_normal, 0.0);
+	out_normal = norm.xyz;
 }

@@ -38,31 +38,9 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
-		m_scene = std::make_unique<RenderSys::Scene>();
-		if (m_scene->load(RESOURCE_DIR "/Scenes/Woman.gltf", ""))
+		if (!loadScene())
 		{
-			m_scene->allocateMemory();
-			m_scene->populate();
-			m_scene->prepareNodeGraph();
-			m_scene->printNodeGraph();
-			m_scene->applyVertexSkinning();
-
-			m_vertexBuffer.resize(m_scene->getVertexBuffer().size());
-			for (size_t i = 0; i < m_vertexBuffer.size(); i++)
-			{
-				m_vertexBuffer[i].position = m_scene->getVertexBuffer()[i].pos;
-				m_vertexBuffer[i].texcoord0 = m_scene->getVertexBuffer()[i].uv0;
-			}
-			
-			m_indexData.resize(m_scene->getIndexBuffer().size());
-			for (size_t i = 0; i < m_vertexBuffer.size(); i++)
-			{
-				m_indexData[i] = m_scene->getIndexBuffer()[i];
-			}
-		}
-		else
-		{
-			std::cout << "Error loading GLTF model!" << std::endl;
+			return;
 		}
 
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
@@ -289,6 +267,38 @@ public:
 	}
 
 private:
+	bool loadScene()
+	{
+		m_scene = std::make_unique<RenderSys::Scene>();
+		if (!m_scene->load(RESOURCE_DIR "/Scenes/Woman.gltf", ""))
+		{
+			std::cout << "Error loading GLTF model!" << std::endl;
+			return false;
+		}
+
+		m_scene->allocateMemory();
+		m_scene->populate();
+		m_scene->prepareNodeGraph();
+		m_scene->applyVertexSkinning();
+
+		m_vertexBuffer.resize(m_scene->getVertexBuffer().size());
+		for (size_t i = 0; i < m_vertexBuffer.size(); i++)
+		{
+			m_vertexBuffer[i].position = m_scene->getVertexBuffer()[i].pos;
+			m_vertexBuffer[i].normal = m_scene->getVertexBuffer()[i].normal;
+			m_vertexBuffer[i].texcoord0 = m_scene->getVertexBuffer()[i].uv0;
+		}
+		
+		m_indexData.resize(m_scene->getIndexBuffer().size());
+		for (size_t i = 0; i < m_vertexBuffer.size(); i++)
+		{
+			m_indexData[i] = m_scene->getIndexBuffer()[i];
+		}
+
+		m_scene->printNodeGraph();
+		return true;
+	}
+
     std::unique_ptr<RenderSys::Renderer3D> m_renderer;
     uint32_t m_viewportWidth = 0;
     uint32_t m_viewportHeight = 0;
