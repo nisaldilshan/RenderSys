@@ -813,14 +813,14 @@ void VulkanRenderer3D::BindResources()
         descriptorWrite.pImageInfo = nullptr;
         descriptorWrite.pTexelBufferView = nullptr; // Optional
 
-        auto& uniformBufferIter = m_uniformBuffers.find(bindGroupBinding.binding);
+        const auto& uniformBufferIter = m_uniformBuffers.find(bindGroupBinding.binding);
         if (uniformBufferIter != m_uniformBuffers.end())
         {
             VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferIter->second);
             descriptorWrite.pBufferInfo = &bufferInfo;
         }
         
-        auto& textureIter = m_textures.find(bindGroupBinding.binding);
+        const auto& textureIter = m_textures.find(bindGroupBinding.binding);
         if (textureIter != m_textures.end())
         {
             VkDescriptorImageInfo& imageInfo = std::get<2>(textureIter->second);

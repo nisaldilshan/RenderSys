@@ -36,25 +36,25 @@ glm::mat3x3 computeTBN(const T corners[3], const glm::vec3& expectedN)
 	glm::vec2 eUV1 = corners[1].texcoord0 - corners[0].texcoord0;
 	glm::vec2 eUV2 = corners[2].texcoord0 - corners[0].texcoord0;
 
-	glm::vec3 T = normalize(ePos1 * eUV2.y - ePos2 * eUV1.y);
-	glm::vec3 B = normalize(ePos2 * eUV1.x - ePos1 * eUV2.x);
-	glm::vec3 N = cross(T, B);
+	glm::vec3 Tangent = normalize(ePos1 * eUV2.y - ePos2 * eUV1.y);
+	glm::vec3 Bitangent = normalize(ePos2 * eUV1.x - ePos1 * eUV2.x);
+	glm::vec3 N = cross(Tangent, Bitangent);
 
 	// Fix overall orientation
 	if (dot(N, expectedN) < 0.0) {
-		T = -T;
-		B = -B;
+		Tangent = -Tangent;
+		Bitangent = -Bitangent;
 		N = -N;
 	}
 
 	// Ortho-normalize the (T, B, expectedN) frame
 	// a. "Remove" the part of T that is along expected N
 	N = expectedN;
-	T = normalize(T - dot(T, N) * N);
+	Tangent = normalize(Tangent - dot(Tangent, N) * N);
 	// b. Recompute B from N and T
-	B = cross(N, T);
+	Bitangent = cross(N, Tangent);
 
-	return glm::mat3x3(T, B, N);
+	return glm::mat3x3(Tangent, Bitangent, N);
 }
 
 void populateTextureFrameAttributes(RenderSys::VertexBuffer& vertexData);
