@@ -69,14 +69,24 @@ void Renderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEnt
     m_rendererBackend->CreateBindGroup(bindGroupLayoutEntries);
 }
 
-void Renderer3D::CreateTexture(uint32_t binding, uint32_t width, uint32_t height, const void* textureData, uint32_t mipMapLevelCount)
+void Renderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor)
 {
-    m_rendererBackend->CreateTexture(binding, width, height, textureData, mipMapLevelCount);
+    m_rendererBackend->CreateTexture(binding, texDescriptor);
 }
 
-void Renderer3D::CreateTextureSampler()
+void RenderSys::Renderer3D::CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors)
 {
-    m_rendererBackend->CreateTextureSampler();
+    m_rendererBackend->CreateTextures(texDescriptors);
+}
+
+void RenderSys::Renderer3D::CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials)
+{
+    m_rendererBackend->CreateMaterialBindGroups(materials);
+}
+
+void Renderer3D::CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers)
+{
+    m_rendererBackend->CreateTextureSamplers(samplers);
 }
 
 void Renderer3D::SetClearColor(glm::vec4 clearColor)
@@ -117,6 +127,11 @@ void Renderer3D::Render(uint32_t uniformIndex)
 void Renderer3D::RenderIndexed(uint32_t uniformIndex)
 {
     m_rendererBackend->RenderIndexed(uniformIndex);
+}
+
+void RenderSys::Renderer3D::RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex)
+{
+    m_rendererBackend->RenderMesh(mesh, uniformIndex);
 }
 
 void Renderer3D::BeginRenderPass()

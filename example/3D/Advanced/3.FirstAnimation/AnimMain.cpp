@@ -7,7 +7,6 @@
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
-#include <RenderSys/Texture.h>
 #include <RenderSys/Camera.h>
 #include <RenderSys/Scene/Scene.h>
 
@@ -15,7 +14,6 @@ struct MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
     glm::mat4x4 modelMatrix;
-    std::array<float, 4> color;
 	glm::vec3 cameraWorldPosition;
     float time;
 };
@@ -24,14 +22,26 @@ static_assert(sizeof(MyUniforms) % 16 == 0);
 struct LightingUniforms {
     std::array<glm::vec4, 2> directions;
     std::array<glm::vec4, 2> colors;
-	// Material properties
+};
+static_assert(sizeof(LightingUniforms) % 16 == 0);
+
+struct alignas(16) MaterialItem {
+	std::array<float, 4> color;
 	float hardness = 16.0f;
 	float kd = 2.0f;
 	float ks = 0.3f;
-
-	float _pad;
+	float workflow = 1.0f;
+	float metallic = 0.0f;
+	float roughness = 0.0f;
+	int colorTextureSet;
+    int PhysicalDescriptorTextureSet;
+    int normalTextureSet;
 };
-static_assert(sizeof(LightingUniforms) % 16 == 0);
+
+struct MaterialUniforms {
+	std::array<MaterialItem, 32> materials;
+};
+static_assert(sizeof(MaterialUniforms) % 16 == 0);
 
 class Renderer3DLayer : public Walnut::Layer
 {
@@ -105,12 +115,14 @@ public:
 			assert(false);
 		}
 
-		m_renderer->CreateTextureSampler();
-
-		auto texHandle = Texture::loadTexture(RESOURCE_DIR "/Textures/Woman.png");
-		assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
-		m_renderer->CreateTexture(1, texHandle->GetWidth(), texHandle->GetHeight(), texHandle->GetData(), texHandle->GetMipLevelCount());
-
+		const auto& sceneTextures = m_scene->getTextures();
+		std::vector<RenderSys::TextureDescriptor> texDescriptors;
+		for (const auto &sceneTexture : sceneTextures)
+		{
+			texDescriptors.emplace_back(sceneTexture.GetDescriptor());
+		}
+		m_renderer->CreateTextures(texDescriptors);
+		m_renderer->CreateTextureSamplers(m_scene->getSamplers());
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 	}
 
@@ -131,7 +143,7 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
+			std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
 			// Position attribute
 			vertexAttribs[0].location = 0;
@@ -143,15 +155,20 @@ public:
 			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
 			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
 
-			// Color attribute
-			vertexAttribs[2].location = 2;
-			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
-
 			// UV attribute
+			vertexAttribs[2].location = 2;
+			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x2;
+			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, texcoord0);
+
+			// Color attribute
 			vertexAttribs[3].location = 3;
-			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
+			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x3;
+			vertexAttribs[3].offset = offsetof(RenderSys::Vertex, color);
+
+			// Tangent attribute
+			vertexAttribs[4].location = 4;
+			vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
+			vertexAttribs[4].offset = offsetof(RenderSys::Vertex, tangent);
 
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
@@ -164,8 +181,7 @@ public:
 			assert(m_indexData.size() > 0);
 			m_renderer->SetIndexBufferData(m_indexData);
 
-			// Since we now have 2 bindings, we use a vector to store them
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(4);
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 			// The uniform buffer binding that we already had
 			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 			uniformBindingLayout.setDefault();
@@ -175,35 +191,52 @@ public:
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 			uniformBindingLayout.buffer.hasDynamicOffset = false;
 
-			// The texture binding
-			RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
-			textureBindingLayout.setDefault();
-			textureBindingLayout.binding = 1;
-			textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
-			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
-
-			// The sampler binding
-			RenderSys::BindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[2];
-			samplerBindingLayout.setDefault();
-			samplerBindingLayout.binding = 2;
-			samplerBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			samplerBindingLayout.sampler.type = RenderSys::SamplerBindingType::Filtering;
-
 			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[3];
+			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
 			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 3;
+			lightingUniformLayout.binding = 1;
 			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
 			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
 
+			// Material Uniforms
+			RenderSys::BindGroupLayoutEntry& materialUniformLayout = bindingLayoutEntries[2];
+			materialUniformLayout.setDefault();
+			materialUniformLayout.binding = 2;
+			materialUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
+			materialUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+			materialUniformLayout.buffer.minBindingSize = sizeof(MaterialUniforms);
+
 			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 			m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
+			m_renderer->CreateUniformBuffer(materialUniformLayout.binding, sizeof(MaterialUniforms), 1);
 
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
+			const auto& materials =  m_scene->getMaterials();
+			m_renderer->CreateMaterialBindGroups(materials);
 			m_renderer->CreatePipeline();
 			m_camera->SetViewportSize((float)m_viewportWidth, (float)m_viewportHeight);
+
+			int matCount = 0;
+			assert(materials.size() <= 32);
+			for (const auto& material : materials)
+			{
+				const auto& baseColor = material.baseColorFactor;
+				m_materialUniformData.materials[matCount].color = {
+					baseColor.x, baseColor.y, baseColor.z, baseColor.w
+				};
+				m_materialUniformData.materials[matCount].metallic = material.metallicFactor;
+				m_materialUniformData.materials[matCount].roughness = material.roughnessFactor;
+				m_materialUniformData.materials[matCount].colorTextureSet 
+					= material.baseColorTextureIndex == -1 ? -1 : 0; // material.texCoordSets.baseColor
+				m_materialUniformData.materials[matCount].PhysicalDescriptorTextureSet 
+					= material.normalTextureIndex == -1 ? -1 : 0; // material.texCoordSets.normal
+				m_materialUniformData.materials[matCount].normalTextureSet 
+					= material.metallicRoughnessTextureIndex == -1 ? -1 : 0;
+				matCount++;
+			}
+
+			m_renderer->SetClearColor({ 0.45f, 0.55f, 0.60f, 1.00f });
         }
 
 		if (m_renderer)
@@ -212,29 +245,31 @@ public:
 
 			m_renderer->BeginRenderPass();
 
-			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
-			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
-
 			glm::mat4x4 M1(1.0);
 			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
-			M1 = glm::scale(M1, glm::vec3(0.3f));
+			M1 = glm::scale(M1, glm::vec3(0.005f));
+			// set uniform data
+			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
+			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
 			m_myUniformData.modelMatrix = M1;
-
-			m_myUniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
-
-			// Initial values
 			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
 			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
-			m_renderer->SetUniformBufferData(3, &m_lightingUniformData, 0);
-			m_renderer->BindResources();
+			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
+			m_renderer->SetUniformBufferData(2, &m_materialUniformData, 0);
 
-			m_renderer->RenderIndexed(0);
+			m_renderer->BindResources();
+			for (const auto &rootNode : m_scene->getRootNodes())
+			{
+				const RenderSys::Mesh mesh = rootNode->getMesh();
+				m_renderer->RenderMesh(mesh, 0);
+			}
+			
 			m_renderer->EndRenderPass();
 		}
 
@@ -270,27 +305,25 @@ private:
 	bool loadScene()
 	{
 		m_scene = std::make_unique<RenderSys::Scene>();
-		if (!m_scene->load(RESOURCE_DIR "/Scenes/Woman.gltf", ""))
+		//if (!m_scene->load(RESOURCE_DIR "/Scenes/newme/newme.gltf", ""))
+		if (!m_scene->load("C:/develop/cpp/glTF-Sample-Models/2.0/Sponza/glTF/Sponza.gltf", ""))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
 		}
 
-		m_scene->allocateMemory();
 		m_scene->populate();
-		m_scene->prepareNodeGraph();
-		m_scene->applyVertexSkinning();
-
 		m_vertexBuffer.resize(m_scene->getVertexBuffer().size());
 		for (size_t i = 0; i < m_vertexBuffer.size(); i++)
 		{
 			m_vertexBuffer[i].position = m_scene->getVertexBuffer()[i].pos;
 			m_vertexBuffer[i].normal = m_scene->getVertexBuffer()[i].normal;
 			m_vertexBuffer[i].texcoord0 = m_scene->getVertexBuffer()[i].uv0;
+			m_vertexBuffer[i].tangent = m_scene->getVertexBuffer()[i].tangent;
 		}
 		
 		m_indexData.resize(m_scene->getIndexBuffer().size());
-		for (size_t i = 0; i < m_vertexBuffer.size(); i++)
+		for (size_t i = 0; i < m_indexData.size(); i++)
 		{
 			m_indexData[i] = m_scene->getIndexBuffer()[i];
 		}
@@ -307,6 +340,7 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
+	MaterialUniforms m_materialUniformData;
 	RenderSys::VertexBuffer m_vertexBuffer;
 	std::vector<uint32_t> m_indexData;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;

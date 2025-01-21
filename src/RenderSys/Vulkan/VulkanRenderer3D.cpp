@@ -60,8 +60,8 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
 
     m_imageViewToRenderInto = CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    CreateTextureSampler();
-    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+    CreateDefaultTextureSampler();
+    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
 }
 
 void VulkanRenderer3D::CreateDepthImage()
@@ -203,12 +203,12 @@ void VulkanRenderer3D::DestroyPipeline()
 
 void VulkanRenderer3D::DestroyBindGroup()
 {
-    if (m_bindGroup && m_bindGroupPool)
+    if (m_mainBindGroup && m_bindGroupPool)
     {
         vkDeviceWaitIdle(Vulkan::GetDevice());
         // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
         vkDestroyDescriptorPool(Vulkan::GetDevice(), m_bindGroupPool, nullptr);
-        m_bindGroup = VK_NULL_HANDLE;
+        m_mainBindGroup = VK_NULL_HANDLE;
         m_bindGroupPool = VK_NULL_HANDLE;
     }
 
@@ -218,7 +218,7 @@ void VulkanRenderer3D::DestroyBindGroup()
         m_bindGroupLayout = VK_NULL_HANDLE;
     }
 
-    m_bindGroupBindings.clear();
+    m_mainBindGroupBindings.clear();
 }
 
 void VulkanRenderer3D::DestroyBuffers()
@@ -274,14 +274,14 @@ void VulkanRenderer3D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_
 void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
     assert(bindGroupLayoutEntries.size() >= 1);
-    assert(!m_bindGroupLayout && !m_bindGroupPool && !m_bindGroup);
+    assert(!m_bindGroupLayout && !m_bindGroupPool && !m_mainBindGroup);
 
     std::unordered_map<VkDescriptorType, uint32_t> descriptorTypeCountMap;
 
     for (const auto &bindGroupLayoutEntry : bindGroupLayoutEntries)
     {
         auto vkBinding = GetVulkanBindGroupLayoutEntry(bindGroupLayoutEntry);
-        m_bindGroupBindings.push_back(vkBinding);
+        m_mainBindGroupBindings.push_back(vkBinding);
 
         auto mapIter = descriptorTypeCountMap.find(vkBinding.descriptorType);
         if (mapIter != descriptorTypeCountMap.end())
@@ -296,8 +296,8 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = m_bindGroupBindings.size();
-    layoutInfo.pBindings = m_bindGroupBindings.data();
+    layoutInfo.bindingCount = m_mainBindGroupBindings.size();
+    layoutInfo.pBindings = m_mainBindGroupBindings.data();
 
     if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
@@ -325,7 +325,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     allocInfo.descriptorSetCount = 1;
     allocInfo.pSetLayouts = &m_bindGroupLayout;
 
-    if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_mainBindGroup) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 }
@@ -336,17 +336,28 @@ void VulkanRenderer3D::CreatePipelineLayout()
     {
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
         pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, m_materialBindGroupLayout};
         if (!m_bindGroupLayout)
         {
             pipelineLayoutCreateInfo.setLayoutCount = 0;
             pipelineLayoutCreateInfo.pSetLayouts = nullptr;
         }
-        else
+        else if (!m_materialBindGroupLayout)
         {
             pipelineLayoutCreateInfo.setLayoutCount = 1;
             pipelineLayoutCreateInfo.pSetLayouts = &m_bindGroupLayout;
         }
-        pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+        else
+        {
+            pipelineLayoutCreateInfo.setLayoutCount = layouts.size();
+            pipelineLayoutCreateInfo.pSetLayouts = layouts.data();
+        }
+        
+        VkPushConstantRange pushConstantRange{};
+		pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pushConstantRange.size = sizeof(uint32_t);
+        pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+        pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
         if (vkCreatePipelineLayout(Vulkan::GetDevice(), &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
             std::cout << "error: could not create pipeline layout" << std::endl;
@@ -496,8 +507,8 @@ void VulkanRenderer3D::CreatePipeline()
     rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;
     rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizerInfo.lineWidth = 1.0f;
-    rasterizerInfo.cullMode = VK_CULL_MODE_NONE;
-    rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizerInfo.depthBiasEnable = VK_FALSE;
 
     VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
@@ -564,7 +575,7 @@ void VulkanRenderer3D::CreatePipeline()
 
     // can save memory by calling DestroyShaders() after pipeline have been created
     // currently not possible, as pipeline get recreated every window get resized
-    
+    assert(m_pipeline != VK_NULL_HANDLE);
     std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
@@ -699,7 +710,7 @@ void VulkanRenderer3D::CreateIndexBuffer(const std::vector<uint32_t> &bufferData
 
 void VulkanRenderer3D::SetClearColor(glm::vec4 clearColor)
 {
-    Vulkan::SetClearColor(ImVec4(clearColor.x, clearColor.y, clearColor.z, clearColor.w));
+    m_clearColor = {clearColor.x, clearColor.y, clearColor.z, clearColor.w};
 }
 
 uint32_t VulkanRenderer3D::GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
@@ -713,6 +724,8 @@ uint32_t VulkanRenderer3D::GetUniformStride(const uint32_t& uniformIndex, const 
         VkPhysicalDeviceProperties deviceProperties;
         vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
         minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
+        std::cout << "maxMemoryAllocationCount : " << deviceProperties.limits.maxMemoryAllocationCount << std::endl;
+        std::cout << "maxDrawIndexedIndexValue : " << deviceProperties.limits.maxDrawIndexedIndexValue << std::endl;
     }
 
     assert(sizeOfUniform > 0);
@@ -798,13 +811,13 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData, 
 
 void VulkanRenderer3D::BindResources()
 {
-    assert(m_bindGroupBindings.size() > 0);
+    assert(m_mainBindGroupBindings.size() > 0);
 
-    for (auto& bindGroupBinding : m_bindGroupBindings)
+    for (auto& bindGroupBinding : m_mainBindGroupBindings)
     {
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = m_bindGroup;
+        descriptorWrite.dstSet = m_mainBindGroup;
         descriptorWrite.dstBinding = bindGroupBinding.binding;
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.descriptorType = bindGroupBinding.descriptorType;
@@ -824,13 +837,15 @@ void VulkanRenderer3D::BindResources()
         if (textureIter != m_textures.end())
         {
             VkDescriptorImageInfo& imageInfo = std::get<2>(textureIter->second);
+            imageInfo.sampler = m_defaultTextureSampler;
             descriptorWrite.pImageInfo = &imageInfo;
         }
 
         if (descriptorWrite.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
         {
+            assert(false);
             VkDescriptorImageInfo imageInfo{};
-            imageInfo.sampler = m_textureSampler;
+            imageInfo.sampler = m_defaultTextureSampler;
             descriptorWrite.pImageInfo = &imageInfo;
         }
         
@@ -868,7 +883,7 @@ void VulkanRenderer3D::Render(uint32_t uniformIndex)
 
 void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
 {
-    if (m_bindGroup)
+    if (m_mainBindGroup)
     {
         auto& uniformBufferTuple = m_uniformBuffers[0]; // this is working because we have dynamicOffsetys only in binding 0;
         const auto sizeOfOneUniform = std::get<0>(uniformBufferTuple).range;
@@ -879,7 +894,7 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
         if (!computedDynamicOffsetCount)
         {
             int count = 0;
-            for (const auto& binding : m_bindGroupBindings)
+            for (const auto& binding : m_mainBindGroupBindings)
             {
                 if (binding.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
                 {
@@ -892,7 +907,7 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
         }
 
         vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
-                                    , 1, &m_bindGroup
+                                    , 1, &m_mainBindGroup
                                     , noOfDynamicOffsetEnabledbindings, &dynamicOffset);
     }
 
@@ -906,6 +921,34 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
     }
 }
 
+void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex)
+{
+    assert(m_mainBindGroup != VK_NULL_HANDLE);
+    std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, m_mainBindGroup};
+    for (const auto &primitive : mesh.primitives)
+    {
+        if (primitive.materialIndex < m_materialBindGroups.size())
+        {
+            descriptorsets[1] = m_materialBindGroups[primitive.materialIndex];
+        }
+
+        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
+                                    , descriptorsets.size(), descriptorsets.data()
+                                    , 0, nullptr);
+
+        vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t), &primitive.materialIndex);
+
+        if (m_indexCount > 0)
+        {
+            vkCmdDrawIndexed(m_commandBuffer, primitive.indexCount, 1, primitive.firstIndex, 0, 0);
+        }
+        else
+        {
+            vkCmdDraw(m_commandBuffer, m_vertexCount, 1, 0, 0);
+        }
+    }
+}
+
 ImTextureID VulkanRenderer3D::GetDescriptorSet()
 {
     return m_descriptorSet;
@@ -914,7 +957,7 @@ ImTextureID VulkanRenderer3D::GetDescriptorSet()
 void VulkanRenderer3D::BeginRenderPass()
 {
     std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+    clearValues[0].color = m_clearColor;
     clearValues[1].depthStencil = {1.0f, 0};
 
     auto err = vkResetCommandBuffer(m_commandBuffer, 0);
@@ -962,10 +1005,10 @@ void VulkanRenderer3D::DestroyTextures()
     m_textures.clear();
     
 
-    if (m_textureSampler)
+    if (m_defaultTextureSampler)
     {
-        vkDestroySampler(Vulkan::GetDevice(), m_textureSampler, nullptr);
-        m_textureSampler = VK_NULL_HANDLE;
+        vkDestroySampler(Vulkan::GetDevice(), m_defaultTextureSampler, nullptr);
+        m_defaultTextureSampler = VK_NULL_HANDLE;
     }
 }
 
@@ -997,7 +1040,7 @@ void VulkanRenderer3D::SubmitCommandBuffer()
     GraphicsAPI::Vulkan::QueueSubmit(end_info);
 }
 
-void VulkanRenderer3D::CreateTexture(uint32_t binding, uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount)
+void VulkanRenderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor)
 {
     const auto& [textureIter, inserted] = m_textures.insert(
                                                     {
@@ -1018,10 +1061,10 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, uint32_t textureWidth, ui
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
     imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    imageInfo.extent.width = static_cast<uint32_t>(textureWidth);
-    imageInfo.extent.height = static_cast<uint32_t>(textureHeight);
+    imageInfo.extent.width = static_cast<uint32_t>(texDescriptor.width);
+    imageInfo.extent.height = static_cast<uint32_t>(texDescriptor.height);
     imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = mipMapLevelCount;
+    imageInfo.mipLevels = texDescriptor.mipMapLevelCount;
     imageInfo.arrayLayers = 1;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -1042,21 +1085,158 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, uint32_t textureWidth, ui
     VkDescriptorImageInfo& descriptorImageInfo = std::get<2>(textureTuple);
     descriptorImageInfo.imageView = CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
     descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    UploadTexture(image, textureWidth, textureHeight, textureData, mipMapLevelCount);
+    UploadTexture(image, texDescriptor);
 }
 
-void VulkanRenderer3D::UploadTexture(VkImage texture, uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount)
+void VulkanRenderer3D::CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors)
+{
+    if (m_sceneTextures.size() > 0)
+        return;
+    
+    for (const auto &texDescriptor : texDescriptors)
+    {
+        auto& sceneTextureTuple = m_sceneTextures.emplace_back();
+
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+        imageInfo.extent.width = static_cast<uint32_t>(texDescriptor.width);
+        imageInfo.extent.height = static_cast<uint32_t>(texDescriptor.height);
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = texDescriptor.mipMapLevelCount;
+        imageInfo.arrayLayers = 1;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        VmaAllocationCreateInfo imageAllocInfo = {};
+        imageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        VkImage& image = std::get<0>(sceneTextureTuple);
+        VmaAllocation& imageMemory = std::get<1>(sceneTextureTuple);
+        if (vmaCreateImage(m_vma, &imageInfo, &imageAllocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create image!");
+        }
+
+        VkDescriptorImageInfo& descriptorImageInfo = std::get<2>(sceneTextureTuple);
+        descriptorImageInfo.imageView = CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
+        descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        UploadTexture(image, texDescriptor);
+    }
+
+    std::cout << "VulkanRenderer3D::CreateTextures - Created " << m_sceneTextures.size() << " textures" << std::endl;
+}
+
+void VulkanRenderer3D::CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials)
+{
+    std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings{
+        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
+        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
+        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic=roughness texture
+    };
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = materialBindGroupBindings.size();
+    layoutInfo.pBindings = materialBindGroupBindings.data();
+
+    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_materialBindGroupLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+
+    std::vector<VkDescriptorPoolSize> poolSizes;
+    poolSizes.emplace_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * static_cast<uint32_t>(materials.size())});
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = poolSizes.size();
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = materials.size();
+    VkDescriptorPool materialBindGroupPool = VK_NULL_HANDLE;
+    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &materialBindGroupPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor pool!");
+    }
+    
+    m_materialBindGroups.resize(materials.size());
+    int count = 0;
+    for (const auto &material : materials)
+    {
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = materialBindGroupPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &m_materialBindGroupLayout;
+
+        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_materialBindGroups[count]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate descriptor sets!");
+        }
+
+        std::vector<VkWriteDescriptorSet> descriptorWrites;
+        descriptorWrites.resize(materialBindGroupBindings.size());
+        VkDescriptorImageInfo imageInfo{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED};
+        for (size_t i = 0; i < materialBindGroupBindings.size(); i++)
+        {
+            VkWriteDescriptorSet textureWrite{};
+            textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            textureWrite.dstSet = m_materialBindGroups[count];
+            textureWrite.dstBinding = i;
+            textureWrite.dstArrayElement = 0;
+            textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            textureWrite.descriptorCount = 1;
+            textureWrite.pBufferInfo = nullptr;
+            textureWrite.pImageInfo = &imageInfo;
+            textureWrite.pTexelBufferView = nullptr;
+
+            descriptorWrites[i] = textureWrite;
+        }
+
+        assert(material.baseColorTextureIndex >= 0);
+        VkDescriptorImageInfo& baseColorTextureImageInfo = std::get<2>(m_sceneTextures[material.baseColorTextureIndex]);
+        baseColorTextureImageInfo.sampler = m_sceneTextureSamplers[0];
+        descriptorWrites[0].pImageInfo = &baseColorTextureImageInfo;
+
+        if (material.normalTextureIndex >= 0)
+        {
+            VkDescriptorImageInfo& normalTextureImageInfo = std::get<2>(m_sceneTextures[material.normalTextureIndex]);
+            normalTextureImageInfo.sampler = m_sceneTextureSamplers[0];
+            descriptorWrites[1].pImageInfo = &normalTextureImageInfo;
+        }
+        else
+        {
+            descriptorWrites[1].pImageInfo = &baseColorTextureImageInfo;
+        }
+
+        if (material.metallicRoughnessTextureIndex >= 0)
+        {
+            VkDescriptorImageInfo& metallicRoughnessTextureImageInfo = std::get<2>(m_sceneTextures[material.metallicRoughnessTextureIndex]);
+            metallicRoughnessTextureImageInfo.sampler = m_sceneTextureSamplers[0];
+            descriptorWrites[2].pImageInfo = &metallicRoughnessTextureImageInfo;
+        }
+        else
+        {
+            descriptorWrites[2].pImageInfo = &baseColorTextureImageInfo;
+        }
+
+        vkUpdateDescriptorSets(Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+        count++;
+    }
+}
+
+void VulkanRenderer3D::UploadTexture(VkImage texture, const RenderSys::TextureDescriptor& texDescriptor)
 {
     // Transition Image to a copyable Layout
     TransitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB, 
                         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, m_commandPool);
 
-    uint32_t mipLevelWidth = textureWidth;
-    uint32_t mipLevelHeight = textureHeight;
+    uint32_t mipLevelWidth = texDescriptor.width;
+    uint32_t mipLevelHeight = texDescriptor.height;
     uint32_t previousMipLevelWidth = 0;
     std::vector<uint8_t> previousLevelPixels;
 
-    mipMapLevelCount = 1; // TODO - Fix mipmap generation
+    uint32_t mipMapLevelCount = 1; // TODO - Fix mipmap generation (texDescriptor.mipMapLevelCount)
     for (uint32_t level = 0; level < mipMapLevelCount; level++)
     {
         // Create image data
@@ -1064,7 +1244,7 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, uint32_t textureWidth, uin
         std::vector<uint8_t> pixels(sizeOfData);
         if (level == 0) 
         {
-            memcpy(pixels.data(), textureData, sizeOfData);
+            memcpy(pixels.data(), texDescriptor.data, sizeOfData);
         } 
 		else
         {
@@ -1124,9 +1304,9 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, uint32_t textureWidth, uin
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, m_commandPool);
 }
 
-void VulkanRenderer3D::CreateTextureSampler()
+void VulkanRenderer3D::CreateDefaultTextureSampler()
 {
-    if (m_textureSampler)
+    if (m_defaultTextureSampler)
         return;
 
     VkSamplerCreateInfo texSamplerInfo{};
@@ -1147,8 +1327,39 @@ void VulkanRenderer3D::CreateTextureSampler()
     texSamplerInfo.anisotropyEnable = VK_FALSE;
     texSamplerInfo.maxAnisotropy = 1.0f;
 
-    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_textureSampler) != VK_SUCCESS) {
+    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_defaultTextureSampler) != VK_SUCCESS) {
         std::cout << "error: could not create sampler for texture" << std::endl;
+    }
+}
+
+void VulkanRenderer3D::CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers)
+{
+    for (const auto &sampler : samplers)
+    {
+        VkSamplerCreateInfo texSamplerInfo{};
+        texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        texSamplerInfo.magFilter = sampler.magFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+        texSamplerInfo.minFilter = sampler.minFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+        texSamplerInfo.addressModeU = sampler.addressModeU == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        texSamplerInfo.addressModeV = sampler.addressModeV == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        texSamplerInfo.addressModeW = sampler.addressModeW == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        texSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        texSamplerInfo.unnormalizedCoordinates = VK_FALSE;
+        texSamplerInfo.compareEnable = VK_FALSE;
+        texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        texSamplerInfo.mipLodBias = 0.0f;
+        texSamplerInfo.minLod = 0.0f;
+        texSamplerInfo.maxLod = 0.0f;
+        texSamplerInfo.anisotropyEnable = VK_FALSE;
+        texSamplerInfo.maxAnisotropy = 1.0f;
+
+        VkSampler textureSampler = VK_NULL_HANDLE;
+        if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+            std::cout << "error: could not create sampler for texture" << std::endl;
+        }
+
+        m_sceneTextureSamplers.push_back(textureSampler);
     }
 }
 

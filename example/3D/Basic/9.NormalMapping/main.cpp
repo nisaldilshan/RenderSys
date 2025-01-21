@@ -40,10 +40,10 @@ public:
 		assert(success);
 		Geometry::populateTextureFrameAttributes(m_vertexBuffer);
 
-		auto baseColorTexture = Texture::loadTexture(RESOURCE_DIR "/Textures/cobblestone_floor_08_diff_2k.jpg");
+		auto baseColorTexture = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/cobblestone_floor_08_diff_2k.jpg");
 		assert(baseColorTexture && baseColorTexture->GetWidth() > 0 && baseColorTexture->GetHeight() > 0 && baseColorTexture->GetMipLevelCount() > 0);
 
-		auto normalTexture = Texture::loadTexture(RESOURCE_DIR "/Textures/cobblestone_floor_08_nor_gl_2k.png");
+		auto normalTexture = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/cobblestone_floor_08_nor_gl_2k.png");
 		assert(normalTexture && normalTexture->GetWidth() > 0 && normalTexture->GetHeight() > 0 && normalTexture->GetMipLevelCount() > 0);
 
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
@@ -107,11 +107,10 @@ public:
 					float _pad[3];
 				} ubo;
 
-				layout(binding = 1) uniform texture2D tex;
-				layout(binding = 2) uniform texture2D normal;
-				layout(binding = 3) uniform sampler s;
+				layout(binding = 1) uniform sampler2D tex;
+				layout(binding = 2) uniform sampler2D normal;
 
-				layout(binding = 4) uniform LightingUniforms {
+				layout(binding = 3) uniform LightingUniforms {
 					vec4 directions[2];
 					vec4 colors[2];
 					float hardness;
@@ -132,18 +131,18 @@ public:
 				void main()
 				{
 					float normalMapStrength = 1.0; // could be a uniform
-					vec3 encodedN = texture(sampler2D(normal, s), in_uv).rgb;
+					vec3 encodedN = texture(normal, in_uv).rgb;
 					vec3 localN = encodedN * 2.0 - 1.0;
 					// The TBN matrix converts directions from the local space to the world space
 					mat3 localToWorld = mat3(
 						normalize(in_tangent),
-						normalize(cross(in_normal, in_tangent)),
+						-normalize(cross(in_normal, in_tangent)),
 						normalize(in_normal)
 					);
 					vec3 worldN = localToWorld * localN;
 					vec3 N = normalize(mix(in_normal, worldN, normalMapStrength));
 					vec3 V = normalize(in_viewDirection);
-					vec3 texColor = texture(sampler2D(tex, s), in_uv).rgb; 
+					vec3 texColor = texture(tex, in_uv).rgb; 
 					vec3 color = vec3(0.0);
 					for (int i = 0; i < 2; i++)
 					{
@@ -289,9 +288,8 @@ public:
 			assert(false);
 		}
 
-		m_renderer->CreateTextureSampler();
-		m_renderer->CreateTexture(1, baseColorTexture->GetWidth(), baseColorTexture->GetHeight(), baseColorTexture->GetData(), baseColorTexture->GetMipLevelCount());
-		m_renderer->CreateTexture(2, normalTexture->GetWidth(), normalTexture->GetHeight(), normalTexture->GetData(), normalTexture->GetMipLevelCount());
+		m_renderer->CreateTexture(1, {baseColorTexture->GetData(), baseColorTexture->GetWidth(), baseColorTexture->GetHeight(), baseColorTexture->GetMipLevelCount()});
+		m_renderer->CreateTexture(2, {normalTexture->GetData(), normalTexture->GetWidth(), normalTexture->GetHeight(), normalTexture->GetMipLevelCount()});
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 	}
@@ -350,7 +348,7 @@ public:
 			m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
 
 			// Create binding layouts
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(5);
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(4);
 			// The uniform buffer binding that we already had
 			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 			uniformBindingLayout.setDefault();
@@ -376,17 +374,10 @@ public:
 			normalTextureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
 			normalTextureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
-			// The sampler binding
-			RenderSys::BindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[3];
-			samplerBindingLayout.setDefault();
-			samplerBindingLayout.binding = 3;
-			samplerBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			samplerBindingLayout.sampler.type = RenderSys::SamplerBindingType::Filtering;
-
 			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[4];
+			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[3];
 			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 4;
+			lightingUniformLayout.binding = 3;
 			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
 			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
@@ -426,7 +417,7 @@ public:
 			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
-			m_renderer->SetUniformBufferData(4, &m_lightingUniformData, 0);
+			m_renderer->SetUniformBufferData(3, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
 			m_renderer->Render(0);

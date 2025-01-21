@@ -9,10 +9,8 @@ layout(binding = 0) uniform UniformBufferObject {
     float _pad[3];
 } ubo;
 
-layout(binding = 1) uniform texture2D tex;
-layout(binding = 2) uniform sampler s;
-
-layout(binding = 3) uniform LightingUniforms {
+layout(binding = 1) uniform sampler2D tex;
+layout(binding = 2) uniform LightingUniforms {
     vec4 directions[2];
     vec4 colors[2];
     float hardness;
@@ -31,7 +29,7 @@ void main()
 {
     vec3 N = normalize(in_normal);
     vec3 V = normalize(in_viewDirection);
-    vec3 texColor = texture(sampler2D(tex, s), in_uv).rgb; 
+    vec3 texColor = texture(tex, in_uv).rgb; 
 
     vec3 color = vec3(0.0);
     for (int i = 0; i < 2; i++)

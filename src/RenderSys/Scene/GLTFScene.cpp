@@ -20,6 +20,8 @@ GLTFScene::~GLTFScene()
 
 bool GLTFScene::load(const std::filesystem::path &filePath, const std::string &textureFilename)
 {
+    m_sceneFilePath = filePath;
+
     tinygltf::TinyGLTF gltfLoader;
     std::string loaderErrors;
     std::string loaderWarnings;
@@ -89,119 +91,139 @@ void GLTFScene::getNodeProps(const tinygltf::Node& node, const tinygltf::Model& 
     }
 }
 
-void GLTFScene::loadVertexAttributes(std::vector<Model::Vertex>& vertexBuffer)
+RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primitive, std::vector<Model::Vertex> &vertices, std::vector<uint32_t> &indices, const uint32_t indexCount)
 {
-    assert(m_model->meshes.size() == 1);
-    const tinygltf::Mesh mesh = m_model->meshes[0];
+    assert(primitive.attributes.find("POSITION") != primitive.attributes.end()); // position is mandatory
+    const tinygltf::Accessor &posAccessor = m_model->accessors[primitive.attributes.find("POSITION")->second];
+    const auto vertexCount = static_cast<uint32_t>(posAccessor.count);
+    assert(vertexCount > 0);
+    const uint32_t vertexStart = vertices.size();
+    vertices.resize(vertexStart + vertexCount);
 
-    for (const auto &primitive : mesh.primitives)
+    const tinygltf::BufferView &positionBufferView = m_model->bufferViews[posAccessor.bufferView];
+    const auto* positionBuffer = reinterpret_cast<const float *>(&(m_model->buffers[positionBufferView.buffer].data[posAccessor.byteOffset + positionBufferView.byteOffset]));
+    const auto posByteStride = posAccessor.ByteStride(positionBufferView) ? 
+                                (posAccessor.ByteStride(positionBufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
+
+    for (size_t v = 0; v < vertexCount; v++) 
     {
+        Model::Vertex& vert = vertices[v + vertexStart];
+        vert.pos = glm::vec4(glm::make_vec3(&positionBuffer[v * posByteStride]), 1.0f);
+    }
+
+    if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end())
+    {
+        std::cout << "GLTFScene::loadVertexAttributes found TEXCOORD_0" << std::endl;
+        const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("TEXCOORD_0")->second];
+        const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
+        const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
+        const auto byteStride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
+
+        for (size_t v = 0; v < vertexCount; v++) 
         {
-            assert(primitive.attributes.find("POSITION") != primitive.attributes.end());
-
-            const tinygltf::Accessor &posAccessor = m_model->accessors[primitive.attributes.find("POSITION")->second];
-            const tinygltf::BufferView &posView = m_model->bufferViews[posAccessor.bufferView];
-            const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[posView.buffer].data[posAccessor.byteOffset + posView.byteOffset]));
-            const auto vertexCount = static_cast<uint32_t>(posAccessor.count);
-            const auto posByteStride = posAccessor.ByteStride(posView) ? (posAccessor.ByteStride(posView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
-            assert(vertexBuffer.size() == vertexCount);
-
-            for (size_t v = 0; v < vertexCount; v++) 
-            {
-                Model::Vertex& vert = vertexBuffer[v];
-                vert.pos = glm::vec4(glm::make_vec3(&bufferPos[v * posByteStride]), 1.0f);
-            }
-        }
-
-        if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end())
-        {
-            std::cout << "GLTFScene::loadVertexAttributes found TEXCOORD_0" << std::endl;
-            const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("TEXCOORD_0")->second];
-            const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
-            const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
-            const auto vertexCount = static_cast<uint32_t>(accessor.count);
-            const auto byteStride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
-            assert(vertexBuffer.size() == vertexCount);
-
-            for (size_t v = 0; v < vertexCount; v++) 
-            {
-                Model::Vertex& vert = vertexBuffer[v];
-                vert.uv0 = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
-            }
-        }
-
-        if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
-        {
-            std::cout << "GLTFScene::loadVertexAttributes found NORMAL" << std::endl;
-            const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("NORMAL")->second];
-            const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
-            const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
-            const auto vertexCount = static_cast<uint32_t>(accessor.count);
-            const auto byteStride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
-            assert(vertexBuffer.size() == vertexCount);
-
-            for (size_t v = 0; v < vertexCount; v++) 
-            {
-                Model::Vertex& vert = vertexBuffer[v];
-                vert.normal = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
-            }
+            Model::Vertex& vert = vertices[v + vertexStart];
+            vert.uv0 = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
         }
     }
-    
+
+    if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
+    {
+        std::cout << "GLTFScene::loadVertexAttributes found NORMAL" << std::endl;
+        const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("NORMAL")->second];
+        const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
+        const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
+        const auto byteStride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
+
+        for (size_t v = 0; v < vertexCount; v++) 
+        {
+            Model::Vertex& vert = vertices[v + vertexStart];
+            vert.normal = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
+        }
+    }
+
+    if (primitive.attributes.find("TANGENT") != primitive.attributes.end())
+    {
+        std::cout << "GLTFScene::loadVertexAttributes found TANGENT" << std::endl;
+        const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("TANGENT")->second];
+        const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
+        const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
+        const auto byteStride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
+
+        for (size_t v = 0; v < vertexCount; v++) 
+        {
+            Model::Vertex& vert = vertices[v + vertexStart];
+            vert.tangent = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
+        }
+    }
+
+    RenderSys::Primitive prim;
+    prim.vertexCount = vertexCount;
+    prim.hasIndices = primitive.indices > -1;
+    if (prim.hasIndices)
+    {
+        const uint32_t indexStart = indices.size();
+        prim.firstIndex = indexCount + indexStart;
+        
+        const tinygltf::Accessor &accessor = m_model->accessors[primitive.indices];
+        const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
+        const tinygltf::Buffer &buffer = m_model->buffers[bufferView.buffer];
+
+        const auto currentIndexCount = static_cast<uint32_t>(accessor.count);
+        assert(currentIndexCount > 0);
+        prim.indexCount = currentIndexCount;
+        indices.resize(indexStart + currentIndexCount);
+
+        const void *dataPtr = &(buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+
+        switch (accessor.componentType) {
+        case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
+            const uint32_t *buf = static_cast<const uint32_t*>(dataPtr);
+            for (size_t index = 0; index < accessor.count; index++) {
+                indices[index + indexStart] = buf[index] + vertexStart;
+            }
+            break;
+        }
+        case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
+            const uint16_t *buf = static_cast<const uint16_t*>(dataPtr);
+            for (size_t index = 0; index < accessor.count; index++) {
+                indices[index + indexStart] = buf[index] + vertexStart;
+            }
+            break;
+        }
+        case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE: {
+            const uint8_t *buf = static_cast<const uint8_t*>(dataPtr);
+            for (size_t index = 0; index < accessor.count; index++) {
+                indices[index + indexStart] = buf[index] + vertexStart;
+            }
+            break;
+        }
+        default:
+            std::cerr << "Index component type " << accessor.componentType << " not supported!" << std::endl;
+            assert(false);
+        }
+    }
+
+    prim.materialIndex = primitive.material;
+    return prim;
 }
 
-void GLTFScene::loadIndices(std::vector<uint32_t>& indexBuffer)
+RenderSys::Mesh GLTFScene::loadMesh(const tinygltf::Mesh& gltfMesh, std::vector<Model::Vertex> &vertices, std::vector<uint32_t> &indices, const uint32_t indexCount)
 {
-    assert(m_model->meshes.size() == 1);
-    const tinygltf::Mesh mesh = m_model->meshes[0];
-
-    assert(mesh.primitives.size() == 1);
-    for (const auto &primitive : mesh.primitives)
+    RenderSys::Mesh mesh;
+    for (const auto &gltfPrimitive : gltfMesh.primitives)
     {
-        const bool hasIndices = primitive.indices > -1;
-        if (hasIndices)
-        {
-            const tinygltf::Accessor &accessor = m_model->accessors[primitive.indices];
-            const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
-            const tinygltf::Buffer &buffer = m_model->buffers[bufferView.buffer];
-
-            const auto indexCount = static_cast<uint32_t>(accessor.count);
-            assert(indexBuffer.size() == indexCount);
-
-            const void *dataPtr = &(buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-
-            switch (accessor.componentType) {
-            case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
-                const uint32_t *buf = static_cast<const uint32_t*>(dataPtr);
-                for (size_t index = 0; index < accessor.count; index++) {
-                    indexBuffer[index] = buf[index];
-                }
-                break;
-            }
-            case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
-                const uint16_t *buf = static_cast<const uint16_t*>(dataPtr);
-                for (size_t index = 0; index < accessor.count; index++) {
-                    indexBuffer[index] = buf[index];
-                }
-                break;
-            }
-            case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE: {
-                const uint8_t *buf = static_cast<const uint8_t*>(dataPtr);
-                for (size_t index = 0; index < accessor.count; index++) {
-                    indexBuffer[index] = buf[index];
-                }
-                break;
-            }
-            default:
-                std::cerr << "Index component type " << accessor.componentType << " not supported!" << std::endl;
-                return;
-            }
-        }
+        mesh.primitives.push_back(loadPrimitive(gltfPrimitive, vertices, indices, indexCount));
     }
+
+    return mesh;
 }
 
 void GLTFScene::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::vector<int>& nodeToJoint, std::vector<glm::vec4> &weightVec)
 {
+    if(m_model->meshes.at(0).primitives.at(0).attributes.find("JOINTS_0") == m_model->meshes.at(0).primitives.at(0).attributes.end())
+    {
+        return;
+    }
     // Joints
     {
         int jointsAccessor = m_model->meshes.at(0).primitives.at(0).attributes.at("JOINTS_0");
@@ -236,6 +258,11 @@ void GLTFScene::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::
 
 void GLTFScene::loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatrices)
 {
+    if (m_model->skins.size() == 0)
+    {
+        return;
+    }
+
     const tinygltf::Skin &skin = m_model->skins.at(0);
 
     int invBindMatAccessor = skin.inverseBindMatrices;
@@ -247,22 +274,140 @@ void GLTFScene::loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatri
     std::memcpy(inverseBindMatrices.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
 }
 
-std::shared_ptr<SceneNode> GLTFScene::getNodeGraph()
+void GLTFScene::loadTextures(std::vector<Texture>& textures)
+{
+    auto& gltfTextures = m_model->textures;
+    if (gltfTextures.size() == 0)
+        return;
+
+    std::cout << "Loading Textures - " << gltfTextures.size() << std::endl;
+    textures.reserve(gltfTextures.size());
+
+    for (const auto& gltfTexture : gltfTextures)
+    {
+        const tinygltf::Image& image = m_model->images[gltfTexture.source];
+        const std::string textureFilePath = m_sceneFilePath.parent_path().string() + "/" + image.uri;
+        std::cout << "Texture Name: " << image.name 
+                    << ", Type=" << image.mimeType 
+                    << ", width=" << image.width
+                    << ", height=" << image.height
+                    << ", URI=" << textureFilePath 
+                    << ", pixel_type=" << image.pixel_type 
+                    << ", component=" << image.component 
+                    << ", sampler=" << gltfTexture.sampler << std::endl;
+        textures.emplace_back((unsigned char*)image.image.data(), image.width, image.height, 1);
+    }
+
+    std::cout << "Texture loading completed!" << std::endl;
+}
+
+RenderSys::SamplerAddressMode getWrapMode(int32_t wrapMode)
+{
+    switch (wrapMode) {
+    case -1:
+    case 10497:
+        return RenderSys::SamplerAddressMode::REPEAT;
+    case 33071:
+        return RenderSys::SamplerAddressMode::CLAMP_TO_EDGE;
+    case 33648:
+        return RenderSys::SamplerAddressMode::MIRRORED_REPEAT;
+    }
+
+    std::cerr << "Unknown wrap mode for getVkWrapMode: " << wrapMode << std::endl;
+    return RenderSys::SamplerAddressMode::REPEAT;
+}
+
+RenderSys::SamplerFilterMode getFilterMode(int32_t filterMode)
+{
+    switch (filterMode) {
+    case -1:
+    case 9728:
+        return RenderSys::SamplerFilterMode::NEAREST;
+    case 9729:
+        return RenderSys::SamplerFilterMode::LINEAR;
+    case 9984:
+        return RenderSys::SamplerFilterMode::NEAREST;
+    case 9985:
+        return RenderSys::SamplerFilterMode::NEAREST;
+    case 9986:
+        return RenderSys::SamplerFilterMode::LINEAR;
+    case 9987:
+        return RenderSys::SamplerFilterMode::LINEAR;
+    }
+
+    std::cerr << "Unknown filter mode for getVkFilterMode: " << filterMode << std::endl;
+    return RenderSys::SamplerFilterMode::NEAREST;
+}
+
+void GLTFScene::loadTextureSamplers(std::vector<TextureSampler>& samplers)
+{
+    for (const tinygltf::Sampler& smpl : m_model->samplers) {
+        RenderSys::TextureSampler sampler{};
+        sampler.minFilter = getFilterMode(smpl.minFilter);
+        sampler.magFilter = getFilterMode(smpl.magFilter);
+        sampler.addressModeU = getWrapMode(smpl.wrapS);
+        sampler.addressModeV = getWrapMode(smpl.wrapT);
+        sampler.addressModeW = sampler.addressModeV;
+        samplers.push_back(sampler);
+    }
+}
+
+void GLTFScene::loadMaterials(std::vector<Material>& materials)
+{
+    if (m_model->materials.size() == 0)
+        return;
+
+    std::cout << "Loading Materials - " << m_model->materials.size() << std::endl;
+    for (const auto& mat : m_model->materials)
+    {
+        auto& material = materials.emplace_back();
+        material.doubleSided = mat.doubleSided;
+        material.baseColorFactor = glm::make_vec4(mat.pbrMetallicRoughness.baseColorFactor.data());
+        material.metallicFactor = mat.pbrMetallicRoughness.metallicFactor;
+        material.roughnessFactor = mat.pbrMetallicRoughness.roughnessFactor;
+        std::cout << "Material Name: " << mat.name 
+                    << ", metallicFactor=" << material.metallicFactor 
+                    << ", roughnessFactor=" << material.roughnessFactor << std::endl;
+        material.baseColorTextureIndex = mat.pbrMetallicRoughness.baseColorTexture.index;
+        material.metallicRoughnessTextureIndex = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
+        material.normalTextureIndex = mat.normalTexture.index;
+    }
+    std::cout << "Materials loading completed!" << std::endl;
+}
+
+void GLTFScene::getNodeGraphs(std::vector<std::shared_ptr<SceneNode>>& rootNodes)
 {
     assert(m_model);
     const int nodeCount = m_model->nodes.size();
-    const int rootNodeNum = m_model->scenes.at(0).nodes.at(0);
     assert(nodeCount > 0);
-    std::cout << "model has " << nodeCount << " nodes, root node is " << rootNodeNum << std::endl;
-    const tinygltf::Node &node = m_model->nodes.at(rootNodeNum);
-    auto rootNode = traverse(node, rootNodeNum);
-    return rootNode;
+    const int rootNodeCount = m_model->scenes.at(0).nodes.size(); // we are considering only one scene
+    assert(rootNodeCount > 0);
+    uint32_t indexCount = 0;
+    for (const auto &rootNodeNum : m_model->scenes.at(0).nodes)
+    {
+        const tinygltf::Node &node = m_model->nodes.at(rootNodeNum);
+        auto rootNode = traverse(nullptr, node, rootNodeNum, indexCount);
+        rootNodes.push_back(rootNode);
+    }
+    std::cout << "model has " << nodeCount << " total nodes and " << rootNodeCount << " root nodes. [IndexCount=" << indexCount << "]" << std::endl;
 }
 
-std::shared_ptr<SceneNode> GLTFScene::traverse(const tinygltf::Node &node, uint32_t nodeIndex)
+std::shared_ptr<SceneNode> GLTFScene::traverse(const std::shared_ptr<SceneNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount)
 {
     auto sceneNode = std::make_shared<SceneNode>(nodeIndex);
+    std::cout << node.name;
     sceneNode->setNodeName(node.name);
+
+    if (node.mesh > -1)
+    {
+        std::cout << " : Mesh= " << node.mesh << ", ";
+        const auto& gltfMesh = m_model->meshes.at(node.mesh);
+        const auto mesh = loadMesh(gltfMesh, sceneNode->m_vertices, sceneNode->m_indices, indexCount);
+        sceneNode->setMesh(mesh);
+        indexCount += sceneNode->m_indices.size();
+    }
+    std::cout << std::endl;
+
     if (node.translation.size()) {
         sceneNode->setTranslation(glm::make_vec3(node.translation.data()));
     }
@@ -275,11 +420,20 @@ std::shared_ptr<SceneNode> GLTFScene::traverse(const tinygltf::Node &node, uint3
 
     sceneNode->calculateLocalTRSMatrix();
 
+    if (parent == nullptr)
+    {
+        sceneNode->calculateNodeMatrix(glm::mat4(1.0f));
+    }
+    else
+    {
+        sceneNode->calculateNodeMatrix(parent->getNodeMatrix());
+    }
+
     if (node.children.size() > 0) 
     {
         for (size_t i = 0; i < node.children.size(); i++) 
         {
-            sceneNode->m_childNodes.push_back(traverse(m_model->nodes[node.children[i]], node.children[i]));
+            sceneNode->m_childNodes.push_back(traverse(sceneNode, m_model->nodes[node.children[i]], node.children[i], indexCount));
         }
     }
 

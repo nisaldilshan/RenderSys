@@ -112,17 +112,17 @@ glm::vec3 PerspectiveCamera::GetForwardDirection() const
 
 float PerspectiveCamera::RotationSpeed() const
 {
-    return 0.8f;
+    return 1.0f;
 }
 
 float PerspectiveCamera::ZoomSpeed() const
 {
-    return 0.5f;
+    return 2.0f;
 }
 
 float PerspectiveCamera::PanSpeed() const
 {
-    return 0.2f * m_Distance; // Scale pan speed based on distance from focal point
+    return 0.5f * m_Distance; // Scale pan speed based on distance from focal point
 }
     
 } // namespace Camera

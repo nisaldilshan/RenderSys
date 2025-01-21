@@ -3,7 +3,8 @@
 #include <iostream>
 #include <string>
 
-
+namespace RenderSys
+{
 
 SceneNode::SceneNode(int nodeNum)
     : m_nodeNum(nodeNum)
@@ -35,6 +36,11 @@ void SceneNode::setRotation(glm::quat rotation)
     m_rotation = rotation;
 }
 
+void SceneNode::setMesh(RenderSys::Mesh mesh)
+{
+    m_mesh = mesh;
+}
+
 void SceneNode::calculateLocalTRSMatrix()
 {
     glm::mat4 sMatrix = glm::scale(glm::mat4(1.0f), m_scale);
@@ -46,10 +52,6 @@ void SceneNode::calculateLocalTRSMatrix()
 void SceneNode::calculateNodeMatrix(glm::mat4 parentNodeMatrix)
 {
     m_nodeMatrix = parentNodeMatrix * mLocalTRSMatrix;
-    for (const auto& childNode : m_childNodes) 
-    {
-        childNode->calculateNodeMatrix(m_nodeMatrix);
-    }
 }
 
 void SceneNode::calculateJointMatrices(const std::vector<glm::mat4> &inverseBindMatrices, const std::vector<int> &nodeToJoint, std::vector<glm::mat4> &jointMatrices)
@@ -68,6 +70,11 @@ glm::mat4 SceneNode::getNodeMatrix()
     return m_nodeMatrix;
 }
 
+Mesh SceneNode::getMesh()
+{
+    return m_mesh;
+}
+
 void SceneNode::printHierarchy(int indent)
 {
     std::string indendString = "";
@@ -75,10 +82,22 @@ void SceneNode::printHierarchy(int indent)
         indendString += " ";
     }
     indendString += "-";
-    std::string printStr = indendString + " child : " + std::to_string(m_nodeNum) + " (" + m_nodeName + ")";
+
+    std::string printStr;
+    if (indent == 0)
+    {
+        printStr = " root : " + std::to_string(m_nodeNum) + " (" + m_nodeName + ")";
+    }
+    else
+    {
+        printStr = indendString + " child : " + std::to_string(m_nodeNum) + " (" + m_nodeName + ")";
+    }
+    
     std::cout << printStr << std::endl;
 
     for (const auto& childNode : m_childNodes) {
         childNode->printHierarchy(indent + 1);
     }
 }
+
+} // namespace RenderSys

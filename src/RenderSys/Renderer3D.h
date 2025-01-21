@@ -50,14 +50,17 @@ public:
     void SetIndexBufferData(const std::vector<uint32_t>& bufferData);
     void CreatePipeline();
     void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-    void CreateTexture(uint32_t binding, uint32_t width, uint32_t height, const void* textureData, uint32_t mipMapLevelCount);
-    void CreateTextureSampler();
+    void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
+    void CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors);
+    void CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials);
+    void CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers);
     void SetClearColor(glm::vec4 clearColor);
     void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, size_t bufferLength);
     void SetUniformBufferData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
     void BindResources();
     void Render(uint32_t uniformIndex);
     void RenderIndexed(uint32_t uniformIndex);
+    void RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex);
     void BeginRenderPass();
     void EndRenderPass();
 

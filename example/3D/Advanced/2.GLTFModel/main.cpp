@@ -105,11 +105,9 @@ public:
 			assert(false);
 		}
 
-		m_renderer->CreateTextureSampler();
-
-		auto texHandle = Texture::loadTexture(RESOURCE_DIR "/Textures/Woman.png");
+		auto texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/Woman.png");
 		assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
-		m_renderer->CreateTexture(1, texHandle->GetWidth(), texHandle->GetHeight(), texHandle->GetData(), texHandle->GetMipLevelCount());
+		m_renderer->CreateTexture(1, texHandle->GetDescriptor());
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 	}
@@ -165,7 +163,7 @@ public:
 			m_renderer->SetIndexBufferData(m_indexData);
 
 			// Since we now have 2 bindings, we use a vector to store them
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(4);
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 			// The uniform buffer binding that we already had
 			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 			uniformBindingLayout.setDefault();
@@ -183,17 +181,10 @@ public:
 			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
 			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
-			// The sampler binding
-			RenderSys::BindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[2];
-			samplerBindingLayout.setDefault();
-			samplerBindingLayout.binding = 2;
-			samplerBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			samplerBindingLayout.sampler.type = RenderSys::SamplerBindingType::Filtering;
-
 			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[3];
+			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[2];
 			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 3;
+			lightingUniformLayout.binding = 2;
 			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
 			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
@@ -231,7 +222,7 @@ public:
 			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
-			m_renderer->SetUniformBufferData(3, &m_lightingUniformData, 0);
+			m_renderer->SetUniformBufferData(2, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
 			m_renderer->RenderIndexed(0);
@@ -276,9 +267,7 @@ private:
 			return false;
 		}
 
-		m_scene->allocateMemory();
 		m_scene->populate();
-		m_scene->prepareNodeGraph();
 		m_scene->applyVertexSkinning();
 
 		m_vertexBuffer.resize(m_scene->getVertexBuffer().size());
@@ -290,7 +279,7 @@ private:
 		}
 		
 		m_indexData.resize(m_scene->getIndexBuffer().size());
-		for (size_t i = 0; i < m_vertexBuffer.size(); i++)
+		for (size_t i = 0; i < m_indexData.size(); i++)
 		{
 			m_indexData[i] = m_scene->getIndexBuffer()[i];
 		}

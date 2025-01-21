@@ -30,6 +30,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Shader.cpp
                     src/RenderSys/Camera.cpp
                     src/RenderSys/Geometry.cpp
+                    src/RenderSys/Texture.cpp
                     src/RenderSys/Scene/GLTFScene.cpp
                     src/RenderSys/Scene/Scene.cpp
                     src/RenderSys/Scene/SceneNode.cpp
@@ -219,6 +220,7 @@ else()
                     src/RenderSys/Renderer3D.cpp
                     src/RenderSys/WebGPU/WebGPURenderer3D.cpp
                     src/RenderSys/Camera.cpp
+                    src/RenderSys/Texture.cpp
     )
     add_library (ComputeSys STATIC
                     src/RenderSys/Compute.cpp

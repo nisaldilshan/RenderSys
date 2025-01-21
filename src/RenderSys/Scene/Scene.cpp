@@ -6,49 +6,78 @@ namespace RenderSys
 
 Scene::Scene()
     : m_scene(std::make_unique<GLTFScene>())
-{
-}
+{}
 
 bool Scene::load(const std::filesystem::path &filePath, const std::string &textureFilename)
 {
     return m_scene->load(filePath, textureFilename);
 }
 
-void Scene::allocateMemory()
+void loadVertexIndexData(std::shared_ptr<RenderSys::SceneNode> node, uint32_t& vertexCount, uint32_t& indexCount, std::vector<Model::Vertex>& m_vertexBuffer, std::vector<uint32_t>& m_indexBuffer)
 {
-    m_scene->computeProps();
-    m_vertexBuffer.resize(m_scene->getVertexCount());
-    m_indexBuffer.resize(m_scene->getIndexCount());
+    for (size_t i = vertexCount; i < node->m_vertices.size() + vertexCount; i++)
+    {
+        m_vertexBuffer[i] = node->m_vertices[i-vertexCount];
+    }
+
+    for (size_t i = indexCount; i < node->m_indices.size() + indexCount; i++)
+    {
+        auto indexVal = node->m_indices[i-indexCount] + vertexCount;
+        assert(indexVal < m_vertexBuffer.size());
+        m_indexBuffer[i] = indexVal;
+    }
+                
+    vertexCount += node->m_vertices.size();
+    indexCount += node->m_indices.size();
+
+    for (auto& childNode : node->m_childNodes)
+    {
+        loadVertexIndexData(childNode, vertexCount, indexCount, m_vertexBuffer, m_indexBuffer);
+    }
 }
 
 void Scene::populate()
 {
-    m_scene->loadVertexAttributes(m_vertexBuffer);
-    m_scene->loadIndices(m_indexBuffer);
+    // traverse through GLTF Scene nodes and prepare graph
+    m_scene->getNodeGraphs(m_rootNodes);
+
+    m_scene->computeProps();
+    m_vertexBuffer.resize(m_scene->getVertexCount());
+    m_indexBuffer.resize(m_scene->getIndexCount());
+
+    uint32_t vertexCount = 0;
+    uint32_t indexCount = 0;
+    for (auto &rootNode : m_rootNodes)
+    {
+        loadVertexIndexData(rootNode, vertexCount, indexCount, m_vertexBuffer, m_indexBuffer);
+    }
+    
+    assert(m_vertexBuffer.size() == vertexCount);
+    assert(m_indexBuffer.size() == indexCount);
+
+    m_scene->loadTextures(m_textures);
+    m_scene->loadTextureSamplers(m_textureSamplers);
+    m_scene->loadMaterials(m_materials);
+
     m_scene->loadJointData(m_jointVec, m_nodeToJoint, m_weightVec);
     m_scene->loadInverseBindMatrices(m_inverseBindMatrices);
-}
-
-void Scene::prepareNodeGraph()
-{
-    // traverse through GLTF Scene nodes and prepare graph
-    m_nodeGraph = m_scene->getNodeGraph(); 
-
-    // traverse through the prepared graph and update node matrices
-    m_nodeGraph->calculateNodeMatrix(glm::mat4(1.0f)); 
-
     // traverse through the graph again and compute JointMatrices
-    assert(m_inverseBindMatrices.size() > 0);
-    assert(m_nodeToJoint.size() > 0);
-    m_jointMatrices.resize(m_inverseBindMatrices.size());
-    m_nodeGraph->calculateJointMatrices(m_inverseBindMatrices, m_nodeToJoint, m_jointMatrices);
+    if(m_inverseBindMatrices.size() > 0 && m_nodeToJoint.size() > 0)
+    {
+        m_jointMatrices.resize(m_inverseBindMatrices.size());
+        for (auto &rootNode : m_rootNodes)
+            rootNode->calculateJointMatrices(m_inverseBindMatrices, m_nodeToJoint, m_jointMatrices);
+    }
 }
 
 void Scene::printNodeGraph()
 {
-    std::cout << "---- tree ----\n";
-    m_nodeGraph->printHierarchy(1);
-    std::cout << " -- end tree --" << std::endl;
+    std::cout << "---- Scene begin ----\n";
+    for (auto &rootNode : m_rootNodes)
+    {
+        rootNode->printHierarchy(0);
+    }
+    std::cout << " -- Scene end --" << std::endl;
 }
 
 void Scene::applyVertexSkinning()
@@ -58,6 +87,11 @@ void Scene::applyVertexSkinning()
 
     assert(m_jointVec.size() > 0);
     assert(m_weightVec.size() > 0);
+
+    if (m_jointMatrices.size() == 0)
+    {
+        return;
+    }
 
     for (int i = 0; i < m_jointVec.size(); ++i) 
     {

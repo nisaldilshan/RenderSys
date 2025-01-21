@@ -22,7 +22,7 @@ namespace GraphicsAPI
         bool Init();
         void CreateImageToRender(uint32_t width, uint32_t height);
         void CreateDepthImage();
-        void CreateTextureSampler();
+        void CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers);
         void CreateShaders(RenderSys::Shader& shader);
         void CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
         void CreatePipeline();
@@ -32,11 +32,16 @@ namespace GraphicsAPI
         void SetClearColor(glm::vec4 clearColor);
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
-        void CreateTexture(uint32_t binding, uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
+        // Textures get created as a part of main bindgroup
+        void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
+        // Textures get created in separate bindgroup
+        void CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors);
+        void CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials);
         void SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
         void BindResources();
         void Render(uint32_t uniformIndex);
         void RenderIndexed(uint32_t uniformIndex);
+        void RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex);
         ImTextureID GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();
@@ -45,6 +50,7 @@ namespace GraphicsAPI
         void DestroyBindGroup();
         void Destroy();
     private:
+        void CreateDefaultTextureSampler();
         void CreatePipelineLayout();
         void CreateRenderPass();
         void CreateCommandBuffers();
@@ -52,7 +58,7 @@ namespace GraphicsAPI
         void DestroyBuffers();
         void DestroyShaders();
         void DestroyTextures();
-        void UploadTexture(VkImage texture, uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
+        void UploadTexture(VkImage texture, const RenderSys::TextureDescriptor& texDescriptor);
         void SubmitCommandBuffer();
         uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
@@ -65,7 +71,7 @@ namespace GraphicsAPI
         VmaAllocation m_depthimageMemory = VK_NULL_HANDLE;
         VkImageView m_depthimageView = VK_NULL_HANDLE;
 
-        VkSampler m_textureSampler = VK_NULL_HANDLE;
+        VkSampler m_defaultTextureSampler = VK_NULL_HANDLE;
         VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE;
         std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
         std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
@@ -87,17 +93,24 @@ namespace GraphicsAPI
         VmaAllocation m_indexBufferMemory = VK_NULL_HANDLE;
         uint32_t m_indexCount = 0;
 
-        VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
-        VkDescriptorSet m_bindGroup = VK_NULL_HANDLE;
-        std::vector<VkDescriptorSetLayoutBinding> m_bindGroupBindings;
+
+        VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
+        VkDescriptorSet m_mainBindGroup = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSetLayoutBinding> m_mainBindGroupBindings;
+
+        VkDescriptorSetLayout m_materialBindGroupLayout = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSet> m_materialBindGroups;
 
         // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
         std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
 
         // map bindingNumber to tuple -> <image, textureMemory, VkDescriptorImageInfo>
         std::unordered_map<uint32_t, std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_textures;
+        std::vector<std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_sceneTextures;
+        std::vector<VkSampler> m_sceneTextureSamplers;
 
         VmaAllocator m_vma = VK_NULL_HANDLE;
+        VkClearColorValue m_clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
     };
 }
