@@ -284,11 +284,6 @@ namespace RenderSys
             storageTexture.access = StorageTextureAccess::Undefined;
         }
     };
-
-    struct TextureDescriptor
-    {
-        /* data */
-    };
     
     
 } // namespace RenderSys

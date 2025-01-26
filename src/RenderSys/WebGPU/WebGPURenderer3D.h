@@ -2,14 +2,13 @@
 
 #include <stdint.h>
 #include <stddef.h>
-
-#include <Walnut/GraphicsAPI/WebGPUGraphics.h>
-
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include "../Buffer.h"
+#include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
 #include "../RenderUtil.h"
+#include "../Shader.h"
+#include "../Buffer.h"
 
 namespace GraphicsAPI
 {
@@ -19,32 +18,41 @@ namespace GraphicsAPI
         WebGPURenderer3D() = default;
         ~WebGPURenderer3D() = default;
 
-        void Init();
-        void CreateTextureToRenderInto(uint32_t width, uint32_t height);
-        void CreateShaders(const char* shaderSource);
-        void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);
+        bool Init();
+        void CreateImageToRender(uint32_t width, uint32_t height);
+        void CreateDepthImage();
+        void CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers);
+        void CreateShaders(RenderSys::Shader& shader);
+        void CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
         void CreatePipeline();
-        void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
-        void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
+        void CreateFrameBuffer();
+        void CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
+        void CreateIndexBuffer(const std::vector<uint32_t> &bufferData);
         void SetClearColor(glm::vec4 clearColor);
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-        void CreateUniformBuffer(size_t bufferLength, UniformBuf::UniformType type, uint32_t sizeOfUniform, uint32_t bindingIndex);
-        void CreateDepthTexture();
-        void CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
-        void CreateTextureSampler();
-        void SetUniformData(UniformBuf::UniformType type, const void* bufferData, uint32_t uniformIndex);
-        void SimpleRender();
+        void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
+        // Textures get created as a part of main bindgroup
+        void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
+        // Textures get created in separate bindgroup
+        void CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors);
+        void CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials);
+        void SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
+        void BindResources();
         void Render(uint32_t uniformIndex);
         void RenderIndexed(uint32_t uniformIndex);
+        void RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex);
         ImTextureID GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();
-        void Reset();
-        
+        void DestroyImages();
+        void DestroyPipeline();
+        void DestroyBindGroup();
+        void Destroy();
     private:
+        void CreateDefaultTextureSampler();
         void UploadTexture(wgpu::Texture texture, wgpu::TextureDescriptor textureDesc, const void* textureData);
         void SubmitCommandBuffer();
-        uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
+        uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
         wgpu::Color m_clearColor = wgpu::Color{ 0.9, 0.1, 0.2, 1.0 };
 
@@ -61,9 +69,11 @@ namespace GraphicsAPI
         wgpu::Buffer m_indexBuffer = nullptr;
 
         wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
+        std::vector<wgpu::BindGroupLayoutEntry> m_mainBindGroupBindings;
         wgpu::PipelineLayout m_pipelineLayout = nullptr;
 
-        std::unordered_map<UniformBuf::UniformType, std::tuple<uint32_t, wgpu::Buffer, uint32_t>> m_uniformBuffers;
+        // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
+        std::unordered_map<uint32_t, std::tuple<wgpu::Buffer, uint32_t>> m_uniformBuffers;
         wgpu::BindGroup m_bindGroup = nullptr;
 
         wgpu::CommandEncoder m_currentCommandEncoder = nullptr;
@@ -73,7 +83,7 @@ namespace GraphicsAPI
         wgpu::TextureView m_depthTextureView = nullptr;
 
         std::vector<std::pair<wgpu::Texture, wgpu::TextureView>> m_texturesAndViews;
-        wgpu::Sampler m_textureSampler = nullptr;
+        wgpu::Sampler m_defaultTextureSampler = nullptr;
 
         uint32_t m_width, m_height;
     };

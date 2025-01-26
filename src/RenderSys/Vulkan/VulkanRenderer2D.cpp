@@ -1,4 +1,5 @@
 #include "VulkanRenderer2D.h"
+#include "VulkanRendererUtils.h"
 
 #include <iostream>
 
@@ -7,141 +8,6 @@
 
 namespace GraphicsAPI
 {
-
-VkSemaphore g_presentSemaphore = VK_NULL_HANDLE;
-VkSemaphore g_renderSemaphore = VK_NULL_HANDLE;
-VkFence g_renderFence = VK_NULL_HANDLE;
-constexpr VkFormat g_rdDepthFormat = VK_FORMAT_D32_SFLOAT;
-VkRenderPass g_renderpass = VK_NULL_HANDLE;
-
-VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
-{
-    switch (format)
-    {
-    case RenderSys::VertexFormat::Float32x2: return VK_FORMAT_R32G32_SFLOAT;
-    case RenderSys::VertexFormat::Float32x3: return VK_FORMAT_R32G32B32_SFLOAT;
-    default: assert(false);
-    }
-    return (VkFormat)0;
-}
-
-std::pair<int, VkDeviceSize> FindAppropriateMemoryType(const VkBuffer& buffer, unsigned int flags)
-{
-    VkMemoryRequirements mem_reqs;
-    vkGetBufferMemoryRequirements(Vulkan::GetDevice(), buffer, &mem_reqs);
-
-    VkPhysicalDeviceMemoryProperties gpu_mem;
-    vkGetPhysicalDeviceMemoryProperties(Vulkan::GetPhysicalDevice(), &gpu_mem);
-
-    int mem_type_idx = -1;
-    for (int j = 0; j < gpu_mem.memoryTypeCount; j++) {
-        if ((mem_reqs.memoryTypeBits & (1 << j)) &&
-            (gpu_mem.memoryTypes[j].propertyFlags & flags) == flags)
-        {
-            mem_type_idx = j;
-            break;
-        }
-    }
-
-    return std::make_pair(mem_type_idx, mem_reqs.size);
-}
-
-bool createRenderPass()
-{
-    if (g_renderpass)
-        return true;
-
-    VkAttachmentDescription colorAtt{};
-    colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
-    colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAtt.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-    VkAttachmentReference colorAttRef{};
-    colorAttRef.attachment = 0;
-    colorAttRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentDescription depthAtt{};
-    depthAtt.flags = 0;
-    depthAtt.format = g_rdDepthFormat;
-    depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depthAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAtt.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentReference depthAttRef{};
-    depthAttRef.attachment = 1;
-    depthAttRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription subpassDesc{};
-    subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpassDesc.colorAttachmentCount = 1;
-    subpassDesc.pColorAttachments = &colorAttRef;
-    // subpassDesc.pDepthStencilAttachment = &depthAttRef;
-
-    VkSubpassDependency subpassDep{};
-    subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-    subpassDep.dstSubpass = 0;
-    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDep.srcAccessMask = 0;
-    subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-    VkSubpassDependency depthDep{};
-    depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-    depthDep.dstSubpass = 0;
-    depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    depthDep.srcAccessMask = 0;
-    depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-    VkSubpassDependency dependencies[] = {subpassDep, depthDep};
-    VkAttachmentDescription attachments[] = {colorAtt};
-
-    VkRenderPassCreateInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 1;
-    renderPassInfo.pAttachments = attachments;
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpassDesc;
-    //   renderPassInfo.dependencyCount = 2;
-    //   renderPassInfo.pDependencies = dependencies;
-
-    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &g_renderpass) != VK_SUCCESS)
-    {
-        std::cout << "error; could not create renderpass" << std::endl;
-        return false;
-    }
-
-    return true;
-}
-
-bool createSyncObjects()
-{
-    if (g_presentSemaphore && g_renderSemaphore)
-        return true;
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-    if (vkCreateSemaphore(Vulkan::GetDevice(), &semaphoreInfo, nullptr, &g_presentSemaphore) != VK_SUCCESS ||
-        vkCreateSemaphore(Vulkan::GetDevice(), &semaphoreInfo, nullptr, &g_renderSemaphore) != VK_SUCCESS ||
-        vkCreateFence(Vulkan::GetDevice(), &fenceInfo, nullptr, &g_renderFence) != VK_SUCCESS) {
-        std::cout << "error: failed to init sync objects" << std::endl;
-        return false;
-    }
-    return true;
-}
 
 bool VulkanRenderer2D::Init()
 {
@@ -157,12 +23,8 @@ bool VulkanRenderer2D::Init()
         }
     }
 
-    if (!createRenderPass())
+    if (!CreateRenderPass())
     {
-        return false;
-    }
-
-    if (!createSyncObjects()) {
         return false;
     }
 
@@ -202,19 +64,10 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
     Vulkan::check_vk_result(err);
 
-    VkImageViewCreateInfo viewinfo = {};
-    viewinfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewinfo.image = m_ImageToRenderInto;
-    viewinfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewinfo.format = VK_FORMAT_R8G8B8A8_UNORM;
-    viewinfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewinfo.subresourceRange.levelCount = 1;
-    viewinfo.subresourceRange.layerCount = 1;
-    err = vkCreateImageView(Vulkan::GetDevice(), &viewinfo, nullptr, &m_imageViewToRenderInto);
-    Vulkan::check_vk_result(err);
+    m_imageViewToRenderInto = CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 
     CreateTextureSampler();
-    m_DescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
 
 
     CreateFrameBuffer();
@@ -228,7 +81,7 @@ void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
     if (shaderMapIter == m_shaderMap.end())
     {
         compiledShader = RenderSys::ShaderUtils::compile_file(shader.GetName(), shader);
-        assert(compiledShader.size() > 0, shader.GetName());
+        assert(compiledShader.size() > 0);
         m_shaderMap.emplace(shader.GetName(), compiledShader);
     }
     else
@@ -305,34 +158,7 @@ void VulkanRenderer2D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_
     m_vertexCount = vertexShaderCallCount;
 }
 
-VkShaderStageFlags GetVulkanShaderStageVisibility(RenderSys::ShaderStage shaderStage)
-{
-    VkShaderStageFlags result;
-    if (static_cast<uint32_t>(shaderStage) == 1) // RenderSys::ShaderStage::Vertex
-    {
-        result = VK_SHADER_STAGE_VERTEX_BIT;
-    }
-    else if (static_cast<uint32_t>(shaderStage) == 2) // RenderSys::ShaderStage::Fragment
-    {
-        result = VK_SHADER_STAGE_FRAGMENT_BIT;
-    }
-    else if (static_cast<uint32_t>(shaderStage) == 3) // RenderSys::ShaderStage::Vertex | RenderSys::ShaderStage::Fragment
-    {
-        result = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    }
-    else if (static_cast<uint32_t>(shaderStage) == 4) // RenderSys::ShaderStage::Vertex | RenderSys::ShaderStage::Fragment
-    {
-        result = VK_SHADER_STAGE_COMPUTE_BIT;
-    }
-    else
-    {
-        assert(false);
-    }
-    
-    return result;
-}
-
-void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
+void VulkanRenderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
     // Create a bind group layout
     if (!m_bindGroupLayout)
@@ -373,26 +199,21 @@ void VulkanRenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry b
         if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
         }
+
+        CreateBindGroup();
     }
 }
 
 void VulkanRenderer2D::CreateBindGroup()
 {
-    if (!m_bindGroup)
-    {
-        VkDescriptorSetAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = m_bindGroupPool;
-        allocInfo.descriptorSetCount = 1;
-        allocInfo.pSetLayouts = &m_bindGroupLayout;
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = m_bindGroupPool;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = &m_bindGroupLayout;
 
-        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        }
-    }
-    else
-    {
-        //std::cout << "No bind group layout" << std::endl;
+    if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
     }
 }
 
@@ -418,6 +239,83 @@ void VulkanRenderer2D::CreatePipelineLayout()
             std::cout << "error: could not create pipeline layout" << std::endl;
         }        
     }
+}
+
+bool VulkanRenderer2D::CreateRenderPass()
+{
+    if (m_renderpass)
+        return true;
+
+    VkAttachmentDescription colorAtt{};
+    colorAtt.format = VK_FORMAT_R8G8B8A8_UNORM;
+    colorAtt.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAtt.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    VkAttachmentReference colorAttRef{};
+    colorAttRef.attachment = 0;
+    colorAttRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentDescription depthAtt{};
+    depthAtt.flags = 0;
+    depthAtt.format = VK_FORMAT_D32_SFLOAT;
+    depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    depthAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAtt.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depthAttRef{};
+    depthAttRef.attachment = 1;
+    depthAttRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpassDesc{};
+    subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassDesc.colorAttachmentCount = 1;
+    subpassDesc.pColorAttachments = &colorAttRef;
+    // subpassDesc.pDepthStencilAttachment = &depthAttRef;
+
+    VkSubpassDependency subpassDep{};
+    subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpassDep.dstSubpass = 0;
+    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.srcAccessMask = 0;
+    subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    VkSubpassDependency depthDep{};
+    depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    depthDep.dstSubpass = 0;
+    depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    depthDep.srcAccessMask = 0;
+    depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+    VkSubpassDependency dependencies[] = {subpassDep, depthDep};
+    VkAttachmentDescription attachments[] = {colorAtt};
+
+    VkRenderPassCreateInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = attachments;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpassDesc;
+    //   renderPassInfo.dependencyCount = 2;
+    //   renderPassInfo.pDependencies = dependencies;
+
+    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
+    {
+        std::cout << "error; could not create renderpass" << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 void VulkanRenderer2D::CreatePipeline()
@@ -520,7 +418,7 @@ void VulkanRenderer2D::CreatePipeline()
 
     CreatePipelineLayout();
     pipelineCreateInfo.layout = m_pipelineLayout;
-    pipelineCreateInfo.renderPass = g_renderpass;
+    pipelineCreateInfo.renderPass = m_renderpass;
     pipelineCreateInfo.subpass = 0;
     pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -542,12 +440,12 @@ void VulkanRenderer2D::CreateFrameBuffer()
         vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
     }
 
-    VkImageView attachments1[] = { m_imageViewToRenderInto };
+    VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto };
     VkFramebufferCreateInfo FboInfo{};
     FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    FboInfo.renderPass = g_renderpass;
+    FboInfo.renderPass = m_renderpass;
     FboInfo.attachmentCount = 1;
-    FboInfo.pAttachments = attachments1;
+    FboInfo.pAttachments = frameBufferAttachments;
     FboInfo.width = m_width;
     FboInfo.height = m_height;
     FboInfo.layers = 1;
@@ -756,7 +654,7 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
 
 void VulkanRenderer2D::SimpleRender()
 {
-    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -765,20 +663,20 @@ void VulkanRenderer2D::SimpleRender()
     viewport.height = static_cast<float>(m_height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_commandBufferForReal, 0, 1, &viewport);
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = { 0, 0 };
     scissor.extent = { m_width, m_height };
-    vkCmdSetScissor(m_commandBufferForReal, 0, 1, &scissor);
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
     const auto triangleCount = 1;
-    vkCmdDraw(m_commandBufferForReal, triangleCount * 3, 1, 0, 0);
+    vkCmdDraw(m_commandBuffer, triangleCount * 3, 1, 0, 0);
 }
 
 void VulkanRenderer2D::Render()
 {
-    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -787,21 +685,21 @@ void VulkanRenderer2D::Render()
     viewport.height = static_cast<float>(m_height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_commandBufferForReal, 0, 1, &viewport);
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = { 0, 0 };
     scissor.extent = { m_width, m_height };
-    vkCmdSetScissor(m_commandBufferForReal, 0, 1, &scissor);
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
     VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(m_commandBufferForReal, 0, 1, &m_vertexBuffer, &offset);
-    vkCmdDraw(m_commandBufferForReal, m_vertexCount, 1, 0, 0);
+	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &offset);
+    vkCmdDraw(m_commandBuffer, m_vertexCount, 1, 0, 0);
 }
 
 void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffsetCount)
 {
-    vkCmdBindPipeline(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -810,26 +708,27 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     viewport.height = static_cast<float>(m_height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_commandBufferForReal, 0, 1, &viewport);
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = { 0, 0 };
     scissor.extent = { m_width, m_height };
-    vkCmdSetScissor(m_commandBufferForReal, 0, 1, &scissor);
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
     VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(m_commandBufferForReal, 0, 1, &m_vertexBuffer, &offset);
-    vkCmdBindIndexBuffer(m_commandBufferForReal, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
+	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &offset);
+    vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, offset, VK_INDEX_TYPE_UINT16);
 
     if (m_bindGroup)
     {
-        uint32_t dynamicOffset = 0;
-        if (uniformIndex > 0)
-            dynamicOffset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
-        vkCmdBindDescriptorSets(m_commandBufferForReal, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
+        uint32_t dynamicOffset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
+        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
+        vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
     }
-
-    vkCmdDrawIndexed(m_commandBufferForReal, m_indexCount, 1, 0, 0, 0);
+    else
+    {
+        vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
+    }
 }
 
 void VulkanRenderer2D::CreateTextureSampler()
@@ -859,25 +758,55 @@ void VulkanRenderer2D::CreateTextureSampler()
 
 ImTextureID VulkanRenderer2D::GetDescriptorSet()
 {
-    return m_DescriptorSet;
+    return m_descriptorSet;
 }
 
 void VulkanRenderer2D::BeginRenderPass()
 {
     VkClearValue colorClearValue;
     colorClearValue.color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
-
     VkClearValue depthValue;
     depthValue.depthStencil.depth = 1.0f;
-
     VkClearValue clearValues[] = { colorClearValue, depthValue };
 
-    m_commandBufferForReal = GraphicsAPI::Vulkan::GetCommandBuffer(true);
+    // TODO: move commandpool/commandbuffer creation to constructor
+    if (!m_commandPool)
+    {
+        auto queueFamilyIndices = Vulkan::FindQueueFamilies();
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+        auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
+        Vulkan::check_vk_result(err);
+    }
+    
+    if (!m_commandBuffer)
+    {
+        VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
+        cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cmdBufAllocateInfo.commandPool = m_commandPool;
+        cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cmdBufAllocateInfo.commandBufferCount = 1;
+        auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+        Vulkan::check_vk_result(err);
+    }
+    else
+    {
+        auto err = vkResetCommandBuffer(m_commandBuffer, 0);
+        Vulkan::check_vk_result(err);
+    }
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    auto err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
+    Vulkan::check_vk_result(err);
 
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rpInfo.renderPass = g_renderpass;
+    rpInfo.renderPass = m_renderpass;
     rpInfo.renderArea.offset.x = 0;
     rpInfo.renderArea.offset.y = 0;
     rpInfo.renderArea.extent = { m_width, m_height };
@@ -885,13 +814,13 @@ void VulkanRenderer2D::BeginRenderPass()
     rpInfo.clearValueCount = 2;
     rpInfo.pClearValues = clearValues;
 
-    vkCmdBeginRenderPass(m_commandBufferForReal, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(m_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanRenderer2D::EndRenderPass()
 {
-	vkCmdEndRenderPass(m_commandBufferForReal);
-    GraphicsAPI::Vulkan::FlushCommandBuffer(m_commandBufferForReal);
+	vkCmdEndRenderPass(m_commandBuffer);
+    SubmitCommandBuffer();
 }
 
 void VulkanRenderer2D::Destroy()
@@ -904,18 +833,14 @@ void VulkanRenderer2D::Destroy()
 
 void VulkanRenderer2D::SubmitCommandBuffer()
 {
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    auto err = vkEndCommandBuffer(m_commandBuffer);
+    Vulkan::check_vk_result(err);
 
-    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    submitInfo.pWaitDstStageMask = &waitStage;
-    submitInfo.commandBufferCount = 1;
-    //submitInfo.pCommandBuffers = &g_commandBuffer;
-
-    if (vkQueueSubmit(Vulkan::GetDeviceQueue(), 1, &submitInfo, g_renderFence) != VK_SUCCESS) {
-        std::cout << "error: failed to submit draw command buffer" << std::endl;
-        return;
-    }
+    VkSubmitInfo end_info{};
+    end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    end_info.commandBufferCount = 1;
+    end_info.pCommandBuffers = &m_commandBuffer;
+    GraphicsAPI::Vulkan::QueueSubmit(end_info);
 }
 
 } // namespace GraphicsAPI

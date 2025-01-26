@@ -34,9 +34,9 @@ public:
 		m_compute->SetShader(shaderSource);
 
 		
-		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Input, "INPUT_BUFFER");
-		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
-		m_compute->CreateBuffer(g_bufferSize, ComputeBuf::BufferType::Map, "");
+		m_compute->CreateBuffer(g_bufferSize, RenderSys::ComputeBuf::BufferType::Input, "INPUT_BUFFER");
+		m_compute->CreateBuffer(g_bufferSize, RenderSys::ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
+		m_compute->CreateBuffer(g_bufferSize, RenderSys::ComputeBuf::BufferType::Map, "");
 
 		// Create bind group layout
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);

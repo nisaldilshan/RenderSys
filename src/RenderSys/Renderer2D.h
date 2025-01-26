@@ -46,7 +46,7 @@ public:
     void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
     void CreatePipeline();
-    void CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntries);
+    void CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
     void CreateUniformBuffer(size_t bufferLength, uint32_t sizeOfUniform);
     
     void SetUniformBufferData(const void* bufferData, uint32_t uniformIndex);
@@ -66,5 +66,6 @@ private:
 };
 
 } // namespace RenderSys
+
 
 

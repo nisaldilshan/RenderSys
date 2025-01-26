@@ -1,6 +1,7 @@
 #pragma once
 
-#include "WebGPURenderer2D.h"
+namespace GraphicsAPI
+{
 
 wgpu::VertexFormat GetWebGPUVertexFormat(RenderSys::VertexFormat renderSysFormat)
 {
@@ -143,35 +144,48 @@ wgpu::TextureSampleType GetWebGPUTextureSamplingType(RenderSys::TextureSampleTyp
     }
 }
 
-wgpu::BindGroupLayoutEntry* GetWebGPUBindGroupLayoutEntriesPtr(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
+std::vector<wgpu::BindGroupLayoutEntry> gGroupLayoutArr;
+std::vector<wgpu::BindGroupLayoutEntry> GetWebGPUBindGroupLayoutEntriesPtr(const std::vector<RenderSys::BindGroupLayoutEntry> &bindGroupLayoutEntries, bool addSamplerBinding)
 {
-    static std::vector<wgpu::BindGroupLayoutEntry> bGroupLayoutArr(bindGroupLayoutEntries.size());
-
-    for (size_t i = 0; i < bGroupLayoutArr.size(); i++)    
+    if (gGroupLayoutArr.size() == 0)
     {
-        bGroupLayoutArr[i].binding = bindGroupLayoutEntries[i].binding;
-        bGroupLayoutArr[i].visibility = GetWebGPUShaderStageVisibility(bindGroupLayoutEntries[i].visibility);
-
-        if (bindGroupLayoutEntries[i].buffer.type != RenderSys::BufferBindingType::Undefined)
+        gGroupLayoutArr.resize(bindGroupLayoutEntries.size());
+        for (size_t i = 0; i < gGroupLayoutArr.size(); i++)    
         {
-            bGroupLayoutArr[i].buffer.type = GetWebGPUBufferBindingType(bindGroupLayoutEntries[i].buffer.type);
-            bGroupLayoutArr[i].buffer.minBindingSize = bindGroupLayoutEntries[i].buffer.minBindingSize;
-            bGroupLayoutArr[i].buffer.hasDynamicOffset = bindGroupLayoutEntries[i].buffer.hasDynamicOffset;
+            gGroupLayoutArr[i].binding = bindGroupLayoutEntries[i].binding;
+            gGroupLayoutArr[i].visibility = GetWebGPUShaderStageVisibility(bindGroupLayoutEntries[i].visibility);
+
+            if (bindGroupLayoutEntries[i].buffer.type != RenderSys::BufferBindingType::Undefined)
+            {
+                gGroupLayoutArr[i].buffer.type = GetWebGPUBufferBindingType(bindGroupLayoutEntries[i].buffer.type);
+                gGroupLayoutArr[i].buffer.minBindingSize = bindGroupLayoutEntries[i].buffer.minBindingSize;
+                gGroupLayoutArr[i].buffer.hasDynamicOffset = bindGroupLayoutEntries[i].buffer.hasDynamicOffset;
+            }
+
+            if (bindGroupLayoutEntries[i].texture.sampleType != RenderSys::TextureSampleType::Undefined)
+            {
+                std::cout << "binding texture" << std::endl;
+                gGroupLayoutArr[i].texture.sampleType = GetWebGPUTextureSamplingType(bindGroupLayoutEntries[i].texture.sampleType);
+                gGroupLayoutArr[i].texture.viewDimension = wgpu::TextureViewDimension::_2D;
+            }
+
+            if (bindGroupLayoutEntries[i].sampler.type != RenderSys::SamplerBindingType::Undefined)
+            {
+                std::cout << "binding sampler" << std::endl;
+                gGroupLayoutArr[i].sampler.type = wgpu::SamplerBindingType::Filtering;
+            }
         }
 
-        if (bindGroupLayoutEntries[i].texture.sampleType != RenderSys::TextureSampleType::Undefined)
+        if (addSamplerBinding)
         {
-            std::cout << "binding texture" << std::endl;
-            bGroupLayoutArr[i].texture.sampleType = GetWebGPUTextureSamplingType(bindGroupLayoutEntries[i].texture.sampleType);
-            bGroupLayoutArr[i].texture.viewDimension = wgpu::TextureViewDimension::_2D;
-        }
-
-        if (bindGroupLayoutEntries[i].sampler.type != RenderSys::SamplerBindingType::Undefined)
-        {
-            std::cout << "binding sampler" << std::endl;
-            bGroupLayoutArr[i].sampler.type = wgpu::SamplerBindingType::Filtering;
+            auto& textureSamplerBindGroupLayoutEntry = gGroupLayoutArr.emplace_back();
+            textureSamplerBindGroupLayoutEntry.binding = gGroupLayoutArr.size() - 1;
+            textureSamplerBindGroupLayoutEntry.visibility = wgpu::ShaderStage::Fragment;
+            textureSamplerBindGroupLayoutEntry.sampler.type = wgpu::SamplerBindingType::Filtering;
         }
     }
     
-    return &bGroupLayoutArr[0];
+    return gGroupLayoutArr;
+}
+
 }

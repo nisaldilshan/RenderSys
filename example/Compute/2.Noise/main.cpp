@@ -77,10 +77,10 @@ public:
 		m_compute->SetShader(shaderSource);
 
 		const auto bufferSize = g_width * g_height * 4;
-		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Input, "INPUT_BUFFER");
-		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
-		m_compute->CreateBuffer(bufferSize, ComputeBuf::BufferType::Map, "");
-		m_compute->CreateBuffer(1 * sizeof(MyUniforms), ComputeBuf::BufferType::Uniform, "UNIFORM_BUFFER");	
+		m_compute->CreateBuffer(bufferSize, RenderSys::ComputeBuf::BufferType::Input, "INPUT_BUFFER");
+		m_compute->CreateBuffer(bufferSize, RenderSys::ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
+		m_compute->CreateBuffer(bufferSize, RenderSys::ComputeBuf::BufferType::Map, "");
+		m_compute->CreateBuffer(1 * sizeof(MyUniforms), RenderSys::ComputeBuf::BufferType::Uniform, "UNIFORM_BUFFER");	
 
 		// Create bind group layout
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);

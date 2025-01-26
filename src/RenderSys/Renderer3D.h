@@ -6,13 +6,9 @@
 #include <imgui_impl_glfw.h>
 #include <Walnut/ImageFormat.h>
 
-#define GLM_FORCE_LEFT_HANDED
-#include <glm/ext.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include "Buffer.h"
-
-
 #include "RenderUtil.h"
+#include "Shader.h"
 
 namespace GraphicsAPI
 {
@@ -26,6 +22,7 @@ typedef VulkanRenderer3D RendererType;
 class WebGPURenderer3D;
 typedef WebGPURenderer3D RendererType;
 #else
+static_assert(false);
 #endif
 }
 
@@ -43,29 +40,32 @@ public:
 	Renderer3D(Renderer3D&&) = delete;
 	Renderer3D &operator=(Renderer3D&&) = delete;
 
-    void Init();
-    void OnResize(uint32_t width, uint32_t height);
-    void SetShaderFile(const char* shaderFile);
-    void SetShaderAsString(const std::string& shaderSource);
-    void SetStandaloneShader(const char* shaderSource, uint32_t vertexShaderCallCount);
-    void SetVertexBufferData(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
-    void SetIndexBufferData(const std::vector<uint16_t>& bufferData);
-    void CreatePipeline();
-    void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-    void CreateTexture(uint32_t width, uint32_t height, const void* textureData, uint32_t mipMapLevelCount);
-    void CreateTextureSampler();
-    void SetClearColor(glm::vec4 clearColor);
-    void CreateUniformBuffer(size_t bufferLength, UniformBuf::UniformType type, uint32_t sizeOfUniform, uint32_t bindingIndex);
-    void SetUniformBufferData(UniformBuf::UniformType type, const void* bufferData, uint32_t uniformIndex);
     uint32_t GetWidth() const { return m_Width; }
 	uint32_t GetHeight() const { return m_Height; }
-    void SimpleRender();
+    void Init();
+    void OnResize(uint32_t width, uint32_t height);
+    void SetShader(RenderSys::Shader& shader);
+    void SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
+    void SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
+    void SetIndexBufferData(const std::vector<uint32_t>& bufferData);
+    void CreatePipeline();
+    void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
+    void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
+    void CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors);
+    void CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials);
+    void CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers);
+    void SetClearColor(glm::vec4 clearColor);
+    void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, size_t bufferLength);
+    void SetUniformBufferData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
+    void BindResources();
     void Render(uint32_t uniformIndex);
     void RenderIndexed(uint32_t uniformIndex);
+    void RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex);
     void BeginRenderPass();
     void EndRenderPass();
 
     void* GetDescriptorSet() const;
+    void Destroy();
 private:
     uint32_t m_Width = 0, m_Height = 0;
     std::unique_ptr<GraphicsAPI::RendererType> m_rendererBackend;

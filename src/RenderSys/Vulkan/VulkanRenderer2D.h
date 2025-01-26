@@ -1,10 +1,8 @@
 #pragma once
 
-#include <memory>
 #include <stdint.h>
 #include <stddef.h>
 #include <glm/ext.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include <vk_mem_alloc.h>
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 
@@ -28,8 +26,7 @@ namespace GraphicsAPI
         void CreateFrameBuffer();
         void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
         void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
-        void SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
-        void CreateBindGroup();
+        void CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry);
         void CreateUniformBuffer(size_t uniformCountInBuffer, uint32_t sizeOfOneUniform);
         void SetUniformData(const void* bufferData, uint32_t uniformIndex);
         void SimpleRender();
@@ -40,7 +37,9 @@ namespace GraphicsAPI
         void EndRenderPass();
         void Destroy();
     private:
+        void CreateBindGroup();
         void CreatePipelineLayout();
+        bool CreateRenderPass();
         void DestroyBuffers();
         void DestroyShaders();
         void SubmitCommandBuffer();
@@ -51,14 +50,16 @@ namespace GraphicsAPI
         VkImage m_ImageToRenderInto = VK_NULL_HANDLE;
         VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
         VkSampler m_textureSampler;
-        VkDescriptorSet m_DescriptorSet;
-        VkCommandBuffer m_commandBufferForReal = VK_NULL_HANDLE;
+        VkDescriptorSet m_descriptorSet;
         std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
         std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
 
         VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
         VkPipeline m_pipeline = VK_NULL_HANDLE;
         VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
+        VkRenderPass m_renderpass = VK_NULL_HANDLE;
+        VkCommandPool m_commandPool = VK_NULL_HANDLE;
+        VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 
         VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
         VmaAllocation m_vertexBufferMemory = VK_NULL_HANDLE;

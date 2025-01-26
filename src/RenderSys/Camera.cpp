@@ -79,6 +79,8 @@ void PerspectiveCamera::UpdateView()
 
 void PerspectiveCamera::MousePan(const glm::vec2 &delta)
 {
+    m_FocalPoint += -GetRightDirection() * delta.x * PanSpeed();
+    m_FocalPoint += GetUpDirection() * delta.y * PanSpeed();
 }
 
 void PerspectiveCamera::MouseRotate(const glm::vec2 &delta)
@@ -90,6 +92,7 @@ void PerspectiveCamera::MouseRotate(const glm::vec2 &delta)
 
 void PerspectiveCamera::MouseZoom(float delta)
 {
+    m_Distance -= delta * ZoomSpeed();
 }
 
 glm::vec3 PerspectiveCamera::GetUpDirection() const
@@ -109,7 +112,17 @@ glm::vec3 PerspectiveCamera::GetForwardDirection() const
 
 float PerspectiveCamera::RotationSpeed() const
 {
-    return 0.8f;
+    return 1.0f;
+}
+
+float PerspectiveCamera::ZoomSpeed() const
+{
+    return 2.0f;
+}
+
+float PerspectiveCamera::PanSpeed() const
+{
+    return 0.5f * m_Distance; // Scale pan speed based on distance from focal point
 }
     
 } // namespace Camera

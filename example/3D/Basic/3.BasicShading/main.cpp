@@ -1,23 +1,12 @@
 #include <array>
 
-#include "Walnut/Application.h"
-#include "Walnut/EntryPoint.h"
-#include "Walnut/Random.h"
+#include <Walnut/Application.h>
+#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
+#include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
-#include <GLFW/glfw3.h>
-
-/**
- * A structure that describes the data layout in the vertex buffer
- * We do not instantiate it but use it in `sizeof` and `offsetof`
- */
-struct VertexAttributes {
-	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec3 color;
-};
 
 struct MyUniforms {
 	// We add transform matrices
@@ -41,34 +30,89 @@ glm::mat4x4 makePerspectiveProj(float ratio, float near, float far, float focalL
 	return glm::transpose(glm::make_mat4(aaa));
 }
 
-class Renderer2DLayer : public Walnut::Layer
+class Renderer3DLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
 	{
-	}
+		m_renderer = std::make_shared<RenderSys::Renderer3D>();
+		m_renderer->Init();	
 
-	virtual void OnDetach() override
-	{
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			const char* vertexShaderSource = R"(
+				#version 450 core
 
-	}
+				layout(binding = 0) uniform UniformBufferObject {
+					mat4 projectionMatrix;
+					mat4 viewMatrix;
+					mat4 modelMatrix;
+					vec4 color;
+					float time;
+					float _pad[3];
+				} ubo;
+				layout (location = 0) in vec3 aPos;
+				layout (location = 1) in vec3 in_normal;
+				layout (location = 2) in vec3 in_color;
 
-	virtual void OnUpdate(float ts) override
-	{
-        Walnut::Timer timer;
-		if (m_viewportWidth == 0 || m_viewportHeight == 0)
-			return;
+				layout (location = 0) out vec3 out_color;
+				layout (location = 1) out vec3 out_normal;
 
-        if (!m_renderer ||
-            m_viewportWidth != m_renderer->GetWidth() ||
-            m_viewportHeight != m_renderer->GetHeight())
-        {
-			m_renderer.reset();
-			m_renderer = std::make_shared<RenderSys::Renderer3D>();
+				void main() 
+				{
+					gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
+					vec4 mult = ubo.modelMatrix * vec4(in_normal, 0.0);
+					out_normal = mult.xyz;
+					out_color = in_color;
+				}
+			)";
+			RenderSys::Shader vertexShader("Vertex");
+			vertexShader.type = RenderSys::ShaderType::SPIRV;
+			vertexShader.shaderSrc = vertexShaderSource;
+			vertexShader.stage = RenderSys::ShaderStage::Vertex;
+			m_renderer->SetShader(vertexShader);
 
-			m_renderer->Init();	
-			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
+			const char* fragmentShaderSource = R"(
+				#version 450
 
+				layout(binding = 0) uniform UniformBufferObject {
+					mat4 projectionMatrix;
+					mat4 viewMatrix;
+					mat4 modelMatrix;
+					vec4 color;
+					float time;
+					float _pad[3];
+				} ubo;
+
+				layout (location = 0) in vec3 in_color;
+				layout (location = 1) in vec3 in_normal;
+
+				layout (location = 0) out vec4 out_color;
+
+				void main()
+				{
+					vec3 normal = normalize(in_normal);
+
+					vec3 lightColor1 = vec3(1.0, 0.9, 0.6);
+					vec3 lightColor2 = vec3(0.6, 0.9, 1.0);
+					vec3 lightDirection1 = vec3(0.5, -0.9, 0.1);
+					vec3 lightDirection2 = vec3(0.2, 0.4, 0.3);
+					float shading1 = max(0.0, dot(lightDirection1, normal));
+					float shading2 = max(0.0, dot(lightDirection2, normal));
+					vec3 shading = shading1 * lightColor1 + shading2 * lightColor2;
+					vec3 color = in_color * shading;
+
+					out_color = vec4(color, ubo.color.a);
+				}
+			)";
+			RenderSys::Shader fragmentShader("Fragment");
+			fragmentShader.type = RenderSys::ShaderType::SPIRV;
+			fragmentShader.shaderSrc = fragmentShaderSource;
+			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+			m_renderer->SetShader(fragmentShader);
+		}
+		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+		{
 			const char* shaderSource = R"(
 			struct VertexInput {
 				@location(0) position: vec3f,
@@ -124,20 +168,44 @@ public:
 				return vec4f(corrected_color, uMyUniforms.color.a);
 			}
 			)";
-			m_renderer->SetShaderAsString(shaderSource);
 
-			//
-			std::vector<VertexAttributes> vertexData;
-			bool success = Geometry::loadGeometryFromObj<VertexAttributes>(RESOURCE_DIR "/mammoth.obj", vertexData);
+			RenderSys::Shader shader("Combined");
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+			m_renderer->SetShader(shader);
+		}
+		else
+		{
+			assert(false);
+		}
+	}
+
+	virtual void OnDetach() override
+	{
+		m_renderer->Destroy();
+	}
+
+	virtual void OnUpdate(float ts) override
+	{
+        Walnut::Timer timer;
+		if (m_viewportWidth == 0 || m_viewportHeight == 0)
+			return;
+
+        if (!m_renderer ||
+            m_viewportWidth != m_renderer->GetWidth() ||
+            m_viewportHeight != m_renderer->GetHeight())
+        {
+			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
+
+			RenderSys::VertexBuffer vertexData;
+			bool success = Geometry::loadGeometryFromObj(RESOURCE_DIR "/mammoth.obj", vertexData);
 			if (!success) 
 			{
 				std::cerr << "Could not load geometry!" << std::endl;
 				return;
 			}
-			//
 
-			// Vertex fetch
-			// We now have 2 attributes
 			std::vector<RenderSys::VertexAttribute> vertexAttribs(3);
 
 			// Position attribute
@@ -148,22 +216,20 @@ public:
 			// Normal attribute
 			vertexAttribs[1].location = 1;
 			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
+			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
 
 			// Color attribute
 			vertexAttribs[2].location = 2;
-			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3; // different type!
-			vertexAttribs[2].offset = offsetof(VertexAttributes, color);
+			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
+			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
 
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
-			// stride
-			vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
+			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-
-			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * sizeof(VertexAttributes), vertexBufferLayout);
+			m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
 
 			// Create binding layout (don't forget to = Default)
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);
@@ -178,21 +244,18 @@ public:
 			// Make this binding dynamic so we can offset it between draw calls
 			bGLayoutEntry.buffer.hasDynamicOffset = true;
 
-			m_renderer->CreateUniformBuffer(2, UniformBuf::UniformType::ModelViewProjection, sizeof(MyUniforms), bGLayoutEntry.binding);
+			m_renderer->CreateUniformBuffer(bGLayoutEntry.binding, sizeof(MyUniforms), 2);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();
-			
         }
 
 		if (m_renderer)
 		{
 			m_renderer->BeginRenderPass();
+			
+			const float time = static_cast<float>(glfwGetTime());
 
-			float time = static_cast<float>(glfwGetTime());
 
-			// Upload first value
-
-			float angle1 = 2.0f;
 			constexpr float PI = 3.14159265358979323846f;
 			float angle2 = 3.0f * PI / 4.0f;
 			glm::vec3 focalPoint(0.0, 0.0, -2.0);			
@@ -211,16 +274,15 @@ public:
 			m_uniformData.projectionMatrix = makePerspectiveProj(m_viewportWidth / m_viewportHeight, 0.01, 100.0, 2.0);
 
 			glm::mat4x4 M1(1.0);
-			angle1 = time * 0.9f;
+			float angle1 = time * 0.9f;
 			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(0.5, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.3f));
 			m_uniformData.modelMatrix = M1;
 
-			m_uniformData.time = time; // glfwGetTime returns a double
+			m_uniformData.time = time;
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
-			m_renderer->SetUniformBufferData(UniformBuf::UniformType::ModelViewProjection, &m_uniformData, 0);
-			////
+			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
 
 			// Upload second value
 			glm::mat4x4 M2(1.0);
@@ -230,10 +292,10 @@ public:
 			M2 = glm::scale(M2, glm::vec3(0.3f));
 			m_uniformData.modelMatrix = M2;
 
-			m_uniformData.time = time; // glfwGetTime returns a double
+			m_uniformData.time = time;
 			m_uniformData.color = { 1.0f, 1.0f, 1.0f, 0.7f };
-			m_renderer->SetUniformBufferData(UniformBuf::UniformType::ModelViewProjection, &m_uniformData, 1);
-			////                         				^^^^^^^^^^^^^ beware of the non-null offset!
+			m_renderer->SetUniformBufferData(0, &m_uniformData, 1);
+			m_renderer->BindResources();
 
 			m_renderer->Render(0);
 			m_renderer->Render(1);
@@ -277,6 +339,6 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	spec.Name = "Renderer3D Example";
 
 	Walnut::Application* app = new Walnut::Application(spec);
-	app->PushLayer<Renderer2DLayer>();
+	app->PushLayer<Renderer3DLayer>();
 	return app;
 }

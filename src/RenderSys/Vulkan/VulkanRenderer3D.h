@@ -4,10 +4,11 @@
 #include <stddef.h>
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
-
+#include <vk_mem_alloc.h>
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 
 #include "../RenderUtil.h"
+#include "../Shader.h"
 #include "../Buffer.h"
 
 namespace GraphicsAPI
@@ -19,67 +20,97 @@ namespace GraphicsAPI
         ~VulkanRenderer3D() = default;
 
         bool Init();
-        void CreateTextureToRenderInto(uint32_t width, uint32_t height);
-        void CreateShaders(const char* shaderSource);
-        void CreateStandaloneShader(const char *shaderSource, uint32_t vertexShaderCallCount);
+        void CreateImageToRender(uint32_t width, uint32_t height);
+        void CreateDepthImage();
+        void CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers);
+        void CreateShaders(RenderSys::Shader& shader);
+        void CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
         void CreatePipeline();
-        void CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout);
-        void CreateIndexBuffer(const std::vector<uint16_t> &bufferData);
+        void CreateFrameBuffer();
+        void CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
+        void CreateIndexBuffer(const std::vector<uint32_t> &bufferData);
         void SetClearColor(glm::vec4 clearColor);
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-        void CreateUniformBuffer(size_t bufferLength, UniformBuf::UniformType type, uint32_t sizeOfUniform, uint32_t bindingIndex);
-        void CreateDepthTexture();
-        void CreateTexture(uint32_t textureWidth, uint32_t textureHeight, const void* textureData, uint32_t mipMapLevelCount);
-        void CreateTextureSampler();
-        void SetUniformData(UniformBuf::UniformType type, const void* bufferData, uint32_t uniformIndex);
-        void SimpleRender();
+        void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
+        // Textures get created as a part of main bindgroup
+        void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
+        // Textures get created in separate bindgroup
+        void CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors);
+        void CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials);
+        void SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
+        void BindResources();
         void Render(uint32_t uniformIndex);
         void RenderIndexed(uint32_t uniformIndex);
+        void RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex);
         ImTextureID GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();
-        void Reset();
-        
+        void DestroyImages();
+        void DestroyPipeline();
+        void DestroyBindGroup();
+        void Destroy();
     private:
-        void UploadTexture(VkImage texture, RenderSys::TextureDescriptor textureDesc, const void* textureData);
+        void CreateDefaultTextureSampler();
+        void CreatePipelineLayout();
+        void CreateRenderPass();
+        void CreateCommandBuffers();
+        void DestroyRenderPass();
+        void DestroyBuffers();
+        void DestroyShaders();
+        void DestroyTextures();
+        void UploadTexture(VkImage texture, const RenderSys::TextureDescriptor& texDescriptor);
         void SubmitCommandBuffer();
-        uint32_t GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
+        uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
-        // wgpu::Color m_clearColor = wgpu::Color{ 0.9, 0.1, 0.2, 1.0 };
+        uint32_t m_width = 0;
+        uint32_t m_height = 0;
+        VkImage m_ImageToRenderInto = VK_NULL_HANDLE;
+        VmaAllocation m_renderImageMemory = VK_NULL_HANDLE;
+        VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
+        VkImage m_depthimage = VK_NULL_HANDLE;
+        VmaAllocation m_depthimageMemory = VK_NULL_HANDLE;
+        VkImageView m_depthimageView = VK_NULL_HANDLE;
 
-        // wgpu::ShaderModule m_shaderModule = nullptr;
-        // wgpu::RenderPipeline m_pipeline = nullptr;
+        VkSampler m_defaultTextureSampler = VK_NULL_HANDLE;
+        VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE;
+        std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
+        std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
 
-        VkImage m_image;
-        VkImageView m_imageView;
-        VkDeviceMemory m_imageMemory;
-        VkSampler m_imageSampler;
-        VkDescriptorSet m_descriptorSet; // same as m_textureToRenderInto
+        VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+        VkPipeline m_pipeline = VK_NULL_HANDLE;
+        VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
+        VkRenderPass m_renderpass = VK_NULL_HANDLE;
+        VkCommandPool m_commandPool = VK_NULL_HANDLE;
+        VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 
+        VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
+        VmaAllocation m_vertexBufferMemory = VK_NULL_HANDLE;
+        std::vector<VkVertexInputBindingDescription> m_vertextBindingDescs;
+        std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
         uint32_t m_vertexCount = 0;
-        uint64_t m_vertexBufferSize = 0;
-        // wgpu::Buffer m_vertexBuffer = nullptr;
-        // wgpu::VertexBufferLayout m_vertexBufferLayout;
 
+        VkBuffer m_indexBuffer = VK_NULL_HANDLE;
+        VmaAllocation m_indexBufferMemory = VK_NULL_HANDLE;
         uint32_t m_indexCount = 0;
-        // wgpu::Buffer m_indexBuffer = nullptr;
 
-        // wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
-        // wgpu::PipelineLayout m_pipelineLayout = nullptr;
+        VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
 
-        // std::unordered_map<UniformBuf::UniformType, std::tuple<uint32_t, wgpu::Buffer, uint32_t>> m_uniformBuffers;
-        // wgpu::BindGroup m_bindGroup = nullptr;
+        VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
+        VkDescriptorSet m_mainBindGroup = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSetLayoutBinding> m_mainBindGroupBindings;
 
-        // wgpu::CommandEncoder m_currentCommandEncoder = nullptr;
-        // wgpu::RenderPassEncoder m_renderPass = nullptr;
+        VkDescriptorSetLayout m_materialBindGroupLayout = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSet> m_materialBindGroups;
 
-        // wgpu::TextureFormat m_depthTextureFormat =  wgpu::TextureFormat::Undefined;
-        // wgpu::Texture m_depthTexture = nullptr;
-        // wgpu::TextureView m_depthTextureView = nullptr;
+        // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
+        std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
 
-        // std::vector<std::pair<wgpu::Texture, wgpu::TextureView>> m_texturesAndViews;
-        // wgpu::Sampler m_textureSampler = nullptr;
+        // map bindingNumber to tuple -> <image, textureMemory, VkDescriptorImageInfo>
+        std::unordered_map<uint32_t, std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_textures;
+        std::vector<std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_sceneTextures;
+        std::vector<VkSampler> m_sceneTextureSamplers;
 
-        uint32_t m_width, m_height;
+        VmaAllocator m_vma = VK_NULL_HANDLE;
+        VkClearColorValue m_clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
     };
 }

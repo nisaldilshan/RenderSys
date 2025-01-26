@@ -2,34 +2,44 @@ cmake_minimum_required (VERSION 3.23.0)
 project (RenderSys)
 
 find_package(walnut REQUIRED)
+find_package(tinyobjloader REQUIRED)
+find_package(tinygltf REQUIRED)
+
 message(STATUS "RENDERER: " ${RENDERER})
-
 if(RENDERER STREQUAL "Vulkan")
-    include(FetchContent)
-    set(VulkanMemoryAllocatorURL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git)
-    message(STATUS "Fetching: " ${VulkanMemoryAllocatorURL})
-    FetchContent_Declare(
-        vulkanmemoryallocator
-        GIT_REPOSITORY ${VulkanMemoryAllocatorURL}
-        GIT_TAG        v3.1.0
-    )
-    FetchContent_MakeAvailable(vulkanmemoryallocator) 
-    message(STATUS "vulkanmemoryallocator sourceDir: ${vulkanmemoryallocator_SOURCE_DIR}")
-    message(STATUS "vulkanmemoryallocator buildDir: ${vulkanmemoryallocator_BINARY_DIR}") 
-
     add_compile_definitions(RENDERER_BACKEND=2)
     find_package(shaderc REQUIRED)
+    find_package(vulkan-memory-allocator REQUIRED)
     add_library (RenderSys2D STATIC
                     src/RenderSys/Renderer2D.cpp
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp
                     src/RenderSys/Shader.cpp
+                    src/RenderSys/Geometry.cpp
     )
-    target_link_libraries(RenderSys2D PRIVATE GPUOpen::VulkanMemoryAllocator)
-    target_link_libraries(RenderSys2D PRIVATE shaderc::shaderc)
+    target_link_libraries(RenderSys2D PRIVATE 
+                            vulkan-memory-allocator::vulkan-memory-allocator
+                            shaderc::shaderc 
+    )
+
     add_library (RenderSys3D STATIC
                     src/RenderSys/Renderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp
+                    src/RenderSys/Shader.cpp
+                    src/RenderSys/Camera.cpp
+                    src/RenderSys/Geometry.cpp
+                    src/RenderSys/Texture.cpp
+                    src/RenderSys/Scene/GLTFScene.cpp
+                    src/RenderSys/Scene/Scene.cpp
+                    src/RenderSys/Scene/SceneNode.cpp
     )
+    target_link_libraries(RenderSys3D PRIVATE 
+                            vulkan-memory-allocator::vulkan-memory-allocator 
+                            shaderc::shaderc 
+                            TinyGLTF::TinyGLTF
+    )
+
     add_library (ComputeSys STATIC
                     src/RenderSys/Compute.cpp
                     src/RenderSys/Vulkan/VulkanCompute.cpp
@@ -203,11 +213,14 @@ else()
     add_library (RenderSys2D STATIC
                     src/RenderSys/Renderer2D.cpp
                     src/RenderSys/WebGPU/WebGPURenderer2D.cpp
+                    src/RenderSys/Geometry.cpp
     )
     add_library (RenderSys3D STATIC
                     src/RenderSys/Renderer3D.cpp
                     src/RenderSys/WebGPU/WebGPURenderer3D.cpp
                     src/RenderSys/Camera.cpp
+                    src/RenderSys/Texture.cpp
+                    src/RenderSys/Geometry.cpp
     )
     add_library (ComputeSys STATIC
                     src/RenderSys/Compute.cpp
@@ -236,8 +249,8 @@ target_sources(ComputeSys
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
                 FILES src/RenderSys/Compute.h src/RenderSys/Buffer.h)
 
-target_link_libraries(RenderSys2D PRIVATE walnut::walnut)
-target_link_libraries(RenderSys3D PRIVATE walnut::walnut)
+target_link_libraries(RenderSys2D PRIVATE walnut::walnut tinyobjloader::tinyobjloader)
+target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader)
 target_link_libraries(ComputeSys PRIVATE walnut::walnut)
 
 install(TARGETS RenderSys2D

@@ -1,13 +1,11 @@
 #include <array>
-
-#include "Walnut/Application.h"
-#include "Walnut/EntryPoint.h"
-#include "Walnut/Random.h"
+#include <Walnut/Application.h>
+#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
+#include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
-#include <GLFW/glfw3.h>
 
 /**
  * The same structure as in the shader, replicated in C++
@@ -30,29 +28,65 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
-	}
+		m_renderer = std::make_shared<RenderSys::Renderer3D>();
+		m_renderer->Init();	
 
-	virtual void OnDetach() override
-	{
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			const char* vertexShaderSource = R"(
+				#version 450 core
+				layout(binding = 0) uniform UniformBufferObject {
+					vec4 color;
+					float time;
+					float _pad[3];
+				} ubo;
+				layout (location = 0) in vec3 aPos;
+				layout (location = 1) in vec3 aColor; // Add color attribute
+				layout (location = 0) out vec3 vColor; // Add color attribute
 
-	}
+				void main() 
+				{
+					float angle = ubo.time;
+					float alpha = cos(angle);
+					float beta = sin(angle);
+					vec3 pos = vec3(
+						aPos.x,
+						alpha * aPos.y + beta * aPos.z,
+						alpha * aPos.z - beta * aPos.y
+					);
+					gl_Position = vec4(pos.x, pos.y, pos.z*0.5 + 0.5, 1.0);
+					vColor = aColor; // Pass color to fragment shader
+				}
+			)";
+			RenderSys::Shader vertexShader("Vertex");
+			vertexShader.type = RenderSys::ShaderType::SPIRV;
+			vertexShader.shaderSrc = vertexShaderSource;
+			vertexShader.stage = RenderSys::ShaderStage::Vertex;
+			m_renderer->SetShader(vertexShader);
 
-	virtual void OnUpdate(float ts) override
-	{
-        Walnut::Timer timer;
-		if (m_viewportWidth == 0 || m_viewportHeight == 0)
-			return;
+			const char* fragmentShaderSource = R"(
+				#version 450
+				layout(binding = 0) uniform UniformBufferObject {
+					vec4 color;
+					float time;
+					float _pad[3];
+				} ubo;
+				layout(location = 0) in vec3 vColor;
+				layout(location = 0) out vec4 FragColor;
 
-        if (!m_renderer ||
-            m_viewportWidth != m_renderer->GetWidth() ||
-            m_viewportHeight != m_renderer->GetHeight())
-        {
-			m_renderer.reset();
-			m_renderer = std::make_shared<RenderSys::Renderer3D>();
-
-			m_renderer->Init();	
-			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
+				void main()
+				{
+					FragColor = vec4(vColor, 1.0) * ubo.color;
+				}
+			)";
+			RenderSys::Shader fragmentShader("Fragment");
+			fragmentShader.type = RenderSys::ShaderType::SPIRV;
+			fragmentShader.shaderSrc = fragmentShaderSource;
+			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+			m_renderer->SetShader(fragmentShader);
+		}
+		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+		{
 			const char* shaderSource = R"(
 			/**
 			 * A structure with fields labeled with vertex attribute locations can be used
@@ -92,8 +126,6 @@ public:
 			fn vs_main(in: VertexInput) -> VertexOutput {
 				var out: VertexOutput;
 				let ratio = 640.0 / 480.0;
-				var offset = vec2f(0.0);
-
 				let angle = uMyUniforms.time; // you can multiply it go rotate faster
 
 				// Rotate the position around the X axis by "mixing" a bit of Y and Z in
@@ -103,7 +135,7 @@ public:
 				var position = vec3f(
 					in.position.x,
 					alpha * in.position.y + beta * in.position.z,
-					alpha * in.position.z - beta * in.position.y,
+					alpha * in.position.z - beta * in.position.y
 				);
 				out.position = vec4f(position.x, position.y * ratio, position.z * 0.5 + 0.5, 1.0);
 				
@@ -119,12 +151,39 @@ public:
 				return vec4f(corrected_color, uMyUniforms.color.a);
 			}
 			)";
-			m_renderer->SetShaderAsString(shaderSource);
 
-			//
-			std::vector<float> vertexData;
-			std::vector<uint16_t> indexData;
-			auto success = Geometry::load3DGeometry(RESOURCE_DIR "/webgpu.txt", vertexData, indexData, 3);
+			RenderSys::Shader shader("Combined");
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+			m_renderer->SetShader(shader);
+		}
+		else
+		{
+			assert(false);
+		}
+	}
+
+	virtual void OnDetach() override
+	{
+		m_renderer->Destroy();
+	}
+
+	virtual void OnUpdate(float ts) override
+	{
+        Walnut::Timer timer;
+		if (m_viewportWidth == 0 || m_viewportHeight == 0)
+			return;
+
+        if (!m_renderer ||
+            m_viewportWidth != m_renderer->GetWidth() ||
+            m_viewportHeight != m_renderer->GetHeight())
+        {
+			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
+			
+			RenderSys::VertexBuffer vertexData;
+			std::vector<uint32_t> indexData;
+			auto success = Geometry::load3DGeometry(RESOURCE_DIR "/model.txt", vertexData, indexData, 3, true);
 			if (!success) 
 			{
 				std::cerr << "Could not load geometry!" << std::endl;
@@ -143,18 +202,16 @@ public:
 
 			// Color attribute
 			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; // different type!
-			vertexAttribs[1].offset = 3 * sizeof(float); // non null offset!
+			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; 
+			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, color);
 
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
-			// stride
-			vertexBufferLayout.arrayStride = 6 * sizeof(float);
+			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-
-			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * sizeof(float), vertexBufferLayout);
+			m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
 			m_renderer->SetIndexBufferData(indexData);
 
 			// Create binding layout (don't forget to = Default)
@@ -171,7 +228,7 @@ public:
 			// Make this binding dynamic so we can offset it between draw calls
 			bGLayoutEntry.buffer.hasDynamicOffset = true;
 
-			m_renderer->CreateUniformBuffer(2, UniformBuf::UniformType::ModelViewProjection, sizeof(MyUniforms), bGLayoutEntry.binding);
+			m_renderer->CreateUniformBuffer(bGLayoutEntry.binding, sizeof(MyUniforms), 2);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();
         }
@@ -183,14 +240,16 @@ public:
 			// Upload first value
 			m_uniformData.time = static_cast<float>(glfwGetTime()) * 0.95f; // glfwGetTime returns a double
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
-			m_renderer->SetUniformBufferData(UniformBuf::UniformType::ModelViewProjection, &m_uniformData, 0);
+			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
 
 			// Upload second value
 			m_uniformData.time = static_cast<float>(glfwGetTime()) * 1.05f; // glfwGetTime returns a double
 			m_uniformData.color = { 1.0f, 1.0f, 1.0f, 0.7f };
-			m_renderer->SetUniformBufferData(UniformBuf::UniformType::ModelViewProjection, &m_uniformData, 1);
+			m_renderer->SetUniformBufferData(0, &m_uniformData, 1);
 			//                               				^^^^^^^^^^^^^ beware of the non-null offset!
 
+			m_renderer->BindResources();
+			
 			m_renderer->RenderIndexed(0);
 			m_renderer->RenderIndexed(1);
 			m_renderer->EndRenderPass();
