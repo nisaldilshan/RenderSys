@@ -7,15 +7,6 @@
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Camera.h>
 
-/**
- * A structure that describes the data layout in the vertex buffer
- * We do not instantiate it but use it in `sizeof` and `offsetof`
- */
-struct VertexAttributes {
-	glm::vec3 position;
-	glm::vec2 uv;
-};
-
 struct MyUniforms {
 	glm::vec3 cameraWorldPosition;
     float time;
@@ -157,21 +148,42 @@ public:
 			}
 
 			)";
-			m_renderer->SetShaderAsString(shaderSource);
+
+			RenderSys::Shader shader("Combined");
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+			m_renderer->SetShader(shader);
 
 			// Vertex buffer
 			// There are 2 floats per vertex, one for x and one for y.
 			// But in the end this is just a bunch of floats to the eyes of the GPU,
 			// the *layout* will tell how to interpret this.
-			const std::vector<float> vertexData = {
-				-0.9, -0.9, 0.0, -1.0 , -1.0,
-				+0.9, -0.9, 0.0, 1.0 , -1.0,
-				+0.9, +0.9, 0.0, 1.0 , 1.0,
+			// const std::vector<float> vertexData = {
+			// 	-0.9, -0.9, 0.0, -1.0 , -1.0,
+			// 	+0.9, -0.9, 0.0, 1.0 , -1.0,
+			// 	+0.9, +0.9, 0.0, 1.0 , 1.0,
 
-				-0.9, -0.9, 0.0, -1.0 , -1.0,
-				-0.9, +0.9, 0.0, -1.0 , 1.0,
-				+0.9, +0.9, 0.0, 1.0 , 1.0,
-			};
+			// 	-0.9, -0.9, 0.0, -1.0 , -1.0,
+			// 	-0.9, +0.9, 0.0, -1.0 , 1.0,
+			// 	+0.9, +0.9, 0.0, 1.0 , 1.0,
+			// };
+
+			RenderSys::VertexBuffer vertexData;
+			vertexData.vertices.resize(6);
+			vertexData.vertices[0].position = glm::vec3(-0.9, -0.9, 0.0);
+			vertexData.vertices[1].position = glm::vec3(+0.9, -0.9, 0.0);
+			vertexData.vertices[2].position = glm::vec3(+0.9, +0.9, 0.0);
+			vertexData.vertices[3].position = glm::vec3(-0.9, -0.9, 0.0);
+			vertexData.vertices[4].position = glm::vec3(-0.9, +0.9, 0.0);
+			vertexData.vertices[5].position = glm::vec3(+0.9, +0.9, 0.0);
+
+			vertexData.vertices[0].texcoord0 = glm::vec2(-1.0, -1.0);
+			vertexData.vertices[1].texcoord0 = glm::vec2(1.0, -1.0);
+			vertexData.vertices[2].texcoord0 = glm::vec2(1.0, 1.0);
+			vertexData.vertices[3].texcoord0 = glm::vec2(-1.0, -1.0);
+			vertexData.vertices[4].texcoord0 = glm::vec2(-1.0, 1.0);
+			vertexData.vertices[5].texcoord0 = glm::vec2(1.0, 1.0);
 
 			std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
 
@@ -183,16 +195,16 @@ public:
 			// UV attribute
 			vertexAttribs[1].location = 1;
 			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[1].offset = offsetof(VertexAttributes, uv);
+			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, texcoord0);
 
 			RenderSys::VertexBufferLayout vertexBufferLayout;
 			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
+			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 
-			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
+			m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
 
 			// Create binding layouts
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);
@@ -205,7 +217,7 @@ public:
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 			uniformBindingLayout.buffer.hasDynamicOffset = true;
 
-			m_renderer->CreateUniformBuffer(1, UniformBuf::UniformType::ModelViewProjection, sizeof(MyUniforms), uniformBindingLayout.binding);
+			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();
         }
@@ -220,7 +232,7 @@ public:
 			auto ssss = m_camera->GetViewMatrix();
 			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
 			m_myUniformData.time = time;
-			m_renderer->SetUniformBufferData(UniformBuf::UniformType::ModelViewProjection, &m_myUniformData, 0);
+			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
        		m_renderer->Render(0);
 			m_renderer->EndRenderPass();
 		}

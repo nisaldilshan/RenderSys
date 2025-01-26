@@ -43,7 +43,7 @@ public:
 			assert(false);
 		}
 
-		m_texHandle = Texture::loadTexture(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
+		m_texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
 		assert(m_texHandle && m_texHandle->GetWidth() > 0 && m_texHandle->GetHeight() > 0 && m_texHandle->GetMipLevelCount() > 0);
 
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
@@ -101,10 +101,8 @@ public:
 					float _pad[3];
 				} ubo;
 
-				layout(binding = 1) uniform texture2D tex;
-				layout(binding = 2) uniform sampler s;
-
-				layout(binding = 3) uniform LightingUniforms {
+				layout(binding = 1) uniform sampler2D tex;
+				layout(binding = 2) uniform LightingUniforms {
 					vec4 directions[2];
 					vec4 colors[2];
 					float hardness;
@@ -124,7 +122,7 @@ public:
 				{
 					vec3 N = normalize(in_normal);
 					vec3 V = normalize(in_viewDirection);
-					vec3 texColor = texture(sampler2D(tex, s), in_uv).rgb; 
+					vec3 texColor = texture(tex, in_uv).rgb; 
 					vec3 color = vec3(0.0);
 					for (int i = 0; i < 2; i++)
 					{
@@ -194,8 +192,8 @@ public:
 
 			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
 			@group(0) @binding(1) var baseColorTexture: texture_2d<f32>;
-			@group(0) @binding(2) var textureSampler: sampler;
-			@group(0) @binding(3) var<uniform> uLighting: LightingUniforms;
+			@group(0) @binding(2) var<uniform> uLighting: LightingUniforms;
+			@group(0) @binding(3) var textureSampler: sampler;
 
 			@vertex
 			fn vs_main(in: VertexInput) -> VertexOutput {
@@ -252,8 +250,7 @@ public:
 			assert(false);
 		}
 
-		m_renderer->CreateTextureSampler();
-		m_renderer->CreateTexture(1, m_texHandle->GetWidth(), m_texHandle->GetHeight(), m_texHandle->GetData(), m_texHandle->GetMipLevelCount());
+		m_renderer->CreateTexture(1, m_texHandle->GetDescriptor());
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 	}
@@ -307,7 +304,7 @@ public:
 			m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
 
 			// Since we now have 2 bindings, we use a vector to store them
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(4);
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 			// The uniform buffer binding that we already had
 			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 			uniformBindingLayout.setDefault();
@@ -325,17 +322,10 @@ public:
 			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
 			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
-			// The sampler binding
-			RenderSys::BindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[2];
-			samplerBindingLayout.setDefault();
-			samplerBindingLayout.binding = 2;
-			samplerBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			samplerBindingLayout.sampler.type = RenderSys::SamplerBindingType::Filtering;
-
 			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[3];
+			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[2];
 			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 3;
+			lightingUniformLayout.binding = 2;
 			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
 			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
@@ -375,7 +365,7 @@ public:
 			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
-			m_renderer->SetUniformBufferData(3, &m_lightingUniformData, 0);
+			m_renderer->SetUniformBufferData(2, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
 			m_renderer->Render(0);
@@ -420,7 +410,7 @@ private:
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
 	RenderSys::VertexBuffer m_vertexBuffer;
-	std::unique_ptr<Texture::TextureHandle> m_texHandle = nullptr;
+	std::unique_ptr<RenderSys::Texture> m_texHandle;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 };
 

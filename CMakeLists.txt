@@ -20,7 +20,6 @@ if(RENDERER STREQUAL "Vulkan")
     target_link_libraries(RenderSys2D PRIVATE 
                             vulkan-memory-allocator::vulkan-memory-allocator
                             shaderc::shaderc 
-                            tinyobjloader::tinyobjloader
     )
 
     add_library (RenderSys3D STATIC
@@ -38,7 +37,6 @@ if(RENDERER STREQUAL "Vulkan")
     target_link_libraries(RenderSys3D PRIVATE 
                             vulkan-memory-allocator::vulkan-memory-allocator 
                             shaderc::shaderc 
-                            tinyobjloader::tinyobjloader
                             TinyGLTF::TinyGLTF
     )
 
@@ -215,12 +213,14 @@ else()
     add_library (RenderSys2D STATIC
                     src/RenderSys/Renderer2D.cpp
                     src/RenderSys/WebGPU/WebGPURenderer2D.cpp
+                    src/RenderSys/Geometry.cpp
     )
     add_library (RenderSys3D STATIC
                     src/RenderSys/Renderer3D.cpp
                     src/RenderSys/WebGPU/WebGPURenderer3D.cpp
                     src/RenderSys/Camera.cpp
                     src/RenderSys/Texture.cpp
+                    src/RenderSys/Geometry.cpp
     )
     add_library (ComputeSys STATIC
                     src/RenderSys/Compute.cpp
@@ -249,8 +249,8 @@ target_sources(ComputeSys
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
                 FILES src/RenderSys/Compute.h src/RenderSys/Buffer.h)
 
-target_link_libraries(RenderSys2D PRIVATE walnut::walnut)
-target_link_libraries(RenderSys3D PRIVATE walnut::walnut)
+target_link_libraries(RenderSys2D PRIVATE walnut::walnut tinyobjloader::tinyobjloader)
+target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader)
 target_link_libraries(ComputeSys PRIVATE walnut::walnut)
 
 install(TARGETS RenderSys2D

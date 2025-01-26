@@ -30,7 +30,7 @@ public:
 			assert(false);
 		}
 
-		m_texHandle = Texture::loadTexture(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
+		m_texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
 		assert(m_texHandle && m_texHandle->GetWidth() > 0 && m_texHandle->GetHeight() > 0 && m_texHandle->GetMipLevelCount() > 0);
 
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
@@ -82,8 +82,7 @@ public:
 					float _pad[3];
 				} ubo;
 
-				layout(binding = 1) uniform texture2D tex;
-				layout(binding = 2) uniform sampler s;
+				layout(binding = 1) uniform sampler2D tex;
 
 				layout (location = 0) in vec3 in_color;
 				layout (location = 1) in vec2 in_uv;
@@ -92,7 +91,7 @@ public:
 
 				void main()
 				{
-					vec3 texColor = texture(sampler2D(tex, s), in_uv).rgb; 
+					vec3 texColor = texture(tex, in_uv).rgb; 
 
 					out_color = vec4(texColor, ubo.color.a);
 				}
@@ -168,8 +167,7 @@ public:
 			assert(false);
 		}
 
-		m_renderer->CreateTextureSampler();
-		m_renderer->CreateTexture(1, m_texHandle->GetWidth(), m_texHandle->GetHeight(), m_texHandle->GetData(), m_texHandle->GetMipLevelCount());
+		m_renderer->CreateTexture(1, m_texHandle->GetDescriptor());
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 	}
@@ -223,7 +221,7 @@ public:
 			m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
 
 			// Since we now have 2 bindings, we use a vector to store them
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
 			// The uniform buffer binding that we already had
 			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 			uniformBindingLayout.setDefault();
@@ -240,13 +238,6 @@ public:
 			textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
 			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
 			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
-
-			// The sampler binding
-			RenderSys::BindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[2];
-			samplerBindingLayout.setDefault();
-			samplerBindingLayout.binding = 2;
-			samplerBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			samplerBindingLayout.sampler.type = RenderSys::SamplerBindingType::Filtering;
 
 			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 
@@ -319,7 +310,7 @@ private:
 
 	MyUniforms m_uniformData;
 	RenderSys::VertexBuffer m_vertexBuffer;
-	std::unique_ptr<Texture::TextureHandle> m_texHandle = nullptr;
+	std::unique_ptr<RenderSys::Texture> m_texHandle;
 	const char* m_shaderSource = nullptr;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 };

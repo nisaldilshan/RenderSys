@@ -104,7 +104,7 @@ void Renderer3D::SetUniformBufferData(uint32_t binding, const void* bufferData, 
     m_rendererBackend->SetUniformData(binding, bufferData, uniformIndex);
 }
 
-void RenderSys::Renderer3D::BindResources()
+void Renderer3D::BindResources()
 {
     m_rendererBackend->BindResources();
 }
@@ -114,7 +114,7 @@ void* Renderer3D::GetDescriptorSet() const
     return m_rendererBackend->GetDescriptorSet();
 }
 
-void RenderSys::Renderer3D::Destroy()
+void Renderer3D::Destroy()
 {
     return m_rendererBackend->Destroy();
 }
@@ -129,7 +129,7 @@ void Renderer3D::RenderIndexed(uint32_t uniformIndex)
     m_rendererBackend->RenderIndexed(uniformIndex);
 }
 
-void RenderSys::Renderer3D::RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex)
+void Renderer3D::RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex)
 {
     m_rendererBackend->RenderMesh(mesh, uniformIndex);
 }

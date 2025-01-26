@@ -192,49 +192,41 @@ void WebGPURenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
     std::cout << "Index buffer: " << m_indexBuffer << std::endl;
 }
 
-void WebGPURenderer2D::SetBindGroupLayoutEntry(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
+void WebGPURenderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroupLayoutEntry)
 {
     // Create a bind group layout
 	wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
 	bindGroupLayoutDesc.entryCount = 1;
 	bindGroupLayoutDesc.entries = GetWebGPUBindGroupLayoutEntryPtr(bindGroupLayoutEntry);
 	m_bindGroupLayout = WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
-}
+    assert(m_bindGroupLayout);
 
-void WebGPURenderer2D::CreateBindGroup()
-{
-    if (m_bindGroupLayout)
-    {
-        // Create the pipeline layout
-        wgpu::PipelineLayoutDescriptor pipelineLayoutDesc;
-        pipelineLayoutDesc.bindGroupLayoutCount = 1;
-        pipelineLayoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*)&m_bindGroupLayout;
-        m_pipelineLayout = WebGPU::GetDevice().createPipelineLayout(pipelineLayoutDesc);
+    // Create the pipeline layout
+    wgpu::PipelineLayoutDescriptor pipelineLayoutDesc;
+    pipelineLayoutDesc.bindGroupLayoutCount = 1;
+    pipelineLayoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*)&m_bindGroupLayout;
+    m_pipelineLayout = WebGPU::GetDevice().createPipelineLayout(pipelineLayoutDesc);
 
+    // Create a binding
+    wgpu::BindGroupEntry binding;
+    // The index of the binding (the entries in bindGroupDesc can be in any order)
+    binding.binding = 0;
+    // The buffer it is actually bound to
+    binding.buffer = m_uniformBuffer;
+    // We can specify an offset within the buffer, so that a single buffer can hold
+    // multiple uniform blocks.
+    binding.offset = 0;
+    // And we specify again the size of the buffer.
+    assert(m_sizeOfUniform > 0);
+    binding.size = m_sizeOfUniform;
 
-
-        // Create a binding
-        wgpu::BindGroupEntry binding;
-        // The index of the binding (the entries in bindGroupDesc can be in any order)
-        binding.binding = 0;
-        // The buffer it is actually bound to
-        binding.buffer = m_uniformBuffer;
-        // We can specify an offset within the buffer, so that a single buffer can hold
-        // multiple uniform blocks.
-        binding.offset = 0;
-        // And we specify again the size of the buffer.
-        assert(m_sizeOfUniform > 0);
-        binding.size = m_sizeOfUniform;
-
-
-        // A bind group contains one or multiple bindings
-        wgpu::BindGroupDescriptor bindGroupDesc;
-        bindGroupDesc.layout = m_bindGroupLayout;
-        // There must be as many bindings as declared in the layout!
-        bindGroupDesc.entryCount = 1; // TODO: Nisal - use bindGroupLayoutDesc.entryCount
-        bindGroupDesc.entries = &binding;
-        m_bindGroup = WebGPU::GetDevice().createBindGroup(bindGroupDesc);
-    }
+    // A bind group contains one or multiple bindings
+    wgpu::BindGroupDescriptor bindGroupDesc;
+    bindGroupDesc.layout = m_bindGroupLayout;
+    // There must be as many bindings as declared in the layout!
+    bindGroupDesc.entryCount = 1; // TODO: Nisal - use bindGroupLayoutDesc.entryCount
+    bindGroupDesc.entries = &binding;
+    m_bindGroup = WebGPU::GetDevice().createBindGroup(bindGroupDesc);
 }
 
 uint32_t WebGPURenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)

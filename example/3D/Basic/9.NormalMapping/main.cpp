@@ -66,14 +66,12 @@ public:
 				layout (location = 2) in vec3 in_color;
 				layout (location = 3) in vec2 in_uv;
 				layout (location = 4) in vec3 in_tangent;
-				//layout (location = 5) in vec3 in_bitangent;
 
 				layout (location = 0) out vec3 out_color;
 				layout (location = 1) out vec3 out_normal;
 				layout (location = 2) out vec2 out_uv;
 				layout (location = 3) out vec3 out_viewDirection;
 				layout (location = 4) out vec3 out_tangent;
-				//layout (location = 5) out vec3 out_bitangent;
 
 				void main() 
 				{
@@ -86,7 +84,6 @@ public:
 					out_uv = in_uv;
 					out_viewDirection = ubo.cameraWorldPosition - worldPosition.xyz;
 					out_tangent = (ubo.modelMatrix * vec4(in_tangent, 0.0)).xyz;
-					//out_bitangent = (ubo.modelMatrix * vec4(in_bitangent, 0.0)).xyz;
 				}
 			)";
 			RenderSys::Shader vertexShader("Vertex");
@@ -124,7 +121,6 @@ public:
 				layout (location = 2) in vec2 in_uv;
 				layout (location = 3) in vec3 in_viewDirection;
 				layout (location = 4) in vec3 in_tangent;
-				//layout (location = 5) in vec3 in_bitangent;
 
 				layout (location = 0) out vec4 out_color;
 
@@ -178,7 +174,6 @@ public:
 				@location(2) color: vec3f,
 				@location(3) uv: vec2f,
 				@location(4) tangent: vec3f,
-				@location(5) bitangent: vec3f,
 			};
 
 			struct VertexOutput {
@@ -217,8 +212,8 @@ public:
 			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
 			@group(0) @binding(1) var baseColorTexture: texture_2d<f32>;
 			@group(0) @binding(2) var normalTexture: texture_2d<f32>;
-			@group(0) @binding(3) var textureSampler: sampler;
-			@group(0) @binding(4) var<uniform> uLighting: LightingUniforms;
+			@group(0) @binding(3) var<uniform> uLighting: LightingUniforms;
+			@group(0) @binding(4) var textureSampler: sampler;
 
 			@vertex
 			fn vs_main(in: VertexInput) -> VertexOutput {
@@ -226,7 +221,7 @@ public:
 				let worldPosition = uMyUniforms.modelMatrix * vec4<f32>(in.position, 1.0);
 				out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * worldPosition;
 				out.tangent = (uMyUniforms.modelMatrix * vec4f(in.tangent, 0.0)).xyz;
-				out.bitangent = (uMyUniforms.modelMatrix * vec4f(in.bitangent, 0.0)).xyz;
+				out.bitangent = (uMyUniforms.modelMatrix * vec4f(in.tangent, 0.0)).xyz;
 				out.normal = (uMyUniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
 				out.color = in.color;
 				out.uv = in.uv;
@@ -243,7 +238,7 @@ public:
 				// The TBN matrix converts directions from the local space to the world space
 				let localToWorld = mat3x3f(
 					normalize(in.tangent),
-					normalize(in.bitangent),
+					-normalize(cross(in.normal, in.tangent)),
 					normalize(in.normal),
 				);
 				let worldN = localToWorld * localN;

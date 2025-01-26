@@ -40,6 +40,7 @@ public:
 	{
 		if (!loadScene())
 		{
+			assert(false);
 			return;
 		}
 
@@ -250,7 +251,8 @@ public:
         ImGui::Begin("Viewport");
 		m_viewportWidth = ImGui::GetContentRegionAvail().x;
         m_viewportHeight = ImGui::GetContentRegionAvail().y;
-        ImGui::Image(m_renderer->GetDescriptorSet(), {(float)m_renderer->GetWidth(),(float)m_renderer->GetWidth()});
+		if (m_renderer)
+        	ImGui::Image(m_renderer->GetDescriptorSet(), {(float)m_renderer->GetWidth(),(float)m_renderer->GetWidth()});
 		ImGui::End();
         ImGui::PopStyleVar();
 
@@ -261,7 +263,7 @@ private:
 	bool loadScene()
 	{
 		m_scene = std::make_unique<RenderSys::Scene>();
-		if (!m_scene->load(RESOURCE_DIR "/Scenes/Woman.gltf", ""))
+		if (!m_scene->load(RESOURCE_DIR "/Models/Woman.gltf", ""))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;

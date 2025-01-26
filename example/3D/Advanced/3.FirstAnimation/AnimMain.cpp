@@ -50,6 +50,7 @@ public:
 	{
 		if (!loadScene())
 		{
+			assert(false);
 			return;
 		}
 
@@ -294,7 +295,8 @@ public:
         ImGui::Begin("Viewport");
 		m_viewportWidth = ImGui::GetContentRegionAvail().x;
         m_viewportHeight = ImGui::GetContentRegionAvail().y;
-        ImGui::Image(m_renderer->GetDescriptorSet(), {(float)m_renderer->GetWidth(),(float)m_renderer->GetWidth()});
+		if (m_renderer)
+        	ImGui::Image(m_renderer->GetDescriptorSet(), {(float)m_renderer->GetWidth(),(float)m_renderer->GetWidth()});
 		ImGui::End();
         ImGui::PopStyleVar();
 
@@ -305,8 +307,7 @@ private:
 	bool loadScene()
 	{
 		m_scene = std::make_unique<RenderSys::Scene>();
-		//if (!m_scene->load(RESOURCE_DIR "/Scenes/newme/newme.gltf", ""))
-		if (!m_scene->load("C:/develop/cpp/glTF-Sample-Models/2.0/Sponza/glTF/Sponza.gltf", ""))
+		if (!m_scene->load(RESOURCE_DIR "/Models/Sponza/glTF/Sponza.gltf", ""))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
