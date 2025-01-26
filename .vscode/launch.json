@@ -222,25 +222,27 @@
         },
         {
             "name": "GLTFModel",
-            "type": "cppvsdbg",
+            "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Advanced/2.GLTFModel/Debug/GLTFModel",
+            "program": "${workspaceFolder}/build/example/3D/Advanced/2.GLTFModel/GLTFModel",
             "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Advanced/2.GLTFModel/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Advanced/2.GLTFModel",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
         },
         {
             "name": "FirstAnimation",
-            "type": "cppvsdbg",
+            "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Advanced/3.FirstAnimation/Debug/FirstAnimation",
+            "program": "${workspaceFolder}/build/example/3D/Advanced/3.FirstAnimation/FirstAnimation",
             "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Advanced/3.FirstAnimation/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Advanced/3.FirstAnimation",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
         },
         {
             "name": "RayMarching",
