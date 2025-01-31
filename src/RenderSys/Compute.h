@@ -6,6 +6,7 @@
 
 #include "Buffer.h"
 #include "RenderUtil.h"
+#include "Shader.h"
 
 namespace GraphicsAPI
 {
@@ -30,15 +31,23 @@ class Compute
 public:
     Compute();
     ~Compute();
-    void SetShader(const char* shaderSource);
-    void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
+
+    Compute(const Compute&) = delete;
+	Compute &operator=(const Compute&) = delete;
+	Compute(Compute&&) = delete;
+	Compute &operator=(Compute&&) = delete;
+
+    void Init();
+    void SetShader(RenderSys::Shader& shader);
     void CreatePipeline();
+    void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
     void CreateBuffer(const uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name);
     void SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string& name);
     void BeginComputePass();
     void DoCompute(const uint32_t workgroupCountX, const uint32_t workgroupCountY);
     void EndComputePass();
     std::vector<uint8_t>& GetMappedResult();
+    void Destroy();
 private:
     std::unique_ptr<GraphicsAPI::ComputeType> m_computeBackend;
 };

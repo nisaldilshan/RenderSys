@@ -61,7 +61,7 @@ void WebGPUCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayout
     std::cout << "Compute bind group: " << m_bindGroup << std::endl;
 }
 
-void WebGPUCompute::CreateShaders(const char *shaderSource)
+void WebGPUCompute::CreateShaders(RenderSys::Shader& shader)
 {
     std::cout << "Creating shader module..." << std::endl;
 
@@ -75,7 +75,7 @@ void WebGPUCompute::CreateShaders(const char *shaderSource)
     // Set the chained struct's header
     shaderCodeDesc.chain.next = nullptr;
     shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
-    shaderCodeDesc.code = shaderSource;
+    shaderCodeDesc.code = shader.shaderSrc.c_str();
     // Connect the chain
     shaderDesc.nextInChain = &shaderCodeDesc.chain;
     m_shaderModule = WebGPU::GetDevice().createShaderModule(shaderDesc);

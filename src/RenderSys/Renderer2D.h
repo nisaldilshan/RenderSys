@@ -27,6 +27,7 @@ static_assert(false);
 
 namespace RenderSys
 {
+    
 class Renderer2D
 {
 public:

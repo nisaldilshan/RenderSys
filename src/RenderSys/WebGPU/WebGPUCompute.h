@@ -5,8 +5,9 @@
 
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
-#include "../Buffer.h"
-#include "../RenderUtil.h"
+#include <RenderSys/Buffer.h>
+#include <RenderSys/RenderUtil.h>
+#include <RenderSys/Shader.h>
 
 namespace GraphicsAPI
 {
@@ -17,7 +18,7 @@ namespace GraphicsAPI
         ~WebGPUCompute();
 
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-        void CreateShaders(const char *shaderSource);
+        void CreateShaders(RenderSys::Shader& shader);
         void CreatePipeline();
         void CreateBuffer(uint32_t bufferLength, RenderSys::ComputeBuf::BufferType type, const std::string& name);
         void SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string& name);

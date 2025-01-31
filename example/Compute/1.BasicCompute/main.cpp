@@ -7,7 +7,7 @@
 
 constexpr uint32_t g_bufferSize = 64 * sizeof(float);
 
-class Renderer2DLayer : public Walnut::Layer
+class ComputeLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
@@ -30,7 +30,12 @@ public:
 			outputBuffer[id.x] = f(inputBuffer[id.x]);
 		}
 		)";
-		m_compute->SetShader(shaderSource);
+
+		RenderSys::Shader shader("Compute");
+		shader.type = RenderSys::ShaderType::WGSL;
+		shader.shaderSrc = shaderSource;
+		shader.stage = RenderSys::ShaderStage::Compute;
+		m_compute->SetShader(shader);
 
 		
 		m_compute->CreateBuffer(g_bufferSize, RenderSys::ComputeBuf::BufferType::Input, "INPUT_BUFFER");
@@ -82,26 +87,19 @@ public:
 			std::cout << "output " << output[i] << std::endl;
 		}
 
-        m_lastRenderTime = timer.ElapsedMillis();
+        m_lastComputeTime = timer.ElapsedMillis();
 	}
 
 	virtual void OnUIRender() override
 	{
 		ImGui::Begin("Settings");
-        ImGui::Text("Last render: %.3fms", m_lastRenderTime);
+        ImGui::Text("Last Compute: %.3fms", m_lastComputeTime);
 		ImGui::End();
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin("Results");
-		ImGui::End();
-        ImGui::PopStyleVar();
-
-		ImGui::ShowDemoWindow();
 	}
 
 private:
     std::unique_ptr<RenderSys::Compute> m_compute;
-    float m_lastRenderTime = 0.0f;
+    float m_lastComputeTime = 0.0f;
 	std::vector<float> m_inputBufferValues;
 };
 
@@ -111,6 +109,6 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	spec.Name = "Compute Example";
 
 	Walnut::Application* app = new Walnut::Application(spec);
-	app->PushLayer<Renderer2DLayer>();
+	app->PushLayer<ComputeLayer>();
 	return app;
 }

@@ -21,19 +21,23 @@ Compute::~Compute()
 {
 }
 
-void Compute::SetShader(const char *shaderSource)
+void Compute::Init()
 {
-    m_computeBackend->CreateShaders(shaderSource);
 }
 
-void Compute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
+void Compute::SetShader(RenderSys::Shader& shader)
 {
-    m_computeBackend->CreateBindGroup(bindGroupLayoutEntries);
+    m_computeBackend->CreateShaders(shader);
 }
 
 void Compute::CreatePipeline()
 {
     m_computeBackend->CreatePipeline();
+}
+
+void Compute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
+{
+    m_computeBackend->CreateBindGroup(bindGroupLayoutEntries);
 }
 
 void Compute::CreateBuffer(const uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name)
@@ -64,4 +68,8 @@ void Compute::EndComputePass()
 std::vector<uint8_t> &Compute::GetMappedResult()
 {
     return m_computeBackend->GetMappedResult();
+}
+
+void Compute::Destroy()
+{
 }

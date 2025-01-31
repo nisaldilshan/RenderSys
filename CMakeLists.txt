@@ -249,6 +249,11 @@ target_sources(ComputeSys
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
                 FILES src/RenderSys/Compute.h src/RenderSys/Buffer.h)
 
+
+target_include_directories(RenderSys2D PRIVATE src)
+target_include_directories(RenderSys3D PRIVATE src)
+target_include_directories(ComputeSys PRIVATE src)
+
 target_link_libraries(RenderSys2D PRIVATE walnut::walnut tinyobjloader::tinyobjloader)
 target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader)
 target_link_libraries(ComputeSys PRIVATE walnut::walnut)

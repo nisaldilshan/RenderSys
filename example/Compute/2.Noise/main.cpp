@@ -74,7 +74,12 @@ public:
 			*arrayPos = result;
 		}
 		)";
-		m_compute->SetShader(shaderSource);
+		
+		RenderSys::Shader shader("Compute");
+		shader.type = RenderSys::ShaderType::WGSL;
+		shader.shaderSrc = shaderSource;
+		shader.stage = RenderSys::ShaderStage::Compute;
+		m_compute->SetShader(shader);
 
 		const auto bufferSize = g_width * g_height * 4;
 		m_compute->CreateBuffer(bufferSize, RenderSys::ComputeBuf::BufferType::Input, "INPUT_BUFFER");

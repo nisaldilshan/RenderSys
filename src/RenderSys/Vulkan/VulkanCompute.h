@@ -3,8 +3,8 @@
 #include <vector>
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 
-#include "../Buffer.h"
-#include "../RenderUtil.h"
+#include <RenderSys/Buffer.h>
+#include <RenderSys/RenderUtil.h>
 
 namespace GraphicsAPI
 {
