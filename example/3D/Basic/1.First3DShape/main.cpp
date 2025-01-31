@@ -6,6 +6,7 @@
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
+#include <imgui.h>
 
 /**
  * The same structure as in the shader, replicated in C++

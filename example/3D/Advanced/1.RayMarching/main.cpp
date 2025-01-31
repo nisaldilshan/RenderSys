@@ -6,6 +6,7 @@
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Camera.h>
+#include <imgui.h>
 
 struct MyUniforms {
 	glm::vec3 cameraWorldPosition;

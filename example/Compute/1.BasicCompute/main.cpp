@@ -2,9 +2,8 @@
 #include "Walnut/EntryPoint.h"
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
-
 #include <RenderSys/Compute.h>
-#include <GLFW/glfw3.h>
+#include <imgui.h>
 
 constexpr uint32_t g_bufferSize = 64 * sizeof(float);
 

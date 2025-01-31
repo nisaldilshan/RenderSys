@@ -3,7 +3,6 @@
 #include <memory>
 #include <vector>
 #include <stdint.h>
-#include <imgui_impl_glfw.h>
 
 #include "Buffer.h"
 #include "RenderUtil.h"

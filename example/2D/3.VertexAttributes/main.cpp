@@ -5,6 +5,7 @@
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer2D.h>
+#include <imgui.h>
 
 class Renderer2DLayer : public Walnut::Layer
 {

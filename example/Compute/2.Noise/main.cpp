@@ -5,7 +5,7 @@
 #include <Walnut/Image.h>
 
 #include <RenderSys/Compute.h>
-#include <GLFW/glfw3.h>
+#include <imgui.h>
 
 constexpr int g_width = 1280;
 constexpr int g_height = 720;
