@@ -17,14 +17,15 @@ add_subdirectory(3D/Basic/7.CameraControls)
 add_subdirectory(3D/Basic/8.Lighting)
 add_subdirectory(3D/Basic/9.NormalMapping)
 
+add_subdirectory(Compute/1.BasicCompute)
+add_subdirectory(Compute/2.Noise)
+
 if(RENDERER STREQUAL "Vulkan")
     add_subdirectory(3D/Advanced/2.GLTFModel)
     add_subdirectory(3D/Advanced/3.FirstAnimation)
 endif()
 
 if(RENDERER STREQUAL "WebGPU")
-    add_subdirectory(Compute/1.BasicCompute)
-    add_subdirectory(Compute/2.Noise)
     add_subdirectory(Compute/3.Fluid2D)
     #add_subdirectory(Compute/4.Fluid3D)
 

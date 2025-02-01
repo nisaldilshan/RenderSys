@@ -9,6 +9,7 @@
 #include <RenderSys/Geometry.h>
 #include <RenderSys/Camera.h>
 #include <RenderSys/Scene/Scene.h>
+#include <imgui.h>
 
 struct MyUniforms {
     glm::mat4x4 projectionMatrix;

@@ -2,7 +2,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
 #include <RenderSys/Buffer.h>
@@ -24,6 +23,7 @@ namespace GraphicsAPI
         void SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string& name);
         void BeginComputePass();
         void Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY);
+        void BufferMapCallback(WGPUMapAsyncStatus status, char const * message);
         void EndComputePass();
         std::vector<uint8_t>& GetMappedResult();
     private:
@@ -35,6 +35,8 @@ namespace GraphicsAPI
         wgpu::ComputePassEncoder m_computePass = nullptr;
 
         std::unordered_map<std::string, wgpu::Buffer> m_buffersAccessibleToShader;
-        
+        wgpu::Buffer m_mapBuffer = nullptr;
+        std::vector<uint8_t> m_mapBufferMappedData;
+        bool m_resultReady = false;
     };
 }

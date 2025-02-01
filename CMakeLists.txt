@@ -44,6 +44,11 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Compute.cpp
                     src/RenderSys/Vulkan/VulkanCompute.cpp
     )
+
+    target_link_libraries(ComputeSys PRIVATE 
+                            vulkan-memory-allocator::vulkan-memory-allocator 
+                            shaderc::shaderc 
+    )
 else()
     find_package(WebGPU REQUIRED)
     add_library(WEBGPU-WHOLEARCHIVE INTERFACE)
