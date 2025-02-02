@@ -130,7 +130,7 @@ void WebGPUCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             inputBufferDesc.label = ("Buffer bound to binding " + std::to_string(binding)).c_str();
             std::cout << "Creating input buffer..." << std::endl;
             inputBufferDesc.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst;
-            m_buffersAccessibleToShader.emplace(binding, WebGPU::GetDevice().createBuffer(inputBufferDesc));
+            m_buffersAccessibleToShader[binding] = WebGPU::GetDevice().createBuffer(inputBufferDesc);
             std::cout << "input buffer: " << m_buffersAccessibleToShader.find(binding)->second << std::endl;
             break;
         }
@@ -156,7 +156,7 @@ void WebGPUCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
 
             MappedBuffer mapped{ outBuf, mapBuf};
             mapped.mappedData.resize(bufferLength);
-            auto& mappedBuffer = m_shaderOutputBuffers.emplace(binding, mapped);
+            m_shaderOutputBuffers[binding] = mapped;
             break;
         }
         case RenderSys::ComputeBuf::BufferType::Uniform:
@@ -167,7 +167,7 @@ void WebGPUCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             uniformbufferDesc.label = ("Uniform Buffer bound to binding " + std::to_string(binding)).c_str();
             std::cout << "Creating uniform buffer..." << std::endl;
             uniformbufferDesc.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
-            m_buffersAccessibleToShader.emplace(binding, WebGPU::GetDevice().createBuffer(uniformbufferDesc));
+            m_buffersAccessibleToShader[binding] = WebGPU::GetDevice().createBuffer(uniformbufferDesc);
             std::cout << "uniform buffer: " << m_buffersAccessibleToShader.find(binding)->second << std::endl;
             break;
         }

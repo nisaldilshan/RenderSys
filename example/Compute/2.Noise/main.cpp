@@ -1,17 +1,17 @@
-#include "Walnut/Application.h"
-#include "Walnut/EntryPoint.h"
+#include <Walnut/Application.h>
+#include <Walnut/EntryPoint.h>
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
 #include <Walnut/Image.h>
-
 #include <RenderSys/Compute.h>
 #include <imgui.h>
 
-constexpr int g_width = 1280;
-constexpr int g_height = 720;
+int g_width = 0;
+int g_height = 0;
 
-struct MyUniforms {
+struct alignas(16) MyUniforms {
     float time;
+	glm::vec2 resolution;
 };
 
 class ComputeLayer : public Walnut::Layer
@@ -36,6 +36,7 @@ public:
 
 		struct MyUniforms {
 			time: f32,
+			resolution: vec2f
 		};
 
 		@group(0) @binding(0) var<storage,read> inputBuffer: array<f32>;
@@ -70,7 +71,9 @@ public:
 			let green = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*4000, f32(id.y)+uMyUniforms.time*4000)) * 500.);
 			let red = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*6000, f32(id.y)+uMyUniforms.time*2000)) * 500.);
 			let result = (255 << 24) | (blue << 16) | (green << 8) | red;
-			let arrayPos = &outputBuffer[id.x + (1280 * id.y)];
+			let resol = uMyUniforms.resolution;
+
+			let arrayPos = &outputBuffer[(id.y) + (u32(resol.x) * (id.x))];
 			*arrayPos = result;
 		}
 		)";
@@ -80,79 +83,80 @@ public:
 		shader.shaderSrc = shaderSource;
 		shader.stage = RenderSys::ShaderStage::Compute;
 		m_compute->SetShader(shader);
-
-		const auto bufferSize = g_width * g_height * 4;
-		m_compute->CreateBuffer(0, bufferSize, RenderSys::ComputeBuf::BufferType::Input);
-		m_compute->CreateBuffer(1, bufferSize, RenderSys::ComputeBuf::BufferType::Output);
-		m_compute->CreateBuffer(2, 1 * sizeof(MyUniforms), RenderSys::ComputeBuf::BufferType::Uniform);	
-
-		// Create bind group layout
-		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
-
-		// Input buffer
-		bindingLayoutEntries[0].setDefault();
-		bindingLayoutEntries[0].binding = 0;
-		bindingLayoutEntries[0].visibility = RenderSys::ShaderStage::Compute;
-		bindingLayoutEntries[0].buffer.type = RenderSys::BufferBindingType::ReadOnlyStorage;
-		bindingLayoutEntries[0].buffer.bufferName = "INPUT_BUFFER";
-		
-
-		// Output buffer
-		bindingLayoutEntries[1].setDefault();
-		bindingLayoutEntries[1].binding = 1;
-		bindingLayoutEntries[1].visibility = RenderSys::ShaderStage::Compute;
-		bindingLayoutEntries[1].buffer.type = RenderSys::BufferBindingType::Storage;
-		bindingLayoutEntries[1].buffer.bufferName = "OUTPUT_BUFFER";
-
-		// Uniform buffer
-		bindingLayoutEntries[2].setDefault();
-		bindingLayoutEntries[2].binding = 2;
-		bindingLayoutEntries[2].visibility = RenderSys::ShaderStage::Compute;
-		bindingLayoutEntries[2].buffer.type = RenderSys::BufferBindingType::Uniform;
-		bindingLayoutEntries[2].buffer.minBindingSize = sizeof(MyUniforms);
-		bindingLayoutEntries[2].buffer.hasDynamicOffset = false;
-		bindingLayoutEntries[2].buffer.bufferName = "UNIFORM_BUFFER";
-
-		m_compute->CreateBindGroup(bindingLayoutEntries);
-		m_compute->CreatePipeline();
-
-		m_inputBufferValues.resize(bufferSize / sizeof(float));
-		for (int i = 0; i < m_inputBufferValues.size(); ++i) {
-			m_inputBufferValues[i] = 0.1f * i;
-		}
 	}
 
 	void GPUSolve()
 	{
+		if (m_viewportWidth == 0 || m_viewportHeight == 0)
+			return;
+
+		if (m_viewportWidth != g_width || m_viewportHeight != g_height)
+		{
+			g_width = m_viewportWidth;
+			g_height = m_viewportHeight;
+			const auto bufferSize = g_width * g_height * 4;
+			m_compute->CreateBuffer(0, bufferSize, RenderSys::ComputeBuf::BufferType::Input);
+			m_compute->CreateBuffer(1, bufferSize, RenderSys::ComputeBuf::BufferType::Output);
+			m_compute->CreateBuffer(2, 1 * sizeof(MyUniforms), RenderSys::ComputeBuf::BufferType::Uniform);	
+
+			// Create bind group layout
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
+
+			// Input buffer
+			bindingLayoutEntries[0].setDefault();
+			bindingLayoutEntries[0].binding = 0;
+			bindingLayoutEntries[0].visibility = RenderSys::ShaderStage::Compute;
+			bindingLayoutEntries[0].buffer.type = RenderSys::BufferBindingType::ReadOnlyStorage;
+			bindingLayoutEntries[0].buffer.bufferName = "INPUT_BUFFER";
+			
+
+			// Output buffer
+			bindingLayoutEntries[1].setDefault();
+			bindingLayoutEntries[1].binding = 1;
+			bindingLayoutEntries[1].visibility = RenderSys::ShaderStage::Compute;
+			bindingLayoutEntries[1].buffer.type = RenderSys::BufferBindingType::Storage;
+			bindingLayoutEntries[1].buffer.bufferName = "OUTPUT_BUFFER";
+
+			// Uniform buffer
+			bindingLayoutEntries[2].setDefault();
+			bindingLayoutEntries[2].binding = 2;
+			bindingLayoutEntries[2].visibility = RenderSys::ShaderStage::Compute;
+			bindingLayoutEntries[2].buffer.type = RenderSys::BufferBindingType::Uniform;
+			bindingLayoutEntries[2].buffer.minBindingSize = sizeof(MyUniforms);
+			bindingLayoutEntries[2].buffer.hasDynamicOffset = false;
+			bindingLayoutEntries[2].buffer.bufferName = "UNIFORM_BUFFER";
+
+			m_compute->CreateBindGroup(bindingLayoutEntries);
+			m_compute->CreatePipeline();
+
+			m_inputBufferValues.resize(bufferSize);
+			for (int i = 0; i < m_inputBufferValues.size(); ++i) {
+				m_inputBufferValues[i] = 0;
+			}
+
+			m_compute->SetBufferData(0, m_inputBufferValues.data(), m_inputBufferValues.size());
+		}
+
 		m_compute->BeginComputePass();
-
-		const auto bufferSize = m_inputBufferValues.size() * sizeof(float);
-		m_compute->SetBufferData(0, m_inputBufferValues.data(), bufferSize);
-
-
+		
 		m_myUniformData.time = static_cast<float>(glfwGetTime());
+		m_myUniformData.resolution.x = g_width;
+		m_myUniformData.resolution.y = g_height;
 		m_compute->SetBufferData(2, &m_myUniformData, 1 * sizeof(MyUniforms));
 
-		// divide by workgroup size and divide by sizeof float as we iterate a float array in the shader
-		const uint32_t workgroupDispatchCount = std::ceil(bufferSize / sizeof(float) / 64.0);
-		m_compute->DoCompute(g_width/8, g_height/8); 
+		constexpr auto workgroup_size_x = 8;
+		constexpr auto workgroup_size_y = 8;
+		const auto dispatch_x = (g_width + workgroup_size_x - 1) / workgroup_size_x;
+		const auto dispatch_y = (g_height + workgroup_size_y - 1) / workgroup_size_y;
+		m_compute->DoCompute(dispatch_x, dispatch_y); 
 		m_compute->EndComputePass();
 
 		auto& result = m_compute->GetMappedResult();
-		assert(result.size() == bufferSize);
-		// const uint32_t* output = (const uint32_t*)(&result[0]);
-		// std::cout << "output " << std::endl;
-		// for (int i = 0; i < bufferSize / sizeof(float); ++i) {
-		// 	std::cout << output[i] << ", ";
-		// }
-		// std::cout << std::endl;
-
+		assert(result.size() == m_inputBufferValues.size());
 
 		m_finalImage->Resize(g_width, g_height);
 		m_finalImageData.resize(m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4); // 4 for RGBA
-		
 		memcpy(m_finalImageData.data(), result.data(), m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4);
-
 		m_finalImage->SetData(m_finalImageData.data());
 	}
 
@@ -212,7 +216,7 @@ public:
 private:
     std::unique_ptr<RenderSys::Compute> m_compute;
     float m_lastRenderTime = 0.0f;
-	std::vector<float> m_inputBufferValues;
+	std::vector<uint8_t> m_inputBufferValues;
 	uint32_t m_viewportWidth = 0;
     uint32_t m_viewportHeight = 0;
 	bool m_hWSolver = false;
