@@ -6,26 +6,14 @@ namespace GraphicsAPI
 
 WebGPUCompute::~WebGPUCompute()
 {
-    for (auto& [binding, buffer] : m_buffersAccessibleToShader)
-    {
-        buffer.destroy();
-        buffer.release();
-    }
-    
-	
-    for (auto& [binding, mappedBuffer] : m_shaderOutputBuffers)
-    {
-        mappedBuffer.buffer.destroy();
-	    mappedBuffer.buffer.release();
-        mappedBuffer.mapBuffer.destroy();
-	    mappedBuffer.mapBuffer.release();
-    }
-
-    m_buffersAccessibleToShader.clear();
-    m_shaderOutputBuffers.clear();
+    Destroy();
 }
 
-void WebGPUCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
+void WebGPUCompute::Init()
+{
+}
+
+void WebGPUCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry> &bindGroupLayoutEntries)
 {
     // Create a bind group layout using a vector of layout entries
     auto entries = GetWebGPUBindGroupLayoutEntriesPtr(bindGroupLayoutEntries, false);
@@ -54,7 +42,7 @@ void WebGPUCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayout
         {
             auto outBufIter = m_shaderOutputBuffers.find(bindGroupLayoutEntries[i].binding);
             assert(outBufIter != m_shaderOutputBuffers.end());
-            buffer = outBufIter->second.buffer;
+            buffer = outBufIter->second->buffer;
         }
 
         bindings[i].binding = bindGroupLayoutEntries[i].binding;
@@ -154,9 +142,12 @@ void WebGPUCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             auto mapBuf = WebGPU::GetDevice().createBuffer(mapbufferDesc);
             std::cout << "map buffer: " << mapBuf << std::endl;
 
-            MappedBuffer mapped{ outBuf, mapBuf};
-            mapped.mappedData.resize(bufferLength);
-            m_shaderOutputBuffers[binding] = mapped;
+            auto& [Iter, inserted] = m_shaderOutputBuffers.insert({binding, std::make_shared<MappedBuffer>()});
+            assert(inserted == true);
+            Iter->second->buffer = outBuf;
+            Iter->second->mapBuffer = mapBuf;
+            Iter->second->resultReady = false;
+            Iter->second->mappedData.resize(bufferLength);
             break;
         }
         case RenderSys::ComputeBuf::BufferType::Uniform:
@@ -197,7 +188,6 @@ void WebGPUCompute::SetBufferData(uint32_t binding, const void *bufferData, uint
 
 void WebGPUCompute::Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY)
 {
-    m_resultReady.store(false);
     m_computePass.setPipeline(m_pipeline);
     m_computePass.setBindGroup(0, m_bindGroup, 0, nullptr);
 	m_computePass.dispatchWorkgroups(workgroupCountX, workgroupCountY, 1);
@@ -211,24 +201,24 @@ void WebGPUCompute::BufferMapCallback(WGPUMapAsyncStatus status, char const * me
         assert(it != m_shaderOutputBuffers.end());
         auto& mappedBuffer = it->second;
 
-        const uint8_t *output = static_cast<const uint8_t *>(mappedBuffer.mapBuffer.getConstMappedRange(0, mappedBuffer.mappedData.size()));
+        const uint8_t *output = static_cast<const uint8_t *>(mappedBuffer->mapBuffer.getConstMappedRange(0, mappedBuffer->mappedData.size()));
         if (output)
         {
-            memcpy(mappedBuffer.mappedData.data(), output, mappedBuffer.mappedData.size());
+            memcpy(mappedBuffer->mappedData.data(), output, mappedBuffer->mappedData.size());
         }
         else
         {
             std::cout << "null output" << std::endl;
             // assert(false);
         }
-        mappedBuffer.mapBuffer.unmap();
+        mappedBuffer->mapBuffer.unmap();
+        mappedBuffer->resultReady.store(true);
     }
     else
     {
         std::cout << "Failed to map buffer" << std::endl;
         assert(false);
     }
-    m_resultReady.store(true);
 }
 
 void WebGPUCompute::EndComputePass()
@@ -241,7 +231,7 @@ void WebGPUCompute::EndComputePass()
     for (auto &outBufPair : m_shaderOutputBuffers)
     {
         auto& outBuf = outBufPair.second;
-        m_commandEncoder.copyBufferToBuffer(outBuf.buffer, 0, outBuf.mapBuffer, 0, outBuf.mapBuffer.getSize());
+        m_commandEncoder.copyBufferToBuffer(outBuf->buffer, 0, outBuf->mapBuffer, 0, outBuf->mapBuffer.getSize());
     }
 
     wgpu::CommandBufferDescriptor cmdBufferDescriptor;
@@ -250,28 +240,29 @@ void WebGPUCompute::EndComputePass()
     WebGPU::GetQueue().submit(commands);
 }
 
-std::vector<uint8_t>& WebGPUCompute::GetMappedResult()
+std::vector<uint8_t>& WebGPUCompute::GetMappedResult(uint32_t binding)
 {
     // Copy output
-    for (auto &mapperBufferIDStructPair : m_shaderOutputBuffers)
+    auto& found = m_shaderOutputBuffers.find(binding);
+    assert(found != m_shaderOutputBuffers.end());
+    auto& mapperBufferStruct = found->second;
+    mapperBufferStruct->resultReady.store(false);
+    wgpu::BufferMapCallbackInfo2 callbackInfo;
+    callbackInfo.callback = [](WGPUMapAsyncStatus status, char const * message, void* userdata1, void* userdata2) 
     {
-        wgpu::BufferMapCallbackInfo2 callbackInfo;
-        callbackInfo.callback = [](WGPUMapAsyncStatus status, char const * message, void* userdata1, void* userdata2) 
-        {
-            WebGPUCompute* compute = static_cast<WebGPUCompute*>(userdata1);
-            uint32_t* binding = static_cast<uint32_t*>(userdata2);
-            compute->BufferMapCallback(status, message, *binding);
-        };
-        callbackInfo.mode = WGPUCallbackMode_AllowSpontaneous;
-        callbackInfo.userdata1 = static_cast<void*>(this);
-        uint32_t* binding = const_cast<uint32_t*>(&mapperBufferIDStructPair.first);
-        callbackInfo.userdata2 = static_cast<void*>(binding);
-        auto& mapperBufferStruct = mapperBufferIDStructPair.second;
-        wgpu::Future handle = mapperBufferStruct.mapBuffer.mapAsync2(
-                                            wgpu::MapMode::Read, 0, mapperBufferStruct.mapBuffer.getSize(), callbackInfo);
-    }
+        WebGPUCompute* compute = static_cast<WebGPUCompute*>(userdata1);
+        uint32_t* binding = static_cast<uint32_t*>(userdata2);
+        compute->BufferMapCallback(status, message, *binding);
+    };
+    callbackInfo.mode = WGPUCallbackMode_AllowSpontaneous;
+    callbackInfo.userdata1 = static_cast<void*>(this);
+    uint32_t* bindingPtr = const_cast<uint32_t*>(&found->first);
+    callbackInfo.userdata2 = static_cast<void*>(bindingPtr);
+    wgpu::Future handle = mapperBufferStruct->mapBuffer.mapAsync2(
+                                        wgpu::MapMode::Read, 0, mapperBufferStruct->mapBuffer.getSize(), callbackInfo);
 
-	while (!m_resultReady.load()) {
+	while (!mapperBufferStruct->resultReady.load()) 
+    {
 		// Checks for ongoing asynchronous operations and call their callbacks if needed
 #ifdef WEBGPU_BACKEND_WGPU
         queue.submit(0, nullptr);
@@ -282,12 +273,29 @@ std::vector<uint8_t>& WebGPUCompute::GetMappedResult()
 	}
 
     m_commandEncoder.release();
+    assert(mapperBufferStruct->resultReady.load() == true);        
+    return mapperBufferStruct->mappedData;
+}
 
-    if (!m_resultReady.load())
-        assert(false);
-        
-    assert(m_shaderOutputBuffers.size() == 1);
-    return m_shaderOutputBuffers.begin()->second.mappedData;
+void WebGPUCompute::Destroy()
+{
+    for (auto& [binding, buffer] : m_buffersAccessibleToShader)
+    {
+        buffer.destroy();
+        buffer.release();
+    }
+    
+	
+    for (auto& [binding, mappedBuffer] : m_shaderOutputBuffers)
+    {
+        mappedBuffer->buffer.destroy();
+	    mappedBuffer->buffer.release();
+        mappedBuffer->mapBuffer.destroy();
+	    mappedBuffer->mapBuffer.release();
+    }
+
+    m_buffersAccessibleToShader.clear();
+    m_shaderOutputBuffers.clear();
 }
 
 }

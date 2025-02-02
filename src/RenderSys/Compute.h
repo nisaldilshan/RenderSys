@@ -46,7 +46,7 @@ public:
     void BeginComputePass();
     void DoCompute(const uint32_t workgroupCountX, const uint32_t workgroupCountY);
     void EndComputePass();
-    std::vector<uint8_t>& GetMappedResult();
+    std::vector<uint8_t>& GetMappedResult(const uint32_t binding);
     void Destroy();
 private:
     std::unique_ptr<GraphicsAPI::ComputeType> m_computeBackend;

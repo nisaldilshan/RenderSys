@@ -79,7 +79,7 @@ public:
 		m_compute->DoCompute(2, 1); // dispatch 2 workgroups to cover the entire buffer (one workgroup is 32 elements)
 		m_compute->EndComputePass();
 
-		auto& result = m_compute->GetMappedResult();
+		auto& result = m_compute->GetMappedResult(1);
 		assert(result.size() == g_bufferSize);
 		const float* output = (const float*)(&result[0]);
 		for (int i = 0; i < g_bufferSize / sizeof(float); ++i) {

@@ -12,6 +12,7 @@ struct MappedBuffer
 {
     wgpu::Buffer buffer = nullptr;;
     wgpu::Buffer mapBuffer = nullptr;
+    std::atomic<bool> resultReady = false;
     std::vector<uint8_t> mappedData;
 };
 
@@ -23,6 +24,7 @@ namespace GraphicsAPI
         WebGPUCompute() = default;
         ~WebGPUCompute();
 
+        void Init();
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
         void CreateShaders(RenderSys::Shader& shader);
         void CreatePipeline();
@@ -32,7 +34,8 @@ namespace GraphicsAPI
         void Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY);
         void BufferMapCallback(WGPUMapAsyncStatus status, char const * message, uint32_t binding);
         void EndComputePass();
-        std::vector<uint8_t>& GetMappedResult();
+        std::vector<uint8_t>& GetMappedResult(uint32_t binding);
+        void Destroy();
     private:
         wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
         wgpu::BindGroup m_bindGroup = nullptr;
@@ -42,7 +45,6 @@ namespace GraphicsAPI
         wgpu::ComputePassEncoder m_computePass = nullptr;
 
         std::unordered_map<uint32_t, wgpu::Buffer> m_buffersAccessibleToShader;
-        std::unordered_map<uint32_t, MappedBuffer> m_shaderOutputBuffers;
-        std::atomic<bool> m_resultReady = false;
+        std::unordered_map<uint32_t, std::shared_ptr<MappedBuffer>> m_shaderOutputBuffers;
     };
 }

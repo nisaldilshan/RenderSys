@@ -14,15 +14,14 @@ using namespace RenderSys;
 
 Compute::Compute()
     : m_computeBackend(std::make_unique<GraphicsAPI::ComputeType>())
-{
-}
+{}
 
 Compute::~Compute()
-{
-}
+{}
 
 void Compute::Init()
 {
+    m_computeBackend->Init();
 }
 
 void Compute::SetShader(RenderSys::Shader& shader)
@@ -65,11 +64,12 @@ void Compute::EndComputePass()
     m_computeBackend->EndComputePass();
 }
 
-std::vector<uint8_t> &Compute::GetMappedResult()
+std::vector<uint8_t> &Compute::GetMappedResult(const uint32_t binding)
 {
-    return m_computeBackend->GetMappedResult();
+    return m_computeBackend->GetMappedResult(binding);
 }
 
 void Compute::Destroy()
 {
+    m_computeBackend->Destroy();
 }

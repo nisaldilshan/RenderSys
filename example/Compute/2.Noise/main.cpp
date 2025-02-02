@@ -92,6 +92,7 @@ public:
 
 		if (m_reset || m_viewportWidth != g_width || m_viewportHeight != g_height)
 		{
+			m_compute->Destroy();
 			m_reset = false;
 			g_width = m_viewportWidth;
 			g_height = m_viewportHeight;
@@ -152,7 +153,7 @@ public:
 		m_compute->DoCompute(dispatch_x, dispatch_y); 
 		m_compute->EndComputePass();
 
-		auto& result = m_compute->GetMappedResult();
+		auto& result = m_compute->GetMappedResult(1);
 		assert(result.size() == m_inputBufferValues.size());
 
 		m_finalImage->Resize(g_width, g_height);
