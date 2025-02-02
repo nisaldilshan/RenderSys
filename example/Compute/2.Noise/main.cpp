@@ -90,8 +90,9 @@ public:
 		if (m_viewportWidth == 0 || m_viewportHeight == 0)
 			return;
 
-		if (m_viewportWidth != g_width || m_viewportHeight != g_height)
+		if (m_reset || m_viewportWidth != g_width || m_viewportHeight != g_height)
 		{
+			m_reset = false;
 			g_width = m_viewportWidth;
 			g_height = m_viewportHeight;
 			const auto bufferSize = g_width * g_height * 4;
@@ -160,6 +161,7 @@ public:
 		m_finalImage->SetData(m_finalImageData.data());
 	}
 
+	std::vector<uint32_t> cpuBuffer;
 	void CPUInit()
 	{
 
@@ -167,7 +169,29 @@ public:
 
 	void CPUSolve()
 	{
+		if (m_viewportWidth == 0 || m_viewportHeight == 0)
+			return;
 
+		if (m_reset || m_viewportWidth != g_width || m_viewportHeight != g_height)
+		{
+			m_reset = false;
+			g_width = m_viewportWidth;
+			g_height = m_viewportHeight;
+			const auto bufferSize = g_width * g_height;
+			cpuBuffer.resize(bufferSize);
+		}
+
+		int counter = 0;
+		for (auto &pixel : cpuBuffer)
+		{
+			pixel = Walnut::Random::UInt();
+			pixel |= 0xff000000; // remove randomnes from alpha channel
+		}
+
+		m_finalImage->Resize(g_width, g_height);
+		m_finalImageData.resize(m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4); // 4 for RGBA
+		memcpy(m_finalImageData.data(), cpuBuffer.data(), m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4);
+		m_finalImage->SetData(m_finalImageData.data());
 	}
 
 	virtual void OnUpdate(float ts) override
@@ -193,7 +217,7 @@ public:
 	{
 		ImGui::Begin("Settings");
         ImGui::Text("Last render: %.3fms", m_lastRenderTime);
-		ImGui::Checkbox("HW", &m_hWSolver);
+		m_reset = ImGui::Checkbox("HW", &m_hWSolver);
 		ImGui::End();
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -223,6 +247,7 @@ private:
 	std::shared_ptr<Walnut::Image> m_finalImage = nullptr;
 	std::vector<uint8_t> m_finalImageData;
 	MyUniforms m_myUniformData;
+	bool m_reset = true;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

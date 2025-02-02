@@ -26,6 +26,6 @@ namespace GraphicsAPI
         std::vector<uint8_t>& GetMappedResult();
     private:
         std::vector<uint8_t> m_mapBufferMappedData;
-        bool m_resultReady = false;
+        std::atomic<bool> m_resultReady = false;
     };
 }
