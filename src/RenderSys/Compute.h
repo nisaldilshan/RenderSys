@@ -41,8 +41,8 @@ public:
     void SetShader(RenderSys::Shader& shader);
     void CreatePipeline();
     void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-    void CreateBuffer(const uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name);
-    void SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string& name);
+    void CreateBuffer(uint32_t binding, const uint32_t bufferLength, ComputeBuf::BufferType type);
+    void SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength);
     void BeginComputePass();
     void DoCompute(const uint32_t workgroupCountX, const uint32_t workgroupCountY);
     void EndComputePass();

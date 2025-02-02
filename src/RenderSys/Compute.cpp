@@ -40,14 +40,14 @@ void Compute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>
     m_computeBackend->CreateBindGroup(bindGroupLayoutEntries);
 }
 
-void Compute::CreateBuffer(const uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name)
+void Compute::CreateBuffer(uint32_t binding, const uint32_t bufferLength, ComputeBuf::BufferType type)
 {
-    m_computeBackend->CreateBuffer(bufferLength, type, name);
+    m_computeBackend->CreateBuffer(binding, bufferLength, type);
 }
 
-void Compute::SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string &name)
+void Compute::SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength)
 {
-    m_computeBackend->SetBufferData(bufferData, bufferLength, name);
+    m_computeBackend->SetBufferData(binding, bufferData, bufferLength);
 }
 
 void Compute::BeginComputePass()

@@ -8,6 +8,13 @@
 #include <RenderSys/RenderUtil.h>
 #include <RenderSys/Shader.h>
 
+struct MappedBuffer 
+{
+    wgpu::Buffer buffer = nullptr;;
+    wgpu::Buffer mapBuffer = nullptr;
+    std::vector<uint8_t> mappedData;
+};
+
 namespace GraphicsAPI
 {
     class WebGPUCompute
@@ -19,11 +26,11 @@ namespace GraphicsAPI
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
         void CreateShaders(RenderSys::Shader& shader);
         void CreatePipeline();
-        void CreateBuffer(uint32_t bufferLength, RenderSys::ComputeBuf::BufferType type, const std::string& name);
-        void SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string& name);
+        void CreateBuffer(uint32_t binding, uint32_t bufferLength, RenderSys::ComputeBuf::BufferType type);
+        void SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength);
         void BeginComputePass();
         void Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY);
-        void BufferMapCallback(WGPUMapAsyncStatus status, char const * message);
+        void BufferMapCallback(WGPUMapAsyncStatus status, char const * message, uint32_t binding);
         void EndComputePass();
         std::vector<uint8_t>& GetMappedResult();
     private:
@@ -34,9 +41,8 @@ namespace GraphicsAPI
         wgpu::CommandEncoder m_commandEncoder = nullptr;
         wgpu::ComputePassEncoder m_computePass = nullptr;
 
-        std::unordered_map<std::string, wgpu::Buffer> m_buffersAccessibleToShader;
-        wgpu::Buffer m_mapBuffer = nullptr;
-        std::vector<uint8_t> m_mapBufferMappedData;
-        bool m_resultReady = false;
+        std::unordered_map<uint32_t, wgpu::Buffer> m_buffersAccessibleToShader;
+        std::unordered_map<uint32_t, MappedBuffer> m_shaderOutputBuffers;
+        std::atomic<bool> m_resultReady = false;
     };
 }

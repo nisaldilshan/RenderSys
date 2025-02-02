@@ -38,9 +38,8 @@ public:
 		m_compute->SetShader(shader);
 
 		
-		m_compute->CreateBuffer(g_bufferSize, RenderSys::ComputeBuf::BufferType::Input, "INPUT_BUFFER");
-		m_compute->CreateBuffer(g_bufferSize, RenderSys::ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
-		m_compute->CreateBuffer(g_bufferSize, RenderSys::ComputeBuf::BufferType::Map, "");
+		m_compute->CreateBuffer(0, g_bufferSize, RenderSys::ComputeBuf::BufferType::Input);
+		m_compute->CreateBuffer(1, g_bufferSize, RenderSys::ComputeBuf::BufferType::Output);
 
 		// Create bind group layout
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
@@ -76,7 +75,7 @@ public:
         Walnut::Timer timer;
 
 		m_compute->BeginComputePass();
-		m_compute->SetBufferData(m_inputBufferValues.data(), g_bufferSize, "INPUT_BUFFER");
+		m_compute->SetBufferData(0, m_inputBufferValues.data(), g_bufferSize);
 		m_compute->DoCompute(2, 1); // dispatch 2 workgroups to cover the entire buffer (one workgroup is 32 elements)
 		m_compute->EndComputePass();
 

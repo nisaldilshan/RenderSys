@@ -82,10 +82,9 @@ public:
 		m_compute->SetShader(shader);
 
 		const auto bufferSize = g_width * g_height * 4;
-		m_compute->CreateBuffer(bufferSize, RenderSys::ComputeBuf::BufferType::Input, "INPUT_BUFFER");
-		m_compute->CreateBuffer(bufferSize, RenderSys::ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
-		m_compute->CreateBuffer(bufferSize, RenderSys::ComputeBuf::BufferType::Map, "");
-		m_compute->CreateBuffer(1 * sizeof(MyUniforms), RenderSys::ComputeBuf::BufferType::Uniform, "UNIFORM_BUFFER");	
+		m_compute->CreateBuffer(0, bufferSize, RenderSys::ComputeBuf::BufferType::Input);
+		m_compute->CreateBuffer(1, bufferSize, RenderSys::ComputeBuf::BufferType::Output);
+		m_compute->CreateBuffer(2, 1 * sizeof(MyUniforms), RenderSys::ComputeBuf::BufferType::Uniform);	
 
 		// Create bind group layout
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
@@ -128,11 +127,11 @@ public:
 		m_compute->BeginComputePass();
 
 		const auto bufferSize = m_inputBufferValues.size() * sizeof(float);
-		m_compute->SetBufferData(m_inputBufferValues.data(), bufferSize, "INPUT_BUFFER");
+		m_compute->SetBufferData(0, m_inputBufferValues.data(), bufferSize);
 
 
 		m_myUniformData.time = static_cast<float>(glfwGetTime());
-		m_compute->SetBufferData(&m_myUniformData, 1 * sizeof(MyUniforms), "UNIFORM_BUFFER");
+		m_compute->SetBufferData(2, &m_myUniformData, 1 * sizeof(MyUniforms));
 
 		// divide by workgroup size and divide by sizeof float as we iterate a float array in the shader
 		const uint32_t workgroupDispatchCount = std::ceil(bufferSize / sizeof(float) / 64.0);
