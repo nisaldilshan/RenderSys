@@ -7,6 +7,10 @@ VulkanCompute::~VulkanCompute()
 {
 }
 
+void VulkanCompute::Init()
+{
+}
+
 void VulkanCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry> &bindGroupLayoutEntries)
 {
 }
@@ -19,11 +23,11 @@ void VulkanCompute::CreatePipeline()
 {
 }
 
-void VulkanCompute::CreateBuffer(uint32_t bufferLength, RenderSys::ComputeBuf::BufferType type, const std::string &name)
+void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, RenderSys::ComputeBuf::BufferType type)
 {
 }
 
-void VulkanCompute::SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string &name)
+void VulkanCompute::SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength)
 {
 }
 
@@ -39,12 +43,22 @@ void VulkanCompute::EndComputePass()
 {
 }
 
-std::vector<uint8_t> &VulkanCompute::GetMappedResult()
+std::vector<uint8_t>& VulkanCompute::GetMappedResult(uint32_t binding)
 {
-    if (!m_resultReady)
-        assert(false);
+    auto& found = m_shaderOutputBuffers.find(binding);
+    assert(found != m_shaderOutputBuffers.end());
+    auto& mappedBufferStruct = found->second;
+    
+    while (!mappedBufferStruct->resultReady.load())
+    {
 
-    return m_mapBufferMappedData;
+    }
+
+    return mappedBufferStruct->mappedData;
+}
+
+void VulkanCompute::Destroy()
+{
 }
 
 }
