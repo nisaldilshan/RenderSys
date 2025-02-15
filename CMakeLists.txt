@@ -22,7 +22,8 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Scene/SceneNode.cpp)
 
 add_library (ComputeSys STATIC
-                src/RenderSys/Compute.cpp)
+                src/RenderSys/Compute.cpp
+                src/RenderSys/Shader.cpp)
 
 message(STATUS "RENDERER: " ${RENDERER})
 if(RENDERER STREQUAL "Vulkan")
@@ -36,7 +37,8 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
     target_sources(ComputeSys PRIVATE
-                    src/RenderSys/Vulkan/VulkanCompute.cpp)
+                    src/RenderSys/Vulkan/VulkanCompute.cpp
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
 
     target_link_libraries(RenderSys2D PRIVATE 
                             vulkan-memory-allocator::vulkan-memory-allocator)

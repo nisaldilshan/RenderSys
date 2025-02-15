@@ -101,6 +101,14 @@ VkDescriptorSetLayoutBinding GetVulkanBindGroupLayoutEntry(const RenderSys::Bind
             layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         }
     }
+    else if (bindGroupLayoutEntry.buffer.type == RenderSys::BufferBindingType::Storage) // A storage buffer
+    {
+        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    }
+    else if (bindGroupLayoutEntry.buffer.type == RenderSys::BufferBindingType::ReadOnlyStorage) // A read-only storage buffer
+    {
+        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    }
     else if (bindGroupLayoutEntry.texture.sampleType != RenderSys::TextureSampleType::Undefined && 
         bindGroupLayoutEntry.texture.viewDimension != RenderSys::TextureViewDimension::Undefined) // A texture
     {

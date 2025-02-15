@@ -40,6 +40,17 @@ namespace GraphicsAPI
         std::vector<uint8_t>& GetMappedResult(uint32_t binding);
         void Destroy();
     private:
+        std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
+        std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
+
+        VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+        VkPipeline m_pipeline = VK_NULL_HANDLE;
+
+        VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
+        VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
+        VkDescriptorSet m_bindGroup = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSetLayoutBinding> m_bindGroupBindings;
+
         std::unordered_map<uint32_t, std::pair<VkBuffer, VmaAllocation>> m_buffersAccessibleToShader;
         std::unordered_map<uint32_t, std::shared_ptr<MappedBuffer>> m_shaderOutputBuffers;
 

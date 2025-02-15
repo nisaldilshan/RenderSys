@@ -165,6 +165,13 @@ void WebGPUCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
     }
 }
 
+void WebGPUCompute::SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength)
+{
+    auto it = m_buffersAccessibleToShader.find(binding);
+    assert(it != m_buffersAccessibleToShader.end());
+    WebGPU::GetQueue().writeBuffer(it->second, 0, bufferData, bufferLength);
+}
+
 void WebGPUCompute::BeginComputePass()
 {
     wgpu::CommandEncoderDescriptor commandEncoderDesc;
@@ -177,13 +184,6 @@ void WebGPUCompute::BeginComputePass()
     computePassDesc.timestampWrites = nullptr;
 
     m_computePass = m_commandEncoder.beginComputePass(computePassDesc);
-}
-
-void WebGPUCompute::SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength)
-{
-    auto it = m_buffersAccessibleToShader.find(binding);
-    assert(it != m_buffersAccessibleToShader.end());
-    WebGPU::GetQueue().writeBuffer(it->second, 0, bufferData, bufferLength);
 }
 
 void WebGPUCompute::Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY)
