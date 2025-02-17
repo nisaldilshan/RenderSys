@@ -2,6 +2,8 @@
 #include "Walnut/EntryPoint.h"
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
+#include <Walnut/RenderingBackend.h>
+
 #include <RenderSys/Compute.h>
 #include <imgui.h>
 
@@ -12,31 +14,59 @@ class ComputeLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
-		m_compute.reset();
 		m_compute = std::make_unique<RenderSys::Compute>();
+		m_compute->Init();
 
-		const char* shaderSource = R"(
-		@group(0) @binding(0) var<storage,read> inputBuffer: array<f32,64>;
-		@group(0) @binding(1) var<storage,read_write> outputBuffer: array<f32,64>;
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			const char* shaderSource = R"(
+				#version 450
 
-		// The function to evaluate for each element of the processed buffer
-		fn f(x: f32) -> f32 {
-			return 2.0 * x + 1.0;
+				vec2 positions[3] = vec2[](
+					vec2(0.0, -0.5),
+					vec2(0.5, 0.5),
+					vec2(-0.5, 0.5)
+				);
+
+				void main() {
+					//gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
+				}
+				)";
+		
+				RenderSys::Shader shader("Compute");
+				shader.type = RenderSys::ShaderType::SPIRV;
+				shader.shaderSrc = shaderSource;
+				shader.stage = RenderSys::ShaderStage::Compute;
+				m_compute->SetShader(shader);
 		}
-
-		@compute @workgroup_size(32)
-		fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
-			// Apply the function f to the buffer element at index id.x:
-			outputBuffer[id.x] = f(inputBuffer[id.x]);
+		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+		{
+			const char* shaderSource = R"(
+			@group(0) @binding(0) var<storage,read> inputBuffer: array<f32,64>;
+			@group(0) @binding(1) var<storage,read_write> outputBuffer: array<f32,64>;
+	
+			// The function to evaluate for each element of the processed buffer
+			fn f(x: f32) -> f32 {
+				return 2.0 * x + 1.0;
+			}
+	
+			@compute @workgroup_size(32)
+			fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
+				// Apply the function f to the buffer element at index id.x:
+				outputBuffer[id.x] = f(inputBuffer[id.x]);
+			}
+			)";
+	
+			RenderSys::Shader shader("Compute");
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::Compute;
+			m_compute->SetShader(shader);
 		}
-		)";
-
-		RenderSys::Shader shader("Compute");
-		shader.type = RenderSys::ShaderType::WGSL;
-		shader.shaderSrc = shaderSource;
-		shader.stage = RenderSys::ShaderStage::Compute;
-		m_compute->SetShader(shader);
-
+		else
+		{
+			assert(false);
+		}
 		
 		m_compute->CreateBuffer(0, g_bufferSize, RenderSys::ComputeBuf::BufferType::Input);
 		m_compute->CreateBuffer(1, g_bufferSize, RenderSys::ComputeBuf::BufferType::Output);

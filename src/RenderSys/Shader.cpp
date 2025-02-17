@@ -24,6 +24,10 @@ std::vector<uint32_t> compile_file(const std::string &name,
     {
         kind = shaderc_glsl_fragment_shader;
     }
+    else if (shader.stage == RenderSys::ShaderStage::Compute)
+    {
+        kind = shaderc_glsl_compute_shader;
+    }
     else
     {
         assert(false);

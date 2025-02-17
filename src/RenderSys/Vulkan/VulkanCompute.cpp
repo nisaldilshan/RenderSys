@@ -15,6 +15,12 @@ VulkanCompute::~VulkanCompute()
 
 void VulkanCompute::Init()
 {
+    VkPhysicalDeviceProperties deviceProperties;
+    vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
+    VkPhysicalDeviceLimits deviceLimits = deviceProperties.limits;
+	std::cout << "Max Compute Shared Memory Size: " << deviceLimits.maxComputeSharedMemorySize / 1024 << " KB" << std::endl;
+    std::cout << "Compute Queue Family Index: " << Vulkan::GetQueueFamilyIndex() << std::endl;
+
     if (!m_vma)
     {
         VmaAllocatorCreateInfo allocatorInfo{};
@@ -149,6 +155,16 @@ void VulkanCompute::CreatePipeline()
         }        
     }
 
+    VkComputePipelineCreateInfo pipelineInfo{};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.layout = m_pipelineLayout;
+    assert(m_shaderStageInfos.size() == 1);
+    pipelineInfo.stage = m_shaderStageInfos[0];
+
+    if (vkCreateComputePipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_pipeline) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create compute pipeline!");
+    }
+
     std::cout << "Compute pipeline: " << m_pipeline << std::endl;
 }
 
@@ -158,12 +174,18 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
     {
         case RenderSys::ComputeBuf::BufferType::Input:
         {
+            std::cout << "Creating input buffer..." << std::endl;
             VkBufferCreateInfo inputBufferDesc;
             inputBufferDesc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            inputBufferDesc.pNext = nullptr;
+            inputBufferDesc.flags = 0;
             inputBufferDesc.size = bufferLength;
-            std::cout << "Creating input buffer..." << std::endl;
             inputBufferDesc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
             inputBufferDesc.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+            auto queueFamilyIndex = Vulkan::GetQueueFamilyIndex();
+            inputBufferDesc.queueFamilyIndexCount = 1;
+            inputBufferDesc.pQueueFamilyIndices = &queueFamilyIndex;
+
             VmaAllocationCreateInfo vmaAllocInfo{};
             vmaAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 
@@ -188,6 +210,8 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             {
                 VkBufferCreateInfo outputBufferDesc;
                 outputBufferDesc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                outputBufferDesc.pNext = nullptr;
+                outputBufferDesc.flags = 0;
                 outputBufferDesc.size = bufferLength;
                 std::cout << "Creating output buffer..." << std::endl;
                 outputBufferDesc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -204,6 +228,8 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             {
                 VkBufferCreateInfo mapbufferDesc;
                 mapbufferDesc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                mapbufferDesc.pNext = nullptr;
+                mapbufferDesc.flags = 0;
                 mapbufferDesc.size = bufferLength;
                 std::cout << "Creating map buffer..." << std::endl;
                 mapbufferDesc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -255,18 +281,78 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
 
 void VulkanCompute::SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength)
 {
+    //vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanCompute::BeginComputePass()
 {
+    // TODO: move commandpool/commandbuffer creation to constructor
+    if (!m_commandPool)
+    {
+        auto queueFamilyIndices = Vulkan::FindQueueFamilies();
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+        auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
+        Vulkan::check_vk_result(err);
+    }
+    
+    if (!m_commandBuffer)
+    {
+        VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
+        cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cmdBufAllocateInfo.commandPool = m_commandPool;
+        cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cmdBufAllocateInfo.commandBufferCount = 1;
+        auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+        Vulkan::check_vk_result(err);
+    }
+    else
+    {
+        auto err = vkResetCommandBuffer(m_commandBuffer, 0);
+        Vulkan::check_vk_result(err);
+    }
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    auto err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
+    Vulkan::check_vk_result(err);
+
+    // VkRenderPassBeginInfo rpInfo{};
+    // rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    // // rpInfo.renderPass = m_renderpass;
+    // // rpInfo.renderArea.offset.x = 0;
+    // // rpInfo.renderArea.offset.y = 0;
+    // // rpInfo.renderArea.extent = { m_width, m_height };
+    // // rpInfo.framebuffer = m_frameBuffer;
+    // // rpInfo.clearValueCount = 2;
+    // // rpInfo.pClearValues = clearValues;
+
+    // vkCmdBeginQuery(m_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanCompute::Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY)
 {
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
+    assert(m_bindGroup != VK_NULL_HANDLE);
+    vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, 0, nullptr);
+    vkCmdDispatch(m_commandBuffer, 10, 10, 1);
 }
 
 void VulkanCompute::EndComputePass()
 {
+    //vkCmdEndRenderPass(m_commandBuffer);
+    
+    auto err = vkEndCommandBuffer(m_commandBuffer);
+    Vulkan::check_vk_result(err);
+
+    VkSubmitInfo end_info{};
+    end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    end_info.commandBufferCount = 1;
+    end_info.pCommandBuffers = &m_commandBuffer;
+    GraphicsAPI::Vulkan::QueueSubmit(end_info);
 }
 
 std::vector<uint8_t>& VulkanCompute::GetMappedResult(uint32_t binding)
@@ -275,10 +361,10 @@ std::vector<uint8_t>& VulkanCompute::GetMappedResult(uint32_t binding)
     assert(found != m_shaderOutputBuffers.end());
     auto& mappedBufferStruct = found->second;
     
-    while (!mappedBufferStruct->resultReady.load())
-    {
+    // while (!mappedBufferStruct->resultReady.load())
+    // {
 
-    }
+    // }
 
     return mappedBufferStruct->mappedData;
 }
