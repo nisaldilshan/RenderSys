@@ -337,8 +337,8 @@ void VulkanCompute::Compute(const uint32_t workgroupCountX, const uint32_t workg
 {
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
     assert(m_bindGroup != VK_NULL_HANDLE);
-    vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, 0, nullptr);
-    vkCmdDispatch(m_commandBuffer, 10, 10, 1);
+    vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, 1, &m_bindGroup, 0, nullptr);
+    vkCmdDispatch(m_commandBuffer, workgroupCountX, workgroupCountY, 1);
 }
 
 void VulkanCompute::EndComputePass()

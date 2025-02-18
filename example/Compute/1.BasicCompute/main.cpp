@@ -20,24 +20,34 @@ public:
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
 			const char* shaderSource = R"(
-				#version 450
+			#version 450
 
-				vec2 positions[3] = vec2[](
-					vec2(0.0, -0.5),
-					vec2(0.5, 0.5),
-					vec2(-0.5, 0.5)
-				);
+			layout(std430, binding = 0) buffer InputBuffer {
+				float inputBuffer[];
+			};
 
-				void main() {
-					//gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
-				}
-				)";
-		
-				RenderSys::Shader shader("Compute");
-				shader.type = RenderSys::ShaderType::SPIRV;
-				shader.shaderSrc = shaderSource;
-				shader.stage = RenderSys::ShaderStage::Compute;
-				m_compute->SetShader(shader);
+			layout(std430, binding = 1) buffer OutputBuffer {
+				float outputBuffer[];
+			};
+
+			float f(float x) {
+				return 2.0 * x + 1.0;
+			}
+
+			layout(local_size_x = 32) in;
+
+			void main() {
+				uint id = gl_GlobalInvocationID.x;
+
+				outputBuffer[id] = f(inputBuffer[id]);
+			}
+			)";
+	
+			RenderSys::Shader shader("Compute");
+			shader.type = RenderSys::ShaderType::SPIRV;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::Compute;
+			m_compute->SetShader(shader);
 		}
 		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 		{
