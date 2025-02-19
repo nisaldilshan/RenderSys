@@ -10,9 +10,9 @@
 
 struct MappedBuffer 
 {
-    VkBuffer buffer = VK_NULL_HANDLE;
+    VkDescriptorBufferInfo buffer{VK_NULL_HANDLE, 0, 0};
     VmaAllocation bufferMemory = VK_NULL_HANDLE;
-    VkBuffer mapBuffer = VK_NULL_HANDLE;
+    VkDescriptorBufferInfo mapBuffer{VK_NULL_HANDLE, 0, 0};
     VmaAllocation mapBufferMemory = VK_NULL_HANDLE;
     std::atomic<bool> resultReady = false;
     std::vector<uint8_t> mappedData;
@@ -53,7 +53,7 @@ namespace GraphicsAPI
         VkDescriptorSet m_bindGroup = VK_NULL_HANDLE;
         std::vector<VkDescriptorSetLayoutBinding> m_bindGroupBindings;
 
-        std::unordered_map<uint32_t, std::pair<VkBuffer, VmaAllocation>> m_buffersAccessibleToShader;
+        std::unordered_map<uint32_t, std::pair<VkDescriptorBufferInfo, VmaAllocation>> m_buffersAccessibleToShader;
         std::unordered_map<uint32_t, std::shared_ptr<MappedBuffer>> m_shaderOutputBuffers;
 
         VmaAllocator m_vma = VK_NULL_HANDLE;

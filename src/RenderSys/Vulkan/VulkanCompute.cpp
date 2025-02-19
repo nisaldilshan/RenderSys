@@ -197,8 +197,9 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
                 return;
             }
 
-            m_buffersAccessibleToShader[binding] = std::make_pair(buffer, bufferMemory);
-            std::cout << "input buffer: " << m_buffersAccessibleToShader.find(binding)->second.first << std::endl;
+            m_buffersAccessibleToShader[binding] = std::make_pair(VkDescriptorBufferInfo{buffer, 0, bufferLength}, bufferMemory);
+            std::cout << "input buffer: " << m_buffersAccessibleToShader.find(binding)->second.first.buffer 
+                << ", size=" << m_buffersAccessibleToShader.find(binding)->second.first.range << std::endl;
             break;
         }
         case RenderSys::ComputeBuf::BufferType::Output:
@@ -215,7 +216,7 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
                 outputBufferDesc.size = bufferLength;
                 std::cout << "Creating output buffer..." << std::endl;
                 outputBufferDesc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-                outputBufferDesc.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+                outputBufferDesc.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
                 VmaAllocationCreateInfo vmaAllocInfo{};
                 vmaAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
     
@@ -235,7 +236,7 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
                 mapbufferDesc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
                 mapbufferDesc.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
                 VmaAllocationCreateInfo vmaAllocInfo{};
-                vmaAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+                vmaAllocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
     
                 auto res = vmaCreateBuffer(m_vma, &mapbufferDesc, &vmaAllocInfo, &mapBuffer, &mapBufferMemory, nullptr);
                 if (res != VK_SUCCESS) {
@@ -246,9 +247,9 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
 
             auto& [Iter, inserted] = m_shaderOutputBuffers.insert({binding, std::make_shared<MappedBuffer>()});
             assert(inserted == true);
-            Iter->second->buffer = outputBuffer;
+            Iter->second->buffer = VkDescriptorBufferInfo{outputBuffer, 0, bufferLength};
             Iter->second->bufferMemory = outputBufferMemory;
-            Iter->second->mapBuffer = mapBuffer;
+            Iter->second->mapBuffer = VkDescriptorBufferInfo{mapBuffer, 0, bufferLength};
             Iter->second->mapBufferMemory = mapBufferMemory;
             Iter->second->resultReady = false;
             Iter->second->mappedData.resize(bufferLength);
@@ -272,8 +273,9 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
                 std::cout << "vkCreateBuffer() failed!" << std::endl;
                 return;
             }
-            m_buffersAccessibleToShader[binding] = std::make_pair(buffer, bufferMemory);
-            std::cout << "uniform buffer: " << m_buffersAccessibleToShader.find(binding)->second.first << std::endl;
+            m_buffersAccessibleToShader[binding] = std::make_pair(VkDescriptorBufferInfo{buffer, 0, bufferLength}, bufferMemory);
+            std::cout << "uniform buffer: " << m_buffersAccessibleToShader.find(binding)->second.first.buffer
+                << ", size=" << m_buffersAccessibleToShader.find(binding)->second.first.range << std::endl;
             break;
         }
     }
@@ -281,7 +283,8 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
 
 void VulkanCompute::SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength)
 {
-    //vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
+    auto it = m_buffersAccessibleToShader.find(binding);
+    assert(it != m_buffersAccessibleToShader.end());
 }
 
 void VulkanCompute::BeginComputePass()
@@ -319,22 +322,37 @@ void VulkanCompute::BeginComputePass()
     begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     auto err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
     Vulkan::check_vk_result(err);
-
-    // VkRenderPassBeginInfo rpInfo{};
-    // rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    // // rpInfo.renderPass = m_renderpass;
-    // // rpInfo.renderArea.offset.x = 0;
-    // // rpInfo.renderArea.offset.y = 0;
-    // // rpInfo.renderArea.extent = { m_width, m_height };
-    // // rpInfo.framebuffer = m_frameBuffer;
-    // // rpInfo.clearValueCount = 2;
-    // // rpInfo.pClearValues = clearValues;
-
-    // vkCmdBeginQuery(m_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanCompute::Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY)
 {
+    std::vector<VkWriteDescriptorSet> descriptorWrites;
+    for (auto& [binding, bufferPair] : m_buffersAccessibleToShader)
+    {
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = m_bindGroup;
+        descriptorWrite.dstBinding = binding;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferPair.first;
+        descriptorWrites.push_back(descriptorWrite);
+    }
+    for (auto& [binding, mappedBufferPair] : m_shaderOutputBuffers)
+    {
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = m_bindGroup;
+        descriptorWrite.dstBinding = binding;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &mappedBufferPair->buffer;
+        descriptorWrites.push_back(descriptorWrite);
+    }
+    vkUpdateDescriptorSets(Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
     assert(m_bindGroup != VK_NULL_HANDLE);
     vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, 1, &m_bindGroup, 0, nullptr);
@@ -343,8 +361,6 @@ void VulkanCompute::Compute(const uint32_t workgroupCountX, const uint32_t workg
 
 void VulkanCompute::EndComputePass()
 {
-    //vkCmdEndRenderPass(m_commandBuffer);
-    
     auto err = vkEndCommandBuffer(m_commandBuffer);
     Vulkan::check_vk_result(err);
 
@@ -359,12 +375,28 @@ std::vector<uint8_t>& VulkanCompute::GetMappedResult(uint32_t binding)
 {
     auto& found = m_shaderOutputBuffers.find(binding);
     assert(found != m_shaderOutputBuffers.end());
-    auto& mappedBufferStruct = found->second;
-    
-    // while (!mappedBufferStruct->resultReady.load())
-    // {
+    std::shared_ptr<MappedBuffer> mappedBufferStruct = found->second;
 
-    // }
+    auto currentCommandBuffer = BeginSingleTimeCommands(m_commandPool);
+
+    VkBufferCopy copyRegion = {};
+    copyRegion.size = mappedBufferStruct->buffer.range;
+    vkCmdCopyBuffer(currentCommandBuffer, mappedBufferStruct->buffer.buffer, mappedBufferStruct->mapBuffer.buffer, 1, &copyRegion);
+
+    EndSingleTimeCommands(currentCommandBuffer, m_commandPool);
+
+    //Map the staging buffer and copy the data.
+    void *buf;
+    auto res = vmaMapMemory(m_vma, mappedBufferStruct->mapBufferMemory, &buf);
+    if (res == VK_SUCCESS) {
+        
+        std::memcpy(mappedBufferStruct->mappedData.data(), buf, mappedBufferStruct->mappedData.size());
+        vmaUnmapMemory(m_vma, mappedBufferStruct->mapBufferMemory);
+    }
+    else
+    {
+        std::cout << "vkMapMemory() failed" << std::endl;
+    }
 
     return mappedBufferStruct->mappedData;
 }
@@ -373,13 +405,13 @@ void VulkanCompute::Destroy()
 {
     for (auto& [binding, bufferPair] : m_buffersAccessibleToShader)
     {
-        vmaDestroyBuffer(m_vma, bufferPair.first, bufferPair.second);
+        vmaDestroyBuffer(m_vma, bufferPair.first.buffer, bufferPair.second);
     }
 	
     for (auto& [binding, mappedBufferStruct] : m_shaderOutputBuffers)
     {
-        vmaDestroyBuffer(m_vma, mappedBufferStruct->buffer, mappedBufferStruct->bufferMemory);
-        vmaDestroyBuffer(m_vma, mappedBufferStruct->mapBuffer, mappedBufferStruct->mapBufferMemory);
+        vmaDestroyBuffer(m_vma, mappedBufferStruct->buffer.buffer, mappedBufferStruct->bufferMemory);
+        vmaDestroyBuffer(m_vma, mappedBufferStruct->mapBuffer.buffer, mappedBufferStruct->mapBufferMemory);
     }
 
     m_buffersAccessibleToShader.clear();
