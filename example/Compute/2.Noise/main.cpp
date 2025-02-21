@@ -43,7 +43,7 @@ public:
 			};
 
 			layout(std430, binding = 1) buffer OutputBuffer {
-				float outputBuffer[];
+				uint outputBuffer[];
 			};
 
 			layout(binding = 2) uniform MyUniforms {
@@ -51,13 +51,13 @@ public:
 				vec2 resolution;
 			} uMyUniforms;
 
-			uint rand(uint seed) {
+			float rand(uint seed) {
 				uint state = seed;
 				state = state * 1664525u + 1013904223u;
 				state = state ^ (state >> 16u);
 				state = state * 2654435761u;
 				state = state ^ (state >> 16u);
-				return state;
+				return float(state) / float(0xFFFFFFFFu); // Normalize to 0.0 - 1.0
 			}
 
 			layout(local_size_x = 8, local_size_y = 8) in;
