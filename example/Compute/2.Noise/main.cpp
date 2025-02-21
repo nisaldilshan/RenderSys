@@ -76,40 +76,34 @@ public:
 			};
 	
 			@group(0) @binding(0) var<storage,read> inputBuffer: array<f32>;
-			@group(0) @binding(1) var<storage,read_write> outputBuffer: array<u32>;
+			@group(0) @binding(1) var<storage, read_write> outputBuffer: array<u32>;
 			@group(0) @binding(2) var<uniform> uMyUniforms: MyUniforms;
 	
-			fn hash22(p: vec2u) -> vec2u {
-				var v = p * 1664525u + 1013904223u;
-				v.x += v.y * 1664525u; v.y += v.x * 1664525u;
-				v ^= v >> vec2u(16u);
-				v.x += v.y * 1664525u; v.y += v.x * 1664525u;
-				v ^= v >> vec2u(16u);
-				return v;
-			}
-	
-			fn rand22(f: vec2f) -> vec2f { return vec2f(hash22(bitcast<vec2u>(f))) / f32(0xffffffff); }
-	
-			fn noise2(n: vec2f) -> f32 {
-				let d = vec2f(0., 1.);
-				let b = floor(n);
-				let f = smoothstep(vec2f(0.), vec2f(1.), fract(n));
-	
-				let mix1 = mix(rand22(b), rand22(b + d.yx), f.x);
-				let mix2 = mix(rand22(b + d.xx), rand22(b + d.yy), f.x);
-				let finalmix = mix(mix1, mix2, f.y);
-				return (finalmix.x + finalmix.y)/2;
+			fn rand(seed: u32) -> f32 {
+				var state = seed;
+				state = state * 1664525u + 1013904223u;  // Multiplier and increment
+				state = state ^ (state >> 16u);         // Bitwise XOR and shift
+				state = state * 2654435761u;            // Another multiplication
+				state = state ^ (state >> 16u);         // Another XOR and shift
+				return f32(state) / f32(0xFFFFFFFFu);     // Normalize to 0.0 - 1.0
 			}
 	
 			@compute @workgroup_size(8,8)
 			fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
-				let blue = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*2000, f32(id.y)+uMyUniforms.time*6000)) * 500.);
-				let green = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*4000, f32(id.y)+uMyUniforms.time*4000)) * 500.);
-				let red = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*6000, f32(id.y)+uMyUniforms.time*2000)) * 500.);
-				let result = (255 << 24) | (blue << 16) | (green << 8) | red;
 				let resol = uMyUniforms.resolution;
-	
-				let arrayPos = &outputBuffer[(id.y) + (u32(resol.x) * (id.x))];
+				let time = uMyUniforms.time;
+				let coord = vec2u(id.x, id.y);
+
+				// Incorporate time into the seed for variation
+				let seed = coord.x + coord.y * u32(resol.x) + u32(time * 1000.0); // Adjust multiplier as needed
+
+				let r = u32(fract(rand(seed * 1u + 0u) * 48271.0) * 255.0);
+				let g = u32(fract(rand(seed * 179u + 1u) * 92039.0) * 255.0);
+				let b = u32(fract(rand(seed * 347u + 2u) * 255.0) * 255.0);
+
+				let result = (0xFFu << 24u) | (b << 16u) | (g << 8u) | r;
+
+				let arrayPos = &outputBuffer[id.y + u32(resol.x) * id.x];
 				*arrayPos = result;
 			}
 			)";
