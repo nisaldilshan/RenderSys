@@ -416,6 +416,46 @@ std::vector<uint8_t>& VulkanCompute::GetMappedResult(uint32_t binding)
 
 void VulkanCompute::Destroy()
 {
+    // Destroy Shaders
+    for (auto& shaderStageInfo : m_shaderStageInfos)
+    {
+        vkDestroyShaderModule(Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
+    }
+
+    m_shaderStageInfos.clear();
+
+    // Destroy Bind Group
+    if (m_bindGroup && m_bindGroupPool)
+    {
+        vkDeviceWaitIdle(Vulkan::GetDevice());
+        // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
+        vkDestroyDescriptorPool(Vulkan::GetDevice(), m_bindGroupPool, nullptr);
+        m_bindGroup = VK_NULL_HANDLE;
+        m_bindGroupPool = VK_NULL_HANDLE;
+    }
+
+    if (m_bindGroupLayout)
+    {
+        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_bindGroupLayout, nullptr);
+        m_bindGroupLayout = VK_NULL_HANDLE;
+    }
+
+    m_bindGroupBindings.clear();
+
+    // Destroy Pipeline
+    if (m_pipeline)
+    {
+        vkDestroyPipeline(Vulkan::GetDevice(), m_pipeline, nullptr);
+        m_pipeline = VK_NULL_HANDLE;
+    }
+
+    if (m_pipelineLayout)
+    {
+        vkDestroyPipelineLayout(Vulkan::GetDevice(), m_pipelineLayout, nullptr);
+        m_pipelineLayout = VK_NULL_HANDLE;
+    }
+
+    // Destroy Buffers
     for (auto& [binding, bufferPair] : m_buffersAccessibleToShader)
     {
         vmaDestroyBuffer(m_vma, bufferPair.first.buffer, bufferPair.second);
@@ -429,6 +469,15 @@ void VulkanCompute::Destroy()
 
     m_buffersAccessibleToShader.clear();
     m_shaderOutputBuffers.clear();
+
+    if (m_commandBuffer && m_commandPool)
+    {
+        vkDeviceWaitIdle(Vulkan::GetDevice());
+        // when you destroy a command pool, all command buffers allocated from that pool are automatically destroyed
+        vkDestroyCommandPool(Vulkan::GetDevice(), m_commandPool, nullptr);
+        m_commandBuffer = VK_NULL_HANDLE;
+        m_commandPool = VK_NULL_HANDLE;
+    }   
 
     // Destroy VMA instance
     vmaDestroyAllocator(m_vma);
