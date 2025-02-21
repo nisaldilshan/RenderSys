@@ -8,23 +8,25 @@
 #include <RenderSys/RenderUtil.h>
 #include <RenderSys/Shader.h>
 
-struct MappedBuffer 
-{
-    VkDescriptorBufferInfo buffer{VK_NULL_HANDLE, 0, 0};
-    VmaAllocation bufferMemory = VK_NULL_HANDLE;
-    VkDescriptorBufferInfo mapBuffer{VK_NULL_HANDLE, 0, 0};
-    VmaAllocation mapBufferMemory = VK_NULL_HANDLE;
-    std::atomic<bool> resultReady = false;
-    std::vector<uint8_t> mappedData;
-};
-
-typedef int WGPUMapAsyncStatus;
 namespace GraphicsAPI
 {
+    struct VulkanComputeBuffer
+    {
+        VkDescriptorBufferInfo buffer{VK_NULL_HANDLE, 0, 0};
+        VmaAllocation bufferMemory = VK_NULL_HANDLE;
+        VkDescriptorType type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    };
+    struct MappedBuffer 
+    {
+        VulkanComputeBuffer gpuBuffer;
+        VulkanComputeBuffer mapBuffer;
+        std::vector<uint8_t> mappedData;
+    };
+
     class VulkanCompute
     {
     public:
-        VulkanCompute() = default;
+        VulkanCompute();
         ~VulkanCompute();
 
         void Init();
@@ -35,7 +37,6 @@ namespace GraphicsAPI
         void SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength);
         void BeginComputePass();
         void Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY);
-        void BufferMapCallback(WGPUMapAsyncStatus status, char const * message, uint32_t binding);
         void EndComputePass();
         std::vector<uint8_t>& GetMappedResult(uint32_t binding);
         void Destroy();
@@ -53,7 +54,7 @@ namespace GraphicsAPI
         VkDescriptorSet m_bindGroup = VK_NULL_HANDLE;
         std::vector<VkDescriptorSetLayoutBinding> m_bindGroupBindings;
 
-        std::unordered_map<uint32_t, std::pair<VkDescriptorBufferInfo, VmaAllocation>> m_buffersAccessibleToShader;
+        std::unordered_map<uint32_t, VulkanComputeBuffer> m_buffersAccessibleToShader;
         std::unordered_map<uint32_t, std::shared_ptr<MappedBuffer>> m_shaderOutputBuffers;
 
         VmaAllocator m_vma = VK_NULL_HANDLE;

@@ -30,7 +30,6 @@ public:
 
 	void GPUInit()
 	{
-		m_compute.reset();
 		m_compute = std::make_unique<RenderSys::Compute>();
 		m_compute->Init();
 
@@ -47,16 +46,38 @@ public:
 				float outputBuffer[];
 			};
 
-			float f(float x) {
-				return 2.0 * x + 1.0;
+			layout(binding = 2) uniform MyUniforms {
+				float time;
+				vec2 resolution;
+			} uMyUniforms;
+
+			uint rand(uint seed) {
+				uint state = seed;
+				state = state * 1664525u + 1013904223u;
+				state = state ^ (state >> 16u);
+				state = state * 2654435761u;
+				state = state ^ (state >> 16u);
+				return state;
 			}
 
-			layout(local_size_x = 32) in;
+			layout(local_size_x = 8, local_size_y = 8) in;
 
 			void main() {
-				uint id = gl_GlobalInvocationID.x;
+				vec3 id = gl_GlobalInvocationID;
+				vec2 resol = uMyUniforms.resolution;
+				float time = uMyUniforms.time;
+				vec2 coord = vec2(id.x, id.y);
 
-				outputBuffer[id] = f(inputBuffer[id]);
+				uint seed = uint(coord.x) + uint(coord.y) * uint(resol.x) + uint(time * 1000.0);
+
+				uint r = uint(fract(float(rand(seed * 1u + 0u)) * 48271.0) * 255.0);
+				uint g = uint(fract(float(rand(seed * 179u + 1u)) * 92039.0) * 255.0);
+				uint b = uint(fract(float(rand(seed * 347u + 2u)) * 255.0) * 255.0);
+
+				uint result = (0xFFu << 24u) | (b << 16u) | (g << 8u) | r;
+
+				uint arrayPos = uint(id.y + resol.x * id.x);
+				outputBuffer[arrayPos] = result;
 			}
 			)";
 	
@@ -122,9 +143,6 @@ public:
 
 	void GPUSolve()
 	{
-		if (m_viewportWidth == 0 || m_viewportHeight == 0)
-			return;
-
 		if (m_reset || m_viewportWidth != g_width || m_viewportHeight != g_height)
 		{
 			m_compute->Destroy();
@@ -191,8 +209,6 @@ public:
 		auto& result = m_compute->GetMappedResult(1);
 		assert(result.size() == m_inputBufferValues.size());
 
-		m_finalImage->Resize(g_width, g_height);
-		m_finalImageData.resize(m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4); // 4 for RGBA
 		memcpy(m_finalImageData.data(), result.data(), m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4);
 		m_finalImage->SetData(m_finalImageData.data());
 	}
@@ -205,9 +221,6 @@ public:
 
 	void CPUSolve()
 	{
-		if (m_viewportWidth == 0 || m_viewportHeight == 0)
-			return;
-
 		if (m_reset || m_viewportWidth != g_width || m_viewportHeight != g_height)
 		{
 			m_reset = false;
@@ -224,8 +237,6 @@ public:
 			pixel |= 0xff000000; // remove randomnes from alpha channel
 		}
 
-		m_finalImage->Resize(g_width, g_height);
-		m_finalImageData.resize(m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4); // 4 for RGBA
 		memcpy(m_finalImageData.data(), cpuBuffer.data(), m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4);
 		m_finalImage->SetData(m_finalImageData.data());
 	}
@@ -236,6 +247,11 @@ public:
 		if (m_viewportWidth == 0 || m_viewportHeight == 0)
 			return;
 
+		if (m_viewportWidth != m_finalImage->GetWidth() || m_viewportHeight != m_finalImage->GetHeight())
+		{
+			m_finalImage->Resize(m_viewportWidth, m_viewportHeight);
+			m_finalImageData.resize(m_finalImage->GetWidth() * m_finalImage->GetHeight() * 4); // 4 for RGBA
+		}
 
         if (m_hWSolver)
 		{
