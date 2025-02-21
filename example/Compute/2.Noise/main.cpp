@@ -1,8 +1,9 @@
 #include <Walnut/Application.h>
 #include <Walnut/EntryPoint.h>
-#include "Walnut/Random.h"
+#include <Walnut/Random.h>
 #include <Walnut/Timer.h>
 #include <Walnut/Image.h>
+#include <Walnut/RenderingBackend.h>
 #include <RenderSys/Compute.h>
 #include <imgui.h>
 
@@ -31,58 +32,98 @@ public:
 	{
 		m_compute.reset();
 		m_compute = std::make_unique<RenderSys::Compute>();
+		m_compute->Init();
 
-		const char* shaderSource = R"(
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			const char* shaderSource = R"(
+			#version 450
 
-		struct MyUniforms {
-			time: f32,
-			resolution: vec2f
-		};
+			layout(std430, binding = 0) buffer InputBuffer {
+				float inputBuffer[];
+			};
 
-		@group(0) @binding(0) var<storage,read> inputBuffer: array<f32>;
-		@group(0) @binding(1) var<storage,read_write> outputBuffer: array<u32>;
-		@group(0) @binding(2) var<uniform> uMyUniforms: MyUniforms;
+			layout(std430, binding = 1) buffer OutputBuffer {
+				float outputBuffer[];
+			};
 
-		fn hash22(p: vec2u) -> vec2u {
-			var v = p * 1664525u + 1013904223u;
-			v.x += v.y * 1664525u; v.y += v.x * 1664525u;
-			v ^= v >> vec2u(16u);
-			v.x += v.y * 1664525u; v.y += v.x * 1664525u;
-			v ^= v >> vec2u(16u);
-			return v;
+			float f(float x) {
+				return 2.0 * x + 1.0;
+			}
+
+			layout(local_size_x = 32) in;
+
+			void main() {
+				uint id = gl_GlobalInvocationID.x;
+
+				outputBuffer[id] = f(inputBuffer[id]);
+			}
+			)";
+	
+			RenderSys::Shader shader("Compute");
+			shader.type = RenderSys::ShaderType::SPIRV;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::Compute;
+			m_compute->SetShader(shader);
 		}
-
-		fn rand22(f: vec2f) -> vec2f { return vec2f(hash22(bitcast<vec2u>(f))) / f32(0xffffffff); }
-
-		fn noise2(n: vec2f) -> f32 {
-			let d = vec2f(0., 1.);
-			let b = floor(n);
-			let f = smoothstep(vec2f(0.), vec2f(1.), fract(n));
-
-			let mix1 = mix(rand22(b), rand22(b + d.yx), f.x);
-			let mix2 = mix(rand22(b + d.xx), rand22(b + d.yy), f.x);
-			let finalmix = mix(mix1, mix2, f.y);
-			return (finalmix.x + finalmix.y)/2;
+		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+		{
+			const char* shaderSource = R"(
+	
+			struct MyUniforms {
+				time: f32,
+				resolution: vec2f
+			};
+	
+			@group(0) @binding(0) var<storage,read> inputBuffer: array<f32>;
+			@group(0) @binding(1) var<storage,read_write> outputBuffer: array<u32>;
+			@group(0) @binding(2) var<uniform> uMyUniforms: MyUniforms;
+	
+			fn hash22(p: vec2u) -> vec2u {
+				var v = p * 1664525u + 1013904223u;
+				v.x += v.y * 1664525u; v.y += v.x * 1664525u;
+				v ^= v >> vec2u(16u);
+				v.x += v.y * 1664525u; v.y += v.x * 1664525u;
+				v ^= v >> vec2u(16u);
+				return v;
+			}
+	
+			fn rand22(f: vec2f) -> vec2f { return vec2f(hash22(bitcast<vec2u>(f))) / f32(0xffffffff); }
+	
+			fn noise2(n: vec2f) -> f32 {
+				let d = vec2f(0., 1.);
+				let b = floor(n);
+				let f = smoothstep(vec2f(0.), vec2f(1.), fract(n));
+	
+				let mix1 = mix(rand22(b), rand22(b + d.yx), f.x);
+				let mix2 = mix(rand22(b + d.xx), rand22(b + d.yy), f.x);
+				let finalmix = mix(mix1, mix2, f.y);
+				return (finalmix.x + finalmix.y)/2;
+			}
+	
+			@compute @workgroup_size(8,8)
+			fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
+				let blue = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*2000, f32(id.y)+uMyUniforms.time*6000)) * 500.);
+				let green = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*4000, f32(id.y)+uMyUniforms.time*4000)) * 500.);
+				let red = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*6000, f32(id.y)+uMyUniforms.time*2000)) * 500.);
+				let result = (255 << 24) | (blue << 16) | (green << 8) | red;
+				let resol = uMyUniforms.resolution;
+	
+				let arrayPos = &outputBuffer[(id.y) + (u32(resol.x) * (id.x))];
+				*arrayPos = result;
+			}
+			)";
+			
+			RenderSys::Shader shader("Compute");
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::Compute;
+			m_compute->SetShader(shader);
 		}
-
-		@compute @workgroup_size(8,8)
-		fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
-			let blue = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*2000, f32(id.y)+uMyUniforms.time*6000)) * 500.);
-			let green = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*4000, f32(id.y)+uMyUniforms.time*4000)) * 500.);
-			let red = u32(noise2(vec2f(f32(id.x)+uMyUniforms.time*6000, f32(id.y)+uMyUniforms.time*2000)) * 500.);
-			let result = (255 << 24) | (blue << 16) | (green << 8) | red;
-			let resol = uMyUniforms.resolution;
-
-			let arrayPos = &outputBuffer[(id.y) + (u32(resol.x) * (id.x))];
-			*arrayPos = result;
+		else
+		{
+			assert(false);
 		}
-		)";
-		
-		RenderSys::Shader shader("Compute");
-		shader.type = RenderSys::ShaderType::WGSL;
-		shader.shaderSrc = shaderSource;
-		shader.stage = RenderSys::ShaderStage::Compute;
-		m_compute->SetShader(shader);
 	}
 
 	void GPUSolve()
