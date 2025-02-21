@@ -187,7 +187,7 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             inputBufferDesc.pQueueFamilyIndices = &queueFamilyIndex;
 
             VmaAllocationCreateInfo vmaAllocInfo{};
-            vmaAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+            vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
             VkBuffer buffer = VK_NULL_HANDLE;
             VmaAllocation bufferMemory = VK_NULL_HANDLE;
@@ -285,6 +285,19 @@ void VulkanCompute::SetBufferData(uint32_t binding, const void *bufferData, uint
 {
     auto it = m_buffersAccessibleToShader.find(binding);
     assert(it != m_buffersAccessibleToShader.end());
+    const VkDescriptorBufferInfo& bufferInfo = it->second.first;
+    const VmaAllocation& bufferAlloc = it->second.second;
+    void *buf;
+    auto res = vmaMapMemory(m_vma, bufferAlloc, &buf);
+    if (res == VK_SUCCESS) 
+    {
+        memcpy(buf, bufferData, bufferLength);
+        vmaUnmapMemory(m_vma, bufferAlloc);
+    }
+    else
+    {
+        std::cout << "vkMapMemory() failed" << std::endl;
+    }
 }
 
 void VulkanCompute::BeginComputePass()
