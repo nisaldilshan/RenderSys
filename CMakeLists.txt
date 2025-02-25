@@ -27,8 +27,6 @@ add_library (ComputeSys STATIC
 
 message(STATUS "RENDERER: " ${RENDERER})
 if(RENDERER STREQUAL "Vulkan")
-    add_compile_definitions(RENDERER_BACKEND=2)
-    
     find_package(vulkan-memory-allocator REQUIRED)
     target_sources(RenderSys2D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
@@ -184,7 +182,6 @@ else()
     else()
     endif()
 
-    add_compile_definitions(RENDERER_BACKEND=3)
     target_sources(RenderSys2D PRIVATE
                     src/RenderSys/WebGPU/WebGPURenderer2D.cpp)
     target_sources(RenderSys3D PRIVATE
@@ -202,12 +199,12 @@ target_sources(RenderSys2D
                 PUBLIC FILE_SET renderSysFileSet 
                 TYPE HEADERS 
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
-                FILES src/RenderSys/Renderer2D.h)
+                FILES src/RenderSys/Renderer2D.h src/RenderSys/Shader.h src/RenderSys/Geometry.h)
 target_sources(RenderSys3D 
                 PUBLIC FILE_SET renderSysFileSet 
                 TYPE HEADERS 
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
-                FILES src/RenderSys/Renderer3D.h src/RenderSys/RenderUtil.h)
+                FILES src/RenderSys/Renderer3D.h src/RenderSys/RenderUtil.h src/RenderSys/Texture.h src/RenderSys/Camera.h)
 target_sources(ComputeSys 
                 PUBLIC FILE_SET renderSysFileSet 
                 TYPE HEADERS 

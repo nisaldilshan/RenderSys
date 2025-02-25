@@ -66,7 +66,6 @@ class RenderSysConan(ConanFile):
         self.cpp_info.components['Renderer2D'].set_property('cmake_target_aliases', ['Renderer2D'])
         self.cpp_info.components['Renderer2D'].set_property('pkg_config_name', 'Renderer2D')
         self.cpp_info.components['Renderer2D'].libs = ['RenderSys2D']
-        self.cpp_info.components['Renderer2D'].defines = ["RENDERER=" + self.options.rendering_backend]
 
         self.cpp_info.components['Renderer3D'].set_property('cmake_file_name', 'Renderer3D')
         self.cpp_info.components['Renderer3D'].set_property('pkg_config_name', 'Renderer3D')
@@ -74,7 +73,6 @@ class RenderSysConan(ConanFile):
         self.cpp_info.components['Renderer3D'].set_property('cmake_target_aliases', ['Renderer3D'])
         self.cpp_info.components['Renderer3D'].set_property('pkg_config_name', 'Renderer3D')
         self.cpp_info.components['Renderer3D'].libs = ['RenderSys3D']
-        self.cpp_info.components['Renderer3D'].defines = ["RENDERER=" + self.options.rendering_backend]
 
         self.cpp_info.components['Compute'].set_property('cmake_file_name', 'Compute')
         self.cpp_info.components['Compute'].set_property('pkg_config_name', 'Compute')
@@ -82,7 +80,6 @@ class RenderSysConan(ConanFile):
         self.cpp_info.components['Compute'].set_property('cmake_target_aliases', ['Compute'])
         self.cpp_info.components['Compute'].set_property('pkg_config_name', 'Compute')
         self.cpp_info.components['Compute'].libs = ['ComputeSys']
-        self.cpp_info.components['Compute'].defines = ["RENDERER=" + self.options.rendering_backend]
 
     def package(self):
         cmake = CMake(self)

@@ -5,6 +5,7 @@
 #include <filesystem>
 
 #include "SceneNode.h"
+#include <RenderSys/Texture.h>
 
 namespace tinygltf
 {

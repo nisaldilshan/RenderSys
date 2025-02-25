@@ -8,6 +8,7 @@
 #include "Buffer.h"
 #include "RenderUtil.h"
 #include "Shader.h"
+#include "Texture.h"
 
 namespace GraphicsAPI
 {
