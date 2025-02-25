@@ -3,7 +3,6 @@
 #include <memory>
 #include <vector>
 #include <stdint.h>
-#include <imgui_impl_glfw.h>
 #include <Walnut/ImageFormat.h>
 
 
@@ -28,6 +27,7 @@ static_assert(false);
 
 namespace RenderSys
 {
+    
 class Renderer2D
 {
 public:

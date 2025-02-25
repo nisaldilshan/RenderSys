@@ -7,6 +7,7 @@
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
 #include <RenderSys/Texture.h>
+#include <imgui.h>
 
 struct MyUniforms {
     glm::mat4x4 projectionMatrix;

@@ -7,6 +7,7 @@
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
+#include <imgui.h>
 
 struct MyUniforms {
 	// We add transform matrices

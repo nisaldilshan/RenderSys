@@ -2,41 +2,84 @@
 #include "Walnut/EntryPoint.h"
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
+#include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Compute.h>
-#include <GLFW/glfw3.h>
+#include <imgui.h>
 
 constexpr uint32_t g_bufferSize = 64 * sizeof(float);
 
-class Renderer2DLayer : public Walnut::Layer
+class ComputeLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
 	{
-		m_compute.reset();
 		m_compute = std::make_unique<RenderSys::Compute>();
+		m_compute->Init();
 
-		const char* shaderSource = R"(
-		@group(0) @binding(0) var<storage,read> inputBuffer: array<f32,64>;
-		@group(0) @binding(1) var<storage,read_write> outputBuffer: array<f32,64>;
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			const char* shaderSource = R"(
+			#version 450
 
-		// The function to evaluate for each element of the processed buffer
-		fn f(x: f32) -> f32 {
-			return 2.0 * x + 1.0;
+			layout(std430, binding = 0) buffer InputBuffer {
+				float inputBuffer[];
+			};
+
+			layout(std430, binding = 1) buffer OutputBuffer {
+				float outputBuffer[];
+			};
+
+			float f(float x) {
+				return 2.0 * x + 1.0;
+			}
+
+			layout(local_size_x = 32) in;
+
+			void main() {
+				uint id = gl_GlobalInvocationID.x;
+
+				outputBuffer[id] = f(inputBuffer[id]);
+			}
+			)";
+	
+			RenderSys::Shader shader("Compute");
+			shader.type = RenderSys::ShaderType::SPIRV;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::Compute;
+			m_compute->SetShader(shader);
 		}
-
-		@compute @workgroup_size(32)
-		fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
-			// Apply the function f to the buffer element at index id.x:
-			outputBuffer[id.x] = f(inputBuffer[id.x]);
+		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+		{
+			const char* shaderSource = R"(
+			@group(0) @binding(0) var<storage,read> inputBuffer: array<f32,64>;
+			@group(0) @binding(1) var<storage,read_write> outputBuffer: array<f32,64>;
+	
+			// The function to evaluate for each element of the processed buffer
+			fn f(x: f32) -> f32 {
+				return 2.0 * x + 1.0;
+			}
+	
+			@compute @workgroup_size(32)
+			fn computeStuff(@builtin(global_invocation_id) id: vec3<u32>) {
+				// Apply the function f to the buffer element at index id.x:
+				outputBuffer[id.x] = f(inputBuffer[id.x]);
+			}
+			)";
+	
+			RenderSys::Shader shader("Compute");
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.shaderSrc = shaderSource;
+			shader.stage = RenderSys::ShaderStage::Compute;
+			m_compute->SetShader(shader);
 		}
-		)";
-		m_compute->SetShader(shaderSource);
-
+		else
+		{
+			assert(false);
+		}
 		
-		m_compute->CreateBuffer(g_bufferSize, RenderSys::ComputeBuf::BufferType::Input, "INPUT_BUFFER");
-		m_compute->CreateBuffer(g_bufferSize, RenderSys::ComputeBuf::BufferType::Output, "OUTPUT_BUFFER");
-		m_compute->CreateBuffer(g_bufferSize, RenderSys::ComputeBuf::BufferType::Map, "");
+		m_compute->CreateBuffer(0, g_bufferSize, RenderSys::ComputeBuf::BufferType::Input);
+		m_compute->CreateBuffer(1, g_bufferSize, RenderSys::ComputeBuf::BufferType::Output);
 
 		// Create bind group layout
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
@@ -72,37 +115,30 @@ public:
         Walnut::Timer timer;
 
 		m_compute->BeginComputePass();
-		m_compute->SetBufferData(m_inputBufferValues.data(), g_bufferSize, "INPUT_BUFFER");
+		m_compute->SetBufferData(0, m_inputBufferValues.data(), g_bufferSize);
 		m_compute->DoCompute(2, 1); // dispatch 2 workgroups to cover the entire buffer (one workgroup is 32 elements)
 		m_compute->EndComputePass();
 
-		auto& result = m_compute->GetMappedResult();
+		auto& result = m_compute->GetMappedResult(1);
 		assert(result.size() == g_bufferSize);
 		const float* output = (const float*)(&result[0]);
 		for (int i = 0; i < g_bufferSize / sizeof(float); ++i) {
 			std::cout << "output " << output[i] << std::endl;
 		}
 
-        m_lastRenderTime = timer.ElapsedMillis();
+        m_lastComputeTime = timer.ElapsedMillis();
 	}
 
 	virtual void OnUIRender() override
 	{
 		ImGui::Begin("Settings");
-        ImGui::Text("Last render: %.3fms", m_lastRenderTime);
+        ImGui::Text("Last Compute: %.3fms", m_lastComputeTime);
 		ImGui::End();
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin("Results");
-		ImGui::End();
-        ImGui::PopStyleVar();
-
-		ImGui::ShowDemoWindow();
 	}
 
 private:
     std::unique_ptr<RenderSys::Compute> m_compute;
-    float m_lastRenderTime = 0.0f;
+    float m_lastComputeTime = 0.0f;
 	std::vector<float> m_inputBufferValues;
 };
 
@@ -112,6 +148,6 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	spec.Name = "Compute Example";
 
 	Walnut::Application* app = new Walnut::Application(spec);
-	app->PushLayer<Renderer2DLayer>();
+	app->PushLayer<ComputeLayer>();
 	return app;
 }

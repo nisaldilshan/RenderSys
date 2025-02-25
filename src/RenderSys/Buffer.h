@@ -76,7 +76,6 @@ enum class BufferType
 {
     Input = 0,
     Output,
-    Map,
     Uniform
 };
     

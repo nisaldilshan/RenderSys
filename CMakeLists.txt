@@ -1,87 +1,73 @@
-cmake_minimum_required (VERSION 3.23.0)
+cmake_minimum_required (VERSION 3.25.0)
 project (RenderSys)
 
 find_package(walnut REQUIRED)
 find_package(tinyobjloader REQUIRED)
+find_package(shaderc REQUIRED)
 find_package(tinygltf REQUIRED)
+
+add_library (RenderSys2D STATIC
+                src/RenderSys/Renderer2D.cpp
+                src/RenderSys/Shader.cpp
+                src/RenderSys/Geometry.cpp)
+
+add_library (RenderSys3D STATIC
+                src/RenderSys/Renderer3D.cpp
+                src/RenderSys/Shader.cpp
+                src/RenderSys/Camera.cpp
+                src/RenderSys/Geometry.cpp
+                src/RenderSys/Texture.cpp
+                src/RenderSys/Scene/GLTFScene.cpp
+                src/RenderSys/Scene/Scene.cpp
+                src/RenderSys/Scene/SceneNode.cpp)
+
+add_library (ComputeSys STATIC
+                src/RenderSys/Compute.cpp
+                src/RenderSys/Shader.cpp)
 
 message(STATUS "RENDERER: " ${RENDERER})
 if(RENDERER STREQUAL "Vulkan")
     add_compile_definitions(RENDERER_BACKEND=2)
-    find_package(shaderc REQUIRED)
+    
     find_package(vulkan-memory-allocator REQUIRED)
-    add_library (RenderSys2D STATIC
-                    src/RenderSys/Renderer2D.cpp
+    target_sources(RenderSys2D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
-                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp
-                    src/RenderSys/Shader.cpp
-                    src/RenderSys/Geometry.cpp
-    )
-    target_link_libraries(RenderSys2D PRIVATE 
-                            vulkan-memory-allocator::vulkan-memory-allocator
-                            shaderc::shaderc 
-    )
-
-    add_library (RenderSys3D STATIC
-                    src/RenderSys/Renderer3D.cpp
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
+    target_sources(RenderSys3D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
-                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp
-                    src/RenderSys/Shader.cpp
-                    src/RenderSys/Camera.cpp
-                    src/RenderSys/Geometry.cpp
-                    src/RenderSys/Texture.cpp
-                    src/RenderSys/Scene/GLTFScene.cpp
-                    src/RenderSys/Scene/Scene.cpp
-                    src/RenderSys/Scene/SceneNode.cpp
-    )
-    target_link_libraries(RenderSys3D PRIVATE 
-                            vulkan-memory-allocator::vulkan-memory-allocator 
-                            shaderc::shaderc 
-                            TinyGLTF::TinyGLTF
-    )
-
-    add_library (ComputeSys STATIC
-                    src/RenderSys/Compute.cpp
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
+    target_sources(ComputeSys PRIVATE
                     src/RenderSys/Vulkan/VulkanCompute.cpp
-    )
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
+
+    target_link_libraries(RenderSys2D PRIVATE 
+                            vulkan-memory-allocator::vulkan-memory-allocator)
+    target_link_libraries(RenderSys3D PRIVATE 
+                            vulkan-memory-allocator::vulkan-memory-allocator)
+    target_link_libraries(ComputeSys PRIVATE 
+                            vulkan-memory-allocator::vulkan-memory-allocator)
 else()
     find_package(WebGPU REQUIRED)
     add_library(WEBGPU-WHOLEARCHIVE INTERFACE)
     target_link_directories(WEBGPU-WHOLEARCHIVE INTERFACE $<$<CONFIG:DEBUG>:${WebGPU_LIB_DIRS_DEBUG}>) # TODO: add lib dir for non debug configurations as well
     if(WIN32)
     target_link_libraries(WEBGPU-WHOLEARCHIVE INTERFACE
-                            absl_bad_any_cast_impl.lib
-                            absl_bad_optional_access.lib
-                            absl_bad_variant_access.lib
-                            absl_base.lib
-                            absl_city.lib
-                            absl_civil_time.lib
-                            absl_cord.lib
-                            absl_cordz_functions.lib
-                            absl_cordz_handle.lib
-                            absl_cordz_info.lib
-                            absl_cordz_sample_token.lib
-                            absl_cord_internal.lib
-                            absl_crc32c.lib
-                            absl_crc_cord_state.lib
-                            absl_crc_cpu_detect.lib
-                            absl_crc_internal.lib
+                            absl_bad_any_cast_impl.lib absl_bad_optional_access.lib
+                            absl_bad_variant_access.lib absl_base.lib
+                            absl_city.lib absl_civil_time.lib
+                            absl_cord.lib absl_cordz_functions.lib
+                            absl_cordz_handle.lib absl_cordz_info.lib
+                            absl_cordz_sample_token.lib absl_cord_internal.lib absl_crc32c.lib
+                            absl_crc_cord_state.lib absl_crc_cpu_detect.lib absl_crc_internal.lib
                             absl_debugging_internal.lib
-                            absl_demangle_internal.lib
-                            absl_die_if_null.lib
-                            absl_examine_stack.lib
-                            absl_exponential_biased.lib
-                            absl_failure_signal_handler.lib
-                            absl_flags_commandlineflag.lib
-                            absl_flags_commandlineflag_internal.lib
-                            absl_flags_config.lib
+                            absl_demangle_internal.lib absl_die_if_null.lib
+                            absl_examine_stack.lib absl_exponential_biased.lib
+                            absl_failure_signal_handler.lib absl_flags_commandlineflag.lib
+                            absl_flags_commandlineflag_internal.lib absl_flags_config.lib
                             absl_flags_internal.lib
-                            absl_flags_marshalling.lib
-                            absl_flags_parse.lib
-                            absl_flags_private_handle_accessor.lib
-                            absl_flags_program_name.lib
-                            absl_flags_reflection.lib
-                            absl_flags_usage.lib
+                            absl_flags_marshalling.lib absl_flags_parse.lib
+                            absl_flags_private_handle_accessor.lib absl_flags_program_name.lib
+                            absl_flags_reflection.lib absl_flags_usage.lib
                             absl_flags_usage_internal.lib
                             absl_graphcycles_internal.lib
                             absl_hash.lib
@@ -92,10 +78,8 @@ else()
                             absl_log_entry.lib
                             absl_log_flags.lib
                             absl_log_globals.lib
-                            absl_log_initialize.lib
-                            absl_log_internal_check_op.lib
-                            absl_log_internal_conditions.lib
-                            absl_log_internal_fnmatch.lib
+                            absl_log_initialize.lib absl_log_internal_check_op.lib
+                            absl_log_internal_conditions.lib absl_log_internal_fnmatch.lib
                             absl_log_internal_format.lib
                             absl_log_internal_globals.lib
                             absl_log_internal_log_sink_set.lib
@@ -145,23 +129,14 @@ else()
                             dawn_wire.lib
                             SPIRV-Tools-opt.lib
                             SPIRV-Tools.lib
-                            tint_api.lib
-                            tint_api_common.lib
-                            tint_lang_core.lib
-                            tint_lang_core_common.lib
-                            tint_lang_core_constant.lib
-                            tint_lang_core_intrinsic.lib
-                            tint_lang_core_ir.lib
-                            tint_lang_core_ir_transform.lib
-                            tint_lang_core_ir_transform_common.lib
-                            tint_lang_core_type.lib
-                            tint_lang_hlsl_writer_common.lib
-                            tint_lang_spirv.lib
-                            tint_lang_spirv_intrinsic.lib
-                            tint_lang_spirv_ir.lib
-                            tint_lang_spirv_type.lib
-                            tint_lang_spirv_writer.lib
-                            tint_lang_spirv_writer_ast_printer.lib
+                            tint_api.lib tint_api_common.lib tint_lang_core.lib
+                            tint_lang_core_common.lib tint_lang_core_constant.lib
+                            tint_lang_core_intrinsic.lib tint_lang_core_ir.lib
+                            tint_lang_core_ir_transform.lib tint_lang_core_ir_transform_common.lib
+                            tint_lang_core_type.lib tint_lang_hlsl_writer_common.lib
+                            tint_lang_spirv.lib tint_lang_spirv_intrinsic.lib
+                            tint_lang_spirv_ir.lib tint_lang_spirv_type.lib
+                            tint_lang_spirv_writer.lib tint_lang_spirv_writer_ast_printer.lib
                             tint_lang_spirv_writer_ast_raise.lib
                             tint_lang_spirv_writer_common.lib
                             tint_lang_spirv_writer_printer.lib
@@ -210,22 +185,12 @@ else()
     endif()
 
     add_compile_definitions(RENDERER_BACKEND=3)
-    add_library (RenderSys2D STATIC
-                    src/RenderSys/Renderer2D.cpp
-                    src/RenderSys/WebGPU/WebGPURenderer2D.cpp
-                    src/RenderSys/Geometry.cpp
-    )
-    add_library (RenderSys3D STATIC
-                    src/RenderSys/Renderer3D.cpp
-                    src/RenderSys/WebGPU/WebGPURenderer3D.cpp
-                    src/RenderSys/Camera.cpp
-                    src/RenderSys/Texture.cpp
-                    src/RenderSys/Geometry.cpp
-    )
-    add_library (ComputeSys STATIC
-                    src/RenderSys/Compute.cpp
-                    src/RenderSys/WebGPU/WebGPUCompute.cpp
-    )
+    target_sources(RenderSys2D PRIVATE
+                    src/RenderSys/WebGPU/WebGPURenderer2D.cpp)
+    target_sources(RenderSys3D PRIVATE
+                    src/RenderSys/WebGPU/WebGPURenderer3D.cpp)
+    target_sources(ComputeSys PRIVATE
+                    src/RenderSys/WebGPU/WebGPUCompute.cpp)
     
     target_link_libraries(RenderSys2D PRIVATE WEBGPU-WHOLEARCHIVE)
     target_link_libraries(RenderSys3D PRIVATE WEBGPU-WHOLEARCHIVE)
@@ -249,29 +214,33 @@ target_sources(ComputeSys
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
                 FILES src/RenderSys/Compute.h src/RenderSys/Buffer.h)
 
-target_link_libraries(RenderSys2D PRIVATE walnut::walnut tinyobjloader::tinyobjloader)
-target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader)
-target_link_libraries(ComputeSys PRIVATE walnut::walnut)
+
+target_include_directories(RenderSys2D PRIVATE src)
+target_include_directories(RenderSys3D PRIVATE src)
+target_include_directories(ComputeSys PRIVATE src)
+
+target_link_libraries(RenderSys2D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc)
+target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc TinyGLTF::TinyGLTF)
+target_link_libraries(ComputeSys PRIVATE walnut::walnut shaderc::shaderc)
 
 install(TARGETS RenderSys2D
     FILE_SET renderSysFileSet
     COMPONENT Renderer2D
     LIBRARY DESTINATION lib
-    INCLUDES DESTINATION include
-)
+    INCLUDES DESTINATION include)
 
 install(TARGETS RenderSys3D
     FILE_SET renderSysFileSet
     COMPONENT Renderer3D
     LIBRARY DESTINATION lib
-    INCLUDES DESTINATION include
-)
+    INCLUDES DESTINATION include)
 
 install(TARGETS ComputeSys
     FILE_SET renderSysFileSet
     COMPONENT Compute
     LIBRARY DESTINATION lib
-    PRIVATE_HEADER DESTINATION include
-)
+    PRIVATE_HEADER DESTINATION include)
 
-add_subdirectory(example)
+if(BUILD_EXAMPLES)
+    add_subdirectory(example)
+endif()

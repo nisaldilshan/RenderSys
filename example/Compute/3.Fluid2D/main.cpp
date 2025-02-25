@@ -3,13 +3,10 @@
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
 #include <Walnut/Image.h>
-
-#include <GLFW/glfw3.h>
-
 #include <RenderSys/Renderer2D.h>
+#include <imgui.h>
+
 #include "FluidSolver2D.h"
-
-
 #include "Utils.h"
 
 

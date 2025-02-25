@@ -6,9 +6,9 @@
 #include <glm/gtx/quaternion.hpp>
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
-#include "../RenderUtil.h"
-#include "../Shader.h"
-#include "../Buffer.h"
+#include <RenderSys/RenderUtil.h>
+#include <RenderSys/Shader.h>
+#include <RenderSys/Buffer.h>
 
 namespace GraphicsAPI
 {

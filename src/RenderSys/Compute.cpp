@@ -14,21 +14,19 @@ using namespace RenderSys;
 
 Compute::Compute()
     : m_computeBackend(std::make_unique<GraphicsAPI::ComputeType>())
-{
-}
+{}
 
 Compute::~Compute()
+{}
+
+void Compute::Init()
 {
+    m_computeBackend->Init();
 }
 
-void Compute::SetShader(const char *shaderSource)
+void Compute::SetShader(RenderSys::Shader& shader)
 {
-    m_computeBackend->CreateShaders(shaderSource);
-}
-
-void Compute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
-{
-    m_computeBackend->CreateBindGroup(bindGroupLayoutEntries);
+    m_computeBackend->CreateShaders(shader);
 }
 
 void Compute::CreatePipeline()
@@ -36,14 +34,19 @@ void Compute::CreatePipeline()
     m_computeBackend->CreatePipeline();
 }
 
-void Compute::CreateBuffer(const uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name)
+void Compute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
-    m_computeBackend->CreateBuffer(bufferLength, type, name);
+    m_computeBackend->CreateBindGroup(bindGroupLayoutEntries);
 }
 
-void Compute::SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string &name)
+void Compute::CreateBuffer(uint32_t binding, const uint32_t bufferLength, ComputeBuf::BufferType type)
 {
-    m_computeBackend->SetBufferData(bufferData, bufferLength, name);
+    m_computeBackend->CreateBuffer(binding, bufferLength, type);
+}
+
+void Compute::SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength)
+{
+    m_computeBackend->SetBufferData(binding, bufferData, bufferLength);
 }
 
 void Compute::BeginComputePass()
@@ -61,7 +64,12 @@ void Compute::EndComputePass()
     m_computeBackend->EndComputePass();
 }
 
-std::vector<uint8_t> &Compute::GetMappedResult()
+std::vector<uint8_t> &Compute::GetMappedResult(const uint32_t binding)
 {
-    return m_computeBackend->GetMappedResult();
+    return m_computeBackend->GetMappedResult(binding);
+}
+
+void Compute::Destroy()
+{
+    m_computeBackend->Destroy();
 }

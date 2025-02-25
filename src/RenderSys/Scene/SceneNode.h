@@ -4,7 +4,7 @@
 #include <string>
 #include <glm/ext.hpp>
 
-#include "../Buffer.h"
+#include <RenderSys/Buffer.h>
 
 namespace RenderSys
 {

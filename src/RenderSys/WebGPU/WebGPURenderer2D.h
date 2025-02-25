@@ -5,8 +5,8 @@
 
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
-#include "../RenderUtil.h"
-#include "../Shader.h"
+#include <RenderSys/RenderUtil.h>
+#include <RenderSys/Shader.h>
 
 namespace GraphicsAPI
 {

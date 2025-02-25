@@ -3,10 +3,10 @@
 #include <memory>
 #include <vector>
 #include <stdint.h>
-#include <imgui_impl_glfw.h>
 
 #include "Buffer.h"
 #include "RenderUtil.h"
+#include "Shader.h"
 
 namespace GraphicsAPI
 {
@@ -31,15 +31,23 @@ class Compute
 public:
     Compute();
     ~Compute();
-    void SetShader(const char* shaderSource);
-    void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
+
+    Compute(const Compute&) = delete;
+	Compute &operator=(const Compute&) = delete;
+	Compute(Compute&&) = delete;
+	Compute &operator=(Compute&&) = delete;
+
+    void Init();
+    void SetShader(RenderSys::Shader& shader);
     void CreatePipeline();
-    void CreateBuffer(const uint32_t bufferLength, ComputeBuf::BufferType type, const std::string& name);
-    void SetBufferData(const void *bufferData, uint32_t bufferLength, const std::string& name);
+    void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
+    void CreateBuffer(uint32_t binding, const uint32_t bufferLength, ComputeBuf::BufferType type);
+    void SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength);
     void BeginComputePass();
     void DoCompute(const uint32_t workgroupCountX, const uint32_t workgroupCountY);
     void EndComputePass();
-    std::vector<uint8_t>& GetMappedResult();
+    std::vector<uint8_t>& GetMappedResult(const uint32_t binding);
+    void Destroy();
 private:
     std::unique_ptr<GraphicsAPI::ComputeType> m_computeBackend;
 };

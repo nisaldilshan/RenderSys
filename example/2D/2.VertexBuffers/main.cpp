@@ -5,6 +5,7 @@
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer2D.h>
+#include <imgui.h>
 
 class Renderer2DLayer : public Walnut::Layer
 {
@@ -67,7 +68,6 @@ public:
 			}
 			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 			{
-				RenderSys::Shader shader("Combined");
 				const char* shaderSource = R"(
 				// The `@location(0)` attribute means that this input variable is described
 				// by the vertex buffer layout at index 0 in the `pipelineDesc.vertex.buffers`
@@ -86,6 +86,7 @@ public:
 					}
 				)";
 
+				RenderSys::Shader shader("Combined");
 				shader.type = RenderSys::ShaderType::WGSL;
 				shader.shaderSrc = shaderSource;
 				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
