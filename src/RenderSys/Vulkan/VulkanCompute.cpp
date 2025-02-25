@@ -262,7 +262,7 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
                 return;
             }
 
-            auto& [Iter, inserted] = m_buffersAccessibleToShader.insert({binding, VulkanComputeBuffer{}});
+            auto [Iter, inserted] = m_buffersAccessibleToShader.insert({binding, VulkanComputeBuffer{}});
             assert(inserted == true);
             Iter->second.buffer = VkDescriptorBufferInfo{buffer, 0, bufferLength};
             Iter->second.bufferMemory = bufferMemory;
@@ -314,7 +314,7 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
                 }
             }
 
-            auto& [Iter, inserted] = m_shaderOutputBuffers.insert({binding, std::make_shared<MappedBuffer>()});
+            auto [Iter, inserted] = m_shaderOutputBuffers.insert({binding, std::make_shared<MappedBuffer>()});
             assert(inserted == true);
             Iter->second->gpuBuffer.buffer = VkDescriptorBufferInfo{outputBuffer, 0, bufferLength};
             Iter->second->gpuBuffer.bufferMemory = outputBufferMemory;
@@ -345,7 +345,7 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
                 std::cout << "vkCreateBuffer() failed!" << std::endl;
                 return;
             }
-            auto& [Iter, inserted] = m_buffersAccessibleToShader.insert({binding, VulkanComputeBuffer{}});
+            auto [Iter, inserted] = m_buffersAccessibleToShader.insert({binding, VulkanComputeBuffer{}});
             assert(inserted == true);
             Iter->second.buffer = VkDescriptorBufferInfo{buffer, 0, bufferLength};
             Iter->second.bufferMemory = bufferMemory;
@@ -462,7 +462,7 @@ void VulkanCompute::EndComputePass()
 
 std::vector<uint8_t>& VulkanCompute::GetMappedResult(uint32_t binding)
 {
-    auto& found = m_shaderOutputBuffers.find(binding);
+    const auto& found = m_shaderOutputBuffers.find(binding);
     assert(found != m_shaderOutputBuffers.end());
     std::shared_ptr<MappedBuffer> mappedBufferStruct = found->second;
 

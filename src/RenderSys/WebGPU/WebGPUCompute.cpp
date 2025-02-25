@@ -142,7 +142,7 @@ void WebGPUCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             auto mapBuf = WebGPU::GetDevice().createBuffer(mapbufferDesc);
             std::cout << "map buffer: " << mapBuf << std::endl;
 
-            auto& [Iter, inserted] = m_shaderOutputBuffers.insert({binding, std::make_shared<MappedBuffer>()});
+            auto [Iter, inserted] = m_shaderOutputBuffers.insert({binding, std::make_shared<MappedBuffer>()});
             assert(inserted == true);
             Iter->second->buffer = outBuf;
             Iter->second->mapBuffer = mapBuf;
@@ -243,7 +243,7 @@ void WebGPUCompute::EndComputePass()
 std::vector<uint8_t>& WebGPUCompute::GetMappedResult(uint32_t binding)
 {
     // Copy output
-    auto& found = m_shaderOutputBuffers.find(binding);
+    const auto& found = m_shaderOutputBuffers.find(binding);
     assert(found != m_shaderOutputBuffers.end());
     auto& mapperBufferStruct = found->second;
     mapperBufferStruct->resultReady.store(false);
