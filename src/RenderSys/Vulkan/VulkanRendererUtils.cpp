@@ -244,4 +244,31 @@ void CreateBuffer(const VmaAllocator& vma, const void* bufferData, VkDeviceSize 
     }
 }
 
+uint32_t GetUniformStride(const uint32_t sizeOfUniform)
+{
+    static VkDeviceSize minUniformBufferOffsetAlignment = 0;
+    if (minUniformBufferOffsetAlignment == 0)
+    {
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
+        minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
+        //std::cout << "maxMemoryAllocationCount : " << deviceProperties.limits.maxMemoryAllocationCount << std::endl;
+        //std::cout << "maxDrawIndexedIndexValue : " << deviceProperties.limits.maxDrawIndexedIndexValue << std::endl;
+    }
+
+    assert(sizeOfUniform > 0);
+    auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
+    {
+        uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
+        return step * divide_and_ceil;
+    };
+
+    uint32_t uniformStride = ceilToNextMultiple(
+        (uint32_t)sizeOfUniform,
+        (uint32_t)minUniformBufferOffsetAlignment
+    );
+
+    return uniformStride;
+}
+
 }

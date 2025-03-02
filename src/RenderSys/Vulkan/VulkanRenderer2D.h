@@ -43,7 +43,6 @@ namespace GraphicsAPI
         void DestroyBuffers();
         void DestroyShaders();
         void SubmitCommandBuffer();
-        uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
         uint32_t m_width = 0;
         uint32_t m_height = 0;

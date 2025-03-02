@@ -217,8 +217,6 @@ void VulkanRenderer3D::DestroyBindGroup()
         vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_bindGroupLayout, nullptr);
         m_bindGroupLayout = VK_NULL_HANDLE;
     }
-
-    m_mainBindGroupBindings.clear();
 }
 
 void VulkanRenderer3D::DestroyBuffers()
@@ -277,11 +275,11 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     assert(!m_bindGroupLayout && !m_bindGroupPool && !m_mainBindGroup);
 
     std::unordered_map<VkDescriptorType, uint32_t> descriptorTypeCountMap;
-
+    std::vector<VkDescriptorSetLayoutBinding> mainBindGroupBindings;
     for (const auto &bindGroupLayoutEntry : bindGroupLayoutEntries)
     {
         auto vkBinding = GetVulkanBindGroupLayoutEntry(bindGroupLayoutEntry);
-        m_mainBindGroupBindings.push_back(vkBinding);
+        mainBindGroupBindings.push_back(vkBinding);
 
         auto mapIter = descriptorTypeCountMap.find(vkBinding.descriptorType);
         if (mapIter != descriptorTypeCountMap.end())
@@ -296,8 +294,8 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = m_mainBindGroupBindings.size();
-    layoutInfo.pBindings = m_mainBindGroupBindings.data();
+    layoutInfo.bindingCount = mainBindGroupBindings.size();
+    layoutInfo.pBindings = mainBindGroupBindings.data();
 
     if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
@@ -329,10 +327,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
-
-    assert(m_mainBindGroupBindings.size() > 0);
-
-    for (auto& bindGroupBinding : m_mainBindGroupBindings)
+    for (auto& bindGroupBinding : mainBindGroupBindings)
     {
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -711,42 +706,34 @@ void VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& bufferD
 void VulkanRenderer3D::CreateIndexBuffer(const std::vector<uint32_t> &bufferData)
 {
     std::cout << "Creating index buffer..." << std::endl;
-
     m_indexCount = bufferData.size();
     assert(m_indexCount > 0);
     
-    static bool indexBufCreated = false;
-    if (!indexBufCreated)
-    {
-        VkBufferCreateInfo bufferInfo = {};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        assert(sizeof(bufferData[0]) == 4); // because we are using type - VK_INDEX_TYPE_UINT32
-		bufferInfo.size = m_indexCount * 4;
-		bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        VmaAllocationCreateInfo vmaAllocInfo{};
-        vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    assert(sizeof(bufferData[0]) == 4); // because we are using type - VK_INDEX_TYPE_UINT32
+    bufferInfo.size = m_indexCount * 4;
+    bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VmaAllocationCreateInfo vmaAllocInfo{};
+    vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-        auto res = vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_indexBuffer, &m_indexBufferMemory, nullptr);
-		if (res != VK_SUCCESS) {
-			std::cout << "vkCreateBuffer() failed!" << std::endl;
-			return;
-		}
-
-        // copy data to the buffer
-		void *buf;
-		res = vmaMapMemory(m_vma, m_indexBufferMemory, &buf);
-		if (res != VK_SUCCESS) {
-			std::cout << "vkMapMemory() failed" << std::endl;
-			return;
-		}
-
-		std::memcpy(buf, bufferData.data(), bufferInfo.size);
-		vmaUnmapMemory(m_vma, m_indexBufferMemory);
-        
-        indexBufCreated = true;
+    auto res = vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_indexBuffer, &m_indexBufferMemory, nullptr);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkCreateBuffer() failed!" << std::endl;
+        return;
     }
 
+    // copy data to the buffer
+    void *buf;
+    res = vmaMapMemory(m_vma, m_indexBufferMemory, &buf);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkMapMemory() failed" << std::endl;
+        return;
+    }
+
+    std::memcpy(buf, bufferData.data(), bufferInfo.size);
+    vmaUnmapMemory(m_vma, m_indexBufferMemory);
     std::cout << "Index buffer: " << m_indexBuffer << std::endl;
 }
 
@@ -754,33 +741,6 @@ void VulkanRenderer3D::SetClearColor(glm::vec4 clearColor)
 {
     m_clearColor = {clearColor.x, clearColor.y, clearColor.z, clearColor.w};
 }
-
-// uint32_t VulkanRenderer3D::GetUniformStride(const uint32_t sizeOfUniform)
-// {
-//     static VkDeviceSize minUniformBufferOffsetAlignment = 0;
-//     if (minUniformBufferOffsetAlignment == 0)
-//     {
-//         VkPhysicalDeviceProperties deviceProperties;
-//         vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
-//         minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
-//         std::cout << "maxMemoryAllocationCount : " << deviceProperties.limits.maxMemoryAllocationCount << std::endl;
-//         std::cout << "maxDrawIndexedIndexValue : " << deviceProperties.limits.maxDrawIndexedIndexValue << std::endl;
-//     }
-
-//     assert(sizeOfUniform > 0);
-//     auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
-//     {
-//         uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
-//         return step * divide_and_ceil;
-//     };
-
-//     uint32_t uniformStride = ceilToNextMultiple(
-//         (uint32_t)sizeOfUniform,
-//         (uint32_t)minUniformBufferOffsetAlignment
-//     );
-
-//     return uniformStride;
-// }
 
 void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer)
 {

@@ -61,7 +61,6 @@ namespace GraphicsAPI
         void DestroyTextures();
         void UploadTexture(VkImage texture, const RenderSys::TextureDescriptor& texDescriptor);
         void SubmitCommandBuffer();
-        uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
         uint32_t m_width = 0;
         uint32_t m_height = 0;
@@ -98,7 +97,6 @@ namespace GraphicsAPI
 
         VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
         VkDescriptorSet m_mainBindGroup = VK_NULL_HANDLE;
-        std::vector<VkDescriptorSetLayoutBinding> m_mainBindGroupBindings;
 
         VkDescriptorSetLayout m_materialBindGroupLayout = VK_NULL_HANDLE;
         std::vector<VkDescriptorSet> m_materialBindGroups;

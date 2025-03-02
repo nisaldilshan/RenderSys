@@ -21,4 +21,6 @@ void CreateBuffer(const VmaAllocator& vma, const void* bufferData, VkDeviceSize 
                     VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage,
                     VkBuffer& buffer, VmaAllocation& bufferAllocation);
 
-}
+uint32_t GetUniformStride(const uint32_t sizeOfUniform);
+
+} // namespace GraphicsAPI
