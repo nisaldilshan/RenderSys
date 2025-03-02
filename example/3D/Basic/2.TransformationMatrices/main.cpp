@@ -208,7 +208,7 @@ public:
 			bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
 			bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
 			// Make this binding dynamic so we can offset it between draw calls
-			bGLayoutEntry.buffer.hasDynamicOffset = true;
+			bGLayoutEntry.buffer.hasDynamicOffset = false;
 
 			m_renderer->CreateUniformBuffer(bGLayoutEntry.binding, sizeof(MyUniforms), 2);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
@@ -250,21 +250,8 @@ public:
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
 
-			// Upload second value
-			glm::mat4x4 M2(1.0);
-			angle1 = time * 1.1f;
-			M2 = glm::rotate(M2, angle1, glm::vec3(0.0, 0.0, 1.0));
-			M2 = glm::translate(M2, glm::vec3(0.5, 0.0, 0.0));
-			M2 = glm::scale(M2, glm::vec3(0.3f));
-			m_uniformData.modelMatrix = M2;
-
-			m_uniformData.time = time;
-			m_uniformData.color = { 1.0f, 1.0f, 1.0f, 0.7f };
-			m_renderer->SetUniformBufferData(0, &m_uniformData, 1);
 			m_renderer->BindResources();
-
 			m_renderer->RenderIndexed(0);
-			m_renderer->RenderIndexed(1);
 			m_renderer->EndRenderPass();
 		}
        		

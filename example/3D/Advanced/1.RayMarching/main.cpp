@@ -216,7 +216,7 @@ public:
 			uniformBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
 			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-			uniformBindingLayout.buffer.hasDynamicOffset = true;
+			uniformBindingLayout.buffer.hasDynamicOffset = false;
 
 			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);

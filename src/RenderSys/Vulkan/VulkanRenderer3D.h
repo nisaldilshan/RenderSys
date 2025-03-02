@@ -38,11 +38,11 @@ namespace GraphicsAPI
         // Textures get created in separate bindgroup
         void CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors);
         void CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials);
-        void SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
+        void SetUniformData(uint32_t binding, const void* bufferData);
         void BindResources();
-        void Render(uint32_t uniformIndex);
-        void RenderIndexed(uint32_t uniformIndex);
-        void RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex);
+        void Render();
+        void RenderIndexed();
+        void RenderMesh(const RenderSys::Mesh& mesh);
         ImTextureID GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();

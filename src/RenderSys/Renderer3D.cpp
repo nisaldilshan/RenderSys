@@ -101,7 +101,7 @@ void Renderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, s
 
 void Renderer3D::SetUniformBufferData(uint32_t binding, const void* bufferData, uint32_t uniformIndex)
 {
-    m_rendererBackend->SetUniformData(binding, bufferData, uniformIndex);
+    m_rendererBackend->SetUniformData(binding, bufferData);
 }
 
 void Renderer3D::BindResources()
@@ -121,17 +121,17 @@ void Renderer3D::Destroy()
 
 void Renderer3D::Render(uint32_t uniformIndex)
 {
-    m_rendererBackend->Render(uniformIndex);
+    m_rendererBackend->Render();
 }
 
 void Renderer3D::RenderIndexed(uint32_t uniformIndex)
 {
-    m_rendererBackend->RenderIndexed(uniformIndex);
+    m_rendererBackend->RenderIndexed();
 }
 
 void Renderer3D::RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex)
 {
-    m_rendererBackend->RenderMesh(mesh, uniformIndex);
+    m_rendererBackend->RenderMesh(mesh);
 }
 
 void Renderer3D::BeginRenderPass()

@@ -227,7 +227,7 @@ public:
 			bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
 			bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
 			// Make this binding dynamic so we can offset it between draw calls
-			bGLayoutEntry.buffer.hasDynamicOffset = true;
+			bGLayoutEntry.buffer.hasDynamicOffset = false;
 
 			m_renderer->CreateUniformBuffer(bGLayoutEntry.binding, sizeof(MyUniforms), 2);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
@@ -238,21 +238,13 @@ public:
 		{
 			m_renderer->BeginRenderPass();
 
-			// Upload first value
 			m_uniformData.time = static_cast<float>(glfwGetTime()) * 0.95f; // glfwGetTime returns a double
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
 
-			// Upload second value
-			m_uniformData.time = static_cast<float>(glfwGetTime()) * 1.05f; // glfwGetTime returns a double
-			m_uniformData.color = { 1.0f, 1.0f, 1.0f, 0.7f };
-			m_renderer->SetUniformBufferData(0, &m_uniformData, 1);
-			//                               				^^^^^^^^^^^^^ beware of the non-null offset!
-
 			m_renderer->BindResources();
 			
 			m_renderer->RenderIndexed(0);
-			m_renderer->RenderIndexed(1);
 			m_renderer->EndRenderPass();
 		}
        		

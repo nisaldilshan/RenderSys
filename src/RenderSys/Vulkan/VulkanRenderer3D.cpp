@@ -328,6 +328,48 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_mainBindGroup) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
+
+
+    assert(m_mainBindGroupBindings.size() > 0);
+
+    for (auto& bindGroupBinding : m_mainBindGroupBindings)
+    {
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = m_mainBindGroup;
+        descriptorWrite.dstBinding = bindGroupBinding.binding;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = bindGroupBinding.descriptorType;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = nullptr;
+        descriptorWrite.pImageInfo = nullptr;
+        descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+        const auto& uniformBufferIter = m_uniformBuffers.find(bindGroupBinding.binding);
+        if (uniformBufferIter != m_uniformBuffers.end())
+        {
+            VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferIter->second);
+            descriptorWrite.pBufferInfo = &bufferInfo;
+        }
+        
+        const auto& textureIter = m_textures.find(bindGroupBinding.binding);
+        if (textureIter != m_textures.end())
+        {
+            VkDescriptorImageInfo& imageInfo = std::get<2>(textureIter->second);
+            imageInfo.sampler = m_defaultTextureSampler;
+            descriptorWrite.pImageInfo = &imageInfo;
+        }
+
+        if (descriptorWrite.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
+        {
+            assert(false);
+            VkDescriptorImageInfo imageInfo{};
+            imageInfo.sampler = m_defaultTextureSampler;
+            descriptorWrite.pImageInfo = &imageInfo;
+        }
+        
+        vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
+    }
 }
 
 void VulkanRenderer3D::CreatePipelineLayout()
@@ -713,35 +755,32 @@ void VulkanRenderer3D::SetClearColor(glm::vec4 clearColor)
     m_clearColor = {clearColor.x, clearColor.y, clearColor.z, clearColor.w};
 }
 
-uint32_t VulkanRenderer3D::GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
-{
-    if (uniformIndex == 0)
-        return 0;
+// uint32_t VulkanRenderer3D::GetUniformStride(const uint32_t sizeOfUniform)
+// {
+//     static VkDeviceSize minUniformBufferOffsetAlignment = 0;
+//     if (minUniformBufferOffsetAlignment == 0)
+//     {
+//         VkPhysicalDeviceProperties deviceProperties;
+//         vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
+//         minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
+//         std::cout << "maxMemoryAllocationCount : " << deviceProperties.limits.maxMemoryAllocationCount << std::endl;
+//         std::cout << "maxDrawIndexedIndexValue : " << deviceProperties.limits.maxDrawIndexedIndexValue << std::endl;
+//     }
 
-    static VkDeviceSize minUniformBufferOffsetAlignment = 0;
-    if (minUniformBufferOffsetAlignment == 0)
-    {
-        VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
-        minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
-        std::cout << "maxMemoryAllocationCount : " << deviceProperties.limits.maxMemoryAllocationCount << std::endl;
-        std::cout << "maxDrawIndexedIndexValue : " << deviceProperties.limits.maxDrawIndexedIndexValue << std::endl;
-    }
+//     assert(sizeOfUniform > 0);
+//     auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
+//     {
+//         uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
+//         return step * divide_and_ceil;
+//     };
 
-    assert(sizeOfUniform > 0);
-    auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
-    {
-        uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
-        return step * divide_and_ceil;
-    };
+//     uint32_t uniformStride = ceilToNextMultiple(
+//         (uint32_t)sizeOfUniform,
+//         (uint32_t)minUniformBufferOffsetAlignment
+//     );
 
-    uint32_t uniformStride = ceilToNextMultiple(
-        (uint32_t)sizeOfUniform,
-        (uint32_t)minUniformBufferOffsetAlignment
-    );
-
-    return uniformStride;
-}
+//     return uniformStride;
+// }
 
 void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer)
 {
@@ -768,8 +807,7 @@ void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneU
 
     VkBufferCreateInfo bufferCreateInfo = {};
     bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    const size_t maximumUniformIndex = uniformCountInBuffer - 1;
-    bufferCreateInfo.size = sizeOfOneUniform + GetUniformStride(maximumUniformIndex, sizeOfOneUniform);
+    bufferCreateInfo.size = sizeOfOneUniform;
     bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     VmaAllocationCreateInfo vmaAllocInfo{};
@@ -782,7 +820,7 @@ void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneU
     }
 }
 
-void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex)
+void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData)
 {
     auto uniformBufferIter = m_uniformBuffers.find(binding);
     if (uniformBufferIter == m_uniformBuffers.end())
@@ -801,56 +839,29 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData, 
         return;
     }
 
-    auto offset = GetUniformStride(uniformIndex, sizeOfOneUniform);
     // copy data to the buffer
-    auto* ptr = static_cast<char*>(mappedBuffer) + offset;
+    auto* ptr = static_cast<char*>(mappedBuffer);
     memcpy(static_cast<void*>(ptr), bufferData, sizeOfOneUniform);
 
     vmaUnmapMemory(m_vma, uniformBufferMemory);
+
+    VkWriteDescriptorSet descriptorWrite{};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = m_mainBindGroup;
+    descriptorWrite.dstBinding = binding;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+    descriptorWrite.pImageInfo = nullptr;
+    descriptorWrite.pTexelBufferView = nullptr; // Optional
+    
+
+    vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanRenderer3D::BindResources()
 {
-    assert(m_mainBindGroupBindings.size() > 0);
-
-    for (auto& bindGroupBinding : m_mainBindGroupBindings)
-    {
-        VkWriteDescriptorSet descriptorWrite{};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = m_mainBindGroup;
-        descriptorWrite.dstBinding = bindGroupBinding.binding;
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = bindGroupBinding.descriptorType;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pBufferInfo = nullptr;
-        descriptorWrite.pImageInfo = nullptr;
-        descriptorWrite.pTexelBufferView = nullptr; // Optional
-
-        const auto& uniformBufferIter = m_uniformBuffers.find(bindGroupBinding.binding);
-        if (uniformBufferIter != m_uniformBuffers.end())
-        {
-            VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferIter->second);
-            descriptorWrite.pBufferInfo = &bufferInfo;
-        }
-        
-        const auto& textureIter = m_textures.find(bindGroupBinding.binding);
-        if (textureIter != m_textures.end())
-        {
-            VkDescriptorImageInfo& imageInfo = std::get<2>(textureIter->second);
-            imageInfo.sampler = m_defaultTextureSampler;
-            descriptorWrite.pImageInfo = &imageInfo;
-        }
-
-        if (descriptorWrite.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
-        {
-            assert(false);
-            VkDescriptorImageInfo imageInfo{};
-            imageInfo.sampler = m_defaultTextureSampler;
-            descriptorWrite.pImageInfo = &imageInfo;
-        }
-        
-        vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
-    }
 
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
@@ -876,39 +887,17 @@ void VulkanRenderer3D::BindResources()
     }
 }
 
-void VulkanRenderer3D::Render(uint32_t uniformIndex)
+void VulkanRenderer3D::Render()
 {
-    RenderIndexed(uniformIndex);
+    RenderIndexed();
 }
 
-void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
+void VulkanRenderer3D::RenderIndexed()
 {
     if (m_mainBindGroup)
     {
-        auto& uniformBufferTuple = m_uniformBuffers[0]; // this is working because we have dynamicOffsetys only in binding 0;
-        const auto sizeOfOneUniform = std::get<0>(uniformBufferTuple).range;
-        const uint32_t dynamicOffset = GetUniformStride(uniformIndex, sizeOfOneUniform);
-
-        static uint32_t noOfDynamicOffsetEnabledbindings = 0; // Number of dynamic Offset enabled bindings in the bind group
-        static bool computedDynamicOffsetCount = false;
-        if (!computedDynamicOffsetCount)
-        {
-            int count = 0;
-            for (const auto& binding : m_mainBindGroupBindings)
-            {
-                if (binding.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
-                {
-                    count++;
-                }
-            }
-
-            noOfDynamicOffsetEnabledbindings = count;
-            computedDynamicOffsetCount = true;
-        }
-
         vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
-                                    , 1, &m_mainBindGroup
-                                    , noOfDynamicOffsetEnabledbindings, &dynamicOffset);
+                                    , 1, &m_mainBindGroup, 0, nullptr);
     }
 
     if (m_indexCount > 0)
@@ -921,7 +910,7 @@ void VulkanRenderer3D::RenderIndexed(uint32_t uniformIndex)
     }
 }
 
-void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex)
+void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
 {
     assert(m_mainBindGroup != VK_NULL_HANDLE);
     std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, m_mainBindGroup};

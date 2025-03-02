@@ -202,7 +202,7 @@ public:
 			uniformBindingLayout.visibility = wgpu::ShaderStage::Fragment;
 			uniformBindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-			uniformBindingLayout.buffer.hasDynamicOffset = true;
+			uniformBindingLayout.buffer.hasDynamicOffset = false;
 
 			m_renderer->CreateUniformBuffer(1, UniformBuf::UniformType::ModelViewProjection, sizeof(MyUniforms), uniformBindingLayout.binding);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);

@@ -47,13 +47,12 @@ struct Mesh
 	std::vector<Primitive> primitives;
 };
 
-struct Vertex {
+struct alignas(16) Vertex {
     glm::vec3 position;
     glm::vec3 normal;
     glm::vec2 texcoord0;
     glm::vec3 color;
     glm::vec3 tangent;
-    float _pad[2];
 };
 
 static_assert(sizeof(Vertex) % 16 == 0);
