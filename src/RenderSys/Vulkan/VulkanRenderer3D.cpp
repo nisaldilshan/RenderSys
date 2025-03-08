@@ -10,6 +10,49 @@
 namespace GraphicsAPI
 {
 
+enum class ShapeType {
+    Plane = 0,
+    Cube,
+    Pyramid,
+    Sphere
+    // ... other shapes
+};
+
+std::unordered_map<ShapeType, VulkanVertexIndexBufferInfo> g_shapeInfoMap;
+
+void InitShapes()
+{
+    // Create plane
+    {
+        std::vector<RenderSys::Vertex> vertices = {
+            {glm::vec3(-1.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+            {glm::vec3(1.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+            {glm::vec3(1.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+            {glm::vec3(-1.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)}
+        };
+        std::vector<uint32_t> indices = {
+            0, 1, 2,
+            2, 3, 0
+        };
+
+        constexpr uint32_t binding = 0;
+        VulkanVertexIndexBufferInfo planeInfo;
+        planeInfo.m_vertexCount = vertices.size();
+        planeInfo.m_indexCount = indices.size();
+        planeInfo.m_vertextBindingDescs = {
+            binding, sizeof(RenderSys::Vertex), VK_VERTEX_INPUT_RATE_VERTEX
+        };
+        planeInfo.m_vertextAttribDescs = {
+            {0, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, position)},
+            {1, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, normal)},
+            {2, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x2), offsetof(RenderSys::Vertex, texcoord0)},
+            {3, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, color)},
+            {4, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, tangent)}
+        };
+        g_shapeInfoMap.insert({ShapeType::Plane, planeInfo});
+    }
+}
+
 bool VulkanRenderer3D::Init()
 {
     if (!m_vma)
