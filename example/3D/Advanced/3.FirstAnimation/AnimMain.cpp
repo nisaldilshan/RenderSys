@@ -126,6 +126,44 @@ public:
 		m_renderer->CreateTextures(texDescriptors);
 		m_renderer->CreateTextureSamplers(m_scene->getSamplers());
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
+
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
+
+		// Position attribute
+		vertexAttribs[0].location = 0;
+		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[0].offset = 0;
+
+		// Normal attribute
+		vertexAttribs[1].location = 1;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
+
+		// UV attribute
+		vertexAttribs[2].location = 2;
+		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x2;
+		vertexAttribs[2].offset = offsetof(RenderSys::Vertex, texcoord0);
+
+		// Color attribute
+		vertexAttribs[3].location = 3;
+		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[3].offset = offsetof(RenderSys::Vertex, color);
+
+		// Tangent attribute
+		vertexAttribs[4].location = 4;
+		vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[4].offset = offsetof(RenderSys::Vertex, tangent);
+
+		RenderSys::VertexBufferLayout vertexBufferLayout;
+		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
+		vertexBufferLayout.attributes = vertexAttribs.data();
+		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
+
+		assert(m_vertexBuffer.size() > 0);
+		const auto vertexBufID = m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
+		assert(m_indexData.size() > 0);
+		m_renderer->SetIndexBufferData(vertexBufID, m_indexData);
 	}
 
 	virtual void OnDetach() override
@@ -144,44 +182,6 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
-
-			// Position attribute
-			vertexAttribs[0].location = 0;
-			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[0].offset = 0;
-
-			// Normal attribute
-			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
-
-			// UV attribute
-			vertexAttribs[2].location = 2;
-			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, texcoord0);
-
-			// Color attribute
-			vertexAttribs[3].location = 3;
-			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[3].offset = offsetof(RenderSys::Vertex, color);
-
-			// Tangent attribute
-			vertexAttribs[4].location = 4;
-			vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[4].offset = offsetof(RenderSys::Vertex, tangent);
-
-			RenderSys::VertexBufferLayout vertexBufferLayout;
-			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
-			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
-			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
-
-			assert(m_vertexBuffer.size() > 0);
-			m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
-			assert(m_indexData.size() > 0);
-			m_renderer->SetIndexBufferData(m_indexData);
 
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 			// The uniform buffer binding that we already had
@@ -268,8 +268,9 @@ public:
 			m_renderer->BindResources();
 			for (const auto &rootNode : m_scene->getRootNodes())
 			{
-				const RenderSys::Mesh mesh = rootNode->getMesh();
-				m_renderer->RenderMesh(mesh, 0);
+				RenderSys::Mesh mesh = rootNode->getMesh();
+				mesh.vertexBufferID = 1;
+				m_renderer->RenderMesh(mesh);
 			}
 			
 			m_renderer->EndRenderPass();

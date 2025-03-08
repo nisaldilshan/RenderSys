@@ -163,6 +163,39 @@ public:
 		{
 			assert(false);
 		}
+
+		RenderSys::VertexBuffer vertexData;
+		std::vector<uint32_t> indexData;
+		auto success = Geometry::load3DGeometry(RESOURCE_DIR "/model.txt", vertexData, indexData, 3, true);
+		if (!success) 
+		{
+			std::cerr << "Could not load geometry!" << std::endl;
+			return;
+		}
+		//
+
+		// Vertex fetch
+		// We now have 2 attributes
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
+
+		// Position attribute
+		vertexAttribs[0].location = 0;
+		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[0].offset = 0;
+
+		// Color attribute
+		vertexAttribs[1].location = 1;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; 
+		vertexAttribs[1].offset = offsetof(RenderSys::Vertex, color);
+
+		RenderSys::VertexBufferLayout vertexBufferLayout;
+		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
+		vertexBufferLayout.attributes = vertexAttribs.data();
+		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
+
+		auto vertexBufID = m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
+		m_renderer->SetIndexBufferData(vertexBufID, indexData);
 	}
 
 	virtual void OnDetach() override
@@ -181,39 +214,6 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-			
-			RenderSys::VertexBuffer vertexData;
-			std::vector<uint32_t> indexData;
-			auto success = Geometry::load3DGeometry(RESOURCE_DIR "/model.txt", vertexData, indexData, 3, true);
-			if (!success) 
-			{
-				std::cerr << "Could not load geometry!" << std::endl;
-				return;
-			}
-			//
-
-			// Vertex fetch
-			// We now have 2 attributes
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
-
-			// Position attribute
-			vertexAttribs[0].location = 0;
-			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[0].offset = 0;
-
-			// Color attribute
-			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; 
-			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, color);
-
-			RenderSys::VertexBufferLayout vertexBufferLayout;
-			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
-			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
-			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
-
-			m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
-			m_renderer->SetIndexBufferData(indexData);
 
 			// Create binding layout (don't forget to = Default)
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);

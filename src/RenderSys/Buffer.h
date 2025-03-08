@@ -44,6 +44,7 @@ struct Primitive
 
 struct Mesh
 {
+    uint32_t vertexBufferID = 0;
 	std::vector<Primitive> primitives;
 };
 

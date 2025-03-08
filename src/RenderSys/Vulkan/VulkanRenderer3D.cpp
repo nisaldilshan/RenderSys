@@ -221,19 +221,23 @@ void VulkanRenderer3D::DestroyBindGroup()
 
 void VulkanRenderer3D::DestroyBuffers()
 {
-    if (m_vertexBuffer != VK_NULL_HANDLE && m_vertexBufferMemory != VK_NULL_HANDLE)
+    for (auto [id, vertexIndexBufferInfo] : m_vertexIndexBufferInfoMap)
     {
-        vmaDestroyBuffer(m_vma, m_vertexBuffer, m_vertexBufferMemory);
-        m_vertexBuffer = VK_NULL_HANDLE;
-        m_vertexBufferMemory = VK_NULL_HANDLE;
+        if (vertexIndexBufferInfo.m_vertexBuffer != VK_NULL_HANDLE && vertexIndexBufferInfo.m_vertexBufferMemory != VK_NULL_HANDLE)
+        {
+            vmaDestroyBuffer(m_vma, vertexIndexBufferInfo.m_vertexBuffer, vertexIndexBufferInfo.m_vertexBufferMemory);
+            vertexIndexBufferInfo.m_vertexBuffer = VK_NULL_HANDLE;
+            vertexIndexBufferInfo.m_vertexBufferMemory = VK_NULL_HANDLE;
+        }
+    
+        if (vertexIndexBufferInfo.m_indexBuffer != VK_NULL_HANDLE && vertexIndexBufferInfo.m_indexBufferMemory != VK_NULL_HANDLE)
+        {
+            vmaDestroyBuffer(m_vma, vertexIndexBufferInfo.m_indexBuffer, vertexIndexBufferInfo.m_indexBufferMemory);
+            vertexIndexBufferInfo.m_indexBuffer = VK_NULL_HANDLE;
+            vertexIndexBufferInfo.m_indexBufferMemory = VK_NULL_HANDLE;
+        }
     }
-
-    if (m_indexBuffer != VK_NULL_HANDLE && m_indexBufferMemory != VK_NULL_HANDLE)
-    {
-        vmaDestroyBuffer(m_vma, m_indexBuffer, m_indexBufferMemory);
-        m_indexBuffer = VK_NULL_HANDLE;
-        m_indexBufferMemory = VK_NULL_HANDLE;
-    }
+    m_vertexIndexBufferInfoMap.clear();
 
     for (auto& [_ , uniformBufferTuple] : m_uniformBuffers)
     {
@@ -261,12 +265,6 @@ void VulkanRenderer3D::DestroyShaders()
     }
 
     m_shaderStageInfos.clear();
-}
-
-void VulkanRenderer3D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount)
-{
-    CreateShaders(shader);
-    m_vertexCount = vertexShaderCallCount;
 }
 
 void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
@@ -505,14 +503,13 @@ void VulkanRenderer3D::CreatePipeline()
         return;
 
     std::cout << "Creating render pipeline..." << std::endl;
-
-    /* assemble the graphics pipeline itself */
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = m_vertextBindingDescs.size();
-    vertexInputInfo.pVertexBindingDescriptions = m_vertextBindingDescs.data();
-    vertexInputInfo.vertexAttributeDescriptionCount = m_vertextAttribDescs.size();
-    vertexInputInfo.pVertexAttributeDescriptions = m_vertextAttribDescs.data();
+    assert(m_vertexIndexBufferInfoMap.size() == 1);
+    vertexInputInfo.vertexBindingDescriptionCount = m_vertexIndexBufferInfoMap.size();
+    vertexInputInfo.pVertexBindingDescriptions = &m_vertexIndexBufferInfoMap[1].m_vertextBindingDescs;
+    vertexInputInfo.vertexAttributeDescriptionCount = m_vertexIndexBufferInfoMap[1].m_vertextAttribDescs.size();
+    vertexInputInfo.pVertexAttributeDescriptions = m_vertexIndexBufferInfoMap[1].m_vertextAttribDescs.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
     inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -636,34 +633,20 @@ void VulkanRenderer3D::CreateFrameBuffer()
     }
 }
 
-void VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
+uint32_t VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
 {
     std::cout << "Creating vertex buffer..." << std::endl;
     const auto bufferLength = bufferData.vertices.size() * sizeof(RenderSys::Vertex);
     assert(bufferLength > 0);
     assert(bufferLayout.arrayStride > 0);
-    m_vertexCount = bufferLength/bufferLayout.arrayStride;
-    assert(m_vertexCount > 0);
+    const uint64_t vertexCount = bufferLength/bufferLayout.arrayStride;
+    assert(vertexCount > 0);
 
-    if (m_vertexBuffer != VK_NULL_HANDLE && m_vertexBufferMemory != VK_NULL_HANDLE)
-    {
-        // vertex buffer exists -> have to destroy
-        vmaDestroyBuffer(m_vma, m_vertexBuffer, m_vertexBufferMemory);
-        m_vertexBuffer = VK_NULL_HANDLE;
-        m_vertexBufferMemory = VK_NULL_HANDLE;
-    }
-
-    assert(m_vertexBuffer == VK_NULL_HANDLE);
-    assert(m_vertexBufferMemory == VK_NULL_HANDLE);
-    
-    m_vertextBindingDescs.clear();
-    VkVertexInputBindingDescription mainBinding{};
-    mainBinding.binding = 0;
-    mainBinding.stride = bufferLayout.arrayStride;
-    mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    m_vertextBindingDescs.push_back(mainBinding);
-
-    m_vertextAttribDescs.clear();
+    VulkanVertexIndexBufferInfo vertexIndexBufferInfo;
+    vertexIndexBufferInfo.m_vertexCount = vertexCount;
+    vertexIndexBufferInfo.m_vertextBindingDescs.binding = 0;
+    vertexIndexBufferInfo.m_vertextBindingDescs.stride = bufferLayout.arrayStride;
+    vertexIndexBufferInfo.m_vertextBindingDescs.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     for (size_t i = 0; i < bufferLayout.attributeCount; i++)
     {
         RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
@@ -672,8 +655,7 @@ void VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& bufferD
         vkAttribute.location = attrib.location;
         vkAttribute.format = RenderSysFormatToVulkanFormat(attrib.format);
         vkAttribute.offset = attrib.offset;
-
-        m_vertextAttribDescs.push_back(vkAttribute);
+        vertexIndexBufferInfo.m_vertextAttribDescs.push_back(vkAttribute);
     }
 
     VkBufferCreateInfo bufferInfo = {};
@@ -684,41 +666,51 @@ void VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& bufferD
     VmaAllocationCreateInfo vmaAllocInfo{};
     vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-    if (vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_vertexBuffer, &m_vertexBufferMemory, nullptr) != VK_SUCCESS) {
+    if (vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &vertexIndexBufferInfo.m_vertexBuffer, &vertexIndexBufferInfo.m_vertexBufferMemory, nullptr) != VK_SUCCESS) {
         std::cout << "vkCreateBuffer() failed!" << std::endl;
-        return;
+        return 0;
     }
 
     // copy data to the buffer
     void *buf;
-    auto res = vmaMapMemory(m_vma, m_vertexBufferMemory, &buf);
+    auto res = vmaMapMemory(m_vma, vertexIndexBufferInfo.m_vertexBufferMemory, &buf);
     if (res != VK_SUCCESS) {
         std::cout << "vkMapMemory() failed" << std::endl;
-        return;
+        return 0;
     }
 
     std::memcpy(buf, bufferData.vertices.data(), bufferLength);
-    vmaUnmapMemory(m_vma, m_vertexBufferMemory);
+    vmaUnmapMemory(m_vma, vertexIndexBufferInfo.m_vertexBufferMemory);
 
-    std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
+    std::cout << "Vertex buffer: " << vertexIndexBufferInfo.m_vertexBuffer << std::endl;
+    return m_vertexIndexBufferInfoMap.insert({m_vertexIndexBufferInfoMap.size() + 1, vertexIndexBufferInfo}).first->first;
 }
 
-void VulkanRenderer3D::CreateIndexBuffer(const std::vector<uint32_t> &bufferData)
+void VulkanRenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vector<uint32_t> &bufferData)
 {
     std::cout << "Creating index buffer..." << std::endl;
-    m_indexCount = bufferData.size();
-    assert(m_indexCount > 0);
+    assert(bufferData.size() > 0);
+    assert(sizeof(bufferData[0]) == 4); // because we are using type - VK_INDEX_TYPE_UINT32
+
+    auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
+    if (vertexIndexBufferInfoIter == m_vertexIndexBufferInfoMap.end())
+    {
+        std::cout << "Error: could not find vertexIndexBufferInfo!" << std::endl;
+        assert(false);
+        return;
+    }
+    VulkanVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
+    vertexIndexBufferInfo.m_indexCount = bufferData.size();
     
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    assert(sizeof(bufferData[0]) == 4); // because we are using type - VK_INDEX_TYPE_UINT32
-    bufferInfo.size = m_indexCount * 4;
+    bufferInfo.size = vertexIndexBufferInfo.m_indexCount * 4;
     bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     VmaAllocationCreateInfo vmaAllocInfo{};
     vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-    auto res = vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &m_indexBuffer, &m_indexBufferMemory, nullptr);
+    auto res = vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &vertexIndexBufferInfo.m_indexBuffer, &vertexIndexBufferInfo.m_indexBufferMemory, nullptr);
     if (res != VK_SUCCESS) {
         std::cout << "vkCreateBuffer() failed!" << std::endl;
         return;
@@ -726,15 +718,15 @@ void VulkanRenderer3D::CreateIndexBuffer(const std::vector<uint32_t> &bufferData
 
     // copy data to the buffer
     void *buf;
-    res = vmaMapMemory(m_vma, m_indexBufferMemory, &buf);
+    res = vmaMapMemory(m_vma, vertexIndexBufferInfo.m_indexBufferMemory, &buf);
     if (res != VK_SUCCESS) {
         std::cout << "vkMapMemory() failed" << std::endl;
         return;
     }
 
     std::memcpy(buf, bufferData.data(), bufferInfo.size);
-    vmaUnmapMemory(m_vma, m_indexBufferMemory);
-    std::cout << "Index buffer: " << m_indexBuffer << std::endl;
+    vmaUnmapMemory(m_vma, vertexIndexBufferInfo.m_indexBufferMemory);
+    std::cout << "Index buffer: " << vertexIndexBufferInfo.m_indexBuffer << std::endl;
 }
 
 void VulkanRenderer3D::SetClearColor(glm::vec4 clearColor)
@@ -822,7 +814,6 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData)
 
 void VulkanRenderer3D::BindResources()
 {
-
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     VkViewport viewport{};
@@ -837,14 +828,18 @@ void VulkanRenderer3D::BindResources()
     VkRect2D scissor{{ 0, 0 }, { m_width, m_height }};
     vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
-    VkDeviceSize offset = 0;
-    assert(m_vertexBuffer != VK_NULL_HANDLE);
-	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &offset);
-    if (m_indexCount > 0)
+    assert(m_vertexIndexBufferInfoMap.size() == 1);
+    for (auto [id, vertexIndexBufferInfo] : m_vertexIndexBufferInfoMap)
     {
-        assert(m_indexBuffer != VK_NULL_HANDLE);
-        vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, offset, VK_INDEX_TYPE_UINT32);
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &vertexIndexBufferInfo.m_vertexBuffer, &offset);
+        if (vertexIndexBufferInfo.m_indexCount > 0)
+        {
+            assert(vertexIndexBufferInfo.m_indexBuffer != VK_NULL_HANDLE);
+            vkCmdBindIndexBuffer(m_commandBuffer, vertexIndexBufferInfo.m_indexBuffer, offset, VK_INDEX_TYPE_UINT32);
+        }
     }
+    
 }
 
 void VulkanRenderer3D::Render()
@@ -860,13 +855,17 @@ void VulkanRenderer3D::RenderIndexed()
                                     , 1, &m_mainBindGroup, 0, nullptr);
     }
 
-    if (m_indexCount > 0)
+    assert(m_vertexIndexBufferInfoMap.size() == 1);
+    for (auto [id, vertexIndexBufferInfo] : m_vertexIndexBufferInfoMap)
     {
-        vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
-    }
-    else
-    {
-        vkCmdDraw(m_commandBuffer, m_vertexCount, 1, 0, 0);
+        if (vertexIndexBufferInfo.m_indexCount > 0)
+        {
+            vkCmdDrawIndexed(m_commandBuffer, vertexIndexBufferInfo.m_indexCount, 1, 0, 0, 0);
+        }
+        else
+        {
+            vkCmdDraw(m_commandBuffer, vertexIndexBufferInfo.m_vertexCount, 1, 0, 0);
+        }
     }
 }
 
@@ -887,13 +886,23 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
 
         vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t), &primitive.materialIndex);
 
-        if (m_indexCount > 0)
+        assert(mesh.vertexBufferID >= 1);
+        auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(mesh.vertexBufferID);
+        if (vertexIndexBufferInfoIter == m_vertexIndexBufferInfoMap.end())
+        {
+            std::cout << "Error: could not find vertexIndexBufferInfo!" << std::endl;
+            assert(false);
+            return;
+        }
+
+        VulkanVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
+        if (vertexIndexBufferInfo.m_indexCount > 0)
         {
             vkCmdDrawIndexed(m_commandBuffer, primitive.indexCount, 1, primitive.firstIndex, 0, 0);
         }
         else
         {
-            vkCmdDraw(m_commandBuffer, m_vertexCount, 1, 0, 0);
+            vkCmdDraw(m_commandBuffer, vertexIndexBufferInfo.m_vertexCount, 1, 0, 0);
         }
     }
 }

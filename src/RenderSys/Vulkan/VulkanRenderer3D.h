@@ -14,6 +14,17 @@
 
 namespace GraphicsAPI
 {
+    struct VulkanVertexIndexBufferInfo
+    {
+        VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
+        VmaAllocation m_vertexBufferMemory = VK_NULL_HANDLE;
+        uint32_t m_vertexCount = 0;
+        VkBuffer m_indexBuffer = VK_NULL_HANDLE;
+        VmaAllocation m_indexBufferMemory = VK_NULL_HANDLE;
+        uint32_t m_indexCount = 0;
+        VkVertexInputBindingDescription m_vertextBindingDescs;
+        std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
+    };
     class VulkanRenderer3D
     {
     public:
@@ -25,11 +36,10 @@ namespace GraphicsAPI
         void CreateDepthImage();
         void CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers);
         void CreateShaders(RenderSys::Shader& shader);
-        void CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
         void CreatePipeline();
         void CreateFrameBuffer();
-        void CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
-        void CreateIndexBuffer(const std::vector<uint32_t> &bufferData);
+        uint32_t CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
+        void CreateIndexBuffer(uint32_t vertexBufferID, const std::vector<uint32_t> &bufferData);
         void SetClearColor(glm::vec4 clearColor);
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
@@ -83,18 +93,9 @@ namespace GraphicsAPI
         VkCommandPool m_commandPool = VK_NULL_HANDLE;
         VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 
-        VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
-        VmaAllocation m_vertexBufferMemory = VK_NULL_HANDLE;
-        std::vector<VkVertexInputBindingDescription> m_vertextBindingDescs;
-        std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
-        uint32_t m_vertexCount = 0;
-
-        VkBuffer m_indexBuffer = VK_NULL_HANDLE;
-        VmaAllocation m_indexBufferMemory = VK_NULL_HANDLE;
-        uint32_t m_indexCount = 0;
+        std::unordered_map<uint32_t, VulkanVertexIndexBufferInfo> m_vertexIndexBufferInfoMap;
 
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
-
         VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
         VkDescriptorSet m_mainBindGroup = VK_NULL_HANDLE;
 

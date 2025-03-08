@@ -155,6 +155,45 @@ public:
 		{
 			assert(false);
 		}
+
+		RenderSys::VertexBuffer vertexData;
+		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cube.obj", vertexData);
+		if (!success) 
+		{
+			std::cerr << "Could not load geometry!" << std::endl;
+			assert(false);
+			return;
+		}
+
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
+
+		// Position attribute
+		vertexAttribs[0].location = 0;
+		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[0].offset = 0;
+
+		// Normal attribute
+		vertexAttribs[1].location = 1;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
+
+		// Color attribute
+		vertexAttribs[2].location = 2;
+		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
+
+		// UV attribute
+		vertexAttribs[3].location = 3;
+		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
+		vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
+
+		RenderSys::VertexBufferLayout vertexBufferLayout;
+		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
+		vertexBufferLayout.attributes = vertexAttribs.data();
+		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
+
+		m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
 	}
 
 	virtual void OnDetach() override
@@ -173,45 +212,6 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			RenderSys::VertexBuffer vertexData;
-			bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cube.obj", vertexData);
-			if (!success) 
-			{
-				std::cerr << "Could not load geometry!" << std::endl;
-				assert(false);
-				return;
-			}
-
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
-
-			// Position attribute
-			vertexAttribs[0].location = 0;
-			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[0].offset = 0;
-
-			// Normal attribute
-			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
-
-			// Color attribute
-			vertexAttribs[2].location = 2;
-			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
-
-			// UV attribute
-			vertexAttribs[3].location = 3;
-			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
-
-			RenderSys::VertexBufferLayout vertexBufferLayout;
-			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
-			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
-			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
-
-			m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
 
 			// Since we now have 2 bindings, we use a vector to store them
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);

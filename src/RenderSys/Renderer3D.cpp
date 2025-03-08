@@ -44,19 +44,14 @@ void Renderer3D::SetShader(RenderSys::Shader& shader)
     m_rendererBackend->CreateShaders(shader);
 }
 
-void Renderer3D::SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount)
+uint32_t Renderer3D::SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
 {
-    m_rendererBackend->CreateStandaloneShader(shader, vertexShaderCallCount);
+    return m_rendererBackend->CreateVertexBuffer(bufferData, bufferLayout);
 }
 
-void Renderer3D::SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
+void Renderer3D::SetIndexBufferData(uint32_t vertexBufferID, const std::vector<uint32_t>& bufferData)
 {
-    m_rendererBackend->CreateVertexBuffer(bufferData, bufferLayout);
-}
-
-void Renderer3D::SetIndexBufferData(const std::vector<uint32_t>& bufferData)
-{
-    m_rendererBackend->CreateIndexBuffer(bufferData);
+    m_rendererBackend->CreateIndexBuffer(vertexBufferID, bufferData);
 }
 
 void Renderer3D::CreatePipeline()
@@ -129,7 +124,7 @@ void Renderer3D::RenderIndexed(uint32_t uniformIndex)
     m_rendererBackend->RenderIndexed();
 }
 
-void Renderer3D::RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex)
+void Renderer3D::RenderMesh(const RenderSys::Mesh& mesh)
 {
     m_rendererBackend->RenderMesh(mesh);
 }
