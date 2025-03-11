@@ -74,9 +74,9 @@ void RenderSys::Renderer3D::CreateTextures(const std::vector<RenderSys::TextureD
     m_rendererBackend->CreateTextures(texDescriptors);
 }
 
-void RenderSys::Renderer3D::CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials)
+void RenderSys::Renderer3D::CreateMaterialBindGroups(uint32_t modelID, const std::vector<RenderSys::Material>& materials)
 {
-    m_rendererBackend->CreateMaterialBindGroups(materials);
+    m_rendererBackend->CreateMaterialBindGroups(modelID, materials);
 }
 
 void Renderer3D::CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers)

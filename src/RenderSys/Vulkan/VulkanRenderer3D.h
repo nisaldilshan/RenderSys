@@ -25,6 +25,23 @@ namespace GraphicsAPI
         VkVertexInputBindingDescription m_vertextBindingDescs;
         std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
     };
+
+    struct VulkanMaterial
+    {
+        VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; // 1 bind group for different texture types of one material (baseColor/normal/metallic-roughness)
+        int materialUniformBufferSlot = -1;
+        int baseColorTextureIndex = -1;
+        int normalTextureIndex = -1;
+        int metallicRoughnessTextureIndex = -1;
+    };
+
+    struct VulkanModelInfo
+    {
+        std::vector<VulkanMaterial> m_materials;
+        std::vector<std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_sceneTextures;
+        std::vector<VkSampler> m_sceneTextureSamplers;
+    };
+
     class VulkanRenderer3D
     {
     public:
@@ -47,12 +64,15 @@ namespace GraphicsAPI
         void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
         // Textures get created in separate bindgroup
         void CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors);
-        void CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials);
+        void CreateMaterialBindGroups(uint32_t modelID, const std::vector<RenderSys::Material>& materials);
         void SetUniformData(uint32_t binding, const void* bufferData);
         void BindResources();
         void Render();
         void RenderIndexed();
         void RenderMesh(const RenderSys::Mesh& mesh);
+        void RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const VulkanMaterial &material);
+        void DrawPlane();
+        void DrawCube();
         ImTextureID GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();
@@ -100,15 +120,17 @@ namespace GraphicsAPI
         VkDescriptorSet m_mainBindGroup = VK_NULL_HANDLE;
 
         VkDescriptorSetLayout m_materialBindGroupLayout = VK_NULL_HANDLE;
-        std::vector<VkDescriptorSet> m_materialBindGroups;
 
-        // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
-        std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
+        // map modelID to VulkanModelInfo
+        std::unordered_map<uint32_t, VulkanModelInfo> m_models;
 
         // map bindingNumber to tuple -> <image, textureMemory, VkDescriptorImageInfo>
         std::unordered_map<uint32_t, std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_textures;
         std::vector<std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_sceneTextures;
         std::vector<VkSampler> m_sceneTextureSamplers;
+
+        // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
+        std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
 
         VmaAllocator m_vma = VK_NULL_HANDLE;
         VkClearColorValue m_clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };

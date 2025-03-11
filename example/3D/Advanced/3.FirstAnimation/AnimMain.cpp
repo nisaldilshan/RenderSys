@@ -164,6 +164,28 @@ public:
 		const auto vertexBufID = m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
 		assert(m_indexData.size() > 0);
 		m_renderer->SetIndexBufferData(vertexBufID, m_indexData);
+
+		const auto& materials =  m_scene->getMaterials();
+		m_renderer->CreateMaterialBindGroups(1, materials);
+
+		int matCount = 0;
+		assert(materials.size() <= 32);
+		for (const auto& material : materials)
+		{
+			const auto& baseColor = material.baseColorFactor;
+			m_materialUniformData.materials[matCount].color = {
+				baseColor.x, baseColor.y, baseColor.z, baseColor.w
+			};
+			m_materialUniformData.materials[matCount].metallic = material.metallicFactor;
+			m_materialUniformData.materials[matCount].roughness = material.roughnessFactor;
+			m_materialUniformData.materials[matCount].colorTextureSet 
+				= material.baseColorTextureIndex == -1 ? -1 : 0; // material.texCoordSets.baseColor
+			m_materialUniformData.materials[matCount].PhysicalDescriptorTextureSet 
+				= material.normalTextureIndex == -1 ? -1 : 0; // material.texCoordSets.normal
+			m_materialUniformData.materials[matCount].normalTextureSet 
+				= material.metallicRoughnessTextureIndex == -1 ? -1 : 0;
+			matCount++;
+		}
 	}
 
 	virtual void OnDetach() override
@@ -214,30 +236,9 @@ public:
 			m_renderer->CreateUniformBuffer(materialUniformLayout.binding, sizeof(MaterialUniforms), 1);
 
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
-			const auto& materials =  m_scene->getMaterials();
-			m_renderer->CreateMaterialBindGroups(materials);
+
 			m_renderer->CreatePipeline();
 			m_camera->SetViewportSize((float)m_viewportWidth, (float)m_viewportHeight);
-
-			int matCount = 0;
-			assert(materials.size() <= 32);
-			for (const auto& material : materials)
-			{
-				const auto& baseColor = material.baseColorFactor;
-				m_materialUniformData.materials[matCount].color = {
-					baseColor.x, baseColor.y, baseColor.z, baseColor.w
-				};
-				m_materialUniformData.materials[matCount].metallic = material.metallicFactor;
-				m_materialUniformData.materials[matCount].roughness = material.roughnessFactor;
-				m_materialUniformData.materials[matCount].colorTextureSet 
-					= material.baseColorTextureIndex == -1 ? -1 : 0; // material.texCoordSets.baseColor
-				m_materialUniformData.materials[matCount].PhysicalDescriptorTextureSet 
-					= material.normalTextureIndex == -1 ? -1 : 0; // material.texCoordSets.normal
-				m_materialUniformData.materials[matCount].normalTextureSet 
-					= material.metallicRoughnessTextureIndex == -1 ? -1 : 0;
-				matCount++;
-			}
-
 			m_renderer->SetClearColor({ 0.45f, 0.55f, 0.60f, 1.00f });
         }
 
@@ -269,6 +270,7 @@ public:
 			for (const auto &rootNode : m_scene->getRootNodes())
 			{
 				RenderSys::Mesh mesh = rootNode->getMesh();
+				mesh.id = 1;
 				mesh.vertexBufferID = 1;
 				m_renderer->RenderMesh(mesh);
 			}

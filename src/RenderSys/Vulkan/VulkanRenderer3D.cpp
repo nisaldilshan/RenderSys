@@ -51,6 +51,44 @@ void InitShapes()
         };
         g_shapeInfoMap.insert({ShapeType::Plane, planeInfo});
     }
+    // Create cube
+    {
+        std::vector<RenderSys::Vertex> vertices = {
+            {glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+            {glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+            {glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+            {glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+            {glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+            {glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+            {glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+            {glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)}
+        };
+
+        std::vector<uint32_t> indices = {
+            0, 1, 2, 2, 3, 0,
+            4, 5, 6, 6, 7, 4,
+            0, 4, 7, 7, 3, 0,
+            1, 5, 6, 6, 2, 1,
+            3, 2, 6, 6, 7, 3,
+            0, 1, 5, 5, 4, 0
+        };
+
+        constexpr uint32_t binding = 0;
+        VulkanVertexIndexBufferInfo cubeInfo;
+        cubeInfo.m_vertexCount = vertices.size();
+        cubeInfo.m_indexCount = indices.size();
+        cubeInfo.m_vertextBindingDescs = {
+            binding, sizeof(RenderSys::Vertex), VK_VERTEX_INPUT_RATE_VERTEX
+        };
+        cubeInfo.m_vertextAttribDescs = {
+            {0, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, position)},
+            {1, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, normal)},
+            {2, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x2), offsetof(RenderSys::Vertex, texcoord0)},
+            {3, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, color)},
+            {4, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, tangent)}
+        };
+        g_shapeInfoMap.insert({ShapeType::Cube, cubeInfo});
+    }
 }
 
 bool VulkanRenderer3D::Init()
@@ -915,39 +953,65 @@ void VulkanRenderer3D::RenderIndexed()
 void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
 {
     assert(m_mainBindGroup != VK_NULL_HANDLE);
-    std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, m_mainBindGroup};
+    auto modelIter = m_models.find(mesh.id);
+    if (modelIter == m_models.end())
+    {
+        std::cout << "Error: could not find Model!" << std::endl;
+        return;
+    }
+
+    const auto& model = modelIter->second;
     for (const auto &primitive : mesh.primitives)
     {
-        if (primitive.materialIndex < m_materialBindGroups.size())
-        {
-            descriptorsets[1] = m_materialBindGroups[primitive.materialIndex];
-        }
-
-        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
-                                    , descriptorsets.size(), descriptorsets.data()
-                                    , 0, nullptr);
-
-        vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t), &primitive.materialIndex);
-
-        assert(mesh.vertexBufferID >= 1);
-        auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(mesh.vertexBufferID);
-        if (vertexIndexBufferInfoIter == m_vertexIndexBufferInfoMap.end())
-        {
-            std::cout << "Error: could not find vertexIndexBufferInfo!" << std::endl;
-            assert(false);
-            return;
-        }
-
-        VulkanVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
-        if (vertexIndexBufferInfo.m_indexCount > 0)
-        {
-            vkCmdDrawIndexed(m_commandBuffer, primitive.indexCount, 1, primitive.firstIndex, 0, 0);
-        }
-        else
-        {
-            vkCmdDraw(m_commandBuffer, vertexIndexBufferInfo.m_vertexCount, 1, 0, 0);
-        }
+        assert(primitive.materialIndex < model.m_materials.size());
+        RenderPrimitive(mesh.vertexBufferID, primitive.indexCount, primitive.firstIndex, model.m_materials[primitive.materialIndex]);
     }
+}
+
+void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const VulkanMaterial &material)
+{
+    std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup};
+    if (material.m_bindGroup != VK_NULL_HANDLE)
+    {
+        descriptorsets.push_back(material.m_bindGroup);
+    }
+    else
+    {
+        std::cout << "Error: material bindGroup is null!" << std::endl;
+    }
+
+    vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
+                                , descriptorsets.size(), descriptorsets.data()
+                                , 0, nullptr);
+
+    vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t), &material.materialUniformBufferSlot);
+
+    assert(vertexBufferID >= 1);
+    auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
+    if (vertexIndexBufferInfoIter == m_vertexIndexBufferInfoMap.end())
+    {
+        std::cout << "Error: could not find vertexIndexBufferInfo!" << std::endl;
+        assert(false);
+        return;
+    }
+
+    VulkanVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
+    if (vertexIndexBufferInfo.m_indexCount > 0)
+    {
+        vkCmdDrawIndexed(m_commandBuffer, indexCount, 1, firstIndex, 0, 0);
+    }
+    else
+    {
+        vkCmdDraw(m_commandBuffer, vertexIndexBufferInfo.m_vertexCount, 1, 0, 0);
+    }
+}
+
+void VulkanRenderer3D::DrawPlane()
+{
+}
+
+void VulkanRenderer3D::DrawCube()
+{
 }
 
 ImTextureID VulkanRenderer3D::GetDescriptorSet()
@@ -1131,12 +1195,12 @@ void VulkanRenderer3D::CreateTextures(const std::vector<RenderSys::TextureDescri
     std::cout << "VulkanRenderer3D::CreateTextures - Created " << m_sceneTextures.size() << " textures" << std::endl;
 }
 
-void VulkanRenderer3D::CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials)
+void VulkanRenderer3D::CreateMaterialBindGroups(uint32_t modelID, const std::vector<RenderSys::Material>& materials)
 {
     std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings{
         VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
         VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
-        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic=roughness texture
+        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
     };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -1160,18 +1224,27 @@ void VulkanRenderer3D::CreateMaterialBindGroups(const std::vector<RenderSys::Mat
     if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &materialBindGroupPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
-    
-    m_materialBindGroups.resize(materials.size());
+
+    const auto& [modelIter, inserted] = m_models.insert({modelID, VulkanModelInfo{}});
+    if (!inserted)
+    {
+        std::cout << "Error: Model materials already loaded!" << std::endl;
+        assert(false);
+        return;
+    }
+    auto& model = modelIter->second;
+    model.m_materials.resize(materials.size());
     int count = 0;
     for (const auto &material : materials)
     {
+        model.m_materials[count].materialUniformBufferSlot = count;
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = materialBindGroupPool;
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &m_materialBindGroupLayout;
 
-        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_materialBindGroups[count]) != VK_SUCCESS) {
+        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &model.m_materials[count].m_bindGroup) != VK_SUCCESS) {
             throw std::runtime_error("failed to allocate descriptor sets!");
         }
 
@@ -1182,7 +1255,7 @@ void VulkanRenderer3D::CreateMaterialBindGroups(const std::vector<RenderSys::Mat
         {
             VkWriteDescriptorSet textureWrite{};
             textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            textureWrite.dstSet = m_materialBindGroups[count];
+            textureWrite.dstSet = model.m_materials[count].m_bindGroup;
             textureWrite.dstBinding = i;
             textureWrite.dstArrayElement = 0;
             textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
