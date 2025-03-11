@@ -69,19 +69,10 @@ void Renderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureDescrip
     m_rendererBackend->CreateTexture(binding, texDescriptor);
 }
 
-void RenderSys::Renderer3D::CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors)
+void RenderSys::Renderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
+            , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers)
 {
-    m_rendererBackend->CreateTextures(texDescriptors);
-}
-
-void RenderSys::Renderer3D::CreateMaterialBindGroups(uint32_t modelID, const std::vector<RenderSys::Material>& materials)
-{
-    m_rendererBackend->CreateMaterialBindGroups(modelID, materials);
-}
-
-void Renderer3D::CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers)
-{
-    m_rendererBackend->CreateTextureSamplers(samplers);
+    m_rendererBackend->CreateModelMaterials(modelID, materials, texDescriptors, samplers);
 }
 
 void Renderer3D::SetClearColor(glm::vec4 clearColor)

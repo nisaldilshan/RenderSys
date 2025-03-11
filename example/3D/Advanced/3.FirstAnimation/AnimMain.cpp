@@ -123,8 +123,28 @@ public:
 		{
 			texDescriptors.emplace_back(sceneTexture.GetDescriptor());
 		}
-		m_renderer->CreateTextures(texDescriptors);
-		m_renderer->CreateTextureSamplers(m_scene->getSamplers());
+		const auto& materials =  m_scene->getMaterials();
+		m_renderer->CreateModelMaterials(1, materials, texDescriptors, m_scene->getSamplers());
+
+		int matCount = 0;
+		assert(materials.size() <= 32);
+		for (const auto& material : materials)
+		{
+			const auto& baseColor = material.baseColorFactor;
+			m_materialUniformData.materials[matCount].color = {
+				baseColor.x, baseColor.y, baseColor.z, baseColor.w
+			};
+			m_materialUniformData.materials[matCount].metallic = material.metallicFactor;
+			m_materialUniformData.materials[matCount].roughness = material.roughnessFactor;
+			m_materialUniformData.materials[matCount].colorTextureSet 
+				= material.baseColorTextureIndex == -1 ? -1 : 0; // material.texCoordSets.baseColor
+			m_materialUniformData.materials[matCount].PhysicalDescriptorTextureSet 
+				= material.normalTextureIndex == -1 ? -1 : 0; // material.texCoordSets.normal
+			m_materialUniformData.materials[matCount].normalTextureSet 
+				= material.metallicRoughnessTextureIndex == -1 ? -1 : 0;
+			matCount++;
+		}
+
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
@@ -165,27 +185,7 @@ public:
 		assert(m_indexData.size() > 0);
 		m_renderer->SetIndexBufferData(vertexBufID, m_indexData);
 
-		const auto& materials =  m_scene->getMaterials();
-		m_renderer->CreateMaterialBindGroups(1, materials);
-
-		int matCount = 0;
-		assert(materials.size() <= 32);
-		for (const auto& material : materials)
-		{
-			const auto& baseColor = material.baseColorFactor;
-			m_materialUniformData.materials[matCount].color = {
-				baseColor.x, baseColor.y, baseColor.z, baseColor.w
-			};
-			m_materialUniformData.materials[matCount].metallic = material.metallicFactor;
-			m_materialUniformData.materials[matCount].roughness = material.roughnessFactor;
-			m_materialUniformData.materials[matCount].colorTextureSet 
-				= material.baseColorTextureIndex == -1 ? -1 : 0; // material.texCoordSets.baseColor
-			m_materialUniformData.materials[matCount].PhysicalDescriptorTextureSet 
-				= material.normalTextureIndex == -1 ? -1 : 0; // material.texCoordSets.normal
-			m_materialUniformData.materials[matCount].normalTextureSet 
-				= material.metallicRoughnessTextureIndex == -1 ? -1 : 0;
-			matCount++;
-		}
+		
 	}
 
 	virtual void OnDetach() override

@@ -1153,14 +1153,54 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureD
     UploadTexture(image, texDescriptor);
 }
 
-void VulkanRenderer3D::CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors)
+void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material> &materials, 
+    const std::vector<RenderSys::TextureDescriptor> &texDescriptors, const std::vector<RenderSys::TextureSampler> &samplers)
 {
-    if (m_sceneTextures.size() > 0)
+    std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings{
+        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
+        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
+        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
+    };
+
+    if (m_materialBindGroupLayout == VK_NULL_HANDLE)
+    {
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = materialBindGroupBindings.size();
+        layoutInfo.pBindings = materialBindGroupBindings.data();
+        
+        if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_materialBindGroupLayout) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor set layout!");
+        }
+        
+        std::vector<VkDescriptorPoolSize> poolSizes;
+        poolSizes.emplace_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * static_cast<uint32_t>(materials.size())});
+        
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = poolSizes.size();
+        poolInfo.pPoolSizes = poolSizes.data();
+        poolInfo.maxSets = materials.size();
+        if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_materialBindGroupPool) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor pool!");
+        }
+    }
+    
+    const auto& [modelIter, inserted] = m_models.insert({modelID, VulkanModelInfo{}});
+    if (!inserted)
+    {
+        std::cout << "Error: Model materials already loaded!" << std::endl;
+        assert(false);
+        return;
+    }
+    auto& model = modelIter->second;
+
+    if (model.m_sceneTextures.size() > 0)
         return;
     
     for (const auto &texDescriptor : texDescriptors)
     {
-        auto& sceneTextureTuple = m_sceneTextures.emplace_back();
+        auto& sceneTextureTuple = model.m_sceneTextures.emplace_back();
 
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1192,47 +1232,37 @@ void VulkanRenderer3D::CreateTextures(const std::vector<RenderSys::TextureDescri
         UploadTexture(image, texDescriptor);
     }
 
-    std::cout << "VulkanRenderer3D::CreateTextures - Created " << m_sceneTextures.size() << " textures" << std::endl;
-}
+    std::cout << "VulkanRenderer3D::CreateTextures - Created " << model.m_sceneTextures.size() << " textures" << std::endl;
 
-void VulkanRenderer3D::CreateMaterialBindGroups(uint32_t modelID, const std::vector<RenderSys::Material>& materials)
-{
-    std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings{
-        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
-        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
-        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
-    };
-
-    VkDescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = materialBindGroupBindings.size();
-    layoutInfo.pBindings = materialBindGroupBindings.data();
-
-    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_materialBindGroupLayout) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor set layout!");
-    }
-
-    std::vector<VkDescriptorPoolSize> poolSizes;
-    poolSizes.emplace_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * static_cast<uint32_t>(materials.size())});
-
-    VkDescriptorPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = poolSizes.size();
-    poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = materials.size();
-    VkDescriptorPool materialBindGroupPool = VK_NULL_HANDLE;
-    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &materialBindGroupPool) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor pool!");
-    }
-
-    const auto& [modelIter, inserted] = m_models.insert({modelID, VulkanModelInfo{}});
-    if (!inserted)
+    for (const auto &sampler : samplers)
     {
-        std::cout << "Error: Model materials already loaded!" << std::endl;
-        assert(false);
-        return;
+        VkSamplerCreateInfo texSamplerInfo{};
+        texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        texSamplerInfo.magFilter = sampler.magFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+        texSamplerInfo.minFilter = sampler.minFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+        texSamplerInfo.addressModeU = sampler.addressModeU == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        texSamplerInfo.addressModeV = sampler.addressModeV == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        texSamplerInfo.addressModeW = sampler.addressModeW == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        texSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        texSamplerInfo.unnormalizedCoordinates = VK_FALSE;
+        texSamplerInfo.compareEnable = VK_FALSE;
+        texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        texSamplerInfo.mipLodBias = 0.0f;
+        texSamplerInfo.minLod = 0.0f;
+        texSamplerInfo.maxLod = 0.0f;
+        texSamplerInfo.anisotropyEnable = VK_FALSE;
+        texSamplerInfo.maxAnisotropy = 1.0f;
+
+        VkSampler textureSampler = VK_NULL_HANDLE;
+        if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+            std::cout << "error: could not create sampler for texture" << std::endl;
+        }
+
+        model.m_sceneTextureSamplers.push_back(textureSampler);
     }
-    auto& model = modelIter->second;
+
+    std::cout << "VulkanRenderer3D::CreateTextureSamplers - Created " << model.m_sceneTextureSamplers.size() << " samplers" << std::endl;
     model.m_materials.resize(materials.size());
     int count = 0;
     for (const auto &material : materials)
@@ -1240,14 +1270,14 @@ void VulkanRenderer3D::CreateMaterialBindGroups(uint32_t modelID, const std::vec
         model.m_materials[count].materialUniformBufferSlot = count;
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = materialBindGroupPool;
+        allocInfo.descriptorPool = m_materialBindGroupPool;
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &m_materialBindGroupLayout;
-
+    
         if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &model.m_materials[count].m_bindGroup) != VK_SUCCESS) {
             throw std::runtime_error("failed to allocate descriptor sets!");
         }
-
+    
         std::vector<VkWriteDescriptorSet> descriptorWrites;
         descriptorWrites.resize(materialBindGroupBindings.size());
         VkDescriptorImageInfo imageInfo{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED};
@@ -1263,37 +1293,37 @@ void VulkanRenderer3D::CreateMaterialBindGroups(uint32_t modelID, const std::vec
             textureWrite.pBufferInfo = nullptr;
             textureWrite.pImageInfo = &imageInfo;
             textureWrite.pTexelBufferView = nullptr;
-
+    
             descriptorWrites[i] = textureWrite;
         }
-
+    
         assert(material.baseColorTextureIndex >= 0);
-        VkDescriptorImageInfo& baseColorTextureImageInfo = std::get<2>(m_sceneTextures[material.baseColorTextureIndex]);
-        baseColorTextureImageInfo.sampler = m_sceneTextureSamplers[0];
+        VkDescriptorImageInfo& baseColorTextureImageInfo = std::get<2>(model.m_sceneTextures[material.baseColorTextureIndex]);
+        baseColorTextureImageInfo.sampler = model.m_sceneTextureSamplers[0];
         descriptorWrites[0].pImageInfo = &baseColorTextureImageInfo;
-
+    
         if (material.normalTextureIndex >= 0)
         {
-            VkDescriptorImageInfo& normalTextureImageInfo = std::get<2>(m_sceneTextures[material.normalTextureIndex]);
-            normalTextureImageInfo.sampler = m_sceneTextureSamplers[0];
+            VkDescriptorImageInfo& normalTextureImageInfo = std::get<2>(model.m_sceneTextures[material.normalTextureIndex]);
+            normalTextureImageInfo.sampler = model.m_sceneTextureSamplers[0];
             descriptorWrites[1].pImageInfo = &normalTextureImageInfo;
         }
         else
         {
             descriptorWrites[1].pImageInfo = &baseColorTextureImageInfo;
         }
-
+    
         if (material.metallicRoughnessTextureIndex >= 0)
         {
-            VkDescriptorImageInfo& metallicRoughnessTextureImageInfo = std::get<2>(m_sceneTextures[material.metallicRoughnessTextureIndex]);
-            metallicRoughnessTextureImageInfo.sampler = m_sceneTextureSamplers[0];
+            VkDescriptorImageInfo& metallicRoughnessTextureImageInfo = std::get<2>(model.m_sceneTextures[material.metallicRoughnessTextureIndex]);
+            metallicRoughnessTextureImageInfo.sampler = model.m_sceneTextureSamplers[0];
             descriptorWrites[2].pImageInfo = &metallicRoughnessTextureImageInfo;
         }
         else
         {
             descriptorWrites[2].pImageInfo = &baseColorTextureImageInfo;
         }
-
+    
         vkUpdateDescriptorSets(Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
         count++;
     }
@@ -1403,37 +1433,6 @@ void VulkanRenderer3D::CreateDefaultTextureSampler()
 
     if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_defaultTextureSampler) != VK_SUCCESS) {
         std::cout << "error: could not create sampler for texture" << std::endl;
-    }
-}
-
-void VulkanRenderer3D::CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers)
-{
-    for (const auto &sampler : samplers)
-    {
-        VkSamplerCreateInfo texSamplerInfo{};
-        texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        texSamplerInfo.magFilter = sampler.magFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-        texSamplerInfo.minFilter = sampler.minFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-        texSamplerInfo.addressModeU = sampler.addressModeU == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        texSamplerInfo.addressModeV = sampler.addressModeV == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        texSamplerInfo.addressModeW = sampler.addressModeW == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        texSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        texSamplerInfo.unnormalizedCoordinates = VK_FALSE;
-        texSamplerInfo.compareEnable = VK_FALSE;
-        texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        texSamplerInfo.mipLodBias = 0.0f;
-        texSamplerInfo.minLod = 0.0f;
-        texSamplerInfo.maxLod = 0.0f;
-        texSamplerInfo.anisotropyEnable = VK_FALSE;
-        texSamplerInfo.maxAnisotropy = 1.0f;
-
-        VkSampler textureSampler = VK_NULL_HANDLE;
-        if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
-            std::cout << "error: could not create sampler for texture" << std::endl;
-        }
-
-        m_sceneTextureSamplers.push_back(textureSampler);
     }
 }
 

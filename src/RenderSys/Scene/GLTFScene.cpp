@@ -113,7 +113,6 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
     if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end())
     {
-        std::cout << "GLTFScene::loadVertexAttributes found TEXCOORD_0" << std::endl;
         const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("TEXCOORD_0")->second];
         const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
         const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
@@ -128,7 +127,6 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
     if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
     {
-        std::cout << "GLTFScene::loadVertexAttributes found NORMAL" << std::endl;
         const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("NORMAL")->second];
         const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
         const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
@@ -143,7 +141,6 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
     if (primitive.attributes.find("TANGENT") != primitive.attributes.end())
     {
-        std::cout << "GLTFScene::loadVertexAttributes found TANGENT" << std::endl;
         const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("TANGENT")->second];
         const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
         const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
@@ -365,9 +362,9 @@ void GLTFScene::loadMaterials(std::vector<Material>& materials)
         material.baseColorFactor = glm::make_vec4(mat.pbrMetallicRoughness.baseColorFactor.data());
         material.metallicFactor = mat.pbrMetallicRoughness.metallicFactor;
         material.roughnessFactor = mat.pbrMetallicRoughness.roughnessFactor;
-        std::cout << "Material Name: " << mat.name 
-                    << ", metallicFactor=" << material.metallicFactor 
-                    << ", roughnessFactor=" << material.roughnessFactor << std::endl;
+        // std::cout << "Material Name: " << mat.name 
+        //             << ", metallicFactor=" << material.metallicFactor 
+        //             << ", roughnessFactor=" << material.roughnessFactor << std::endl;
         material.baseColorTextureIndex = mat.pbrMetallicRoughness.baseColorTexture.index;
         material.metallicRoughnessTextureIndex = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
         material.normalTextureIndex = mat.normalTexture.index;

@@ -51,7 +51,6 @@ namespace GraphicsAPI
         bool Init();
         void CreateImageToRender(uint32_t width, uint32_t height);
         void CreateDepthImage();
-        void CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers);
         void CreateShaders(RenderSys::Shader& shader);
         void CreatePipeline();
         void CreateFrameBuffer();
@@ -62,9 +61,8 @@ namespace GraphicsAPI
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
         // Textures get created as a part of main bindgroup
         void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
-        // Textures get created in separate bindgroup
-        void CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors);
-        void CreateMaterialBindGroups(uint32_t modelID, const std::vector<RenderSys::Material>& materials);
+        void CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
+            , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers);
         void SetUniformData(uint32_t binding, const void* bufferData);
         void BindResources();
         void Render();
@@ -119,6 +117,7 @@ namespace GraphicsAPI
         VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
         VkDescriptorSet m_mainBindGroup = VK_NULL_HANDLE;
 
+        VkDescriptorPool m_materialBindGroupPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout m_materialBindGroupLayout = VK_NULL_HANDLE;
 
         // map modelID to VulkanModelInfo
@@ -126,8 +125,6 @@ namespace GraphicsAPI
 
         // map bindingNumber to tuple -> <image, textureMemory, VkDescriptorImageInfo>
         std::unordered_map<uint32_t, std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_textures;
-        std::vector<std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_sceneTextures;
-        std::vector<VkSampler> m_sceneTextureSamplers;
 
         // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
         std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
