@@ -815,7 +815,7 @@ void VulkanRenderer3D::SetClearColor(glm::vec4 clearColor)
     m_clearColor = {clearColor.x, clearColor.y, clearColor.z, clearColor.w};
 }
 
-void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer)
+void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform)
 {
     const auto& [uniformBufferIter, inserted] = m_uniformBuffers.insert(
                                                     {
@@ -1156,10 +1156,12 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureD
 void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material> &materials, 
     const std::vector<RenderSys::TextureDescriptor> &texDescriptors, const std::vector<RenderSys::TextureSampler> &samplers)
 {
-    std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings{
-        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
-        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
-        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
+    std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings
+    {
+        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // uniform buffer
+        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
+        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
+        VkDescriptorSetLayoutBinding{3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
     };
 
     if (m_materialBindGroupLayout == VK_NULL_HANDLE)
@@ -1174,6 +1176,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
         }
         
         std::vector<VkDescriptorPoolSize> poolSizes;
+        poolSizes.emplace_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 * static_cast<uint32_t>(materials.size())});
         poolSizes.emplace_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * static_cast<uint32_t>(materials.size())});
         
         VkDescriptorPoolCreateInfo poolInfo{};
@@ -1193,7 +1196,36 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
         assert(false);
         return;
     }
-    auto& model = modelIter->second;
+    VulkanModelInfo& model = modelIter->second;
+
+    //////////////////////////////////////////////////////////////////////////
+    // create uniform buffer
+    std::tie(model.m_materialUniformBuffer.m_bufferInfo.buffer, model.m_materialUniformBuffer.m_uniformBufferMemory) = 
+        CreateBuffer(m_vma, sizeof(MaterialUniforms), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    model.m_materialUniformBuffer.m_bufferInfo.range = sizeof(MaterialUniforms);
+    model.m_materialUniformBuffer.m_bufferInfo.offset = 0;
+
+    MaterialUniforms materialUniforms{};
+    int matCount = 0;
+    assert(materials.size() <= 32);
+    for (const auto& material : materials)
+    {
+        const auto& baseColor = material.baseColorFactor;
+        materialUniforms.materials[matCount].color = {
+            baseColor.x, baseColor.y, baseColor.z, baseColor.w
+        };
+        materialUniforms.materials[matCount].metallic = material.metallicFactor;
+        materialUniforms.materials[matCount].roughness = material.roughnessFactor;
+        materialUniforms.materials[matCount].colorTextureSet 
+            = material.baseColorTextureIndex == -1 ? -1 : 0; // material.texCoordSets.baseColor
+        materialUniforms.materials[matCount].PhysicalDescriptorTextureSet 
+            = material.normalTextureIndex == -1 ? -1 : 0; // material.texCoordSets.normal
+        materialUniforms.materials[matCount].normalTextureSet 
+            = material.metallicRoughnessTextureIndex == -1 ? -1 : 0;
+        matCount++;
+    }
+    SetBufferData(m_vma, model.m_materialUniformBuffer.m_uniformBufferMemory, &materialUniforms, sizeof(MaterialUniforms));
+    //////////////////////////////////////////////////////////////////////////
 
     if (model.m_sceneTextures.size() > 0)
         return;
@@ -1279,49 +1311,50 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
         }
     
         std::vector<VkWriteDescriptorSet> descriptorWrites;
-        descriptorWrites.resize(materialBindGroupBindings.size());
         VkDescriptorImageInfo imageInfo{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED};
-        for (size_t i = 0; i < materialBindGroupBindings.size(); i++)
+        for (const auto &materialBindGroupBinding : materialBindGroupBindings)
         {
             VkWriteDescriptorSet textureWrite{};
             textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             textureWrite.dstSet = model.m_materials[count].m_bindGroup;
-            textureWrite.dstBinding = i;
+            textureWrite.dstBinding = materialBindGroupBinding.binding;
             textureWrite.dstArrayElement = 0;
-            textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            textureWrite.descriptorType = materialBindGroupBinding.descriptorType;
             textureWrite.descriptorCount = 1;
             textureWrite.pBufferInfo = nullptr;
             textureWrite.pImageInfo = &imageInfo;
             textureWrite.pTexelBufferView = nullptr;
     
-            descriptorWrites[i] = textureWrite;
+            descriptorWrites.push_back(textureWrite);
         }
+
+        descriptorWrites[0].pBufferInfo = &model.m_materialUniformBuffer.m_bufferInfo;
     
         assert(material.baseColorTextureIndex >= 0);
         VkDescriptorImageInfo& baseColorTextureImageInfo = std::get<2>(model.m_sceneTextures[material.baseColorTextureIndex]);
         baseColorTextureImageInfo.sampler = model.m_sceneTextureSamplers[0];
-        descriptorWrites[0].pImageInfo = &baseColorTextureImageInfo;
+        descriptorWrites[1].pImageInfo = &baseColorTextureImageInfo;
     
         if (material.normalTextureIndex >= 0)
         {
             VkDescriptorImageInfo& normalTextureImageInfo = std::get<2>(model.m_sceneTextures[material.normalTextureIndex]);
             normalTextureImageInfo.sampler = model.m_sceneTextureSamplers[0];
-            descriptorWrites[1].pImageInfo = &normalTextureImageInfo;
+            descriptorWrites[2].pImageInfo = &normalTextureImageInfo;
         }
         else
         {
-            descriptorWrites[1].pImageInfo = &baseColorTextureImageInfo;
+            descriptorWrites[2].pImageInfo = &baseColorTextureImageInfo;
         }
     
         if (material.metallicRoughnessTextureIndex >= 0)
         {
             VkDescriptorImageInfo& metallicRoughnessTextureImageInfo = std::get<2>(model.m_sceneTextures[material.metallicRoughnessTextureIndex]);
             metallicRoughnessTextureImageInfo.sampler = model.m_sceneTextureSamplers[0];
-            descriptorWrites[2].pImageInfo = &metallicRoughnessTextureImageInfo;
+            descriptorWrites[3].pImageInfo = &metallicRoughnessTextureImageInfo;
         }
         else
         {
-            descriptorWrites[2].pImageInfo = &baseColorTextureImageInfo;
+            descriptorWrites[3].pImageInfo = &baseColorTextureImageInfo;
         }
     
         vkUpdateDescriptorSets(Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
@@ -1374,9 +1407,9 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const RenderSys::TextureDe
 
         VkBuffer stagingBuffer;
         VmaAllocation stagingBufferAllocation;
-        CreateBuffer(m_vma, pixels.data(), static_cast<VkDeviceSize>(pixels.size()),
-                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-                    stagingBuffer, stagingBufferAllocation);
+        std::tie(stagingBuffer, stagingBufferAllocation) = CreateBuffer(m_vma, static_cast<VkDeviceSize>(pixels.size()),
+                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        SetBufferData(m_vma, stagingBufferAllocation, pixels.data(), static_cast<VkDeviceSize>(pixels.size()));
 
         auto currentCommandBuffer = BeginSingleTimeCommands(m_commandPool);
 

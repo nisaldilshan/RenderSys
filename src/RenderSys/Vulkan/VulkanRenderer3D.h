@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <stdint.h>
 #include <stddef.h>
 #include <glm/ext.hpp>
@@ -35,9 +36,36 @@ namespace GraphicsAPI
         int metallicRoughnessTextureIndex = -1;
     };
 
+    struct VulkanUniformBufferInfo
+    {
+        VkDescriptorBufferInfo m_bufferInfo = {VK_NULL_HANDLE, 0, 0};
+        VmaAllocation m_uniformBufferMemory = VK_NULL_HANDLE;
+        void* m_mappedBuffer = nullptr;
+    };
+
+    struct alignas(16) MaterialItem {
+        std::array<float, 4> color;
+        float hardness = 16.0f;
+        float kd = 2.0f;
+        float ks = 0.3f;
+        float workflow = 1.0f;
+        float metallic = 0.0f;
+        float roughness = 0.0f;
+        int colorTextureSet;
+        int PhysicalDescriptorTextureSet;
+        int normalTextureSet;
+    };
+    
+    struct MaterialUniforms {
+        std::array<MaterialItem, 32> materials;
+    };
+    static_assert(sizeof(MaterialUniforms) % 16 == 0);
+
     struct VulkanModelInfo
     {
         std::vector<VulkanMaterial> m_materials;
+        // materials uniform buffer - max 32 materials
+        VulkanUniformBufferInfo m_materialUniformBuffer;
         std::vector<std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_sceneTextures;
         std::vector<VkSampler> m_sceneTextureSamplers;
     };
@@ -58,7 +86,7 @@ namespace GraphicsAPI
         void CreateIndexBuffer(uint32_t vertexBufferID, const std::vector<uint32_t> &bufferData);
         void SetClearColor(glm::vec4 clearColor);
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-        void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
+        void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform);
         // Textures get created as a part of main bindgroup
         void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
         void CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials

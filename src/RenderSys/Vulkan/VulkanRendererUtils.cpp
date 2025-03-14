@@ -216,9 +216,7 @@ void TransitionImageLayout(VkImage image, VkFormat format,
     EndSingleTimeCommands(commandBuffer, commandPool);
 }
 
-void CreateBuffer(const VmaAllocator& vma, const void* bufferData, VkDeviceSize bufferSize, 
-                    VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage,
-                    VkBuffer& buffer, VmaAllocation& bufferAllocation) 
+std::pair<VkBuffer, VmaAllocation> CreateBuffer(const VmaAllocator& vma, const VkDeviceSize bufferSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage) 
 {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -228,20 +226,25 @@ void CreateBuffer(const VmaAllocator& vma, const void* bufferData, VkDeviceSize 
 
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.usage = memoryUsage;
-    // Use VMA to create and allocate memory for the buffer
+    
+    VkBuffer buffer;
+    VmaAllocation bufferAllocation;
     if (vmaCreateBuffer(vma, &bufferInfo, &allocInfo, &buffer, &bufferAllocation, nullptr) != VK_SUCCESS) 
     {
-        throw std::runtime_error("failed to create buffer!");
+        assert(false);
+        return std::make_pair(VK_NULL_HANDLE, VK_NULL_HANDLE);
     }
 
-    // Copy data to the buffer (if provided)
-    if (bufferData != nullptr) 
-    {
-        void* data;
-        vmaMapMemory(vma, bufferAllocation, &data);
-        memcpy(data, bufferData, static_cast<size_t>(bufferSize));
-        vmaUnmapMemory(vma, bufferAllocation);
-    }
+    return std::make_pair(buffer, bufferAllocation);
+}
+
+void SetBufferData(const VmaAllocator &vma, VmaAllocation &bufferAllocation, const void *bufferData, VkDeviceSize bufferSize)
+{
+    assert(bufferData != nullptr);
+    void* data;
+    vmaMapMemory(vma, bufferAllocation, &data);
+    memcpy(data, bufferData, static_cast<size_t>(bufferSize));
+    vmaUnmapMemory(vma, bufferAllocation);
 }
 
 uint32_t GetUniformStride(const uint32_t sizeOfUniform)

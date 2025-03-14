@@ -82,7 +82,7 @@ void Renderer3D::SetClearColor(glm::vec4 clearColor)
 
 void Renderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, size_t bufferLength)
 {
-    m_rendererBackend->CreateUniformBuffer(binding, sizeOfUniform, bufferLength);
+    m_rendererBackend->CreateUniformBuffer(binding, sizeOfUniform);
 }
 
 void Renderer3D::SetUniformBufferData(uint32_t binding, const void* bufferData, uint32_t uniformIndex)

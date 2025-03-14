@@ -26,24 +26,6 @@ struct LightingUniforms {
 };
 static_assert(sizeof(LightingUniforms) % 16 == 0);
 
-struct alignas(16) MaterialItem {
-	std::array<float, 4> color;
-	float hardness = 16.0f;
-	float kd = 2.0f;
-	float ks = 0.3f;
-	float workflow = 1.0f;
-	float metallic = 0.0f;
-	float roughness = 0.0f;
-	int colorTextureSet;
-    int PhysicalDescriptorTextureSet;
-    int normalTextureSet;
-};
-
-struct MaterialUniforms {
-	std::array<MaterialItem, 32> materials;
-};
-static_assert(sizeof(MaterialUniforms) % 16 == 0);
-
 class Renderer3DLayer : public Walnut::Layer
 {
 public:
@@ -126,25 +108,6 @@ public:
 		const auto& materials =  m_scene->getMaterials();
 		m_renderer->CreateModelMaterials(1, materials, texDescriptors, m_scene->getSamplers());
 
-		int matCount = 0;
-		assert(materials.size() <= 32);
-		for (const auto& material : materials)
-		{
-			const auto& baseColor = material.baseColorFactor;
-			m_materialUniformData.materials[matCount].color = {
-				baseColor.x, baseColor.y, baseColor.z, baseColor.w
-			};
-			m_materialUniformData.materials[matCount].metallic = material.metallicFactor;
-			m_materialUniformData.materials[matCount].roughness = material.roughnessFactor;
-			m_materialUniformData.materials[matCount].colorTextureSet 
-				= material.baseColorTextureIndex == -1 ? -1 : 0; // material.texCoordSets.baseColor
-			m_materialUniformData.materials[matCount].PhysicalDescriptorTextureSet 
-				= material.normalTextureIndex == -1 ? -1 : 0; // material.texCoordSets.normal
-			m_materialUniformData.materials[matCount].normalTextureSet 
-				= material.metallicRoughnessTextureIndex == -1 ? -1 : 0;
-			matCount++;
-		}
-
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
@@ -205,7 +168,7 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
 			// The uniform buffer binding that we already had
 			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 			uniformBindingLayout.setDefault();
@@ -223,17 +186,8 @@ public:
 			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
 
-			// Material Uniforms
-			RenderSys::BindGroupLayoutEntry& materialUniformLayout = bindingLayoutEntries[2];
-			materialUniformLayout.setDefault();
-			materialUniformLayout.binding = 2;
-			materialUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
-			materialUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			materialUniformLayout.buffer.minBindingSize = sizeof(MaterialUniforms);
-
 			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 			m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
-			m_renderer->CreateUniformBuffer(materialUniformLayout.binding, sizeof(MaterialUniforms), 1);
 
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 
@@ -264,7 +218,6 @@ public:
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
-			m_renderer->SetUniformBufferData(2, &m_materialUniformData, 0);
 
 			m_renderer->BindResources();
 			for (const auto &rootNode : m_scene->getRootNodes())
@@ -345,7 +298,6 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
-	MaterialUniforms m_materialUniformData;
 	RenderSys::VertexBuffer m_vertexBuffer;
 	std::vector<uint32_t> m_indexData;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;

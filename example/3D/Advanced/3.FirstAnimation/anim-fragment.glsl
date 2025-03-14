@@ -27,12 +27,12 @@ struct Material {
     float _pad;
 };
 
-layout(set = 0, binding = 2) uniform MaterialUniforms {
+layout(set = 1, binding = 0) uniform MaterialUniforms {
     Material materials[32];
 } materialUbo;
 
-layout(set = 1, binding = 0) uniform sampler2D baseColorTexture;
-layout(set = 1, binding = 1) uniform sampler2D normalTexture;
+layout(set = 1, binding = 1) uniform sampler2D baseColorTexture;
+layout(set = 1, binding = 2) uniform sampler2D normalTexture;
 
 layout (push_constant) uniform PushConstants {
     int materialIndex;
