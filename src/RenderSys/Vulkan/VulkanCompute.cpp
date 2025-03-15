@@ -165,9 +165,9 @@ void VulkanCompute::CreateShaders(RenderSys::Shader &shader)
     auto shaderMapIter = m_shaderMap.find(shader.GetName());
     if (shaderMapIter == m_shaderMap.end())
     {
-        shader.Compile();
+        auto res = shader.Compile();
+        assert(res);
         compiledShader = shader.GetCompiledShader();
-        assert(compiledShader.size() > 0);
         m_shaderMap.emplace(shader.GetName(), compiledShader);
     }
     else
