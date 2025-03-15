@@ -24,10 +24,6 @@ static_assert(sizeof(MyUniforms) % 16 == 0);
 struct alignas(16) LightingUniforms {
     std::array<glm::vec4, 2> directions;
     std::array<glm::vec4, 2> colors;
-	// Material properties
-	float hardness = 16.0f;
-	float kd = 2.0f;
-	float ks = 0.3f;
 };
 static_assert(sizeof(LightingUniforms) % 16 == 0);
 
@@ -78,6 +74,7 @@ public:
 				RenderSys::Shader fragmentShader("Fragment", std::string(content.data(), content.size()));
 				fragmentShader.type = RenderSys::ShaderType::SPIRV;
 				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				fragmentShader.SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
 				m_renderer->SetShader(fragmentShader);
 			}
 		}
@@ -107,6 +104,9 @@ public:
 
 		auto texDescriptor = texHandle->GetDescriptor();
 		RenderSys::Material material;
+		material.workflow = RenderSys::ShaderWorkflow::PBR_WORKFLOW_SPECULAR_GLOSSINESS;
+		material.metallicFactor = 0.5f;
+		material.roughnessFactor = 0.9f;
 		material.baseColorTextureIndex = 0;
 		m_renderer->CreateModelMaterials(1, {material}, {texDescriptor}, {});
 
@@ -206,8 +206,8 @@ public:
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
 			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
 			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
-			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
-			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
+			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 1.0f, 1.0f };
+			m_lightingUniformData.colors[1] = { 0.8f, 0.9f, 1.0f, 1.0f };
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
