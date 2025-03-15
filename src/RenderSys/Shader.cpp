@@ -1,6 +1,8 @@
 #include "Shader.h"
 
 #include <assert.h>
+#include <string>
+#include <filesystem>
 #include <shaderc/shaderc.hpp>
 
 namespace RenderSys
@@ -8,6 +10,59 @@ namespace RenderSys
 
 namespace ShaderUtils
 {
+
+class MyIncluder : public shaderc::CompileOptions::IncluderInterface
+{
+public:
+    MyIncluder(const std::string &includeDir) : includeDir_(includeDir) {}
+
+    shaderc_include_result *GetInclude(const char *requested_source, shaderc_include_type type, const char *requesting_source, size_t include_depth) override
+    {
+        std::cout   << "Shader::GetInclude: requested_source=" << requested_source 
+                    << ", type=" << (type == shaderc_include_type_relative ? "shaderc_include_type_relative" : "shaderc_include_type_standard")
+                    << ", requesting_source=" << requesting_source 
+                    << ", include_depth=" << include_depth 
+                    << std::endl;
+        auto fullPath = std::filesystem::path(includeDir_) / requested_source;
+        std::string content = readFile(fullPath.string());
+
+        if (content.empty())
+        {
+            return new shaderc_include_result{}; // requested_source, "", "File not found", 0
+        }
+
+        char *content_ptr = new char[content.size() + 1];
+        strcpy(content_ptr, content.c_str());
+
+        return new shaderc_include_result{}; // requested_source, content_ptr, "", content.size()
+    }
+
+    void ReleaseInclude(shaderc_include_result *data) override
+    {
+        delete[] data->content;
+        delete data;
+    }
+
+private:
+    std::string includeDir_;
+
+    std::string readFile(const std::string &filename)
+    {
+        // std::ifstream file(filename, std::ios::ate | std::ios::binary);
+        // if (!file.is_open())
+        // {
+        //     return "";
+        // }
+        // size_t fileSize = (size_t)file.tellg();
+        // std::vector<char> buffer(fileSize);
+        // file.seekg(0);
+        // file.read(buffer.data(), fileSize);
+        // file.close();
+        // return std::string(buffer.begin(), buffer.end());
+
+        return "";
+    }
+};
 
 // Compiles a shader to a SPIR-V binary. Returns the binary as
 // a vector of 32-bit words.
@@ -32,12 +87,13 @@ std::vector<uint32_t> compile_file(const std::string &name,
     {
         assert(false);
     }
-    const std::string &source = shader.shaderSrc;
+
     shaderc::Compiler compiler;
     shaderc::CompileOptions options;
     options.SetGenerateDebugInfo();
     options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
     options.SetTargetSpirv(shaderc_spirv_version_1_0);
+    options.SetIncluder(std::make_unique<MyIncluder>(""));
 
     // Like -DMY_DEFINE=1
     options.AddMacroDefinition("MY_DEFINE", "1");
@@ -45,7 +101,7 @@ std::vector<uint32_t> compile_file(const std::string &name,
         options.SetOptimizationLevel(shaderc_optimization_level_size);
 
     shaderc::SpvCompilationResult module =
-        compiler.CompileGlslToSpv(source, kind, name.c_str(), options);
+        compiler.CompileGlslToSpv(shader.GetShaderSrc(), kind, name.c_str(), options);
 
     if (module.GetCompilationStatus() != shaderc_compilation_status_success)
     {
@@ -58,4 +114,16 @@ std::vector<uint32_t> compile_file(const std::string &name,
 
 } // namespace ShaderUtils
 
+bool Shader::Compile(bool optimize)
+{
+    m_compiledShader = ShaderUtils::compile_file(m_name, *this, optimize);
+    return false;
 }
+
+const std::vector<uint32_t>& Shader::GetCompiledShader() const
+{
+    return m_compiledShader;
+}
+
+
+} // namespace RenderSys

@@ -43,9 +43,8 @@ public:
 			}
 			)";
 	
-			RenderSys::Shader shader("Compute");
+			RenderSys::Shader shader("Compute", shaderSource);
 			shader.type = RenderSys::ShaderType::SPIRV;
-			shader.shaderSrc = shaderSource;
 			shader.stage = RenderSys::ShaderStage::Compute;
 			m_compute->SetShader(shader);
 		}
@@ -67,9 +66,8 @@ public:
 			}
 			)";
 	
-			RenderSys::Shader shader("Compute");
+			RenderSys::Shader shader("Compute", shaderSource);
 			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = shaderSource;
 			shader.stage = RenderSys::ShaderStage::Compute;
 			m_compute->SetShader(shader);
 		}

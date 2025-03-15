@@ -54,9 +54,8 @@ public:
 					std::cerr << "Unable to open file." << std::endl;
 					assert(false);
 				}
-				RenderSys::Shader vertexShader("Vertex");
+				RenderSys::Shader vertexShader("Vertex", std::string(content.data(), content.size()));
 				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.shaderSrc = std::string(content.data(), content.size());
 				vertexShader.stage = RenderSys::ShaderStage::Vertex;
 				m_renderer->SetShader(vertexShader);
 			}
@@ -71,9 +70,8 @@ public:
 					assert(false);
 				}
 
-				RenderSys::Shader fragmentShader("Fragment");
+				RenderSys::Shader fragmentShader("Fragment", std::string(content.data(), content.size()));
 				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.shaderSrc = std::string(content.data(), content.size());
 				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
 				m_renderer->SetShader(fragmentShader);
 			}
@@ -88,9 +86,8 @@ public:
 				std::cerr << "Unable to open file." << std::endl;
 				assert(false);
 			}
-			RenderSys::Shader shader("Combined");
+			RenderSys::Shader shader("Combined", std::string(content.data(), content.size()));
 			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = std::string(content.data(), content.size());
 			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 			m_renderer->SetShader(shader);
 		}

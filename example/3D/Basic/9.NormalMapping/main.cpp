@@ -87,9 +87,8 @@ public:
 					out_tangent = (ubo.modelMatrix * vec4(in_tangent, 0.0)).xyz;
 				}
 			)";
-			RenderSys::Shader vertexShader("Vertex");
+			RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
 			vertexShader.type = RenderSys::ShaderType::SPIRV;
-			vertexShader.shaderSrc = vertexShaderSource;
 			vertexShader.stage = RenderSys::ShaderStage::Vertex;
 			m_renderer->SetShader(vertexShader);
 
@@ -160,9 +159,8 @@ public:
 					out_color = vec4(corrected_color, ubo.color.a);
 				}
 			)";
-			RenderSys::Shader fragmentShader("Fragment");
+			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
 			fragmentShader.type = RenderSys::ShaderType::SPIRV;
-			fragmentShader.shaderSrc = fragmentShaderSource;
 			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
 			m_renderer->SetShader(fragmentShader);
 		}
@@ -273,9 +271,8 @@ public:
 				return vec4f(corrected_color, uMyUniforms.color.a);
 			}
 			)";
-			RenderSys::Shader shader("Combined");
+			RenderSys::Shader shader("Combined", shaderSource);
 			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = shaderSource;
 			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 			m_renderer->SetShader(shader);
 		}

@@ -7,7 +7,6 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     float time;
 } ubo;
 
-
 layout(set = 0, binding = 1) uniform LightingUniforms {
     vec4 directions[2];
     vec4 colors[2];
