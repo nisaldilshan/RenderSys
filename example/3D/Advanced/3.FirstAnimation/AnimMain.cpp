@@ -73,6 +73,7 @@ public:
 				RenderSys::Shader fragmentShader("Fragment", std::string(content.data(), content.size()));
 				fragmentShader.type = RenderSys::ShaderType::SPIRV;
 				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				fragmentShader.SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
 				m_renderer->SetShader(fragmentShader);
 			}
 		}

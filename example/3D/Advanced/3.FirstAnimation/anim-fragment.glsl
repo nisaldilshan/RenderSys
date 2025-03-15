@@ -1,31 +1,18 @@
 #version 460
 
+#include "shadermaterial.glsl"
+
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 projectionMatrix;
     mat4 viewMatrix;
     mat4 modelMatrix;
     float time;
-    float _pad[3];
 } ubo;
 
 layout(set = 0, binding = 1) uniform LightingUniforms {
     vec4 directions[2];
     vec4 colors[2];
 } lightingUbo;
-
-struct Material {
-    vec4 color;
-    float hardness;
-    float kd;
-    float ks;
-    float workflow;
-    float metallic;
-    float roughness;
-    int colorTextureSet;
-    int PhysicalDescriptorTextureSet;
-    int normalTextureSet;
-    float _pad;
-};
 
 layout(set = 1, binding = 0) uniform MaterialUniforms {
     Material materials[32];

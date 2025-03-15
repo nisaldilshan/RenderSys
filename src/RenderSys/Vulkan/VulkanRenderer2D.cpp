@@ -80,8 +80,9 @@ void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
     auto shaderMapIter = m_shaderMap.find(shader.GetName());
     if (shaderMapIter == m_shaderMap.end())
     {
-        compiledShader = RenderSys::ShaderUtils::compile_file(shader.GetName(), shader);
-        assert(compiledShader.size() > 0);
+        auto res = shader.Compile();
+        assert(res);
+        compiledShader = shader.GetCompiledShader();
         m_shaderMap.emplace(shader.GetName(), compiledShader);
     }
     else
