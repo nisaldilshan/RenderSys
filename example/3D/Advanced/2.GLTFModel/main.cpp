@@ -106,7 +106,12 @@ public:
 
 		auto texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/Woman.png");
 		assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
-		m_renderer->CreateTexture(1, texHandle->GetDescriptor());
+		//m_renderer->CreateTexture(1, texHandle->GetDescriptor());
+
+		auto texDescriptor = texHandle->GetDescriptor();
+		RenderSys::Material material;
+		material.baseColorTextureIndex = 0;
+		m_renderer->CreateModelMaterials(1, {material}, {texDescriptor}, {});
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 
@@ -122,15 +127,15 @@ public:
 		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
 
-		// Color attribute
-		vertexAttribs[2].location = 2;
-		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-		vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
-
 		// UV attribute
+		vertexAttribs[2].location = 2;
+		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x2;
+		vertexAttribs[2].offset = offsetof(RenderSys::Vertex, texcoord0);
+
+		// Color attribute
 		vertexAttribs[3].location = 3;
-		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
-		vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
+		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[3].offset = offsetof(RenderSys::Vertex, color);
 
 		RenderSys::VertexBufferLayout vertexBufferLayout;
 		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
@@ -160,7 +165,7 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
 			// The uniform buffer binding that we already had
 			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 			uniformBindingLayout.setDefault();
@@ -169,19 +174,11 @@ public:
 			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 			uniformBindingLayout.buffer.hasDynamicOffset = false;
-
-			// The texture binding
-			RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
-			textureBindingLayout.setDefault();
-			textureBindingLayout.binding = 1;
-			textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
-			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
-
+			
 			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[2];
+			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
 			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 2;
+			lightingUniformLayout.binding = 1;
 			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
 			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
@@ -214,10 +211,14 @@ public:
 			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
-			m_renderer->SetUniformBufferData(2, &m_lightingUniformData, 0);
+			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
-			m_renderer->RenderIndexed(0);
+			RenderSys::Mesh mesh;
+			mesh.id = 1;
+			mesh.vertexBufferID = 1;
+			mesh.primitives = {RenderSys::Primitive{0, 0, 0, true, 0}};
+			m_renderer->RenderMesh(mesh);
 			m_renderer->EndRenderPass();
 		}
 

@@ -160,8 +160,7 @@ public:
 		if (m_viewportWidth == 0 || m_viewportHeight == 0)
 			return;
 
-        if (!m_renderer ||
-            m_viewportWidth != m_renderer->GetWidth() ||
+        if (m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);

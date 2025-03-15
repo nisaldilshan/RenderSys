@@ -107,7 +107,7 @@ bool VulkanRenderer3D::Init()
 
     CreateRenderPass();
     CreateCommandBuffers();
-
+    CreateDefaultTextureSampler();
 
     return true;
 }
@@ -140,8 +140,6 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
     }
 
     m_imageViewToRenderInto = CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-
-    CreateDefaultTextureSampler();
     m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
 }
 
@@ -998,7 +996,14 @@ void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint
     VulkanVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
     if (vertexIndexBufferInfo.m_indexCount > 0)
     {
-        vkCmdDrawIndexed(m_commandBuffer, indexCount, 1, firstIndex, 0, 0);
+        if (indexCount > 0)
+        {
+            vkCmdDrawIndexed(m_commandBuffer, indexCount, 1, firstIndex, 0, 0);
+        }
+        else
+        {
+            vkCmdDrawIndexed(m_commandBuffer, vertexIndexBufferInfo.m_indexCount, 1, 0, 0, 0);
+        }
     }
     else
     {
@@ -1227,8 +1232,35 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     SetBufferData(m_vma, model.m_materialUniformBuffer.m_uniformBufferMemory, &materialUniforms, sizeof(MaterialUniforms));
     //////////////////////////////////////////////////////////////////////////
 
-    if (model.m_sceneTextures.size() > 0)
-        return;
+    for (const auto &sampler : samplers)
+    {
+        VkSamplerCreateInfo texSamplerInfo{};
+        texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        texSamplerInfo.magFilter = sampler.magFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+        texSamplerInfo.minFilter = sampler.minFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+        texSamplerInfo.addressModeU = sampler.addressModeU == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        texSamplerInfo.addressModeV = sampler.addressModeV == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        texSamplerInfo.addressModeW = sampler.addressModeW == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        texSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        texSamplerInfo.unnormalizedCoordinates = VK_FALSE;
+        texSamplerInfo.compareEnable = VK_FALSE;
+        texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        texSamplerInfo.mipLodBias = 0.0f;
+        texSamplerInfo.minLod = 0.0f;
+        texSamplerInfo.maxLod = 0.0f;
+        texSamplerInfo.anisotropyEnable = VK_FALSE;
+        texSamplerInfo.maxAnisotropy = 1.0f;
+
+        VkSampler textureSampler = VK_NULL_HANDLE;
+        if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+            std::cout << "error: could not create sampler for texture" << std::endl;
+        }
+
+        model.m_sceneTextureSamplers.push_back(textureSampler);
+    }
+
+    std::cout << "VulkanRenderer3D::CreateTextureSamplers - Created " << model.m_sceneTextureSamplers.size() << " samplers" << std::endl;
     
     for (const auto &texDescriptor : texDescriptors)
     {
@@ -1259,6 +1291,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
         }
 
         VkDescriptorImageInfo& descriptorImageInfo = std::get<2>(sceneTextureTuple);
+        descriptorImageInfo.sampler = model.m_sceneTextureSamplers.size() > 0 ? model.m_sceneTextureSamplers[0] : m_defaultTextureSampler;
         descriptorImageInfo.imageView = CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
         descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         UploadTexture(image, texDescriptor);
@@ -1266,35 +1299,6 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
 
     std::cout << "VulkanRenderer3D::CreateTextures - Created " << model.m_sceneTextures.size() << " textures" << std::endl;
 
-    for (const auto &sampler : samplers)
-    {
-        VkSamplerCreateInfo texSamplerInfo{};
-        texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        texSamplerInfo.magFilter = sampler.magFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-        texSamplerInfo.minFilter = sampler.minFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-        texSamplerInfo.addressModeU = sampler.addressModeU == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        texSamplerInfo.addressModeV = sampler.addressModeV == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        texSamplerInfo.addressModeW = sampler.addressModeW == RenderSys::SamplerAddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        texSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        texSamplerInfo.unnormalizedCoordinates = VK_FALSE;
-        texSamplerInfo.compareEnable = VK_FALSE;
-        texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        texSamplerInfo.mipLodBias = 0.0f;
-        texSamplerInfo.minLod = 0.0f;
-        texSamplerInfo.maxLod = 0.0f;
-        texSamplerInfo.anisotropyEnable = VK_FALSE;
-        texSamplerInfo.maxAnisotropy = 1.0f;
-
-        VkSampler textureSampler = VK_NULL_HANDLE;
-        if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
-            std::cout << "error: could not create sampler for texture" << std::endl;
-        }
-
-        model.m_sceneTextureSamplers.push_back(textureSampler);
-    }
-
-    std::cout << "VulkanRenderer3D::CreateTextureSamplers - Created " << model.m_sceneTextureSamplers.size() << " samplers" << std::endl;
     model.m_materials.resize(materials.size());
     int count = 0;
     for (const auto &material : materials)
@@ -1332,13 +1336,11 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     
         assert(material.baseColorTextureIndex >= 0);
         VkDescriptorImageInfo& baseColorTextureImageInfo = std::get<2>(model.m_sceneTextures[material.baseColorTextureIndex]);
-        baseColorTextureImageInfo.sampler = model.m_sceneTextureSamplers[0];
         descriptorWrites[1].pImageInfo = &baseColorTextureImageInfo;
     
         if (material.normalTextureIndex >= 0)
         {
             VkDescriptorImageInfo& normalTextureImageInfo = std::get<2>(model.m_sceneTextures[material.normalTextureIndex]);
-            normalTextureImageInfo.sampler = model.m_sceneTextureSamplers[0];
             descriptorWrites[2].pImageInfo = &normalTextureImageInfo;
         }
         else
@@ -1349,7 +1351,6 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
         if (material.metallicRoughnessTextureIndex >= 0)
         {
             VkDescriptorImageInfo& metallicRoughnessTextureImageInfo = std::get<2>(model.m_sceneTextures[material.metallicRoughnessTextureIndex]);
-            metallicRoughnessTextureImageInfo.sampler = model.m_sceneTextureSamplers[0];
             descriptorWrites[3].pImageInfo = &metallicRoughnessTextureImageInfo;
         }
         else

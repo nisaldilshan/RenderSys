@@ -1,20 +1,22 @@
 #version 460
 
-layout(binding = 0) uniform UniformBufferObject {
+layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 projectionMatrix;
     mat4 viewMatrix;
     mat4 modelMatrix;
     float time;
 } ubo;
 
-layout(binding = 1) uniform sampler2D tex;
-layout(binding = 2) uniform LightingUniforms {
+
+layout(set = 0, binding = 1) uniform LightingUniforms {
     vec4 directions[2];
     vec4 colors[2];
     float hardness;
     float kd;
     float ks;
 } lightingUbo;
+
+layout(set = 1, binding = 1) uniform sampler2D tex;
 
 layout (location = 0) in vec3 in_viewDirection;
 layout (location = 1) in vec2 in_uv;
