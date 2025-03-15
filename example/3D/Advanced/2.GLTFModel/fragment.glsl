@@ -4,9 +4,7 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 projectionMatrix;
     mat4 viewMatrix;
     mat4 modelMatrix;
-    vec4 color;
     float time;
-    float _pad[3];
 } ubo;
 
 layout(binding = 1) uniform sampler2D tex;
@@ -16,7 +14,6 @@ layout(binding = 2) uniform LightingUniforms {
     float hardness;
     float kd;
     float ks;
-    float _pad;
 } lightingUbo;
 
 layout (location = 0) in vec3 in_viewDirection;

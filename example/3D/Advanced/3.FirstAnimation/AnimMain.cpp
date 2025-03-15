@@ -11,7 +11,7 @@
 #include <RenderSys/Scene/Scene.h>
 #include <imgui.h>
 
-struct MyUniforms {
+struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
     glm::mat4x4 modelMatrix;
@@ -20,7 +20,7 @@ struct MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-struct LightingUniforms {
+struct alignas(16) LightingUniforms {
     std::array<glm::vec4, 2> directions;
     std::array<glm::vec4, 2> colors;
 };
@@ -147,8 +147,6 @@ public:
 		const auto vertexBufID = m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
 		assert(m_indexData.size() > 0);
 		m_renderer->SetIndexBufferData(vertexBufID, m_indexData);
-
-		
 	}
 
 	virtual void OnDetach() override
@@ -190,7 +188,6 @@ public:
 			m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
 
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
-
 			m_renderer->CreatePipeline();
 			m_camera->SetViewportSize((float)m_viewportWidth, (float)m_viewportHeight);
 			m_renderer->SetClearColor({ 0.45f, 0.55f, 0.60f, 1.00f });
@@ -206,7 +203,6 @@ public:
 			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.005f));
-			// set uniform data
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
 			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
 			m_myUniformData.modelMatrix = M1;
@@ -218,7 +214,6 @@ public:
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
-
 			m_renderer->BindResources();
 			for (const auto &rootNode : m_scene->getRootNodes())
 			{

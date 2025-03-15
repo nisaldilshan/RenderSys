@@ -20,7 +20,6 @@ struct MyUniforms {
     projectionMatrix: mat4x4f,
     viewMatrix: mat4x4f,
     modelMatrix: mat4x4f,
-    color: vec4f,
     cameraWorldPosition: vec3f,
     time: f32,
 };

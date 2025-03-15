@@ -12,25 +12,22 @@
 #include <RenderSys/Scene/Scene.h>
 #include <imgui.h>
 
-struct MyUniforms {
+struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
     glm::mat4x4 modelMatrix;
-    std::array<float, 4> color;
 	glm::vec3 cameraWorldPosition;
     float time;
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-struct LightingUniforms {
+struct alignas(16) LightingUniforms {
     std::array<glm::vec4, 2> directions;
     std::array<glm::vec4, 2> colors;
 	// Material properties
 	float hardness = 16.0f;
 	float kd = 2.0f;
 	float ks = 0.3f;
-
-	float _pad;
 };
 static_assert(sizeof(LightingUniforms) % 16 == 0);
 
@@ -163,7 +160,6 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			// Since we now have 2 bindings, we use a vector to store them
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 			// The uniform buffer binding that we already had
 			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
@@ -204,21 +200,16 @@ public:
 
 			m_renderer->BeginRenderPass();
 
-			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
-			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
-
 			glm::mat4x4 M1(1.0);
 			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.3f));
+			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
+			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
 			m_myUniformData.modelMatrix = M1;
-
-			m_myUniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
-
-			// Initial values
 			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
 			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
