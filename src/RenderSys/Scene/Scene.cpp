@@ -13,22 +13,22 @@ bool Scene::load(const std::filesystem::path &filePath, const std::string &textu
     return m_scene->load(filePath, textureFilename);
 }
 
-void loadVertexIndexData(std::shared_ptr<RenderSys::SceneNode> node, uint32_t& vertexCount, uint32_t& indexCount, std::vector<Model::Vertex>& m_vertexBuffer, std::vector<uint32_t>& m_indexBuffer)
+void loadVertexIndexData(std::shared_ptr<RenderSys::Model::ModelNode> node, uint32_t& vertexCount, uint32_t& indexCount, std::vector<Model::Vertex>& m_vertexBuffer, std::vector<uint32_t>& m_indexBuffer)
 {
-    for (size_t i = vertexCount; i < node->m_vertices.size() + vertexCount; i++)
+    for (size_t i = vertexCount; i < node->m_data.vertices.size() + vertexCount; i++)
     {
-        m_vertexBuffer[i] = node->m_vertices[i-vertexCount];
+        m_vertexBuffer[i] = node->m_data.vertices[i-vertexCount];
     }
 
-    for (size_t i = indexCount; i < node->m_indices.size() + indexCount; i++)
+    for (size_t i = indexCount; i < node->m_data.indices.size() + indexCount; i++)
     {
-        auto indexVal = node->m_indices[i-indexCount] + vertexCount;
+        auto indexVal = node->m_data.indices[i-indexCount] + vertexCount;
         assert(indexVal < m_vertexBuffer.size());
         m_indexBuffer[i] = indexVal;
     }
                 
-    vertexCount += node->m_vertices.size();
-    indexCount += node->m_indices.size();
+    vertexCount += node->m_data.vertices.size();
+    indexCount += node->m_data.indices.size();
 
     for (auto& childNode : node->m_childNodes)
     {

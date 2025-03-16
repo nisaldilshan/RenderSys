@@ -91,14 +91,14 @@ void GLTFScene::getNodeProps(const tinygltf::Node& node, const tinygltf::Model& 
     }
 }
 
-RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primitive, std::vector<Model::Vertex> &vertices, std::vector<uint32_t> &indices, const uint32_t indexCount)
+RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primitive, Model::ModelData &modelData, const uint32_t indexCount)
 {
     assert(primitive.attributes.find("POSITION") != primitive.attributes.end()); // position is mandatory
     const tinygltf::Accessor &posAccessor = m_model->accessors[primitive.attributes.find("POSITION")->second];
     const auto vertexCount = static_cast<uint32_t>(posAccessor.count);
     assert(vertexCount > 0);
-    const uint32_t vertexStart = vertices.size();
-    vertices.resize(vertexStart + vertexCount);
+    const uint32_t vertexStart = modelData.vertices.size();
+    modelData.vertices.resize(vertexStart + vertexCount);
 
     const tinygltf::BufferView &positionBufferView = m_model->bufferViews[posAccessor.bufferView];
     const auto* positionBuffer = reinterpret_cast<const float *>(&(m_model->buffers[positionBufferView.buffer].data[posAccessor.byteOffset + positionBufferView.byteOffset]));
@@ -107,7 +107,7 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
     for (size_t v = 0; v < vertexCount; v++) 
     {
-        Model::Vertex& vert = vertices[v + vertexStart];
+        Model::Vertex& vert = modelData.vertices[v + vertexStart];
         vert.pos = glm::vec4(glm::make_vec3(&positionBuffer[v * posByteStride]), 1.0f);
     }
 
@@ -120,7 +120,7 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
         for (size_t v = 0; v < vertexCount; v++) 
         {
-            Model::Vertex& vert = vertices[v + vertexStart];
+            Model::Vertex& vert = modelData.vertices[v + vertexStart];
             vert.uv0 = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
         }
     }
@@ -134,7 +134,7 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
         for (size_t v = 0; v < vertexCount; v++) 
         {
-            Model::Vertex& vert = vertices[v + vertexStart];
+            Model::Vertex& vert = modelData.vertices[v + vertexStart];
             vert.normal = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
         }
     }
@@ -148,7 +148,7 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
         for (size_t v = 0; v < vertexCount; v++) 
         {
-            Model::Vertex& vert = vertices[v + vertexStart];
+            Model::Vertex& vert = modelData.vertices[v + vertexStart];
             vert.tangent = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
         }
     }
@@ -158,7 +158,7 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
     prim.hasIndices = primitive.indices > -1;
     if (prim.hasIndices)
     {
-        const uint32_t indexStart = indices.size();
+        const uint32_t indexStart = modelData.indices.size();
         prim.firstIndex = indexCount + indexStart;
         
         const tinygltf::Accessor &accessor = m_model->accessors[primitive.indices];
@@ -168,7 +168,7 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
         const auto currentIndexCount = static_cast<uint32_t>(accessor.count);
         assert(currentIndexCount > 0);
         prim.indexCount = currentIndexCount;
-        indices.resize(indexStart + currentIndexCount);
+        modelData.indices.resize(indexStart + currentIndexCount);
 
         const void *dataPtr = &(buffer.data[accessor.byteOffset + bufferView.byteOffset]);
 
@@ -176,21 +176,21 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
         case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
             const uint32_t *buf = static_cast<const uint32_t*>(dataPtr);
             for (size_t index = 0; index < accessor.count; index++) {
-                indices[index + indexStart] = buf[index] + vertexStart;
+                modelData.indices[index + indexStart] = buf[index] + vertexStart;
             }
             break;
         }
         case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
             const uint16_t *buf = static_cast<const uint16_t*>(dataPtr);
             for (size_t index = 0; index < accessor.count; index++) {
-                indices[index + indexStart] = buf[index] + vertexStart;
+                modelData.indices[index + indexStart] = buf[index] + vertexStart;
             }
             break;
         }
         case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE: {
             const uint8_t *buf = static_cast<const uint8_t*>(dataPtr);
             for (size_t index = 0; index < accessor.count; index++) {
-                indices[index + indexStart] = buf[index] + vertexStart;
+                modelData.indices[index + indexStart] = buf[index] + vertexStart;
             }
             break;
         }
@@ -204,12 +204,12 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
     return prim;
 }
 
-RenderSys::Mesh GLTFScene::loadMesh(const tinygltf::Mesh& gltfMesh, std::vector<Model::Vertex> &vertices, std::vector<uint32_t> &indices, const uint32_t indexCount)
+RenderSys::Mesh GLTFScene::loadMesh(const tinygltf::Mesh& gltfMesh, Model::ModelData &modelData, const uint32_t indexCount)
 {
     RenderSys::Mesh mesh;
     for (const auto &gltfPrimitive : gltfMesh.primitives)
     {
-        mesh.primitives.push_back(loadPrimitive(gltfPrimitive, vertices, indices, indexCount));
+        mesh.primitives.push_back(loadPrimitive(gltfPrimitive, modelData, indexCount));
     }
 
     return mesh;
@@ -372,7 +372,7 @@ void GLTFScene::loadMaterials(std::vector<Material>& materials)
     std::cout << "Materials loading completed!" << std::endl;
 }
 
-void GLTFScene::getNodeGraphs(std::vector<std::shared_ptr<SceneNode>>& rootNodes)
+void GLTFScene::getNodeGraphs(std::vector<std::shared_ptr<Model::ModelNode>>& rootNodes)
 {
     assert(m_model);
     const int nodeCount = m_model->nodes.size();
@@ -389,21 +389,19 @@ void GLTFScene::getNodeGraphs(std::vector<std::shared_ptr<SceneNode>>& rootNodes
     std::cout << "model has " << nodeCount << " total nodes and " << rootNodeCount << " root nodes. [IndexCount=" << indexCount << "]" << std::endl;
 }
 
-std::shared_ptr<SceneNode> GLTFScene::traverse(const std::shared_ptr<SceneNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount)
+std::shared_ptr<Model::ModelNode> GLTFScene::traverse(const std::shared_ptr<Model::ModelNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount)
 {
-    auto sceneNode = std::make_shared<SceneNode>(nodeIndex);
-    std::cout << node.name;
+    auto sceneNode = std::make_shared<Model::ModelNode>(nodeIndex);
     sceneNode->setNodeName(node.name);
 
     if (node.mesh > -1)
     {
-        std::cout << " : Mesh= " << node.mesh << ", ";
+        std::cout << node.name << " : Mesh= " << node.mesh << std::endl;
         const auto& gltfMesh = m_model->meshes.at(node.mesh);
-        const auto mesh = loadMesh(gltfMesh, sceneNode->m_vertices, sceneNode->m_indices, indexCount);
+        const auto mesh = loadMesh(gltfMesh, sceneNode->m_data, indexCount);
         sceneNode->setMesh(mesh);
-        indexCount += sceneNode->m_indices.size();
+        indexCount += sceneNode->m_data.indices.size();
     }
-    std::cout << std::endl;
 
     if (node.translation.size()) {
         sceneNode->setTranslation(glm::make_vec3(node.translation.data()));

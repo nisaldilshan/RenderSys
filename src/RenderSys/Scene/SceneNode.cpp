@@ -5,43 +5,45 @@
 
 namespace RenderSys
 {
+namespace Model
+{
 
-SceneNode::SceneNode(int nodeNum)
+ModelNode::ModelNode(int nodeNum)
     : m_nodeNum(nodeNum)
 {
 }
 
-int SceneNode::getNodeNum()
+int ModelNode::getNodeNum()
 {
     return m_nodeNum;
 }
 
-void SceneNode::setNodeName(std::string name)
+void ModelNode::setNodeName(std::string name)
 {
     m_nodeName = name;
 }
 
-void SceneNode::setScale(glm::vec3 scale)
+void ModelNode::setScale(glm::vec3 scale)
 {
     m_scale = scale;
 }
 
-void SceneNode::setTranslation(glm::vec3 translation)
+void ModelNode::setTranslation(glm::vec3 translation)
 {
     m_translation = translation;
 }
 
-void SceneNode::setRotation(glm::quat rotation)
+void ModelNode::setRotation(glm::quat rotation)
 {
     m_rotation = rotation;
 }
 
-void SceneNode::setMesh(RenderSys::Mesh mesh)
+void ModelNode::setMesh(RenderSys::Mesh mesh)
 {
     m_mesh = mesh;
 }
 
-void SceneNode::calculateLocalTRSMatrix()
+void ModelNode::calculateLocalTRSMatrix()
 {
     glm::mat4 sMatrix = glm::scale(glm::mat4(1.0f), m_scale);
     glm::mat4 rMatrix = glm::mat4_cast(m_rotation);
@@ -49,12 +51,12 @@ void SceneNode::calculateLocalTRSMatrix()
     mLocalTRSMatrix = tMatrix * rMatrix * sMatrix;
 }
 
-void SceneNode::calculateNodeMatrix(glm::mat4 parentNodeMatrix)
+void ModelNode::calculateNodeMatrix(glm::mat4 parentNodeMatrix)
 {
     m_nodeMatrix = parentNodeMatrix * mLocalTRSMatrix;
 }
 
-void SceneNode::calculateJointMatrices(const std::vector<glm::mat4> &inverseBindMatrices, const std::vector<int> &nodeToJoint, std::vector<glm::mat4> &jointMatrices)
+void ModelNode::calculateJointMatrices(const std::vector<glm::mat4> &inverseBindMatrices, const std::vector<int> &nodeToJoint, std::vector<glm::mat4> &jointMatrices)
 {
     auto placeHolder = nodeToJoint.at(m_nodeNum);
     jointMatrices.at(placeHolder) = m_nodeMatrix * inverseBindMatrices.at(placeHolder);
@@ -65,17 +67,17 @@ void SceneNode::calculateJointMatrices(const std::vector<glm::mat4> &inverseBind
     }
 }
 
-glm::mat4 SceneNode::getNodeMatrix()
+glm::mat4 ModelNode::getNodeMatrix()
 {
     return m_nodeMatrix;
 }
 
-Mesh SceneNode::getMesh()
+Mesh ModelNode::getMesh()
 {
     return m_mesh;
 }
 
-void SceneNode::printHierarchy(int indent)
+void ModelNode::printHierarchy(int indent)
 {
     std::string indendString = "";
     for (int i = 0; i < indent; ++i) {
@@ -99,5 +101,7 @@ void SceneNode::printHierarchy(int indent)
         childNode->printHierarchy(indent + 1);
     }
 }
+
+} // namespace Model
 
 } // namespace RenderSys

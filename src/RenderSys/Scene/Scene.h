@@ -20,7 +20,7 @@ public:
     const std::vector<Texture>& getTextures() { return m_textures; }
     const std::vector<TextureSampler>& getSamplers() { return m_textureSamplers; }
     const std::vector<Material>& getMaterials() { return m_materials; }
-    const std::vector<std::shared_ptr<SceneNode>>& getRootNodes() { return m_rootNodes; }
+    const std::vector<std::shared_ptr<Model::ModelNode>>& getRootNodes() { return m_rootNodes; }
     
     std::vector<glm::tvec4<uint16_t>> m_jointVec;
     std::vector<int> m_nodeToJoint;
@@ -35,7 +35,7 @@ private:
     std::vector<TextureSampler> m_textureSamplers;
     std::vector<Material> m_materials;
     
-    std::vector<std::shared_ptr<SceneNode>> m_rootNodes;
+    std::vector<std::shared_ptr<Model::ModelNode>> m_rootNodes;
     std::unique_ptr<GLTFScene> m_scene;
 };
 

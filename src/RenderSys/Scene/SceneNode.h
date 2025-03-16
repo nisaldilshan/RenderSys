@@ -21,17 +21,34 @@ namespace Model
         glm::vec4 color;
         glm::vec3 tangent;
     };
-}
 
-class SceneNode {
+    struct ModelData 
+    {
+        ModelData() = default;
+        ~ModelData() = default;
+        ModelData(const ModelData&) = delete;
+        ModelData &operator=(const ModelData&) = delete;
+        ModelData(ModelData&&) = delete;
+        ModelData &operator=(ModelData&&) = delete;
+
+        const std::vector<Vertex>& getVertices() const;
+        bool hasTangents() const;
+
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+    };
+
+
+class ModelNode 
+{
   public:
-    SceneNode(int nodeNum);
-    ~SceneNode() = default;
+    ModelNode(int nodeNum);
+    ~ModelNode() = default;
 
-	SceneNode(const SceneNode&) = delete;
-	SceneNode &operator=(const SceneNode&) = delete;
-	SceneNode(SceneNode&&) = delete;
-	SceneNode &operator=(SceneNode&&) = delete;
+	ModelNode(const ModelNode&) = delete;
+	ModelNode &operator=(const ModelNode&) = delete;
+	ModelNode(ModelNode&&) = delete;
+	ModelNode &operator=(ModelNode&&) = delete;
 
     int getNodeNum();
     void setNodeName(std::string name);
@@ -47,9 +64,8 @@ class SceneNode {
     Mesh getMesh();
     void printHierarchy(int indent);
 
-    std::vector<std::shared_ptr<SceneNode>> m_childNodes{};
-	std::vector<Model::Vertex> m_vertices;
-    std::vector<uint32_t> m_indices;
+    std::vector<std::shared_ptr<ModelNode>> m_childNodes{};
+	ModelData m_data;
   private:
 
     int m_nodeNum = 0;
@@ -64,4 +80,5 @@ class SceneNode {
     glm::mat4 m_nodeMatrix = glm::mat4(1.0f);
 };
 
+} // namespace Model
 } // namespace RenderSys
