@@ -187,7 +187,6 @@ public:
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();
 			m_camera->SetViewportSize((float)m_viewportWidth, (float)m_viewportHeight);
-			m_renderer->SetClearColor({ 0.45f, 0.55f, 0.60f, 1.00f });
         }
 
 		if (m_renderer)
@@ -263,13 +262,14 @@ private:
 		}
 
 		m_scene->populate();
-		m_vertexBuffer.resize(m_scene->getVertexBuffer().size());
+		const auto& sceneVertexBuffer = m_scene->getVertexBuffer();
+		m_vertexBuffer.resize(sceneVertexBuffer.size());
 		for (size_t i = 0; i < m_vertexBuffer.size(); i++)
 		{
-			m_vertexBuffer[i].position = m_scene->getVertexBuffer()[i].pos;
-			m_vertexBuffer[i].normal = m_scene->getVertexBuffer()[i].normal;
-			m_vertexBuffer[i].texcoord0 = m_scene->getVertexBuffer()[i].uv0;
-			m_vertexBuffer[i].tangent = m_scene->getVertexBuffer()[i].tangent;
+			m_vertexBuffer[i].position = sceneVertexBuffer[i].pos;
+			m_vertexBuffer[i].normal = sceneVertexBuffer[i].normal;
+			m_vertexBuffer[i].texcoord0 = sceneVertexBuffer[i].uv0;
+			m_vertexBuffer[i].tangent = sceneVertexBuffer[i].tangent;
 		}
 		
 		m_indexData.resize(m_scene->getIndexBuffer().size());

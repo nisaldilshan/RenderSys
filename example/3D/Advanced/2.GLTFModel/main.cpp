@@ -110,7 +110,7 @@ public:
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 
-		std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
 		// Position attribute
 		vertexAttribs[0].location = 0;
@@ -131,6 +131,11 @@ public:
 		vertexAttribs[3].location = 3;
 		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[3].offset = offsetof(RenderSys::Vertex, color);
+
+		// Tangent attribute
+		vertexAttribs[4].location = 4;
+		vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[4].offset = offsetof(RenderSys::Vertex, tangent);
 
 		RenderSys::VertexBufferLayout vertexBufferLayout;
 		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
@@ -259,7 +264,7 @@ private:
 		m_scene->populate();
 		m_scene->applyVertexSkinning();
 
-		const auto sceneVertexBuffer = m_scene->getVertexBuffer();
+		const auto& sceneVertexBuffer = m_scene->getVertexBuffer();
 		m_vertexBuffer.resize(sceneVertexBuffer.size());
 		for (size_t i = 0; i < m_vertexBuffer.size(); i++)
 		{

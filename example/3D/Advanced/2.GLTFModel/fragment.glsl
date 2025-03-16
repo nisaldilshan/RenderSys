@@ -20,6 +20,7 @@ layout(set = 1, binding = 0) uniform MaterialUniforms {
 } materialUbo;
 
 layout(set = 1, binding = 1) uniform sampler2D baseColorTexture;
+layout(set = 1, binding = 2) uniform sampler2D normalTexture;
 
 layout (push_constant) uniform PushConstants {
     int materialIndex;
@@ -28,22 +29,25 @@ layout (push_constant) uniform PushConstants {
 layout (location = 0) in vec3 in_viewDirection;
 layout (location = 1) in vec2 in_uv;
 layout (location = 2) in vec3 in_normal;
+layout (location = 3) in vec3 in_tangent;
 
 layout (location = 0) out vec4 out_color;
 
 void main()
 {
-    Material material = materialUbo.materials[pushConstants.materialIndex];
+    Material material = materialUbo.materials[pushConstants.materialIndex]; 
 
     vec3 N = normalize(in_normal);
     vec3 V = normalize(in_viewDirection);
-    vec3 texColor = texture(baseColorTexture, in_uv).rgb;
+    vec3 texColor = texture(baseColorTexture, in_uv).rgb; 
+    vec3 texNormal = texture(normalTexture, in_uv).xyz * 2.0 - 1.0;
+    N = (material.normalTextureSet > -1) ? getNormalFromNormalMaps(texNormal, in_normal, in_tangent) : N;
     vec3 albedo = texColor * material.color.rgb;
 
     float metallic = material.metallic;
     float roughness = material.roughness;
 
-    vec3 F0 = vec3(0.04);
+    vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);
 
     vec3 total_diffuse = vec3(0.0);
@@ -57,24 +61,21 @@ void main()
         float NdotL = max(dot(N, L), 0.0);
         float NdotH = max(dot(N, H), 0.0);
         float LdotH = max(dot(L, H), 0.0);
-
-        // Cook-Torrance BRDF
-        float D = distributionGGX(N, H, roughness);
-        float G = geometrySmith(N, V, L, roughness);
-        vec3 F = fresnelSchlick(LdotH, F0);  // F is now per-light
+        float D = distributionGGX(N, H, roughness);        
+        float G = geometrySmith(N, V, L, roughness);      
+        vec3 F = fresnelSchlick(LdotH, F0);  // F is now per-light 
 
         vec3 numerator = D * G * F;
-        float denominator = 4.0 * NdotV * NdotL + 0.001;
-        vec3 specular = numerator / denominator;
+        float denominator = 4.0 * NdotV * NdotL;
+        vec3 specular = numerator / max(denominator, 0.001);      
 
-        // --- Calculate kS and kD *inside* the loop ---
         vec3 kS = F;
         vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - metallic;
-
+        kD *= 1.0 - metallic;	  
+ 
         vec3 radiance = lightingUbo.colors[i].rgb;
         total_diffuse += kD * radiance * albedo * NdotL;  // Use kD here
-        total_specular += radiance * specular * NdotL;
+        total_specular += radiance * specular * NdotL;             
     }
 
     vec3 ambient = albedo * 0.03;
