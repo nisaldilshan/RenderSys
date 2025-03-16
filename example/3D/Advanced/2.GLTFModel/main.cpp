@@ -100,11 +100,9 @@ public:
 
 		auto texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/Woman.png");
 		assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
-		//m_renderer->CreateTexture(1, texHandle->GetDescriptor());
 
 		auto texDescriptor = texHandle->GetDescriptor();
 		RenderSys::Material material;
-		material.workflow = RenderSys::ShaderWorkflow::PBR_WORKFLOW_SPECULAR_GLOSSINESS;
 		material.metallicFactor = 0.5f;
 		material.roughnessFactor = 0.9f;
 		material.baseColorTextureIndex = 0;

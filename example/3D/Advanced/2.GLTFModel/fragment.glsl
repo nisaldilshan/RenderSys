@@ -13,16 +13,13 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
 layout(set = 0, binding = 1) uniform LightingUniforms {
     vec4 directions[2];
     vec4 colors[2];
-    float hardness;
-    float kd;
-    float ks;
 } lightingUbo;
 
 layout(set = 1, binding = 0) uniform MaterialUniforms {
     Material materials[32];
 } materialUbo;
 
-layout(set = 1, binding = 1) uniform sampler2D tex;
+layout(set = 1, binding = 1) uniform sampler2D baseColorTexture;
 
 layout (push_constant) uniform PushConstants {
     int materialIndex;
@@ -40,8 +37,7 @@ void main()
 
     vec3 N = normalize(in_normal);
     vec3 V = normalize(in_viewDirection);
-
-    vec3 texColor = texture(tex, in_uv).rgb;
+    vec3 texColor = texture(baseColorTexture, in_uv).rgb;
     vec3 albedo = texColor * material.color.rgb;
 
     float metallic = material.metallic;
@@ -50,11 +46,10 @@ void main()
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, metallic);
 
-
     vec3 total_diffuse = vec3(0.0);
     vec3 total_specular = vec3(0.0);
-
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < 2; ++i) 
+    {
         vec3 L = normalize(lightingUbo.directions[i].xyz);
         vec3 H = normalize(V + L);
 
@@ -73,7 +68,7 @@ void main()
         vec3 specular = numerator / denominator;
 
         // --- Calculate kS and kD *inside* the loop ---
-        vec3 kS = F; // kS is simply F in this BRDF
+        vec3 kS = F;
         vec3 kD = vec3(1.0) - kS;
         kD *= 1.0 - metallic;
 
