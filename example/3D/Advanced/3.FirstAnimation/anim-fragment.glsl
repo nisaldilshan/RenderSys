@@ -72,8 +72,8 @@ void main()
             vec3 lightColor = lightingUbo.colors[i].rgb;
             vec3 L = normalize(lightingUbo.directions[i].xyz);
             vec3 H = normalize(V + L);
-            float NDF = DistributionGGX(N, H, material.roughness);        
-            float G   = GeometrySmith(N, V, L, material.roughness);      
+            float NDF = distributionGGX(N, H, material.roughness);        
+            float G   = geometrySmith(N, V, L, material.roughness);      
             vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
 
             vec3 kS = F;
