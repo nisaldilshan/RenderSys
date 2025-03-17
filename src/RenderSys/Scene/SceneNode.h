@@ -11,33 +11,32 @@ namespace RenderSys
 
 namespace Model
 {
-    struct Vertex {
-        glm::vec3 pos;
-        glm::vec3 normal;
-        glm::vec2 uv0;
-        glm::vec2 uv1;
-        glm::uvec4 joint0;
-        glm::vec4 weight0;
-        glm::vec4 color;
-        glm::vec3 tangent;
-    };
+struct Vertex {
+    glm::vec3 pos;
+    glm::vec3 normal;
+    glm::vec2 uv0;
+    glm::vec2 uv1;
+    glm::uvec4 joint0;
+    glm::vec4 weight0;
+    glm::vec4 color;
+    glm::vec3 tangent;
+};
 
-    struct ModelData 
-    {
-        ModelData() = default;
-        ~ModelData() = default;
-        ModelData(const ModelData&) = delete;
-        ModelData &operator=(const ModelData&) = delete;
-        ModelData(ModelData&&) = delete;
-        ModelData &operator=(ModelData&&) = delete;
+struct ModelData 
+{
+    ModelData() = default;
+    ~ModelData() = default;
+    ModelData(const ModelData&) = delete;
+    ModelData &operator=(const ModelData&) = delete;
+    ModelData(ModelData&&) = delete;
+    ModelData &operator=(ModelData&&) = delete;
 
-        const std::vector<Vertex>& getVertices() const;
-        bool hasTangents() const;
+    const std::vector<Vertex>& getVertices() const;
+    bool hasTangents() const;
 
-        std::vector<Vertex> vertices;
-        std::vector<uint32_t> indices;
-    };
-
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+};
 
 class ModelNode 
 {

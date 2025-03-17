@@ -585,11 +585,24 @@ void VulkanRenderer3D::CreatePipeline()
     std::cout << "Creating render pipeline..." << std::endl;
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    assert(m_vertexIndexBufferInfoMap.size() == 1);
-    vertexInputInfo.vertexBindingDescriptionCount = m_vertexIndexBufferInfoMap.size();
-    vertexInputInfo.pVertexBindingDescriptions = &m_vertexIndexBufferInfoMap[1].m_vertextBindingDescs;
-    vertexInputInfo.vertexAttributeDescriptionCount = m_vertexIndexBufferInfoMap[1].m_vertextAttribDescs.size();
-    vertexInputInfo.pVertexAttributeDescriptions = m_vertexIndexBufferInfoMap[1].m_vertextAttribDescs.data();
+
+    std::vector<VkVertexInputBindingDescription> vertexBindingDescs;
+    std::vector<VkVertexInputAttributeDescription> vertextAttribDescs;
+    assert(m_vertexIndexBufferInfoMap.size() > 0);
+    for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
+    {
+        vertexBindingDescs.push_back(vertexIndexBufferInfo.second.m_vertextBindingDescs);
+        for (const auto &vertextAttribDesc : vertexIndexBufferInfo.second.m_vertextAttribDescs)
+        {
+            vertextAttribDescs.push_back(vertextAttribDesc);
+        }
+        break;
+    }
+
+    vertexInputInfo.vertexBindingDescriptionCount = vertexBindingDescs.size();
+    vertexInputInfo.pVertexBindingDescriptions = vertexBindingDescs.data();
+    vertexInputInfo.vertexAttributeDescriptionCount = vertextAttribDescs.size();
+    vertexInputInfo.pVertexAttributeDescriptions = vertextAttribDescs.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
     inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -907,19 +920,6 @@ void VulkanRenderer3D::BindResources()
 
     VkRect2D scissor{{ 0, 0 }, { m_width, m_height }};
     vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
-
-    assert(m_vertexIndexBufferInfoMap.size() == 1);
-    for (auto [id, vertexIndexBufferInfo] : m_vertexIndexBufferInfoMap)
-    {
-        VkDeviceSize offset = 0;
-        vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &vertexIndexBufferInfo.m_vertexBuffer, &offset);
-        if (vertexIndexBufferInfo.m_indexCount > 0)
-        {
-            assert(vertexIndexBufferInfo.m_indexBuffer != VK_NULL_HANDLE);
-            vkCmdBindIndexBuffer(m_commandBuffer, vertexIndexBufferInfo.m_indexBuffer, offset, VK_INDEX_TYPE_UINT32);
-        }
-    }
-    
 }
 
 void VulkanRenderer3D::Render()
@@ -938,6 +938,13 @@ void VulkanRenderer3D::RenderIndexed()
     assert(m_vertexIndexBufferInfoMap.size() == 1);
     for (auto [id, vertexIndexBufferInfo] : m_vertexIndexBufferInfoMap)
     {
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &vertexIndexBufferInfo.m_vertexBuffer, &offset);
+        if (vertexIndexBufferInfo.m_indexCount > 0)
+        {
+            assert(vertexIndexBufferInfo.m_indexBuffer != VK_NULL_HANDLE);
+            vkCmdBindIndexBuffer(m_commandBuffer, vertexIndexBufferInfo.m_indexBuffer, offset, VK_INDEX_TYPE_UINT32);
+        }
         if (vertexIndexBufferInfo.m_indexCount > 0)
         {
             vkCmdDrawIndexed(m_commandBuffer, vertexIndexBufferInfo.m_indexCount, 1, 0, 0, 0);
@@ -951,6 +958,17 @@ void VulkanRenderer3D::RenderIndexed()
 
 void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
 {
+    auto vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(mesh.vertexBufferID);
+    assert(vertexIndexBufferInfoIter != m_vertexIndexBufferInfoMap.end());
+    const auto& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &vertexIndexBufferInfo.m_vertexBuffer, &offset);
+    if (vertexIndexBufferInfo.m_indexCount > 0)
+    {
+        assert(vertexIndexBufferInfo.m_indexBuffer != VK_NULL_HANDLE);
+        vkCmdBindIndexBuffer(m_commandBuffer, vertexIndexBufferInfo.m_indexBuffer, offset, VK_INDEX_TYPE_UINT32);
+    }
+
     assert(m_mainBindGroup != VK_NULL_HANDLE);
     auto modelIter = m_models.find(mesh.id);
     if (modelIter == m_models.end())

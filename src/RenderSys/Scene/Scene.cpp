@@ -83,15 +83,21 @@ void Scene::printNodeGraph()
 void Scene::applyVertexSkinning()
 {
     assert(m_vertexBuffer.size() > 0);
-    m_vertexBufferAltered = m_vertexBuffer;
-
-    assert(m_jointVec.size() > 0);
-    assert(m_weightVec.size() > 0);
-
+    
+    if (m_jointVec.size() == 0)
+    {
+        return;
+    }
+    if (m_weightVec.size() == 0)
+    {
+        return;
+    }
     if (m_jointMatrices.size() == 0)
     {
         return;
     }
+
+    m_vertexBufferAltered = m_vertexBuffer;
 
     for (int i = 0; i < m_jointVec.size(); ++i) 
     {
