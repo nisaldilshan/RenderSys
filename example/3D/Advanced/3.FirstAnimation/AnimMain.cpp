@@ -97,14 +97,27 @@ public:
 			assert(false);
 		}
 
-		const auto& sceneTextures = m_scene->getTextures();
-		std::vector<RenderSys::TextureDescriptor> texDescriptors;
-		for (const auto &sceneTexture : sceneTextures)
 		{
-			texDescriptors.emplace_back(sceneTexture.GetDescriptor());
+			const auto& sceneTextures = m_scenes[0].getTextures();
+			std::vector<RenderSys::TextureDescriptor> texDescriptors;
+			for (const auto &sceneTexture : sceneTextures)
+			{
+				texDescriptors.emplace_back(sceneTexture.GetDescriptor());
+			}
+			const auto& materials =  m_scenes[0].getMaterials();
+			m_renderer->CreateModelMaterials(1, materials, texDescriptors, m_scenes[0].getSamplers());
 		}
-		const auto& materials =  m_scene->getMaterials();
-		m_renderer->CreateModelMaterials(1, materials, texDescriptors, m_scene->getSamplers());
+		{
+			auto texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/Woman.png");
+			assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
+
+			auto texDescriptor = texHandle->GetDescriptor();
+			RenderSys::Material material;
+			material.metallicFactor = 0.5f;
+			material.roughnessFactor = 0.9f;
+			material.baseColorTextureIndex = 0;
+			m_renderer->CreateModelMaterials(2, {material}, {texDescriptor}, {});
+		}
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 
@@ -141,10 +154,11 @@ public:
 		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-		assert(m_vertexBuffer.size() > 0);
-		const auto vertexBufID = m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
-		assert(m_indexData.size() > 0);
-		m_renderer->SetIndexBufferData(vertexBufID, m_indexData);
+		for (const auto &scene : m_scenes)
+		{
+			const auto vertexBufID = m_renderer->SetVertexBufferData(scene.getVertexBufferForRenderer(), vertexBufferLayout);
+			m_renderer->SetIndexBufferData(vertexBufID, scene.getIndexBuffer());
+		}
 	}
 
 	virtual void OnDetach() override
@@ -198,7 +212,7 @@ public:
 			glm::mat4x4 M1(1.0);
 			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
-			M1 = glm::scale(M1, glm::vec3(0.005f));
+			M1 = glm::scale(M1, glm::vec3(0.05f));
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
 			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
 			m_myUniformData.modelMatrix = M1;
@@ -211,14 +225,24 @@ public:
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
-			for (const auto &rootNode : m_scene->getRootNodes())
-			{
-				RenderSys::Mesh mesh = rootNode->getMesh();
-				mesh.id = 1;
-				mesh.vertexBufferID = 1;
-				m_renderer->RenderMesh(mesh);
+
+			int counter = 1;
+			for (const auto &scene : m_scenes)
+			{	
+				for (const auto &rootNode : scene.getRootNodes())
+				{
+					RenderSys::Mesh mesh = rootNode->getMesh();
+					mesh.id = counter;
+					mesh.vertexBufferID = counter;
+					if (mesh.primitives.size() == 0)
+					{
+						mesh.primitives = {RenderSys::Primitive{0, 0, 0, true, 0}};
+					}
+					m_renderer->RenderMesh(mesh);
+				}
+				counter++;
 			}
-			
+
 			m_renderer->EndRenderPass();
 		}
 
@@ -254,31 +278,24 @@ public:
 private:
 	bool loadScene()
 	{
-		m_scene = std::make_unique<RenderSys::Scene>();
-		if (!m_scene->load(RESOURCE_DIR "/Models/Sponza/glTF/Sponza.gltf", ""))
+		if (!m_scenes[0].load(RESOURCE_DIR "/Models/Sponza/glTF/Sponza.gltf", ""))
+		{
+			std::cout << "Error loading GLTF model!" << std::endl;
+			return false;
+		}
+		if (!m_scenes[1].load(RESOURCE_DIR "/Models/Woman.gltf", ""))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
 		}
 
-		m_scene->populate();
-		const auto& sceneVertexBuffer = m_scene->getVertexBuffer();
-		m_vertexBuffer.resize(sceneVertexBuffer.size());
-		for (size_t i = 0; i < m_vertexBuffer.size(); i++)
+		for (auto &scene : m_scenes)
 		{
-			m_vertexBuffer[i].position = sceneVertexBuffer[i].pos;
-			m_vertexBuffer[i].normal = sceneVertexBuffer[i].normal;
-			m_vertexBuffer[i].texcoord0 = sceneVertexBuffer[i].uv0;
-			m_vertexBuffer[i].tangent = sceneVertexBuffer[i].tangent;
-		}
-		
-		m_indexData.resize(m_scene->getIndexBuffer().size());
-		for (size_t i = 0; i < m_indexData.size(); i++)
-		{
-			m_indexData[i] = m_scene->getIndexBuffer()[i];
+			scene.populate();
+			scene.applyVertexSkinning();
+			scene.printNodeGraph();
 		}
 
-		m_scene->printNodeGraph();
 		return true;
 	}
 
@@ -290,10 +307,8 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
-	RenderSys::VertexBuffer m_vertexBuffer;
-	std::vector<uint32_t> m_indexData;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
-	std::unique_ptr<RenderSys::Scene> m_scene;
+	std::vector<RenderSys::Scene> m_scenes{2};
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

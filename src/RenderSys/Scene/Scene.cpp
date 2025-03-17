@@ -112,4 +112,19 @@ void Scene::applyVertexSkinning()
     }
 }
 
+const RenderSys::VertexBuffer Scene::getVertexBufferForRenderer() const
+{
+    const auto& bufRef = getVertexBuffer();
+    RenderSys::VertexBuffer buffer;
+    buffer.resize(bufRef.size());
+    for (size_t i = 0; i < buffer.size(); i++)
+    {
+        buffer[i].position = bufRef[i].pos;
+        buffer[i].normal = bufRef[i].normal;
+        buffer[i].texcoord0 = bufRef[i].uv0;
+        buffer[i].tangent = bufRef[i].tangent;
+    }
+    return buffer;
+}
+
 }

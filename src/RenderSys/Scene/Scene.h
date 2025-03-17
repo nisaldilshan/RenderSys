@@ -2,6 +2,7 @@
 
 #include "GLTFScene.h"
 #include "SceneNode.h"
+#include <RenderSys/Buffer.h>
 
 namespace RenderSys
 {
@@ -15,12 +16,14 @@ public:
     Scene& operator=(const Scene&) = delete;
     Scene(Scene&&) = delete;
     Scene& operator=(Scene&&) = delete;
+    
     bool load(const std::filesystem::path &filePath, const std::string& textureFilename);
     void populate();
     void printNodeGraph();
     void applyVertexSkinning();
-    const std::vector<Model::Vertex>& getVertexBuffer() { return m_vertexBufferAltered.size() > 0 ? m_vertexBufferAltered : m_vertexBuffer; }
-    const std::vector<uint32_t>& getIndexBuffer() { return m_indexBuffer; }
+    const std::vector<Model::Vertex>& getVertexBuffer() const { return m_vertexBufferAltered.size() > 0 ? m_vertexBufferAltered : m_vertexBuffer; }
+    const RenderSys::VertexBuffer getVertexBufferForRenderer() const;
+    const std::vector<uint32_t>& getIndexBuffer() const { return m_indexBuffer; }
     const std::vector<Texture>& getTextures() const { return m_textures; }
     const std::vector<TextureSampler>& getSamplers() const { return m_textureSamplers; }
     const std::vector<Material>& getMaterials() const { return m_materials; }
