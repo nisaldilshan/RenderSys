@@ -70,9 +70,10 @@ void Renderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureDescrip
 }
 
 void RenderSys::Renderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
-            , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers)
+            , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers
+            , const int maxNumOfModels)
 {
-    m_rendererBackend->CreateModelMaterials(modelID, materials, texDescriptors, samplers);
+    m_rendererBackend->CreateModelMaterials(modelID, materials, texDescriptors, samplers, maxNumOfModels);
 }
 
 void Renderer3D::SetClearColor(glm::vec4 clearColor)

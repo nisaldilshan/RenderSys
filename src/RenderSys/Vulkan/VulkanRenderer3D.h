@@ -90,7 +90,8 @@ namespace GraphicsAPI
         // Textures get created as a part of main bindgroup
         void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
         void CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
-            , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers);
+            , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers
+            , const int maxNumOfModels);
         void SetUniformData(uint32_t binding, const void* bufferData);
         void BindResources();
         void Render();

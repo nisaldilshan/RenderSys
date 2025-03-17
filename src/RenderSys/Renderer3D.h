@@ -51,7 +51,8 @@ public:
     void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
     void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
     void CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
-        , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers);
+        , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers
+        , const int maxNumOfModels);
     void SetClearColor(glm::vec4 clearColor);
     void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, size_t bufferLength);
     void SetUniformBufferData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);

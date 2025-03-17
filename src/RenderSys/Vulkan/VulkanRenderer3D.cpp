@@ -1177,8 +1177,9 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureD
     UploadTexture(image, texDescriptor);
 }
 
-void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material> &materials, 
-    const std::vector<RenderSys::TextureDescriptor> &texDescriptors, const std::vector<RenderSys::TextureSampler> &samplers)
+void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material> &materials 
+    , const std::vector<RenderSys::TextureDescriptor> &texDescriptors, const std::vector<RenderSys::TextureSampler> &samplers
+    , const int maxNumOfModels)
 {
     std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings
     {
@@ -1200,14 +1201,18 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
         }
         
         std::vector<VkDescriptorPoolSize> poolSizes;
-        poolSizes.emplace_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 * static_cast<uint32_t>(materials.size())});
-        poolSizes.emplace_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * static_cast<uint32_t>(materials.size())});
+        poolSizes.emplace_back(
+            VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 * static_cast<uint32_t>(materials.size()) * maxNumOfModels}
+        );
+        poolSizes.emplace_back(
+            VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * static_cast<uint32_t>(materials.size()) * maxNumOfModels}
+        );
         
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.poolSizeCount = poolSizes.size();
         poolInfo.pPoolSizes = poolSizes.data();
-        poolInfo.maxSets = materials.size();
+        poolInfo.maxSets = materials.size() * maxNumOfModels;
         if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_materialBindGroupPool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
         }
