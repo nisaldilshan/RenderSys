@@ -217,7 +217,7 @@ public:
 			RenderSys::Mesh mesh;
 			mesh.id = 1;
 			mesh.vertexBufferID = 1;
-			mesh.primitives = {RenderSys::Primitive{0, 0, 0, true, 0}};
+			mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, true, 0}};
 			m_renderer->RenderMesh(mesh);
 			m_renderer->EndRenderPass();
 		}

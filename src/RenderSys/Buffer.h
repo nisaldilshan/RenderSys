@@ -33,7 +33,7 @@ struct Material
     } texCoordSets;
 };
 
-struct Primitive
+struct SubMesh
 {
 	uint32_t firstIndex = 0;
 	uint32_t indexCount = 0;
@@ -46,7 +46,7 @@ struct Mesh
 {
     uint32_t id = 0;
     uint32_t vertexBufferID = 0;
-	std::vector<Primitive> primitives;
+	std::vector<SubMesh> subMeshes;
 };
 
 struct alignas(16) Vertex {

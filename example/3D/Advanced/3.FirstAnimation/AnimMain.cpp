@@ -234,9 +234,9 @@ public:
 					RenderSys::Mesh mesh = rootNode->getMesh();
 					mesh.id = counter;
 					mesh.vertexBufferID = counter;
-					if (mesh.primitives.size() == 0)
+					if (mesh.subMeshes.size() == 0)
 					{
-						mesh.primitives = {RenderSys::Primitive{0, 0, 0, true, 0}};
+						mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, true, 0}};
 					}
 					m_renderer->RenderMesh(mesh);
 				}

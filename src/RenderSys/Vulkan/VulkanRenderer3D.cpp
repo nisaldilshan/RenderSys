@@ -978,10 +978,10 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
     }
 
     const auto& model = modelIter->second;
-    for (const auto &primitive : mesh.primitives)
+    for (const auto &subMesh : mesh.subMeshes)
     {
-        assert(primitive.materialIndex < model.m_materials.size());
-        RenderPrimitive(mesh.vertexBufferID, primitive.indexCount, primitive.firstIndex, model.m_materials[primitive.materialIndex]);
+        assert(subMesh.materialIndex < model.m_materials.size());
+        RenderPrimitive(mesh.vertexBufferID, subMesh.indexCount, subMesh.firstIndex, model.m_materials[subMesh.materialIndex]);
     }
 }
 

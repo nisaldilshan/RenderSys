@@ -35,7 +35,7 @@ public:
     void getNodeGraphs(std::vector<std::shared_ptr<Model::ModelNode>>& rootNodes);
 private:
     static void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount);
-    RenderSys::Primitive loadPrimitive(const tinygltf::Primitive &primitive, Model::ModelData &modelData, const uint32_t indexCount);
+    RenderSys::SubMesh loadPrimitive(const tinygltf::Primitive &primitive, Model::ModelData &modelData, const uint32_t indexCount);
     RenderSys::Mesh loadMesh(const tinygltf::Mesh& gltfMesh, Model::ModelData &modelData, const uint32_t indexCount);
     std::shared_ptr<Model::ModelNode> traverse(const std::shared_ptr<Model::ModelNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount);
 

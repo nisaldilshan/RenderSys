@@ -91,7 +91,7 @@ void GLTFScene::getNodeProps(const tinygltf::Node& node, const tinygltf::Model& 
     }
 }
 
-RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primitive, Model::ModelData &modelData, const uint32_t indexCount)
+RenderSys::SubMesh GLTFScene::loadPrimitive(const tinygltf::Primitive &primitive, Model::ModelData &modelData, const uint32_t indexCount)
 {
     assert(primitive.attributes.find("POSITION") != primitive.attributes.end()); // position is mandatory
     const tinygltf::Accessor &posAccessor = m_model->accessors[primitive.attributes.find("POSITION")->second];
@@ -153,7 +153,7 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
         }
     }
 
-    RenderSys::Primitive prim;
+    RenderSys::SubMesh prim;
     prim.vertexCount = vertexCount;
     prim.hasIndices = primitive.indices > -1;
     if (prim.hasIndices)
@@ -209,7 +209,7 @@ RenderSys::Mesh GLTFScene::loadMesh(const tinygltf::Mesh& gltfMesh, Model::Model
     RenderSys::Mesh mesh;
     for (const auto &gltfPrimitive : gltfMesh.primitives)
     {
-        mesh.primitives.push_back(loadPrimitive(gltfPrimitive, modelData, indexCount));
+        mesh.subMeshes.push_back(loadPrimitive(gltfPrimitive, modelData, indexCount));
     }
 
     return mesh;
