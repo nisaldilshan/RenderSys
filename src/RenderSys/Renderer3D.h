@@ -3,7 +3,6 @@
 #include <memory>
 #include <vector>
 #include <stdint.h>
-#include <Walnut/ImageFormat.h>
 
 #include "Buffer.h"
 #include "RenderUtil.h"
@@ -49,10 +48,9 @@ public:
     void SetIndexBufferData(uint32_t vertexBufferID, const std::vector<uint32_t>& bufferData);
     void CreatePipeline();
     void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-    void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
+    void CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture);
     void CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
-        , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers
-        , const int maxNumOfModels);
+        , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels);
     void SetClearColor(glm::vec4 clearColor);
     void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, size_t bufferLength);
     void SetUniformBufferData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);

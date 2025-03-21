@@ -27,13 +27,14 @@ public:
     void computeProps();
     size_t getVertexCount() const;
     size_t getIndexCount() const;
-    void loadTextures(std::vector<Texture>& textures);
-    void loadTextureSamplers(std::vector<TextureSampler>& samplers);
+    
+    void loadTextures(std::vector<std::shared_ptr<Texture>>& textures);
     void loadMaterials(std::vector<Material>& materials);
     void loadJointData(std::vector<glm::tvec4<uint16_t>>& jointVec, std::vector<int>& nodeToJoint, std::vector<glm::vec4>& weightVec);
     void loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatrices);
     void getNodeGraphs(std::vector<std::shared_ptr<Model::ModelNode>>& rootNodes);
 private:
+    std::vector<TextureSampler> loadTextureSamplers();
     static void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount);
     RenderSys::SubMesh loadPrimitive(const tinygltf::Primitive &primitive, Model::ModelData &modelData, const uint32_t indexCount);
     RenderSys::Mesh loadMesh(const tinygltf::Mesh& gltfMesh, Model::ModelData &modelData, const uint32_t indexCount);

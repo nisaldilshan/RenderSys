@@ -56,7 +56,6 @@ void Scene::populate()
     assert(m_indexBuffer.size() == indexCount);
 
     m_scene->loadTextures(m_textures);
-    m_scene->loadTextureSamplers(m_textureSamplers);
     m_scene->loadMaterials(m_materials);
 
     m_scene->loadJointData(m_jointVec, m_nodeToJoint, m_weightVec);

@@ -30,8 +30,8 @@ public:
 			assert(false);
 		}
 
-		m_texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
-		assert(m_texHandle && m_texHandle->GetWidth() > 0 && m_texHandle->GetHeight() > 0 && m_texHandle->GetMipLevelCount() > 0);
+		auto texHandle = RenderSys::loadTextureShared(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
+		assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
 
 		m_renderer = std::make_shared<RenderSys::Renderer3D>();
 		m_renderer->Init();
@@ -164,7 +164,7 @@ public:
 			assert(false);
 		}
 
-		m_renderer->CreateTexture(1, m_texHandle->GetDescriptor());
+		m_renderer->CreateTexture(1, texHandle);
 		
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
 
@@ -295,7 +295,6 @@ private:
 
 	MyUniforms m_uniformData;
 	RenderSys::VertexBuffer m_vertexData;
-	std::unique_ptr<RenderSys::Texture> m_texHandle = nullptr;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

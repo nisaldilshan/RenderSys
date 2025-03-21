@@ -31,8 +31,8 @@ public:
 			assert(false);
 		}
 
-		m_texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
-		assert(m_texHandle && m_texHandle->GetWidth() > 0 && m_texHandle->GetHeight() > 0 && m_texHandle->GetMipLevelCount() > 0);
+		auto texHandle = RenderSys::loadTextureShared(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
+		assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
 
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 		m_renderer->Init();
@@ -165,7 +165,7 @@ public:
 			assert(false);
 		}
 
-		m_renderer->CreateTexture(1, m_texHandle->GetDescriptor());
+		m_renderer->CreateTexture(1, texHandle);
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 
@@ -308,7 +308,6 @@ private:
 
 	MyUniforms m_uniformData;
 	RenderSys::VertexBuffer m_vertexBuffer;
-	std::unique_ptr<RenderSys::Texture> m_texHandle;
 	const char* m_shaderSource = nullptr;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 };

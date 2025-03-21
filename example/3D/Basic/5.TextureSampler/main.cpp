@@ -245,7 +245,8 @@ public:
 				}
 			}
 
-			m_renderer->CreateTexture(textureBindingLayout.binding, {pixels.data(), texWidth, texHeight, 8});
+			auto texture = std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 8);
+			m_renderer->CreateTexture(textureBindingLayout.binding, texture);
 
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();

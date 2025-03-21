@@ -64,16 +64,15 @@ void Renderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEnt
     m_rendererBackend->CreateBindGroup(bindGroupLayoutEntries);
 }
 
-void Renderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor)
+void Renderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
 {
-    m_rendererBackend->CreateTexture(binding, texDescriptor);
+    m_rendererBackend->CreateTexture(binding, texture);
 }
 
 void RenderSys::Renderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
-            , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers
-            , const int maxNumOfModels)
+            , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels)
 {
-    m_rendererBackend->CreateModelMaterials(modelID, materials, texDescriptors, samplers, maxNumOfModels);
+    m_rendererBackend->CreateModelMaterials(modelID, materials, textures, maxNumOfModels);
 }
 
 void Renderer3D::SetClearColor(glm::vec4 clearColor)

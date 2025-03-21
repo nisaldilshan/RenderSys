@@ -248,7 +248,7 @@ public:
 					p[3] = 255; // a
 				}
 			}
-			m_renderer->CreateTexture(textureBindingLayout.binding, {pixels.data(), texWidth, texHeight, 1});
+			m_renderer->CreateTexture(textureBindingLayout.binding, std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 1));
 
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();

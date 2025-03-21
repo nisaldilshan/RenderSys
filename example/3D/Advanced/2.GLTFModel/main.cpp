@@ -98,15 +98,14 @@ public:
 			assert(false);
 		}
 
-		auto texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/Woman.png");
+		auto texHandle = RenderSys::loadTextureShared(RESOURCE_DIR "/Textures/Woman.png");
 		assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
 
-		auto texDescriptor = texHandle->GetDescriptor();
 		RenderSys::Material material;
 		material.metallicFactor = 0.5f;
 		material.roughnessFactor = 0.9f;
 		material.baseColorTextureIndex = 0;
-		m_renderer->CreateModelMaterials(1, {material}, {texDescriptor}, {}, 1);
+		m_renderer->CreateModelMaterials(1, {material}, {texHandle}, 1);
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 

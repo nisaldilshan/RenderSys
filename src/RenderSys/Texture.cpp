@@ -15,7 +15,7 @@ Texture::Texture(unsigned char* textureData, int width, int height, uint32_t mip
 
 Texture::~Texture()
 {
-    stbi_image_free(m_textureData);
+    //stbi_image_free(m_textureData);  // TODO: stbi_image_free only when loaded from stbi_load
 }
 
 unsigned char* Texture::GetData() const
@@ -38,9 +38,14 @@ uint32_t Texture::GetMipLevelCount() const
     return m_mipMapLevelCount;
 }
 
-TextureDescriptor Texture::GetDescriptor() const
+TextureSampler Texture::GetSampler() const
 {
-    return TextureDescriptor{m_textureData, m_texWidth, m_texHeight, m_mipMapLevelCount, true};
+    return m_sampler;
+}
+
+void Texture::SetSampler(const TextureSampler &sampler)
+{
+    m_sampler = sampler;
 }
 
 namespace fs = std::filesystem;
@@ -72,7 +77,9 @@ std::unique_ptr<Texture> loadTextureUnique(const fs::path &path)
     return std::unique_ptr<Texture>(loadTextureRaw(path));
 }
 
-
-
+std::shared_ptr<Texture> loadTextureShared(const fs::path &path)
+{
+    return std::shared_ptr<Texture>(loadTextureRaw(path));
+}
 
 }

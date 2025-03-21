@@ -41,10 +41,10 @@ public:
 		assert(success);
 		Geometry::populateTextureFrameAttributes(m_vertexBuffer);
 
-		auto baseColorTexture = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/cobblestone_floor_08_diff_2k.jpg");
+		auto baseColorTexture = RenderSys::loadTextureShared(RESOURCE_DIR "/Textures/cobblestone_floor_08_diff_2k.jpg");
 		assert(baseColorTexture && baseColorTexture->GetWidth() > 0 && baseColorTexture->GetHeight() > 0 && baseColorTexture->GetMipLevelCount() > 0);
 
-		auto normalTexture = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/cobblestone_floor_08_nor_gl_2k.png");
+		auto normalTexture = RenderSys::loadTextureShared(RESOURCE_DIR "/Textures/cobblestone_floor_08_nor_gl_2k.png");
 		assert(normalTexture && normalTexture->GetWidth() > 0 && normalTexture->GetHeight() > 0 && normalTexture->GetMipLevelCount() > 0);
 
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
@@ -281,8 +281,8 @@ public:
 			assert(false);
 		}
 
-		m_renderer->CreateTexture(1, {baseColorTexture->GetData(), baseColorTexture->GetWidth(), baseColorTexture->GetHeight(), baseColorTexture->GetMipLevelCount()});
-		m_renderer->CreateTexture(2, {normalTexture->GetData(), normalTexture->GetWidth(), normalTexture->GetHeight(), normalTexture->GetMipLevelCount()});
+		m_renderer->CreateTexture(1, baseColorTexture);
+		m_renderer->CreateTexture(2, normalTexture);
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 

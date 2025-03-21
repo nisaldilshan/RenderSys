@@ -271,8 +271,10 @@ void GLTFScene::loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatri
     std::memcpy(inverseBindMatrices.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
 }
 
-void GLTFScene::loadTextures(std::vector<Texture>& textures)
+void GLTFScene::loadTextures(std::vector<std::shared_ptr<Texture>>& textures)
 {
+    auto samplers = loadTextureSamplers();
+
     auto& gltfTextures = m_model->textures;
     if (gltfTextures.size() == 0)
         return;
@@ -292,7 +294,8 @@ void GLTFScene::loadTextures(std::vector<Texture>& textures)
                     << ", pixel_type=" << image.pixel_type 
                     << ", component=" << image.component 
                     << ", sampler=" << gltfTexture.sampler << std::endl;
-        textures.emplace_back((unsigned char*)image.image.data(), image.width, image.height, 1);
+        textures.emplace_back(std::make_shared<Texture>((unsigned char*)image.image.data(), image.width, image.height, 1));
+        textures.back()->SetSampler(samplers[gltfTexture.sampler]);
     }
 
     std::cout << "Texture loading completed!" << std::endl;
@@ -336,8 +339,9 @@ RenderSys::SamplerFilterMode getFilterMode(int32_t filterMode)
     return RenderSys::SamplerFilterMode::NEAREST;
 }
 
-void GLTFScene::loadTextureSamplers(std::vector<TextureSampler>& samplers)
+std::vector<TextureSampler> GLTFScene::loadTextureSamplers()
 {
+    std::vector<TextureSampler> samplers;
     for (const tinygltf::Sampler& smpl : m_model->samplers) {
         RenderSys::TextureSampler sampler{};
         sampler.minFilter = getFilterMode(smpl.minFilter);
@@ -347,6 +351,7 @@ void GLTFScene::loadTextureSamplers(std::vector<TextureSampler>& samplers)
         sampler.addressModeW = sampler.addressModeV;
         samplers.push_back(sampler);
     }
+    return samplers;
 }
 
 void GLTFScene::loadMaterials(std::vector<Material>& materials)

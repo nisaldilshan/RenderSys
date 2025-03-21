@@ -1129,7 +1129,7 @@ void VulkanRenderer3D::SubmitCommandBuffer()
     GraphicsAPI::Vulkan::QueueSubmit(end_info);
 }
 
-void VulkanRenderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor)
+void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
 {
     const auto& [textureIter, inserted] = m_textures.insert(
                                                     {
@@ -1150,10 +1150,10 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureD
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
     imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    imageInfo.extent.width = static_cast<uint32_t>(texDescriptor.width);
-    imageInfo.extent.height = static_cast<uint32_t>(texDescriptor.height);
+    imageInfo.extent.width = static_cast<uint32_t>(texture->GetWidth());
+    imageInfo.extent.height = static_cast<uint32_t>(texture->GetHeight());
     imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = texDescriptor.mipMapLevelCount;
+    imageInfo.mipLevels = texture->GetMipLevelCount();
     imageInfo.arrayLayers = 1;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -1174,12 +1174,11 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureD
     VkDescriptorImageInfo& descriptorImageInfo = std::get<2>(textureTuple);
     descriptorImageInfo.imageView = CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
     descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    UploadTexture(image, texDescriptor);
+    UploadTexture(image, texture);
 }
 
 void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material> &materials 
-    , const std::vector<RenderSys::TextureDescriptor> &texDescriptors, const std::vector<RenderSys::TextureSampler> &samplers
-    , const int maxNumOfModels)
+    , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels)
 {
     std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings
     {
@@ -1255,9 +1254,37 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     }
     SetBufferData(m_vma, model.m_materialUniformBuffer.m_uniformBufferMemory, &materialUniforms, sizeof(MaterialUniforms));
     //////////////////////////////////////////////////////////////////////////
-
-    for (const auto &sampler : samplers)
+    
+    for (const auto &texDescriptor : textures)
     {
+        auto& sceneTextureTuple = model.m_sceneTextures.emplace_back();
+
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+        imageInfo.extent.width = static_cast<uint32_t>(texDescriptor->GetWidth());
+        imageInfo.extent.height = static_cast<uint32_t>(texDescriptor->GetHeight());
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = texDescriptor->GetMipLevelCount();
+        imageInfo.arrayLayers = 1;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        VmaAllocationCreateInfo imageAllocInfo = {};
+        imageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        VkImage& image = std::get<0>(sceneTextureTuple);
+        VmaAllocation& imageMemory = std::get<1>(sceneTextureTuple);
+        if (vmaCreateImage(m_vma, &imageInfo, &imageAllocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create image!");
+        }
+
+        // Sampler//
+        auto sampler = texDescriptor->GetSampler();
         VkSamplerCreateInfo texSamplerInfo{};
         texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         texSamplerInfo.magFilter = sampler.magFilter == RenderSys::SamplerFilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
@@ -1280,42 +1307,10 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
         if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
             std::cout << "error: could not create sampler for texture" << std::endl;
         }
-
-        model.m_sceneTextureSamplers.push_back(textureSampler);
-    }
-
-    std::cout << "VulkanRenderer3D::CreateTextureSamplers - Created " << model.m_sceneTextureSamplers.size() << " samplers" << std::endl;
-    
-    for (const auto &texDescriptor : texDescriptors)
-    {
-        auto& sceneTextureTuple = model.m_sceneTextures.emplace_back();
-
-        VkImageCreateInfo imageInfo{};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-        imageInfo.extent.width = static_cast<uint32_t>(texDescriptor.width);
-        imageInfo.extent.height = static_cast<uint32_t>(texDescriptor.height);
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = texDescriptor.mipMapLevelCount;
-        imageInfo.arrayLayers = 1;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-        VmaAllocationCreateInfo imageAllocInfo = {};
-        imageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-        VkImage& image = std::get<0>(sceneTextureTuple);
-        VmaAllocation& imageMemory = std::get<1>(sceneTextureTuple);
-        if (vmaCreateImage(m_vma, &imageInfo, &imageAllocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create image!");
-        }
+        ////////////
 
         VkDescriptorImageInfo& descriptorImageInfo = std::get<2>(sceneTextureTuple);
-        descriptorImageInfo.sampler = model.m_sceneTextureSamplers.size() > 0 ? model.m_sceneTextureSamplers[0] : m_defaultTextureSampler;
+        descriptorImageInfo.sampler = textureSampler;
         descriptorImageInfo.imageView = CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
         descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         UploadTexture(image, texDescriptor);
@@ -1387,14 +1382,14 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     }
 }
 
-void VulkanRenderer3D::UploadTexture(VkImage texture, const RenderSys::TextureDescriptor& texDescriptor)
+void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<RenderSys::Texture> texDescriptor)
 {
     // Transition Image to a copyable Layout
     TransitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB, 
                         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, m_commandPool);
 
-    uint32_t mipLevelWidth = texDescriptor.width;
-    uint32_t mipLevelHeight = texDescriptor.height;
+    uint32_t mipLevelWidth = texDescriptor->GetWidth();
+    uint32_t mipLevelHeight = texDescriptor->GetHeight();
     uint32_t previousMipLevelWidth = 0;
     std::vector<uint8_t> previousLevelPixels;
 
@@ -1406,7 +1401,7 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const RenderSys::TextureDe
         std::vector<uint8_t> pixels(sizeOfData);
         if (level == 0) 
         {
-            memcpy(pixels.data(), texDescriptor.data, sizeOfData);
+            memcpy(pixels.data(), texDescriptor->GetData(), sizeOfData);
         } 
 		else
         {

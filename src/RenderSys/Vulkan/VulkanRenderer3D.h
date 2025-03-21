@@ -67,7 +67,6 @@ namespace GraphicsAPI
         // materials uniform buffer - max 32 materials
         VulkanUniformBufferInfo m_materialUniformBuffer;
         std::vector<std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_sceneTextures;
-        std::vector<VkSampler> m_sceneTextureSamplers;
     };
 
     class VulkanRenderer3D
@@ -88,10 +87,9 @@ namespace GraphicsAPI
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform);
         // Textures get created as a part of main bindgroup
-        void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
+        void CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture);
         void CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
-            , const std::vector<RenderSys::TextureDescriptor>& texDescriptors, const std::vector<RenderSys::TextureSampler>& samplers
-            , const int maxNumOfModels);
+            , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels);
         void SetUniformData(uint32_t binding, const void* bufferData);
         void BindResources();
         void Render();
@@ -116,7 +114,7 @@ namespace GraphicsAPI
         void DestroyBuffers();
         void DestroyShaders();
         void DestroyTextures();
-        void UploadTexture(VkImage texture, const RenderSys::TextureDescriptor& texDescriptor);
+        void UploadTexture(VkImage texture, const std::shared_ptr<RenderSys::Texture> texDescriptor);
         void SubmitCommandBuffer();
 
         uint32_t m_width = 0;
