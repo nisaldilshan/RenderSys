@@ -1,11 +1,9 @@
 #include "VulkanRenderer3D.h"
 #include "VulkanRendererUtils.h"
+#include "VulkanMemAlloc.h"
 
 #include <array>
 #include <iostream>
-
-#define VMA_IMPLEMENTATION
-#include <vk_mem_alloc.h>
 
 namespace GraphicsAPI
 {
@@ -93,18 +91,6 @@ void InitShapes()
 
 bool VulkanRenderer3D::Init()
 {
-    if (!m_vma)
-    {
-        VmaAllocatorCreateInfo allocatorInfo{};
-        allocatorInfo.physicalDevice = Vulkan::GetPhysicalDevice();
-        allocatorInfo.device = Vulkan::GetDevice();
-        allocatorInfo.instance = Vulkan::GetInstance();
-        if (vmaCreateAllocator(&allocatorInfo, &m_vma) != VK_SUCCESS) {
-            std::cout << "error: could not init VMA" << std::endl;
-            return false;
-        }
-    }
-
     CreateRenderPass();
     CreateCommandBuffers();
     CreateDefaultTextureSampler();
@@ -134,7 +120,7 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
     allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    if (vmaCreateImage(m_vma, &renderImageInfo, &allocInfo, &m_ImageToRenderInto, &m_renderImageMemory, nullptr) != VK_SUCCESS) 
+    if (vmaCreateImage(RenderSys::Vulkan::GetMemoryAllocator(), &renderImageInfo, &allocInfo, &m_ImageToRenderInto, &m_renderImageMemory, nullptr) != VK_SUCCESS) 
     {
         assert(false);
     }
@@ -162,7 +148,7 @@ void VulkanRenderer3D::CreateDepthImage()
     allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    if (vmaCreateImage(m_vma, &depthImageInfo, &allocInfo, &m_depthimage, &m_depthimageMemory, nullptr) != VK_SUCCESS) 
+    if (vmaCreateImage(RenderSys::Vulkan::GetMemoryAllocator(), &depthImageInfo, &allocInfo, &m_depthimage, &m_depthimageMemory, nullptr) != VK_SUCCESS) 
     {
         assert(false);
     }
@@ -250,7 +236,7 @@ void VulkanRenderer3D::DestroyImages()
     }
     if (m_ImageToRenderInto != VK_NULL_HANDLE)
     {
-        vmaDestroyImage(m_vma, m_ImageToRenderInto, m_renderImageMemory);
+        vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), m_ImageToRenderInto, m_renderImageMemory);
         m_ImageToRenderInto = VK_NULL_HANDLE;
     }
 
@@ -261,7 +247,7 @@ void VulkanRenderer3D::DestroyImages()
     }
     if (m_depthimage != VK_NULL_HANDLE)
     {
-        vmaDestroyImage(m_vma, m_depthimage, m_depthimageMemory);
+        vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), m_depthimage, m_depthimageMemory);
         m_depthimage = VK_NULL_HANDLE;
     }
 }
@@ -305,14 +291,14 @@ void VulkanRenderer3D::DestroyBuffers()
     {
         if (vertexIndexBufferInfo.m_vertexBuffer != VK_NULL_HANDLE && vertexIndexBufferInfo.m_vertexBufferMemory != VK_NULL_HANDLE)
         {
-            vmaDestroyBuffer(m_vma, vertexIndexBufferInfo.m_vertexBuffer, vertexIndexBufferInfo.m_vertexBufferMemory);
+            vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), vertexIndexBufferInfo.m_vertexBuffer, vertexIndexBufferInfo.m_vertexBufferMemory);
             vertexIndexBufferInfo.m_vertexBuffer = VK_NULL_HANDLE;
             vertexIndexBufferInfo.m_vertexBufferMemory = VK_NULL_HANDLE;
         }
     
         if (vertexIndexBufferInfo.m_indexBuffer != VK_NULL_HANDLE && vertexIndexBufferInfo.m_indexBufferMemory != VK_NULL_HANDLE)
         {
-            vmaDestroyBuffer(m_vma, vertexIndexBufferInfo.m_indexBuffer, vertexIndexBufferInfo.m_indexBufferMemory);
+            vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), vertexIndexBufferInfo.m_indexBuffer, vertexIndexBufferInfo.m_indexBufferMemory);
             vertexIndexBufferInfo.m_indexBuffer = VK_NULL_HANDLE;
             vertexIndexBufferInfo.m_indexBufferMemory = VK_NULL_HANDLE;
         }
@@ -323,7 +309,7 @@ void VulkanRenderer3D::DestroyBuffers()
     {
         VkDescriptorBufferInfo& bufferInfo = std::get<0>(uniformBufferTuple);
         VmaAllocation& uniformBufferMemory = std::get<1>(uniformBufferTuple);
-        vmaDestroyBuffer(m_vma, bufferInfo.buffer, uniformBufferMemory);
+        vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), bufferInfo.buffer, uniformBufferMemory);
     }
     m_uniformBuffers.clear();
 
@@ -759,21 +745,21 @@ uint32_t VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& buf
     VmaAllocationCreateInfo vmaAllocInfo{};
     vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-    if (vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &vertexIndexBufferInfo.m_vertexBuffer, &vertexIndexBufferInfo.m_vertexBufferMemory, nullptr) != VK_SUCCESS) {
+    if (vmaCreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), &bufferInfo, &vmaAllocInfo, &vertexIndexBufferInfo.m_vertexBuffer, &vertexIndexBufferInfo.m_vertexBufferMemory, nullptr) != VK_SUCCESS) {
         std::cout << "vkCreateBuffer() failed!" << std::endl;
         return 0;
     }
 
     // copy data to the buffer
     void *buf;
-    auto res = vmaMapMemory(m_vma, vertexIndexBufferInfo.m_vertexBufferMemory, &buf);
+    auto res = vmaMapMemory(RenderSys::Vulkan::GetMemoryAllocator(), vertexIndexBufferInfo.m_vertexBufferMemory, &buf);
     if (res != VK_SUCCESS) {
         std::cout << "vkMapMemory() failed" << std::endl;
         return 0;
     }
 
     std::memcpy(buf, bufferData.vertices.data(), bufferLength);
-    vmaUnmapMemory(m_vma, vertexIndexBufferInfo.m_vertexBufferMemory);
+    vmaUnmapMemory(RenderSys::Vulkan::GetMemoryAllocator(), vertexIndexBufferInfo.m_vertexBufferMemory);
 
     std::cout << "Vertex buffer: " << vertexIndexBufferInfo.m_vertexBuffer << std::endl;
     return m_vertexIndexBufferInfoMap.insert({m_vertexIndexBufferInfoMap.size() + 1, vertexIndexBufferInfo}).first->first;
@@ -803,7 +789,7 @@ void VulkanRenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vec
     VmaAllocationCreateInfo vmaAllocInfo{};
     vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-    auto res = vmaCreateBuffer(m_vma, &bufferInfo, &vmaAllocInfo, &vertexIndexBufferInfo.m_indexBuffer, &vertexIndexBufferInfo.m_indexBufferMemory, nullptr);
+    auto res = vmaCreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), &bufferInfo, &vmaAllocInfo, &vertexIndexBufferInfo.m_indexBuffer, &vertexIndexBufferInfo.m_indexBufferMemory, nullptr);
     if (res != VK_SUCCESS) {
         std::cout << "vkCreateBuffer() failed!" << std::endl;
         return;
@@ -811,14 +797,14 @@ void VulkanRenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vec
 
     // copy data to the buffer
     void *buf;
-    res = vmaMapMemory(m_vma, vertexIndexBufferInfo.m_indexBufferMemory, &buf);
+    res = vmaMapMemory(RenderSys::Vulkan::GetMemoryAllocator(), vertexIndexBufferInfo.m_indexBufferMemory, &buf);
     if (res != VK_SUCCESS) {
         std::cout << "vkMapMemory() failed" << std::endl;
         return;
     }
 
     std::memcpy(buf, bufferData.data(), bufferInfo.size);
-    vmaUnmapMemory(m_vma, vertexIndexBufferInfo.m_indexBufferMemory);
+    vmaUnmapMemory(RenderSys::Vulkan::GetMemoryAllocator(), vertexIndexBufferInfo.m_indexBufferMemory);
     std::cout << "Index buffer: " << vertexIndexBufferInfo.m_indexBuffer << std::endl;
 }
 
@@ -858,7 +844,7 @@ void VulkanRenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneU
     VmaAllocationCreateInfo vmaAllocInfo{};
     vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-    auto res = vmaCreateBuffer(m_vma, &bufferCreateInfo, &vmaAllocInfo, &bufferInfo.buffer, &uniformBufferMemory, nullptr);
+    auto res = vmaCreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), &bufferCreateInfo, &vmaAllocInfo, &bufferInfo.buffer, &uniformBufferMemory, nullptr);
     if (res != VK_SUCCESS) {
         std::cout << "vkCreateBuffer() failed!" << std::endl;
         return;
@@ -878,7 +864,7 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData)
     auto* mappedBuffer = std::get<2>(uniformBufferTuple);
     const auto sizeOfOneUniform = bufferInfo.range;
 
-    auto res = vmaMapMemory(m_vma, uniformBufferMemory, &mappedBuffer);
+    auto res = vmaMapMemory(RenderSys::Vulkan::GetMemoryAllocator(), uniformBufferMemory, &mappedBuffer);
     if (res != VK_SUCCESS) {
         std::cout << "vkMapMemory() failed" << std::endl;
         return;
@@ -888,7 +874,7 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData)
     auto* ptr = static_cast<char*>(mappedBuffer);
     memcpy(static_cast<void*>(ptr), bufferData, sizeOfOneUniform);
 
-    vmaUnmapMemory(m_vma, uniformBufferMemory);
+    vmaUnmapMemory(RenderSys::Vulkan::GetMemoryAllocator(), uniformBufferMemory);
 
     VkWriteDescriptorSet descriptorWrite{};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1088,7 +1074,7 @@ void VulkanRenderer3D::DestroyTextures()
         }
         if (std::get<0>(textureTuple) != VK_NULL_HANDLE)
         {
-            vmaDestroyImage(m_vma, std::get<0>(textureTuple), std::get<1>(textureTuple));
+            vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), std::get<0>(textureTuple), std::get<1>(textureTuple));
         }
     }
     m_textures.clear();
@@ -1113,8 +1099,7 @@ void VulkanRenderer3D::Destroy()
 
     DestroyRenderPass();
 
-    // Destroy VMA instance
-    vmaDestroyAllocator(m_vma);
+    RenderSys::Vulkan::DestroyMemoryAllocator();
 }
 
 void VulkanRenderer3D::SubmitCommandBuffer()
@@ -1167,7 +1152,7 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<Ren
     auto& textureTuple = (*textureIter).second;
     VkImage& image = std::get<0>(textureTuple);
     VmaAllocation& imageMemory = std::get<1>(textureTuple);
-    if (vmaCreateImage(m_vma, &imageInfo, &imageAllocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
+    if (vmaCreateImage(RenderSys::Vulkan::GetMemoryAllocator(), &imageInfo, &imageAllocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
     }
 
@@ -1229,7 +1214,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     //////////////////////////////////////////////////////////////////////////
     // create uniform buffer
     std::tie(model.m_materialUniformBuffer.m_bufferInfo.buffer, model.m_materialUniformBuffer.m_uniformBufferMemory) = 
-        CreateBuffer(m_vma, sizeof(MaterialUniforms), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        CreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), sizeof(MaterialUniforms), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     model.m_materialUniformBuffer.m_bufferInfo.range = sizeof(MaterialUniforms);
     model.m_materialUniformBuffer.m_bufferInfo.offset = 0;
 
@@ -1252,7 +1237,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
             = material.metallicRoughnessTextureIndex == -1 ? -1 : 0;
         matCount++;
     }
-    SetBufferData(m_vma, model.m_materialUniformBuffer.m_uniformBufferMemory, &materialUniforms, sizeof(MaterialUniforms));
+    SetBufferData(RenderSys::Vulkan::GetMemoryAllocator(), model.m_materialUniformBuffer.m_uniformBufferMemory, &materialUniforms, sizeof(MaterialUniforms));
     //////////////////////////////////////////////////////////////////////////
     
     for (const auto &texDescriptor : textures)
@@ -1279,7 +1264,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
 
         VkImage& image = std::get<0>(sceneTextureTuple);
         VmaAllocation& imageMemory = std::get<1>(sceneTextureTuple);
-        if (vmaCreateImage(m_vma, &imageInfo, &imageAllocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
+        if (vmaCreateImage(RenderSys::Vulkan::GetMemoryAllocator(), &imageInfo, &imageAllocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
             throw std::runtime_error("failed to create image!");
         }
 
@@ -1427,9 +1412,9 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<Rend
 
         VkBuffer stagingBuffer;
         VmaAllocation stagingBufferAllocation;
-        std::tie(stagingBuffer, stagingBufferAllocation) = CreateBuffer(m_vma, static_cast<VkDeviceSize>(pixels.size()),
+        std::tie(stagingBuffer, stagingBufferAllocation) = CreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), static_cast<VkDeviceSize>(pixels.size()),
                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-        SetBufferData(m_vma, stagingBufferAllocation, pixels.data(), static_cast<VkDeviceSize>(pixels.size()));
+        SetBufferData(RenderSys::Vulkan::GetMemoryAllocator(), stagingBufferAllocation, pixels.data(), static_cast<VkDeviceSize>(pixels.size()));
 
         auto currentCommandBuffer = BeginSingleTimeCommands(m_commandPool);
 
@@ -1448,7 +1433,7 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<Rend
 
         EndSingleTimeCommands(currentCommandBuffer, m_commandPool);
 
-        vmaDestroyBuffer(m_vma, stagingBuffer, stagingBufferAllocation);
+        vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), stagingBuffer, stagingBufferAllocation);
 
         previousLevelPixels = std::move(pixels);
         previousMipLevelWidth = mipLevelWidth;

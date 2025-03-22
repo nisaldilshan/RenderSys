@@ -7,7 +7,6 @@
 #include <glm/gtx/quaternion.hpp>
 #include <vk_mem_alloc.h>
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
-
 #include <RenderSys/RenderUtil.h>
 #include <RenderSys/Shader.h>
 #include <RenderSys/Buffer.h>
@@ -156,7 +155,6 @@ namespace GraphicsAPI
         // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
         std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
 
-        VmaAllocator m_vma = VK_NULL_HANDLE;
         VkClearColorValue m_clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
     };
 }
