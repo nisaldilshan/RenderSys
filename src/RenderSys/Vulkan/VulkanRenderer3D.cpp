@@ -313,14 +313,12 @@ void VulkanRenderer3D::DestroyBuffers()
     }
     m_uniformBuffers.clear();
 
-    if (m_commandBuffer && m_commandPool)
+    if (RenderSys::Vulkan::GetCommandPool())
     {
-        vkDeviceWaitIdle(Vulkan::GetDevice());
         // when you destroy a command pool, all command buffers allocated from that pool are automatically destroyed
-        vkDestroyCommandPool(Vulkan::GetDevice(), m_commandPool, nullptr);
-        m_commandBuffer = VK_NULL_HANDLE;
-        m_commandPool = VK_NULL_HANDLE;
-    }    
+        RenderSys::Vulkan::DestroyCommandPool();
+    }   
+    m_commandBuffer = VK_NULL_HANDLE; 
 }
 
 void VulkanRenderer3D::DestroyShaders()
@@ -540,20 +538,14 @@ void VulkanRenderer3D::CreateRenderPass()
 
 void VulkanRenderer3D::CreateCommandBuffers()
 {
-    auto queueFamilyIndices = Vulkan::FindQueueFamilies();
-    VkCommandPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-    auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
-    Vulkan::check_vk_result(err);
+    RenderSys::Vulkan::CreateCommandPool();
 
     VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
     cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cmdBufAllocateInfo.commandPool = m_commandPool;
+    cmdBufAllocateInfo.commandPool = RenderSys::Vulkan::GetCommandPool();
     cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cmdBufAllocateInfo.commandBufferCount = 1;
-    err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+    auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
     Vulkan::check_vk_result(err);
 }
 
@@ -1371,7 +1363,7 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<Rend
 {
     // Transition Image to a copyable Layout
     RenderSys::Vulkan::TransitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB, 
-                        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, m_commandPool);
+                        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, RenderSys::Vulkan::GetCommandPool());
 
     uint32_t mipLevelWidth = texDescriptor->GetWidth();
     uint32_t mipLevelHeight = texDescriptor->GetHeight();
@@ -1416,7 +1408,7 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<Rend
                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
         RenderSys::Vulkan::SetBufferData(RenderSys::Vulkan::GetMemoryAllocator(), stagingBufferAllocation, pixels.data(), static_cast<VkDeviceSize>(pixels.size()));
 
-        auto currentCommandBuffer = RenderSys::Vulkan::BeginSingleTimeCommands(m_commandPool);
+        auto currentCommandBuffer = RenderSys::Vulkan::BeginSingleTimeCommands(RenderSys::Vulkan::GetCommandPool());
 
         VkBufferImageCopy region{};
         region.bufferOffset = 0;
@@ -1431,7 +1423,7 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<Rend
 
         vkCmdCopyBufferToImage(currentCommandBuffer, stagingBuffer, texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-        RenderSys::Vulkan::EndSingleTimeCommands(currentCommandBuffer, m_commandPool);
+        RenderSys::Vulkan::EndSingleTimeCommands(currentCommandBuffer, RenderSys::Vulkan::GetCommandPool());
 
         vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), stagingBuffer, stagingBufferAllocation);
 
@@ -1443,7 +1435,7 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<Rend
 
     // Transition Image to Shader Readable Layout
     RenderSys::Vulkan::TransitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB, 
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, m_commandPool);
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, RenderSys::Vulkan::GetCommandPool());
 }
 
 void VulkanRenderer3D::CreateDefaultTextureSampler()

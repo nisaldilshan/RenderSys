@@ -113,7 +113,7 @@ public:
 			m_renderer->CreateModelMaterials(2, {material}, {texHandle}, 2);
 		}
 
-		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
+		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 500.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 

@@ -8,6 +8,10 @@ namespace RenderSys
 namespace Vulkan 
 {
 
+void CreateCommandPool();
+VkCommandPool GetCommandPool();
+void DestroyCommandPool();
+
 VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format);
 std::pair<int, VkDeviceSize> FindAppropriateMemoryType(const VkBuffer& buffer, unsigned int flags);
 VkShaderStageFlags GetVulkanShaderStageVisibility(RenderSys::ShaderStage shaderStage);

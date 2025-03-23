@@ -134,7 +134,6 @@ namespace GraphicsAPI
         VkPipeline m_pipeline = VK_NULL_HANDLE;
         VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
         VkRenderPass m_renderpass = VK_NULL_HANDLE;
-        VkCommandPool m_commandPool = VK_NULL_HANDLE;
         VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 
         std::unordered_map<uint32_t, VulkanVertexIndexBufferInfo> m_vertexIndexBufferInfoMap;

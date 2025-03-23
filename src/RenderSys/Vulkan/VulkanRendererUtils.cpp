@@ -6,6 +6,32 @@ namespace RenderSys
 namespace Vulkan 
 {
 
+VkCommandPool g_commandPool = VK_NULL_HANDLE;
+void CreateCommandPool()
+{
+    auto queueFamilyIndices = GraphicsAPI::Vulkan::FindQueueFamilies();
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+    auto err = vkCreateCommandPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &g_commandPool);
+    GraphicsAPI::Vulkan::check_vk_result(err);
+}
+
+VkCommandPool GetCommandPool()
+{
+    return g_commandPool;
+}
+
+void DestroyCommandPool()
+{
+    vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
+    // when you destroy a command pool, all command buffers allocated from that pool are automatically destroyed
+    vkDestroyCommandPool(GraphicsAPI::Vulkan::GetDevice(), g_commandPool, nullptr);
+    g_commandPool = VK_NULL_HANDLE;
+}
+
+
 VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
 {
     switch (format)
