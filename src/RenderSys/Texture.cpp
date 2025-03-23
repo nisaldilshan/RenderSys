@@ -3,8 +3,24 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#if (RENDERER_BACKEND == 1)
+static_assert(false);
+#elif (RENDERER_BACKEND == 2)
+#include "Vulkan/VulkanTexture.h"
+#elif (RENDERER_BACKEND == 3)
+#include "WebGPU/WebGPUTexture.h"
+#else
+static_assert(false);
+#endif
+
 namespace RenderSys
 {
+
+// Equivalent of std::bit_width that is available from C++20 onward
+inline uint32_t bit_width(uint32_t m) {
+    if (m == 0) return 0;
+    else { uint32_t w = 0; while (m >>= 1) ++w; return w; }
+}
 
 Texture::Texture(unsigned char* textureData, int width, int height, uint32_t mipMapLevelCount)
     : m_textureData(textureData)
@@ -12,6 +28,21 @@ Texture::Texture(unsigned char* textureData, int width, int height, uint32_t mip
     , m_texHeight(height)
     , m_mipMapLevelCount(mipMapLevelCount)
 {}
+
+Texture::Texture(const std::filesystem::path &path)
+{
+    int channels;
+    int width;
+    int height;
+    unsigned char *pixelData = stbi_load(path.string().c_str(), &width, &height, &channels, 4 /* force 4 channels */);
+    if (nullptr == pixelData)
+    {
+        assert(false);
+    }
+
+    uint32_t mipMapLevelCount = bit_width(std::max(width, height));
+    m_platformTexture = std::make_shared<VulkanTexture>(pixelData, width, height, mipMapLevelCount);
+}
 
 Texture::~Texture()
 {
@@ -48,15 +79,7 @@ void Texture::SetSampler(const TextureSampler &sampler)
     m_sampler = sampler;
 }
 
-namespace fs = std::filesystem;
-
-// Equivalent of std::bit_width that is available from C++20 onward
-inline uint32_t bit_width(uint32_t m) {
-    if (m == 0) return 0;
-    else { uint32_t w = 0; while (m >>= 1) ++w; return w; }
-}
-
-Texture* loadTextureRaw(const fs::path &path)
+Texture* loadTextureRaw(const std::filesystem::path &path)
 {
     int channels;
     int width;
@@ -72,12 +95,12 @@ Texture* loadTextureRaw(const fs::path &path)
     return new Texture(pixelData, width, height, mipMapLevelCount);
 }
 
-std::unique_ptr<Texture> loadTextureUnique(const fs::path &path)
+std::unique_ptr<Texture> loadTextureUnique(const std::filesystem::path &path)
 {
     return std::unique_ptr<Texture>(loadTextureRaw(path));
 }
 
-std::shared_ptr<Texture> loadTextureShared(const fs::path &path)
+std::shared_ptr<Texture> loadTextureShared(const std::filesystem::path &path)
 {
     return std::shared_ptr<Texture>(loadTextureRaw(path));
 }
