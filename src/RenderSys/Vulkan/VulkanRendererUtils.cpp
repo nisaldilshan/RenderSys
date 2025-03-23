@@ -1,7 +1,9 @@
 #include "VulkanRendererUtils.h"
 #include <stdexcept>
 
-namespace GraphicsAPI
+namespace RenderSys
+{
+namespace Vulkan 
 {
 
 VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
@@ -18,10 +20,10 @@ VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
 std::pair<int, VkDeviceSize> FindAppropriateMemoryType(const VkBuffer& buffer, unsigned int flags)
 {
     VkMemoryRequirements mem_reqs;
-    vkGetBufferMemoryRequirements(Vulkan::GetDevice(), buffer, &mem_reqs);
+    vkGetBufferMemoryRequirements(GraphicsAPI::Vulkan::GetDevice(), buffer, &mem_reqs);
 
     VkPhysicalDeviceMemoryProperties gpu_mem;
-    vkGetPhysicalDeviceMemoryProperties(Vulkan::GetPhysicalDevice(), &gpu_mem);
+    vkGetPhysicalDeviceMemoryProperties(GraphicsAPI::Vulkan::GetPhysicalDevice(), &gpu_mem);
 
     int mem_type_idx = -1;
     for (int j = 0; j < gpu_mem.memoryTypeCount; j++) {
@@ -77,7 +79,7 @@ VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags a
     viewInfo.subresourceRange.layerCount = 1;
 
     VkImageView imageView;
-    if (vkCreateImageView(Vulkan::GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) 
+    if (vkCreateImageView(GraphicsAPI::Vulkan::GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) 
     {
         throw std::runtime_error("failed to create image view!");
     }
@@ -141,7 +143,7 @@ VkCommandBuffer BeginSingleTimeCommands(VkCommandPool commandPool)
     allocInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(Vulkan::GetDevice(), &allocInfo, &commandBuffer);
+    vkAllocateCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &commandBuffer);
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -161,10 +163,10 @@ void EndSingleTimeCommands(VkCommandBuffer commandBuffer, VkCommandPool commandP
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
 
-    vkQueueSubmit(Vulkan::GetDeviceQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(Vulkan::GetDeviceQueue()); // Wait for the command buffer to finish
+    vkQueueSubmit(GraphicsAPI::Vulkan::GetDeviceQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(GraphicsAPI::Vulkan::GetDeviceQueue()); // Wait for the command buffer to finish
 
-    vkFreeCommandBuffers(Vulkan::GetDevice(), commandPool, 1, &commandBuffer);
+    vkFreeCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), commandPool, 1, &commandBuffer);
 }
 
 void TransitionImageLayout(VkImage image, VkFormat format, 
@@ -253,7 +255,7 @@ uint32_t GetUniformStride(const uint32_t sizeOfUniform)
     if (minUniformBufferOffsetAlignment == 0)
     {
         VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
+        vkGetPhysicalDeviceProperties(GraphicsAPI::Vulkan::GetPhysicalDevice(), &deviceProperties);
         minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
         //std::cout << "maxMemoryAllocationCount : " << deviceProperties.limits.maxMemoryAllocationCount << std::endl;
         //std::cout << "maxDrawIndexedIndexValue : " << deviceProperties.limits.maxDrawIndexedIndexValue << std::endl;
@@ -274,4 +276,5 @@ uint32_t GetUniformStride(const uint32_t sizeOfUniform)
     return uniformStride;
 }
 
-}
+} // namespace Vulkan
+} // namespace RenderSys

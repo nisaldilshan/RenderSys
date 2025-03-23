@@ -3,7 +3,9 @@
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 #include <RenderSys/RenderUtil.h>
 
-namespace GraphicsAPI
+namespace RenderSys
+{
+namespace Vulkan 
 {
 
 VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format);
@@ -22,4 +24,5 @@ void SetBufferData(const VmaAllocator& vma, VmaAllocation& bufferAllocation, con
 
 uint32_t GetUniformStride(const uint32_t sizeOfUniform);
 
-} // namespace GraphicsAPI
+} // namespace Vulkan
+} // namespace RenderSys

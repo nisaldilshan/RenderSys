@@ -41,11 +41,11 @@ void InitShapes()
             binding, sizeof(RenderSys::Vertex), VK_VERTEX_INPUT_RATE_VERTEX
         };
         planeInfo.m_vertextAttribDescs = {
-            {0, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, position)},
-            {1, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, normal)},
-            {2, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x2), offsetof(RenderSys::Vertex, texcoord0)},
-            {3, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, color)},
-            {4, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, tangent)}
+            {0, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, position)},
+            {1, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, normal)},
+            {2, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x2), offsetof(RenderSys::Vertex, texcoord0)},
+            {3, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, color)},
+            {4, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, tangent)}
         };
         g_shapeInfoMap.insert({ShapeType::Plane, planeInfo});
     }
@@ -79,11 +79,11 @@ void InitShapes()
             binding, sizeof(RenderSys::Vertex), VK_VERTEX_INPUT_RATE_VERTEX
         };
         cubeInfo.m_vertextAttribDescs = {
-            {0, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, position)},
-            {1, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, normal)},
-            {2, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x2), offsetof(RenderSys::Vertex, texcoord0)},
-            {3, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, color)},
-            {4, binding, RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, tangent)}
+            {0, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, position)},
+            {1, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, normal)},
+            {2, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x2), offsetof(RenderSys::Vertex, texcoord0)},
+            {3, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, color)},
+            {4, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, tangent)}
         };
         g_shapeInfoMap.insert({ShapeType::Cube, cubeInfo});
     }
@@ -125,7 +125,7 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
         assert(false);
     }
 
-    m_imageViewToRenderInto = CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+    m_imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
     m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
 }
 
@@ -153,7 +153,7 @@ void VulkanRenderer3D::CreateDepthImage()
         assert(false);
     }
 
-    m_depthimageView = CreateImageView(m_depthimage, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
+    m_depthimageView = RenderSys::Vulkan::CreateImageView(m_depthimage, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
@@ -342,7 +342,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     std::vector<VkDescriptorSetLayoutBinding> mainBindGroupBindings;
     for (const auto &bindGroupLayoutEntry : bindGroupLayoutEntries)
     {
-        auto vkBinding = GetVulkanBindGroupLayoutEntry(bindGroupLayoutEntry);
+        auto vkBinding = RenderSys::Vulkan::GetVulkanBindGroupLayoutEntry(bindGroupLayoutEntry);
         mainBindGroupBindings.push_back(vkBinding);
 
         auto mapIter = descriptorTypeCountMap.find(vkBinding.descriptorType);
@@ -732,7 +732,7 @@ uint32_t VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& buf
         VkVertexInputAttributeDescription vkAttribute{};
         vkAttribute.binding = 0;
         vkAttribute.location = attrib.location;
-        vkAttribute.format = RenderSysFormatToVulkanFormat(attrib.format);
+        vkAttribute.format = RenderSys::Vulkan::RenderSysFormatToVulkanFormat(attrib.format);
         vkAttribute.offset = attrib.offset;
         vertexIndexBufferInfo.m_vertextAttribDescs.push_back(vkAttribute);
     }
@@ -1157,7 +1157,7 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<Ren
     }
 
     VkDescriptorImageInfo& descriptorImageInfo = std::get<2>(textureTuple);
-    descriptorImageInfo.imageView = CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
+    descriptorImageInfo.imageView = RenderSys::Vulkan::CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
     descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     UploadTexture(image, texture);
 }
@@ -1214,7 +1214,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     //////////////////////////////////////////////////////////////////////////
     // create uniform buffer
     std::tie(model.m_materialUniformBuffer.m_bufferInfo.buffer, model.m_materialUniformBuffer.m_uniformBufferMemory) = 
-        CreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), sizeof(MaterialUniforms), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        RenderSys::Vulkan::CreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), sizeof(MaterialUniforms), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     model.m_materialUniformBuffer.m_bufferInfo.range = sizeof(MaterialUniforms);
     model.m_materialUniformBuffer.m_bufferInfo.offset = 0;
 
@@ -1237,7 +1237,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
             = material.metallicRoughnessTextureIndex == -1 ? -1 : 0;
         matCount++;
     }
-    SetBufferData(RenderSys::Vulkan::GetMemoryAllocator(), model.m_materialUniformBuffer.m_uniformBufferMemory, &materialUniforms, sizeof(MaterialUniforms));
+    RenderSys::Vulkan::SetBufferData(RenderSys::Vulkan::GetMemoryAllocator(), model.m_materialUniformBuffer.m_uniformBufferMemory, &materialUniforms, sizeof(MaterialUniforms));
     //////////////////////////////////////////////////////////////////////////
     
     for (const auto &texDescriptor : textures)
@@ -1296,7 +1296,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
 
         VkDescriptorImageInfo& descriptorImageInfo = std::get<2>(sceneTextureTuple);
         descriptorImageInfo.sampler = textureSampler;
-        descriptorImageInfo.imageView = CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
+        descriptorImageInfo.imageView = RenderSys::Vulkan::CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
         descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         UploadTexture(image, texDescriptor);
     }
@@ -1370,7 +1370,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
 void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<RenderSys::Texture> texDescriptor)
 {
     // Transition Image to a copyable Layout
-    TransitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB, 
+    RenderSys::Vulkan::TransitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB, 
                         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, m_commandPool);
 
     uint32_t mipLevelWidth = texDescriptor->GetWidth();
@@ -1412,11 +1412,11 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<Rend
 
         VkBuffer stagingBuffer;
         VmaAllocation stagingBufferAllocation;
-        std::tie(stagingBuffer, stagingBufferAllocation) = CreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), static_cast<VkDeviceSize>(pixels.size()),
+        std::tie(stagingBuffer, stagingBufferAllocation) = RenderSys::Vulkan::CreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), static_cast<VkDeviceSize>(pixels.size()),
                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-        SetBufferData(RenderSys::Vulkan::GetMemoryAllocator(), stagingBufferAllocation, pixels.data(), static_cast<VkDeviceSize>(pixels.size()));
+        RenderSys::Vulkan::SetBufferData(RenderSys::Vulkan::GetMemoryAllocator(), stagingBufferAllocation, pixels.data(), static_cast<VkDeviceSize>(pixels.size()));
 
-        auto currentCommandBuffer = BeginSingleTimeCommands(m_commandPool);
+        auto currentCommandBuffer = RenderSys::Vulkan::BeginSingleTimeCommands(m_commandPool);
 
         VkBufferImageCopy region{};
         region.bufferOffset = 0;
@@ -1431,7 +1431,7 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<Rend
 
         vkCmdCopyBufferToImage(currentCommandBuffer, stagingBuffer, texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-        EndSingleTimeCommands(currentCommandBuffer, m_commandPool);
+        RenderSys::Vulkan::EndSingleTimeCommands(currentCommandBuffer, m_commandPool);
 
         vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), stagingBuffer, stagingBufferAllocation);
 
@@ -1442,7 +1442,7 @@ void VulkanRenderer3D::UploadTexture(VkImage texture, const std::shared_ptr<Rend
     }
 
     // Transition Image to Shader Readable Layout
-    TransitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB, 
+    RenderSys::Vulkan::TransitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB, 
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, m_commandPool);
 }
 

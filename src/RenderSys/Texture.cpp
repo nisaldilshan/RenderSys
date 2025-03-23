@@ -40,8 +40,9 @@ Texture::Texture(const std::filesystem::path &path)
         assert(false);
     }
 
-    uint32_t mipMapLevelCount = bit_width(std::max(width, height));
-    m_platformTexture = std::make_shared<VulkanTexture>(pixelData, width, height, mipMapLevelCount);
+    const uint32_t mipMapLevelCount = bit_width(std::max(width, height));
+    m_platformTexture = std::make_shared<VulkanTexture>(width, height, mipMapLevelCount);
+    m_platformTexture->SetData(pixelData);
 }
 
 Texture::~Texture()
