@@ -10,13 +10,15 @@ namespace RenderSys
 class VulkanTexture
 {
 public:
+    VulkanTexture() = delete;
     VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount);
     ~VulkanTexture();
-    bool SetData(unsigned char *textureData);
+    void SetData(unsigned char *textureData);
 private:
-    VkImage m_image = VK_NULL_HANDLE;
-    VmaAllocation m_imageMemory = VK_NULL_HANDLE;
-    VkDescriptorImageInfo m_descriptorImageInfo = VkDescriptorImageInfo{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED};
+    VkImage m_image;
+    VmaAllocation m_imageMemory;
+    VkDescriptorImageInfo m_descriptorImageInfo;
+    VkImageCreateInfo m_imageCreateInfo;
 };
 
 
