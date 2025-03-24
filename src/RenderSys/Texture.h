@@ -50,7 +50,7 @@ public:
     Texture& operator=(const Texture&) = delete;
     Texture(Texture&&) = delete;
     Texture& operator=(Texture&&) = delete;
-    ~Texture();
+    ~Texture() = default;
 
     unsigned char* GetData() const;
     int GetWidth() const;
@@ -58,7 +58,7 @@ public:
     uint32_t GetMipLevelCount() const;
     TextureSampler GetSampler() const;
     void SetSampler(const TextureSampler& sampler);
-
+    std::shared_ptr<RenderSys::TextureType> GetPlatformTexture() const;
 private:
     unsigned char* m_textureData = nullptr;
     int m_texWidth = 0;

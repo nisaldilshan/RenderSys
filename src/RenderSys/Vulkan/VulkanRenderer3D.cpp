@@ -1,6 +1,7 @@
 #include "VulkanRenderer3D.h"
 #include "VulkanRendererUtils.h"
 #include "VulkanMemAlloc.h"
+#include "VulkanTexture.h"
 
 #include <array>
 #include <iostream>
@@ -410,10 +411,14 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
         }
         
         const auto& textureIter = m_textures.find(bindGroupBinding.binding);
+        VkDescriptorImageInfo imageInfo{};
         if (textureIter != m_textures.end())
         {
-            VkDescriptorImageInfo& imageInfo = std::get<2>(textureIter->second);
-            imageInfo.sampler = m_defaultTextureSampler;
+            imageInfo = textureIter->second->GetDescriptorImageInfo();
+            if (imageInfo.sampler == VK_NULL_HANDLE)
+            {
+                imageInfo.sampler = m_defaultTextureSampler;
+            }
             descriptorWrite.pImageInfo = &imageInfo;
         }
 
@@ -1057,21 +1062,8 @@ void VulkanRenderer3D::EndRenderPass()
 
 void VulkanRenderer3D::DestroyTextures()
 {
-    for (auto& texture : m_textures)
-    {
-        auto& textureTuple = texture.second;
-        if (std::get<2>(textureTuple).imageView != VK_NULL_HANDLE)
-        {
-            vkDestroyImageView(Vulkan::GetDevice(), std::get<2>(textureTuple).imageView, nullptr);
-        }
-        if (std::get<0>(textureTuple) != VK_NULL_HANDLE)
-        {
-            vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), std::get<0>(textureTuple), std::get<1>(textureTuple));
-        }
-    }
     m_textures.clear();
     
-
     if (m_defaultTextureSampler)
     {
         vkDestroySampler(Vulkan::GetDevice(), m_defaultTextureSampler, nullptr);
@@ -1111,47 +1103,13 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<Ren
     const auto& [textureIter, inserted] = m_textures.insert(
                                                     {
                                                         binding, 
-                                                        std::make_tuple(
-                                                            VK_NULL_HANDLE,
-                                                            VK_NULL_HANDLE,
-                                                            VkDescriptorImageInfo{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED}
-                                                        )
+                                                        texture->GetPlatformTexture()
                                                     }
                                                 );
     if (!inserted)
     {
         return;
     }
-
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    imageInfo.extent.width = static_cast<uint32_t>(texture->GetWidth());
-    imageInfo.extent.height = static_cast<uint32_t>(texture->GetHeight());
-    imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = texture->GetMipLevelCount();
-    imageInfo.arrayLayers = 1;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-    VmaAllocationCreateInfo imageAllocInfo = {};
-    imageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-    auto& textureTuple = (*textureIter).second;
-    VkImage& image = std::get<0>(textureTuple);
-    VmaAllocation& imageMemory = std::get<1>(textureTuple);
-    if (vmaCreateImage(RenderSys::Vulkan::GetMemoryAllocator(), &imageInfo, &imageAllocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create image!");
-    }
-
-    VkDescriptorImageInfo& descriptorImageInfo = std::get<2>(textureTuple);
-    descriptorImageInfo.imageView = RenderSys::Vulkan::CreateImageView(image, imageInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    UploadTexture(image, texture);
 }
 
 void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material> &materials 

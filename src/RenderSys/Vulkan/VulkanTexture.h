@@ -14,6 +14,7 @@ public:
     VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount);
     ~VulkanTexture();
     void SetData(unsigned char *textureData);
+    VkDescriptorImageInfo GetDescriptorImageInfo() const;
 private:
     VkImage m_image;
     VmaAllocation m_imageMemory;

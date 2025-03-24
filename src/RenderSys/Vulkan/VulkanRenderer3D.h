@@ -149,7 +149,7 @@ namespace GraphicsAPI
         std::unordered_map<uint32_t, VulkanModelInfo> m_models;
 
         // map bindingNumber to tuple -> <image, textureMemory, VkDescriptorImageInfo>
-        std::unordered_map<uint32_t, std::tuple<VkImage, VmaAllocation, VkDescriptorImageInfo>> m_textures;
+        std::unordered_map<uint32_t, std::shared_ptr<RenderSys::VulkanTexture>> m_textures;
 
         // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
         std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;

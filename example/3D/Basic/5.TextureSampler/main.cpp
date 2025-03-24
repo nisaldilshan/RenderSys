@@ -191,6 +191,23 @@ public:
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 		m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
+
+		constexpr uint32_t texWidth = 256;
+		constexpr uint32_t texHeight = 256;
+		std::vector<uint8_t> pixels(4 * texWidth * texHeight);
+
+		for (uint32_t i = 0; i < texWidth; ++i) {
+			for (uint32_t j = 0; j < texHeight; ++j) {
+				uint8_t *p = &pixels[4 * (j * texWidth + i)];
+				p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
+				p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
+				p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
+				p[3] = 255; // a
+			}
+		}
+
+		auto texture = std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 8);
+		m_renderer->CreateTexture(1, texture);
 	}
 
 	virtual void OnDetach() override
@@ -230,23 +247,6 @@ public:
 			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
 			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 2);
-
-			constexpr uint32_t texWidth = 256;
-			constexpr uint32_t texHeight = 256;
-			std::vector<uint8_t> pixels(4 * texWidth * texHeight);
-
-			for (uint32_t i = 0; i < texWidth; ++i) {
-				for (uint32_t j = 0; j < texHeight; ++j) {
-					uint8_t *p = &pixels[4 * (j * texWidth + i)];
-					p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
-					p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
-					p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
-					p[3] = 255; // a
-				}
-			}
-
-			auto texture = std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 8);
-			m_renderer->CreateTexture(textureBindingLayout.binding, texture);
 
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();

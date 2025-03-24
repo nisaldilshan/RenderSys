@@ -26,6 +26,7 @@ VmaAllocator GetMemoryAllocator()
             assert(false);
             return false;
         }
+        std::cout << "VMACreateAllocator - done!" << std::endl;
     }
     return g_allocator;
 }

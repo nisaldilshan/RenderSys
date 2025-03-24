@@ -24,21 +24,34 @@ VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLev
     m_imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     m_imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    VmaAllocationCreateInfo imageAllocInfo;
+    VmaAllocationCreateInfo imageAllocInfo{};
     imageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-    if (vmaCreateImage(Vulkan::GetMemoryAllocator(), &m_imageCreateInfo, &imageAllocInfo, &m_image, &m_imageMemory, nullptr) != VK_SUCCESS)
+    const auto res = vmaCreateImage(Vulkan::GetMemoryAllocator(), &m_imageCreateInfo, &imageAllocInfo, &m_image, &m_imageMemory, nullptr);
+    if (res != VK_SUCCESS)
     {
         assert(false);
         return;
     }
 
+    m_descriptorImageInfo.sampler = VK_NULL_HANDLE;
     m_descriptorImageInfo.imageView = RenderSys::Vulkan::CreateImageView(m_image, m_imageCreateInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
     m_descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
 
 VulkanTexture::~VulkanTexture()
 {
+    if (m_descriptorImageInfo.imageView != VK_NULL_HANDLE)
+    {
+        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_descriptorImageInfo.imageView, nullptr);
+        m_descriptorImageInfo.imageView = VK_NULL_HANDLE;
+    }
+    if (m_image != VK_NULL_HANDLE)
+    {
+        vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), m_image, m_imageMemory);
+        m_image = VK_NULL_HANDLE;
+        m_imageMemory = VK_NULL_HANDLE;
+    }
 }
 
 void VulkanTexture::SetData(unsigned char *textureData)
@@ -118,6 +131,11 @@ void VulkanTexture::SetData(unsigned char *textureData)
     // Transition Image to Shader Readable Layout
     RenderSys::Vulkan::TransitionImageLayout(m_image, VK_FORMAT_R8G8B8A8_SRGB,
                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, RenderSys::Vulkan::GetCommandPool());
+}
+
+VkDescriptorImageInfo VulkanTexture::GetDescriptorImageInfo() const
+{
+    return m_descriptorImageInfo;
 }
 
 } // namespace RenderSys
