@@ -37,18 +37,15 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
+		m_renderer = std::make_unique<RenderSys::Renderer3D>();
+		m_renderer->Init();
+
 		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/fourareen.obj", m_vertexBuffer);
 		if (!success) 
 		{
 			std::cerr << "Could not load geometry!" << std::endl;
 			assert(false);
 		}
-
-		auto texHandle = RenderSys::loadTextureShared(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
-		assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
-
-		m_renderer = std::make_unique<RenderSys::Renderer3D>();
-		m_renderer->Init();
 
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
@@ -248,7 +245,8 @@ public:
 			assert(false);
 		}
 
-		m_renderer->CreateTexture(1, texHandle);
+		auto texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
+		m_renderer->CreateTexture(1, texture);
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 

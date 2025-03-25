@@ -37,18 +37,12 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
+		m_renderer = std::make_unique<RenderSys::Renderer3D>();
+		m_renderer->Init();
+
 		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cylinder.obj", m_vertexBuffer);
 		assert(success);
 		Geometry::populateTextureFrameAttributes(m_vertexBuffer);
-
-		auto baseColorTexture = RenderSys::loadTextureShared(RESOURCE_DIR "/Textures/cobblestone_floor_08_diff_2k.jpg");
-		assert(baseColorTexture && baseColorTexture->GetWidth() > 0 && baseColorTexture->GetHeight() > 0 && baseColorTexture->GetMipLevelCount() > 0);
-
-		auto normalTexture = RenderSys::loadTextureShared(RESOURCE_DIR "/Textures/cobblestone_floor_08_nor_gl_2k.png");
-		assert(normalTexture && normalTexture->GetWidth() > 0 && normalTexture->GetHeight() > 0 && normalTexture->GetMipLevelCount() > 0);
-
-		m_renderer = std::make_unique<RenderSys::Renderer3D>();
-		m_renderer->Init();
 
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
@@ -281,6 +275,8 @@ public:
 			assert(false);
 		}
 
+		auto baseColorTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/cobblestone_floor_08_diff_2k.jpg");
+		auto normalTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/cobblestone_floor_08_nor_gl_2k.png");
 		m_renderer->CreateTexture(1, baseColorTexture);
 		m_renderer->CreateTexture(2, normalTexture);
 
