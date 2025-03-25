@@ -113,7 +113,6 @@ namespace GraphicsAPI
         void DestroyBuffers();
         void DestroyShaders();
         void DestroyTextures();
-        void UploadTexture(VkImage texture, const std::shared_ptr<RenderSys::Texture> texDescriptor);
         void SubmitCommandBuffer();
 
         uint32_t m_width = 0;

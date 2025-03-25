@@ -301,42 +301,42 @@ void GLTFScene::loadTextures(std::vector<std::shared_ptr<Texture>>& textures)
     std::cout << "Texture loading completed!" << std::endl;
 }
 
-RenderSys::SamplerAddressMode getWrapMode(int32_t wrapMode)
+RenderSys::TextureSampler::AddressMode getWrapMode(int32_t wrapMode)
 {
     switch (wrapMode) {
     case -1:
     case 10497:
-        return RenderSys::SamplerAddressMode::REPEAT;
+        return RenderSys::TextureSampler::AddressMode::REPEAT;
     case 33071:
-        return RenderSys::SamplerAddressMode::CLAMP_TO_EDGE;
+        return RenderSys::TextureSampler::AddressMode::CLAMP_TO_EDGE;
     case 33648:
-        return RenderSys::SamplerAddressMode::MIRRORED_REPEAT;
+        return RenderSys::TextureSampler::AddressMode::MIRRORED_REPEAT;
     }
 
     std::cerr << "Unknown wrap mode for getVkWrapMode: " << wrapMode << std::endl;
-    return RenderSys::SamplerAddressMode::REPEAT;
+    return RenderSys::TextureSampler::AddressMode::REPEAT;
 }
 
-RenderSys::SamplerFilterMode getFilterMode(int32_t filterMode)
+RenderSys::TextureSampler::FilterMode getFilterMode(int32_t filterMode)
 {
     switch (filterMode) {
     case -1:
     case 9728:
-        return RenderSys::SamplerFilterMode::NEAREST;
+        return RenderSys::TextureSampler::FilterMode::NEAREST;
     case 9729:
-        return RenderSys::SamplerFilterMode::LINEAR;
+        return RenderSys::TextureSampler::FilterMode::LINEAR;
     case 9984:
-        return RenderSys::SamplerFilterMode::NEAREST;
+        return RenderSys::TextureSampler::FilterMode::NEAREST;
     case 9985:
-        return RenderSys::SamplerFilterMode::NEAREST;
+        return RenderSys::TextureSampler::FilterMode::NEAREST;
     case 9986:
-        return RenderSys::SamplerFilterMode::LINEAR;
+        return RenderSys::TextureSampler::FilterMode::LINEAR;
     case 9987:
-        return RenderSys::SamplerFilterMode::LINEAR;
+        return RenderSys::TextureSampler::FilterMode::LINEAR;
     }
 
     std::cerr << "Unknown filter mode for getVkFilterMode: " << filterMode << std::endl;
-    return RenderSys::SamplerFilterMode::NEAREST;
+    return RenderSys::TextureSampler::FilterMode::NEAREST;
 }
 
 std::vector<TextureSampler> GLTFScene::loadTextureSamplers()

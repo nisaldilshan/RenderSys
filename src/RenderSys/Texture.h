@@ -18,26 +18,28 @@ typedef WebGPUTexture TextureType;
 static_assert(false);
 #endif
 
-enum class SamplerAddressMode
-{
-    REPEAT = 0,
-    CLAMP_TO_EDGE,
-    MIRRORED_REPEAT
-};
 
-enum class SamplerFilterMode
-{
-    NEAREST = 0,
-    LINEAR,
-};
 
 struct TextureSampler 
 {
-    SamplerFilterMode magFilter;
-    SamplerFilterMode minFilter;
-    SamplerAddressMode addressModeU;
-    SamplerAddressMode addressModeV;
-    SamplerAddressMode addressModeW;
+    enum class AddressMode
+    {
+        REPEAT = 0,
+        CLAMP_TO_EDGE,
+        MIRRORED_REPEAT
+    };
+
+    enum class FilterMode
+    {
+        NEAREST = 0,
+        LINEAR,
+    };
+
+    FilterMode magFilter;
+    FilterMode minFilter;
+    AddressMode addressModeU;
+    AddressMode addressModeV;
+    AddressMode addressModeW;
 };
 
 class Texture
@@ -52,10 +54,6 @@ public:
     Texture& operator=(Texture&&) = delete;
     ~Texture() = default;
 
-    unsigned char* GetData() const;
-    int GetWidth() const;
-    int GetHeight() const;
-    uint32_t GetMipLevelCount() const;
     TextureSampler GetSampler() const;
     void SetSampler(const TextureSampler& sampler);
     std::shared_ptr<RenderSys::TextureType> GetPlatformTexture() const;

@@ -28,7 +28,7 @@ Texture::Texture(unsigned char* textureData, int width, int height, uint32_t mip
     , m_texHeight(height)
     , m_mipMapLevelCount(mipMapLevelCount)
 {
-    m_platformTexture = std::make_shared<VulkanTexture>(width, height, mipMapLevelCount);
+    m_platformTexture = std::make_shared<RenderSys::TextureType>(width, height, mipMapLevelCount);
     m_platformTexture->SetData(textureData);
 }
 
@@ -44,29 +44,9 @@ Texture::Texture(const std::filesystem::path &path)
     }
 
     const uint32_t mipMapLevelCount = bit_width(std::max(width, height));
-    m_platformTexture = std::make_shared<VulkanTexture>(width, height, mipMapLevelCount);
+    m_platformTexture = std::make_shared<RenderSys::TextureType>(width, height, mipMapLevelCount);
     m_platformTexture->SetData(pixelData);
     stbi_image_free(pixelData);
-}
-
-unsigned char* Texture::GetData() const
-{
-    return m_textureData;
-}
-
-int Texture::GetWidth() const
-{
-    return m_texWidth;
-}
-
-int Texture::GetHeight() const 
-{
-    return m_texHeight;
-}
-
-uint32_t Texture::GetMipLevelCount() const 
-{
-    return m_mipMapLevelCount;
 }
 
 TextureSampler Texture::GetSampler() const
