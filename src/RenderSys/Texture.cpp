@@ -84,30 +84,4 @@ std::shared_ptr<RenderSys::TextureType> Texture::GetPlatformTexture() const
     return m_platformTexture;
 }
 
-Texture* loadTextureRaw(const std::filesystem::path &path)
-{
-    int channels;
-    int width;
-    int height;
-    unsigned char *pixelData = stbi_load(path.string().c_str(), &width, &height, &channels, 4 /* force 4 channels */);
-    if (nullptr == pixelData)
-    {
-        assert(false);
-        return nullptr;
-    }
-
-    uint32_t mipMapLevelCount = bit_width(std::max(width, height));
-    return new Texture(pixelData, width, height, mipMapLevelCount);
-}
-
-std::unique_ptr<Texture> loadTextureUnique(const std::filesystem::path &path)
-{
-    return std::unique_ptr<Texture>(loadTextureRaw(path));
-}
-
-std::shared_ptr<Texture> loadTextureShared(const std::filesystem::path &path)
-{
-    return std::shared_ptr<Texture>(loadTextureRaw(path));
-}
-
 }

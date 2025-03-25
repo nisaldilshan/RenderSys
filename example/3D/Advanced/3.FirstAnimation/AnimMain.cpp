@@ -31,14 +31,14 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
+		m_renderer = std::make_unique<RenderSys::Renderer3D>();
+		m_renderer->Init();
+
 		if (!loadScene())
 		{
 			assert(false);
 			return;
 		}
-
-		m_renderer = std::make_unique<RenderSys::Renderer3D>();
-		m_renderer->Init();
 
 		const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
 		assert(!shaderDir.empty());
@@ -103,14 +103,13 @@ public:
 			m_renderer->CreateModelMaterials(1, materials, sceneTextures, 2);
 		}
 		{
-			auto texHandle = RenderSys::loadTextureShared(RESOURCE_DIR "/Textures/Woman.png");
-			assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
+			auto texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
 
 			RenderSys::Material material;
 			material.metallicFactor = 0.5f;
 			material.roughnessFactor = 0.9f;
 			material.baseColorTextureIndex = 0;
-			m_renderer->CreateModelMaterials(2, {material}, {texHandle}, 2);
+			m_renderer->CreateModelMaterials(2, {material}, {texture}, 2);
 		}
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 500.0f);

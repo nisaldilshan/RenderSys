@@ -68,9 +68,4 @@ private:
     std::shared_ptr<RenderSys::TextureType> m_platformTexture;
 };
 
-Texture* loadTextureRaw(const std::filesystem::path &path);
-std::unique_ptr<Texture> loadTextureUnique(const std::filesystem::path &path);
-std::shared_ptr<Texture> loadTextureShared(const std::filesystem::path &path);
-
-
 }
