@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 #include <stb_image.h>
+#include "TextureSampler.h"
 
 namespace RenderSys
 {
@@ -18,30 +19,6 @@ typedef WebGPUTexture TextureType;
 static_assert(false);
 #endif
 
-
-
-struct TextureSampler 
-{
-    enum class AddressMode
-    {
-        REPEAT = 0,
-        CLAMP_TO_EDGE,
-        MIRRORED_REPEAT
-    };
-
-    enum class FilterMode
-    {
-        NEAREST = 0,
-        LINEAR,
-    };
-
-    FilterMode magFilter;
-    FilterMode minFilter;
-    AddressMode addressModeU;
-    AddressMode addressModeV;
-    AddressMode addressModeW;
-};
-
 class Texture
 {
 public:
@@ -54,15 +31,11 @@ public:
     Texture& operator=(Texture&&) = delete;
     ~Texture() = default;
 
-    TextureSampler GetSampler() const;
     void SetSampler(const TextureSampler& sampler);
     std::shared_ptr<RenderSys::TextureType> GetPlatformTexture() const;
 private:
-    unsigned char* m_textureData = nullptr;
     int m_texWidth = 0;
 	int m_texHeight = 0; 
-	uint32_t m_mipMapLevelCount = 0;
-    TextureSampler m_sampler;
     std::shared_ptr<RenderSys::TextureType> m_platformTexture;
 };
 

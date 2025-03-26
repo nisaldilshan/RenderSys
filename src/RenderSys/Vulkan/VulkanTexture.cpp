@@ -2,6 +2,7 @@
 
 #include "VulkanMemAlloc.h"
 #include "VulkanRendererUtils.h"
+#include <iostream>
 
 namespace RenderSys
 {
@@ -131,6 +132,32 @@ void VulkanTexture::SetData(unsigned char *textureData)
     // Transition Image to Shader Readable Layout
     RenderSys::Vulkan::TransitionImageLayout(m_image, VK_FORMAT_R8G8B8A8_SRGB,
                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, RenderSys::Vulkan::GetCommandPool());
+}
+
+void VulkanTexture::SetSampler(RenderSys::TextureSampler sampler)
+{
+    VkSamplerCreateInfo texSamplerInfo{};
+    texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    texSamplerInfo.magFilter = sampler.magFilter == RenderSys::TextureSampler::FilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+    texSamplerInfo.minFilter = sampler.minFilter == RenderSys::TextureSampler::FilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+    texSamplerInfo.addressModeU = sampler.addressModeU == RenderSys::TextureSampler::AddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.addressModeV = sampler.addressModeV == RenderSys::TextureSampler::AddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.addressModeW = sampler.addressModeW == RenderSys::TextureSampler::AddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    texSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    texSamplerInfo.unnormalizedCoordinates = VK_FALSE;
+    texSamplerInfo.compareEnable = VK_FALSE;
+    texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    texSamplerInfo.mipLodBias = 0.0f;
+    texSamplerInfo.minLod = 0.0f;
+    texSamplerInfo.maxLod = 0.0f;
+    texSamplerInfo.anisotropyEnable = VK_FALSE;
+    texSamplerInfo.maxAnisotropy = 1.0f;
+
+    assert(m_descriptorImageInfo.sampler == VK_NULL_HANDLE);
+    if (vkCreateSampler(GraphicsAPI::Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_descriptorImageInfo.sampler) != VK_SUCCESS) {
+        std::cout << "error: could not create sampler for texture" << std::endl;
+    }
 }
 
 VkDescriptorImageInfo VulkanTexture::GetDescriptorImageInfo() const

@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 #include <vk_mem_alloc.h>
+#include <RenderSys/TextureSampler.h>
 
 namespace RenderSys
 {
@@ -14,6 +15,7 @@ public:
     VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount);
     ~VulkanTexture();
     void SetData(unsigned char *textureData);
+    void SetSampler(RenderSys::TextureSampler sampler);
     VkDescriptorImageInfo GetDescriptorImageInfo() const;
 private:
     VkImage m_image;
