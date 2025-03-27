@@ -27,21 +27,20 @@ namespace GraphicsAPI
         void CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
         void CreatePipeline();
         void CreateFrameBuffer();
-        void CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
-        void CreateIndexBuffer(const std::vector<uint32_t> &bufferData);
+        uint32_t CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
+        void CreateIndexBuffer(uint32_t vertexBufferID, const std::vector<uint32_t> &bufferData);
         void SetClearColor(glm::vec4 clearColor);
         void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-        void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer);
+        void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform);
         // Textures get created as a part of main bindgroup
-        void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
-        // Textures get created in separate bindgroup
-        void CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors);
-        void CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials);
-        void SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
+        void CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture);
+        void CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material> &materials 
+            , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels);
+        void SetUniformData(uint32_t binding, const void* bufferData);
         void BindResources();
-        void Render(uint32_t uniformIndex);
-        void RenderIndexed(uint32_t uniformIndex);
-        void RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex);
+        void Render();
+        void RenderIndexed();
+        void RenderMesh(const RenderSys::Mesh& mesh);
         ImTextureID GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();
@@ -83,7 +82,7 @@ namespace GraphicsAPI
         wgpu::Texture m_depthTexture = nullptr;
         wgpu::TextureView m_depthTextureView = nullptr;
 
-        std::vector<std::pair<wgpu::Texture, wgpu::TextureView>> m_texturesAndViews;
+        std::unordered_map<uint32_t, std::shared_ptr<RenderSys::WebGPUTexture>> m_textures;
         wgpu::Sampler m_defaultTextureSampler = nullptr;
 
         uint32_t m_width, m_height;

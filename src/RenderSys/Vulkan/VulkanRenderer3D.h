@@ -147,12 +147,9 @@ namespace GraphicsAPI
         // map modelID to VulkanModelInfo
         std::unordered_map<uint32_t, VulkanModelInfo> m_models;
 
-        // map bindingNumber to tuple -> <image, textureMemory, VkDescriptorImageInfo>
         std::unordered_map<uint32_t, std::shared_ptr<RenderSys::VulkanTexture>> m_textures;
-
         // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
         std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
-
         VkClearColorValue m_clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
     };
 }
