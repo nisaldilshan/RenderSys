@@ -768,7 +768,7 @@ void VulkanRenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vec
     assert(bufferData.size() > 0);
     assert(sizeof(bufferData[0]) == 4); // because we are using type - VK_INDEX_TYPE_UINT32
 
-    auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
+    const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
     if (vertexIndexBufferInfoIter == m_vertexIndexBufferInfoMap.end())
     {
         std::cout << "Error: could not find vertexIndexBufferInfo!" << std::endl;
@@ -987,7 +987,7 @@ void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint
     vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t), &material.materialUniformBufferSlot);
 
     assert(vertexBufferID >= 1);
-    auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
+    const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
     if (vertexIndexBufferInfoIter == m_vertexIndexBufferInfoMap.end())
     {
         std::cout << "Error: could not find vertexIndexBufferInfo!" << std::endl;

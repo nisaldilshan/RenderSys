@@ -24,7 +24,6 @@ VmaAllocator GetMemoryAllocator()
         if (vmaCreateAllocator(&allocatorInfo, &g_allocator) != VK_SUCCESS) {
             std::cout << "error: could not init VMA" << std::endl;
             assert(false);
-            return false;
         }
         std::cout << "VMACreateAllocator - done!" << std::endl;
     }
