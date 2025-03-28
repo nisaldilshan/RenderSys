@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
+#include <RenderSys/TextureSampler.h>
 
 namespace RenderSys
 {

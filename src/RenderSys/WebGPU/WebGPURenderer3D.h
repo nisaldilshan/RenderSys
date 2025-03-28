@@ -13,6 +13,16 @@
 
 namespace GraphicsAPI
 {
+    struct WebGPUVertexIndexBufferInfo
+    {
+        wgpu::Buffer m_vertexBuffer = nullptr;
+        uint32_t m_vertexCount = 0;
+        wgpu::Buffer m_indexBuffer = nullptr;
+        uint32_t m_indexCount = 0;
+        //VkVertexInputBindingDescription m_vertextBindingDescs;
+        //std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
+    };
+
     class WebGPURenderer3D
     {
     public:
@@ -24,7 +34,6 @@ namespace GraphicsAPI
         void CreateDepthImage();
         void CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers);
         void CreateShaders(RenderSys::Shader& shader);
-        void CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
         void CreatePipeline();
         void CreateFrameBuffer();
         uint32_t CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
@@ -60,11 +69,8 @@ namespace GraphicsAPI
         wgpu::RenderPipeline m_pipeline = nullptr;
         wgpu::TextureView m_textureToRenderInto = nullptr;
 
-        uint32_t m_vertexCount = 0;
-        uint64_t m_vertexBufferSize = 0;
-        wgpu::Buffer m_vertexBuffer = nullptr;
         wgpu::VertexBufferLayout m_vertexBufferLayout;
-
+        std::unordered_map<uint32_t, WebGPUVertexIndexBufferInfo> m_vertexIndexBufferInfoMap;
         uint32_t m_indexCount = 0;
         wgpu::Buffer m_indexBuffer = nullptr;
 

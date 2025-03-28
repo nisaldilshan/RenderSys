@@ -187,7 +187,8 @@ else()
     target_sources(RenderSys2D PRIVATE
                     src/RenderSys/WebGPU/WebGPURenderer2D.cpp)
     target_sources(RenderSys3D PRIVATE
-                    src/RenderSys/WebGPU/WebGPURenderer3D.cpp)
+                    src/RenderSys/WebGPU/WebGPURenderer3D.cpp
+                    src/RenderSys/WebGPU/WebGPUTexture.cpp)
     target_sources(ComputeSys PRIVATE
                     src/RenderSys/WebGPU/WebGPUCompute.cpp)
     
