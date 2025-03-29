@@ -230,17 +230,25 @@ void WebGPURenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vec
 {
     std::cout << "Creating index buffer..." << std::endl;
 
-    m_indexCount = bufferData.size();
+    const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
+    if (vertexIndexBufferInfoIter == m_vertexIndexBufferInfoMap.end())
+    {
+        std::cout << "Error: could not find vertexIndexBufferInfo!" << std::endl;
+        assert(false);
+        return;
+    }
+    WebGPUVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
+    vertexIndexBufferInfo.m_indexCount = bufferData.size();
 
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = bufferData.size() * sizeof(uint32_t);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
     bufferDesc.label = "Index Buffer";
-    m_indexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    vertexIndexBufferInfo.m_indexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload index data to the buffer
-    WebGPU::GetQueue().writeBuffer(m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
-    std::cout << "Index buffer: " << m_indexBuffer << std::endl;
+    WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo.m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
+    std::cout << "Index buffer: " << vertexIndexBufferInfo.m_indexBuffer << std::endl;
 }
 
 
@@ -402,56 +410,43 @@ void WebGPURenderer3D::BindResources()
 
 void WebGPURenderer3D::Render()
 {
-    assert(m_vertexIndexBufferInfoMap.size() > 0);
-    m_renderPass.setVertexBuffer(0, m_vertexIndexBufferInfoMap[0].m_vertexBuffer
-                                , 0, m_vertexIndexBufferInfoMap[0].m_vertexCount * sizeof(RenderSys::Vertex));
-
     if (m_bindGroup)
     {
-        bool hasDynamicOffset = false;
-        for (const auto &bindGroupBinding : m_mainBindGroupBindings)
-        {
-            if (bindGroupBinding.buffer.hasDynamicOffset)
-            {
-                hasDynamicOffset = true;
-            }
-        }
-        
-        if (hasDynamicOffset)
-        {
-            auto& uniformBufferTuple = m_uniformBuffers[0]; // this is working because we have dynamicOffsetys only in binding 0;
-            //const uint32_t dynamicOffset = GetUniformStride(uniformIndex, std::get<1>(uniformBufferTuple));
-            uint32_t dynamicOffsetCount = 1; // because we have enabled dynamic offset in only one binding in the bind group
-            m_renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
-        }
-        else
-        {
-            m_renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
-        }
+        m_renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
     }
 
-    if (m_indexCount > 0)
-    {
-        m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexCount * sizeof(uint16_t));
-        m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
-    }
-    else
-        m_renderPass.draw(m_vertexIndexBufferInfoMap[0].m_vertexCount, 1, 0, 0);
-}
-
-void WebGPURenderer3D::RenderIndexed()
-{
-    assert(m_indexBuffer);
     assert(m_vertexIndexBufferInfoMap.size() > 0);
     for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
     {
         m_renderPass.setVertexBuffer(0, vertexIndexBufferInfo.second.m_vertexBuffer, 0, vertexIndexBufferInfo.second.m_vertexCount * sizeof(RenderSys::Vertex));
-        m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint32, 0, m_indexCount * sizeof(uint32_t));
-    }
+        if (vertexIndexBufferInfo.second.m_indexCount > 0)
+        {
+            m_renderPass.setIndexBuffer(vertexIndexBufferInfo.second.m_indexBuffer, wgpu::IndexFormat::Uint16, 0, vertexIndexBufferInfo.second.m_indexCount * sizeof(uint16_t));
+            m_renderPass.drawIndexed(vertexIndexBufferInfo.second.m_indexCount, 1, 0, 0, 0);
+        }
+        else
+        {
+            m_renderPass.draw(vertexIndexBufferInfo.second.m_vertexCount, 1, 0, 0);
+        }
 
+        break; // Only one vertex buffer is supported for now
+    }
+}
+
+void WebGPURenderer3D::RenderIndexed()
+{
     uint32_t dynamicOffsetCount = 0;
     m_renderPass.setBindGroup(0, m_bindGroup, dynamicOffsetCount, nullptr);
-    m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
+
+    assert(m_vertexIndexBufferInfoMap.size() > 0);
+    for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
+    {
+        m_renderPass.setVertexBuffer(0, vertexIndexBufferInfo.second.m_vertexBuffer, 0, vertexIndexBufferInfo.second.m_vertexCount * sizeof(RenderSys::Vertex));
+        m_renderPass.setIndexBuffer(vertexIndexBufferInfo.second.m_indexBuffer, wgpu::IndexFormat::Uint32, 0, vertexIndexBufferInfo.second.m_indexCount * sizeof(uint32_t));
+        m_renderPass.drawIndexed(vertexIndexBufferInfo.second.m_indexCount, 1, 0, 0, 0);
+
+        break; // Only one vertex buffer is supported for now
+    }
 }
 
 void WebGPURenderer3D::RenderMesh(const RenderSys::Mesh &mesh)
@@ -528,8 +523,8 @@ void WebGPURenderer3D::Destroy()
 {
     //m_vertexBuffer.destroy();
 	//m_vertexBuffer.release();
-	m_indexBuffer.destroy();
-	m_indexBuffer.release();
+	//m_indexBuffer.destroy();
+	//m_indexBuffer.release();
     // Destroy the depth texture and its view
 	m_depthTextureView.release();
 	m_depthTexture.destroy();

@@ -71,8 +71,6 @@ namespace GraphicsAPI
 
         wgpu::VertexBufferLayout m_vertexBufferLayout;
         std::unordered_map<uint32_t, WebGPUVertexIndexBufferInfo> m_vertexIndexBufferInfoMap;
-        uint32_t m_indexCount = 0;
-        wgpu::Buffer m_indexBuffer = nullptr;
 
         wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
         std::vector<wgpu::BindGroupLayoutEntry> m_mainBindGroupBindings;
