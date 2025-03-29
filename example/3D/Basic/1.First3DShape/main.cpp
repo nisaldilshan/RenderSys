@@ -178,7 +178,7 @@ public:
 		// Position attribute
 		vertexAttribs[0].location = 0;
 		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
-		vertexAttribs[0].offset = 0;
+		vertexAttribs[0].offset = offsetof(RenderSys::Vertex, position);
 
 		// Color attribute
 		vertexAttribs[1].location = 1;

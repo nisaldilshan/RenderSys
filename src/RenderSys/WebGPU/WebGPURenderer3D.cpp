@@ -104,16 +104,22 @@ void WebGPURenderer3D::CreatePipeline()
 
     // Vertex fetch
     assert(m_vertexIndexBufferInfoMap.size() == 1);
-    if (m_vertexIndexBufferInfoMap[0].m_vertexCount > 0)
+    for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
     {
-        pipelineDesc.vertex.bufferCount = 1;
-        pipelineDesc.vertex.buffers = &m_vertexBufferLayout;
+        if (vertexIndexBufferInfo.second.m_vertexCount > 0)
+        {
+            pipelineDesc.vertex.bufferCount = 1;
+            pipelineDesc.vertex.buffers = &m_vertexBufferLayout;
+        }
+        else
+        {
+            pipelineDesc.vertex.bufferCount = 0;
+            pipelineDesc.vertex.buffers = nullptr;
+        }
+
+        break;
     }
-    else
-    {
-        pipelineDesc.vertex.bufferCount = 0;
-        pipelineDesc.vertex.buffers = nullptr;
-    }
+
     // Vertex shader
     pipelineDesc.vertex.module = m_shaderModule;
 	pipelineDesc.vertex.entryPoint = "vs_main";
@@ -212,11 +218,11 @@ uint32_t WebGPURenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& buf
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
     bufferDesc.label = "Vertex Buffer";
-    wgpu::Buffer vertexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    vertexIndexBufferInfo.m_vertexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload vertex data to the buffer
-    WebGPU::GetQueue().writeBuffer(vertexBuffer, 0, bufferData.vertices.data(), bufferDesc.size);
-    std::cout << "Vertex buffer: " << vertexBuffer << std::endl;
+    WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo.m_vertexBuffer, 0, bufferData.vertices.data(), bufferDesc.size);
+    std::cout << "Vertex buffer: " << vertexIndexBufferInfo.m_vertexBuffer << std::endl;
     return m_vertexIndexBufferInfoMap.insert({m_vertexIndexBufferInfoMap.size() + 1, vertexIndexBufferInfo}).first->first;
 }
 
@@ -437,12 +443,13 @@ void WebGPURenderer3D::RenderIndexed()
 {
     assert(m_indexBuffer);
     assert(m_vertexIndexBufferInfoMap.size() > 0);
-    m_renderPass.setVertexBuffer(0, m_vertexIndexBufferInfoMap[0].m_vertexBuffer, 0, m_vertexIndexBufferInfoMap[0].m_vertexCount * sizeof(RenderSys::Vertex));
-    m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint32, 0, m_indexCount * sizeof(uint32_t));
+    for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
+    {
+        m_renderPass.setVertexBuffer(0, vertexIndexBufferInfo.second.m_vertexBuffer, 0, vertexIndexBufferInfo.second.m_vertexCount * sizeof(RenderSys::Vertex));
+        m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint32, 0, m_indexCount * sizeof(uint32_t));
+    }
 
-    auto& uniformBufferTuple = m_uniformBuffers[0]; // this is working because we have dynamicOffsetys only in binding 0;
-    //const uint32_t dynamicOffset = GetUniformStride(uniformIndex, std::get<1>(uniformBufferTuple));
-    uint32_t dynamicOffsetCount = 0; // because we have enabled dynamic offset in only one binding in the bind group
+    uint32_t dynamicOffsetCount = 0;
     m_renderPass.setBindGroup(0, m_bindGroup, dynamicOffsetCount, nullptr);
     m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
 }
