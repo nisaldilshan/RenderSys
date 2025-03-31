@@ -17,8 +17,9 @@ public:
     void SetSampler(RenderSys::TextureSampler sampler);
     wgpu::TextureView GetImageView() const;
 private:
-    // VkImage m_image;
-    wgpu::TextureView m_textureView;
+    wgpu::Texture m_image;
+    wgpu::TextureView m_imageView;
+    wgpu::TextureDescriptor m_textureDesc;
     // VkDescriptorImageInfo m_descriptorImageInfo;
     // VkImageCreateInfo m_imageCreateInfo;
 };

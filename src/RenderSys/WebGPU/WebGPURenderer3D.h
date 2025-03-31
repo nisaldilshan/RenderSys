@@ -59,7 +59,6 @@ namespace GraphicsAPI
         void Destroy();
     private:
         void CreateDefaultTextureSampler();
-        void UploadTexture(wgpu::Texture texture, wgpu::TextureDescriptor textureDesc, const void* textureData);
         void SubmitCommandBuffer();
         uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
