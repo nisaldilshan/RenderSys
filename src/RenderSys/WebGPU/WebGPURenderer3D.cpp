@@ -522,14 +522,25 @@ void WebGPURenderer3D::EndRenderPass()
 
 void WebGPURenderer3D::Destroy()
 {
-    //m_vertexBuffer.destroy();
-	//m_vertexBuffer.release();
-	//m_indexBuffer.destroy();
-	//m_indexBuffer.release();
-    // Destroy the depth texture and its view
-	m_depthTextureView.release();
+    for (auto &&vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
+    {
+        assert(vertexIndexBufferInfo.second.m_vertexBuffer != nullptr);
+        vertexIndexBufferInfo.second.m_vertexBuffer.destroy();
+        vertexIndexBufferInfo.second.m_vertexBuffer.release();
+        if (vertexIndexBufferInfo.second.m_indexBuffer != nullptr)
+        {
+            vertexIndexBufferInfo.second.m_indexBuffer.destroy();
+            vertexIndexBufferInfo.second.m_indexBuffer.release();
+        }
+    }
+    
+    m_vertexIndexBufferInfoMap.clear();
+
+    m_textures.clear();
+
 	m_depthTexture.destroy();
-	m_depthTexture.release();
+    m_depthTexture = nullptr;
+    m_depthTextureView = nullptr;
 }
 
 void WebGPURenderer3D::DestroyImages()

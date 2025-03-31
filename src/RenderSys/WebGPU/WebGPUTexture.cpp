@@ -30,6 +30,13 @@ WebGPUTexture::WebGPUTexture(uint32_t width, uint32_t height, uint32_t mipMapLev
 
 WebGPUTexture::~WebGPUTexture()
 {
+    if (m_image)
+    {
+        std::cout << "destroying texture : " << m_image << std::endl;
+        m_image.destroy();
+        m_image = nullptr;
+        m_imageView = nullptr;
+    }
 }
 
 void WebGPUTexture::SetData(unsigned char *textureData)

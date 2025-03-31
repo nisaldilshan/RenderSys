@@ -19,8 +19,6 @@ namespace GraphicsAPI
         uint32_t m_vertexCount = 0;
         wgpu::Buffer m_indexBuffer = nullptr;
         uint32_t m_indexCount = 0;
-        //VkVertexInputBindingDescription m_vertextBindingDescs;
-        //std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
     };
 
     class WebGPURenderer3D
