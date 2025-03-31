@@ -32,7 +32,6 @@ namespace GraphicsAPI
         bool Init();
         void CreateImageToRender(uint32_t width, uint32_t height);
         void CreateDepthImage();
-        void CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers);
         void CreateShaders(RenderSys::Shader& shader);
         void CreatePipeline();
         void CreateFrameBuffer();

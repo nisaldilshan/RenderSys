@@ -308,6 +308,7 @@ void WebGPURenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
                     bindings[bindingIndex].textureView = m_textures[bindingIndex]->GetImageView(); // m_texturesAndViews[0] is the base color texture
                 else // this is normal texture
                     bindings[bindingIndex].textureView = m_textures[bindingIndex]->GetImageView(); // m_texturesAndViews[0] is the normal texture
+                assert(bindings[bindingIndex].textureView != nullptr);
             }
             else
             {
@@ -549,10 +550,6 @@ void WebGPURenderer3D::SubmitCommandBuffer()
     cmdBufferDescriptor.label = "Command buffer";
     wgpu::CommandBuffer commands = m_currentCommandEncoder.finish(cmdBufferDescriptor);
     WebGPU::GetQueue().submit(commands);
-}
-
-void WebGPURenderer3D::CreateTextureSamplers(const std::vector<RenderSys::TextureSampler> &samplers)
-{
 }
 
 void WebGPURenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
