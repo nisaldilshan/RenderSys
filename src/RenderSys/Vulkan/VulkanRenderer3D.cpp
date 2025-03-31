@@ -1069,6 +1069,15 @@ void VulkanRenderer3D::DestroyTextures()
         vkDestroySampler(Vulkan::GetDevice(), m_defaultTextureSampler, nullptr);
         m_defaultTextureSampler = VK_NULL_HANDLE;
     }
+
+    for (auto &&model : m_models)
+    {
+        model.second.m_materials.clear();
+        vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), 
+                            model.second.m_materialUniformBuffer.m_bufferInfo.buffer, 
+                            model.second.m_materialUniformBuffer.m_uniformBufferMemory);
+    }
+    m_models.clear();
 }
 
 void VulkanRenderer3D::Destroy()
@@ -1163,8 +1172,12 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
 
     //////////////////////////////////////////////////////////////////////////
     // create uniform buffer
-    std::tie(model.m_materialUniformBuffer.m_bufferInfo.buffer, model.m_materialUniformBuffer.m_uniformBufferMemory) = 
-        RenderSys::Vulkan::CreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), sizeof(MaterialUniforms), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    std::tie(model.m_materialUniformBuffer.m_bufferInfo.buffer, 
+            model.m_materialUniformBuffer.m_uniformBufferMemory) = RenderSys::Vulkan::CreateBuffer(
+                                                                            RenderSys::Vulkan::GetMemoryAllocator(), 
+                                                                            sizeof(MaterialUniforms), 
+                                                                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+                                                                            VMA_MEMORY_USAGE_CPU_TO_GPU);
     model.m_materialUniformBuffer.m_bufferInfo.range = sizeof(MaterialUniforms);
     model.m_materialUniformBuffer.m_bufferInfo.offset = 0;
 
@@ -1189,13 +1202,6 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     }
     RenderSys::Vulkan::SetBufferData(RenderSys::Vulkan::GetMemoryAllocator(), model.m_materialUniformBuffer.m_uniformBufferMemory, &materialUniforms, sizeof(MaterialUniforms));
     //////////////////////////////////////////////////////////////////////////
-    
-    for (const auto &texDescriptor : textures)
-    {
-        model.m_sceneTextures.emplace_back(texDescriptor->GetPlatformTexture());
-    }
-
-    std::cout << "VulkanRenderer3D::CreateTextures - Created " << model.m_sceneTextures.size() << " textures" << std::endl;
 
     model.m_materials.resize(materials.size());
     int count = 0;
@@ -1233,7 +1239,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
         descriptorWrites[0].pBufferInfo = &model.m_materialUniformBuffer.m_bufferInfo;
     
         assert(material.baseColorTextureIndex >= 0);
-        const auto baseColorTexture = model.m_sceneTextures[material.baseColorTextureIndex];
+        const auto baseColorTexture = textures[material.baseColorTextureIndex]->GetPlatformTexture();
         auto baseColorImageInfo = baseColorTexture->GetDescriptorImageInfo();
         if (baseColorImageInfo.sampler == VK_NULL_HANDLE)
         {
@@ -1243,7 +1249,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     
         if (material.normalTextureIndex >= 0)
         {
-            const auto normalTexture = model.m_sceneTextures[material.normalTextureIndex];
+            const auto normalTexture = textures[material.normalTextureIndex]->GetPlatformTexture();
             auto normalTextureImageInfo = normalTexture->GetDescriptorImageInfo();
             if (normalTextureImageInfo.sampler == VK_NULL_HANDLE)
             {
@@ -1258,7 +1264,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     
         if (material.metallicRoughnessTextureIndex >= 0)
         {
-            const auto metallicRoughnessTexture = model.m_sceneTextures[material.metallicRoughnessTextureIndex];
+            const auto metallicRoughnessTexture = textures[material.metallicRoughnessTextureIndex]->GetPlatformTexture();
             auto metallicRoughnessTextureImageInfo = metallicRoughnessTexture->GetDescriptorImageInfo();
             if (metallicRoughnessTextureImageInfo.sampler == VK_NULL_HANDLE)
             {

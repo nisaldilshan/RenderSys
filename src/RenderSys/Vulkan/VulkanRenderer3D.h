@@ -65,7 +65,6 @@ namespace GraphicsAPI
         std::vector<VulkanMaterial> m_materials;
         // materials uniform buffer - max 32 materials
         VulkanUniformBufferInfo m_materialUniformBuffer;
-        std::vector<std::shared_ptr<RenderSys::VulkanTexture>> m_sceneTextures;
     };
 
     class VulkanRenderer3D

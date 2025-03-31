@@ -103,13 +103,13 @@ public:
 			m_renderer->CreateModelMaterials(1, materials, sceneTextures, 2);
 		}
 		{
-			auto texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
+			m_womanTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
 
 			RenderSys::Material material;
 			material.metallicFactor = 0.5f;
 			material.roughnessFactor = 0.9f;
 			material.baseColorTextureIndex = 0;
-			m_renderer->CreateModelMaterials(2, {material}, {texture}, 2);
+			m_renderer->CreateModelMaterials(2, {material}, {m_womanTexture}, 2);
 		}
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 500.0f);
@@ -156,6 +156,7 @@ public:
 
 	virtual void OnDetach() override
 	{
+		m_womanTexture.reset();
 		m_renderer->Destroy();
 	}
 
@@ -301,6 +302,7 @@ private:
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
+	std::shared_ptr<RenderSys::Texture> m_womanTexture;
 	std::vector<RenderSys::Scene> m_scenes{2};
 };
 
