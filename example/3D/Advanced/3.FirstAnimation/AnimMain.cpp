@@ -157,6 +157,7 @@ public:
 	virtual void OnDetach() override
 	{
 		m_womanTexture.reset();
+		m_scenes.clear();
 		m_renderer->Destroy();
 	}
 
