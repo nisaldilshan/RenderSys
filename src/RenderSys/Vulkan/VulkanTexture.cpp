@@ -42,6 +42,11 @@ VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLev
 
 VulkanTexture::~VulkanTexture()
 {
+    if (m_descriptorImageInfo.sampler != VK_NULL_HANDLE)
+    {
+        vkDestroySampler(GraphicsAPI::Vulkan::GetDevice(), m_descriptorImageInfo.sampler, nullptr);
+        m_descriptorImageInfo.sampler = VK_NULL_HANDLE;
+    }
     if (m_descriptorImageInfo.imageView != VK_NULL_HANDLE)
     {
         vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_descriptorImageInfo.imageView, nullptr);

@@ -1070,6 +1070,18 @@ void VulkanRenderer3D::DestroyTextures()
         m_defaultTextureSampler = VK_NULL_HANDLE;
     }
 
+    // Destroy Material Bind Groups
+    if (m_materialBindGroupPool != VK_NULL_HANDLE && m_materialBindGroupLayout != VK_NULL_HANDLE)
+    {
+        vkDeviceWaitIdle(Vulkan::GetDevice());
+        // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
+        vkDestroyDescriptorPool(Vulkan::GetDevice(), m_materialBindGroupPool, nullptr);
+        m_materialBindGroupPool = VK_NULL_HANDLE;
+
+        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_materialBindGroupLayout, nullptr);
+        m_materialBindGroupLayout = VK_NULL_HANDLE;
+    }
+
     for (auto &&model : m_models)
     {
         model.second.m_materials.clear();
