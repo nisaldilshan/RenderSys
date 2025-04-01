@@ -1,8 +1,36 @@
 #include "VulkanRendererUtils.h"
 #include <stdexcept>
 
-namespace GraphicsAPI
+namespace RenderSys
 {
+namespace Vulkan 
+{
+
+VkCommandPool g_commandPool = VK_NULL_HANDLE;
+void CreateCommandPool()
+{
+    auto queueFamilyIndices = GraphicsAPI::Vulkan::FindQueueFamilies();
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+    auto err = vkCreateCommandPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &g_commandPool);
+    GraphicsAPI::Vulkan::check_vk_result(err);
+}
+
+VkCommandPool GetCommandPool()
+{
+    return g_commandPool;
+}
+
+void DestroyCommandPool()
+{
+    vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
+    // when you destroy a command pool, all command buffers allocated from that pool are automatically destroyed
+    vkDestroyCommandPool(GraphicsAPI::Vulkan::GetDevice(), g_commandPool, nullptr);
+    g_commandPool = VK_NULL_HANDLE;
+}
+
 
 VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
 {
@@ -18,10 +46,10 @@ VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
 std::pair<int, VkDeviceSize> FindAppropriateMemoryType(const VkBuffer& buffer, unsigned int flags)
 {
     VkMemoryRequirements mem_reqs;
-    vkGetBufferMemoryRequirements(Vulkan::GetDevice(), buffer, &mem_reqs);
+    vkGetBufferMemoryRequirements(GraphicsAPI::Vulkan::GetDevice(), buffer, &mem_reqs);
 
     VkPhysicalDeviceMemoryProperties gpu_mem;
-    vkGetPhysicalDeviceMemoryProperties(Vulkan::GetPhysicalDevice(), &gpu_mem);
+    vkGetPhysicalDeviceMemoryProperties(GraphicsAPI::Vulkan::GetPhysicalDevice(), &gpu_mem);
 
     int mem_type_idx = -1;
     for (int j = 0; j < gpu_mem.memoryTypeCount; j++) {
@@ -77,7 +105,7 @@ VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags a
     viewInfo.subresourceRange.layerCount = 1;
 
     VkImageView imageView;
-    if (vkCreateImageView(Vulkan::GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) 
+    if (vkCreateImageView(GraphicsAPI::Vulkan::GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) 
     {
         throw std::runtime_error("failed to create image view!");
     }
@@ -141,7 +169,7 @@ VkCommandBuffer BeginSingleTimeCommands(VkCommandPool commandPool)
     allocInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(Vulkan::GetDevice(), &allocInfo, &commandBuffer);
+    vkAllocateCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &commandBuffer);
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -161,10 +189,10 @@ void EndSingleTimeCommands(VkCommandBuffer commandBuffer, VkCommandPool commandP
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
 
-    vkQueueSubmit(Vulkan::GetDeviceQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(Vulkan::GetDeviceQueue()); // Wait for the command buffer to finish
+    vkQueueSubmit(GraphicsAPI::Vulkan::GetDeviceQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(GraphicsAPI::Vulkan::GetDeviceQueue()); // Wait for the command buffer to finish
 
-    vkFreeCommandBuffers(Vulkan::GetDevice(), commandPool, 1, &commandBuffer);
+    vkFreeCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), commandPool, 1, &commandBuffer);
 }
 
 void TransitionImageLayout(VkImage image, VkFormat format, 
@@ -216,9 +244,7 @@ void TransitionImageLayout(VkImage image, VkFormat format,
     EndSingleTimeCommands(commandBuffer, commandPool);
 }
 
-void CreateBuffer(const VmaAllocator& vma, const void* bufferData, VkDeviceSize bufferSize, 
-                    VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage,
-                    VkBuffer& buffer, VmaAllocation& bufferAllocation) 
+std::pair<VkBuffer, VmaAllocation> CreateBuffer(const VmaAllocator& vma, const VkDeviceSize bufferSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage) 
 {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -228,20 +254,53 @@ void CreateBuffer(const VmaAllocator& vma, const void* bufferData, VkDeviceSize 
 
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.usage = memoryUsage;
-    // Use VMA to create and allocate memory for the buffer
+    
+    VkBuffer buffer;
+    VmaAllocation bufferAllocation;
     if (vmaCreateBuffer(vma, &bufferInfo, &allocInfo, &buffer, &bufferAllocation, nullptr) != VK_SUCCESS) 
     {
-        throw std::runtime_error("failed to create buffer!");
+        assert(false);
+        return std::make_pair(VK_NULL_HANDLE, VK_NULL_HANDLE);
     }
 
-    // Copy data to the buffer (if provided)
-    if (bufferData != nullptr) 
+    return std::make_pair(buffer, bufferAllocation);
+}
+
+void SetBufferData(const VmaAllocator &vma, VmaAllocation &bufferAllocation, const void *bufferData, VkDeviceSize bufferSize)
+{
+    assert(bufferData != nullptr);
+    void* data;
+    vmaMapMemory(vma, bufferAllocation, &data);
+    memcpy(data, bufferData, static_cast<size_t>(bufferSize));
+    vmaUnmapMemory(vma, bufferAllocation);
+}
+
+uint32_t GetUniformStride(const uint32_t sizeOfUniform)
+{
+    static VkDeviceSize minUniformBufferOffsetAlignment = 0;
+    if (minUniformBufferOffsetAlignment == 0)
     {
-        void* data;
-        vmaMapMemory(vma, bufferAllocation, &data);
-        memcpy(data, bufferData, static_cast<size_t>(bufferSize));
-        vmaUnmapMemory(vma, bufferAllocation);
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(GraphicsAPI::Vulkan::GetPhysicalDevice(), &deviceProperties);
+        minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
+        //std::cout << "maxMemoryAllocationCount : " << deviceProperties.limits.maxMemoryAllocationCount << std::endl;
+        //std::cout << "maxDrawIndexedIndexValue : " << deviceProperties.limits.maxDrawIndexedIndexValue << std::endl;
     }
+
+    assert(sizeOfUniform > 0);
+    auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
+    {
+        uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
+        return step * divide_and_ceil;
+    };
+
+    uint32_t uniformStride = ceilToNextMultiple(
+        (uint32_t)sizeOfUniform,
+        (uint32_t)minUniformBufferOffsetAlignment
+    );
+
+    return uniformStride;
 }
 
-}
+} // namespace Vulkan
+} // namespace RenderSys

@@ -64,7 +64,7 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
     Vulkan::check_vk_result(err);
 
-    m_imageViewToRenderInto = CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+    m_imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 
     CreateTextureSampler();
     m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
@@ -80,8 +80,9 @@ void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
     auto shaderMapIter = m_shaderMap.find(shader.GetName());
     if (shaderMapIter == m_shaderMap.end())
     {
-        compiledShader = RenderSys::ShaderUtils::compile_file(shader.GetName(), shader);
-        assert(compiledShader.size() > 0);
+        auto res = shader.Compile();
+        assert(res);
+        compiledShader = shader.GetCompiledShader();
         m_shaderMap.emplace(shader.GetName(), compiledShader);
     }
     else
@@ -174,7 +175,7 @@ void VulkanRenderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroup
             uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         }
         uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.stageFlags = GetVulkanShaderStageVisibility(bindGroupLayoutEntry.visibility);
+        uboLayoutBinding.stageFlags = RenderSys::Vulkan::GetVulkanShaderStageVisibility(bindGroupLayoutEntry.visibility);
         uboLayoutBinding.pImmutableSamplers = nullptr;
 
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -479,7 +480,7 @@ void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
             VkVertexInputAttributeDescription vkAttribute{};
             vkAttribute.binding = 0;
             vkAttribute.location = attrib.location;
-            vkAttribute.format = RenderSysFormatToVulkanFormat(attrib.format);
+            vkAttribute.format = RenderSys::Vulkan::RenderSysFormatToVulkanFormat(attrib.format);
             vkAttribute.offset = attrib.offset;
 
             m_vertextAttribDescs.push_back(vkAttribute);
@@ -562,35 +563,6 @@ void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
     std::cout << "Index buffer: " << m_indexBuffer << std::endl;
 }
 
-uint32_t VulkanRenderer2D::GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
-{
-    if (uniformIndex == 0)
-        return 0;
-
-    static VkDeviceSize minUniformBufferOffsetAlignment = 0;
-    if (minUniformBufferOffsetAlignment == 0)
-    {
-        VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
-        minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
-        std::cout << "VulkanRenderer2D::GetUniformStride - " << minUniformBufferOffsetAlignment << std::endl;
-    }
-
-    assert(sizeOfUniform > 0);
-    auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
-    {
-        uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
-        return step * divide_and_ceil;
-    };
-
-    uint32_t uniformStride = ceilToNextMultiple(
-        (uint32_t)sizeOfUniform,
-        (uint32_t)minUniformBufferOffsetAlignment
-    );
-
-    return uniformStride;
-}
-
 void VulkanRenderer2D::CreateUniformBuffer(size_t uniformCountInBuffer, uint32_t sizeOfOneUniform)
 {
     m_sizeOfOneUniform = sizeOfOneUniform;
@@ -601,7 +573,7 @@ void VulkanRenderer2D::CreateUniformBuffer(size_t uniformCountInBuffer, uint32_t
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     const size_t maximumUniformIndex = uniformCountInBuffer - 1;
-    bufferInfo.size = m_sizeOfOneUniform + GetUniformStride(maximumUniformIndex, m_sizeOfOneUniform);
+    bufferInfo.size = m_sizeOfOneUniform + ((maximumUniformIndex == 0) ? 0 : RenderSys::Vulkan::GetUniformStride(m_sizeOfOneUniform));
     bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     VmaAllocationCreateInfo vmaAllocInfo{};
@@ -625,7 +597,7 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
         return;
     }
 
-    auto offset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
+    auto offset = (uniformIndex == 0) ? 0 : RenderSys::Vulkan::GetUniformStride(m_sizeOfOneUniform);
     // copy data to the buffer
     auto* ptr = static_cast<char*>(m_uniformBuffersMapped[0]) + offset;
     memcpy(static_cast<void*>(ptr), bufferData, m_sizeOfOneUniform);
@@ -721,7 +693,7 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
 
     if (m_bindGroup)
     {
-        uint32_t dynamicOffset = GetUniformStride(uniformIndex, m_sizeOfOneUniform);
+        uint32_t dynamicOffset = (uniformIndex == 0) ? 0 : RenderSys::Vulkan::GetUniformStride(m_sizeOfOneUniform);
         vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
         vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
     }

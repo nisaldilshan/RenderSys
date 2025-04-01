@@ -35,8 +35,7 @@ public:
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
 			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-			{
-				RenderSys::Shader vertexShader("Vertex");
+			{			
 				const char* vertexShaderSource = R"(
 					#version 450 core
 					layout (location = 0) in vec2 aPos;
@@ -45,12 +44,11 @@ public:
 						gl_Position = vec4(aPos, 0.0, 1.0);
 					}
 				)";
+				RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
 				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.shaderSrc = vertexShaderSource;
 				vertexShader.stage = RenderSys::ShaderStage::Vertex;
 				m_renderer->SetShader(vertexShader);
 
-				RenderSys::Shader fragmentShader("Fragment");
 				const char* fragmentShaderSource = R"(
 					#version 450
 
@@ -61,8 +59,8 @@ public:
 						FragColor = vec4(1.0, 0.4000000059604644775390625, 0.0, 1.0);
 					}
 				)";
+				RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
 				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.shaderSrc = fragmentShaderSource;
 				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
 				m_renderer->SetShader(fragmentShader);
 			}
@@ -86,9 +84,8 @@ public:
 					}
 				)";
 
-				RenderSys::Shader shader("Combined");
+				RenderSys::Shader shader("Combined", shaderSource);
 				shader.type = RenderSys::ShaderType::WGSL;
-				shader.shaderSrc = shaderSource;
 				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 				m_renderer->SetShader(shader);
 			}

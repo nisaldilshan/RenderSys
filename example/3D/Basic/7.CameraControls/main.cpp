@@ -24,18 +24,15 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
+		m_renderer = std::make_unique<RenderSys::Renderer3D>();
+		m_renderer->Init();
+
 		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/fourareen.obj", m_vertexBuffer);
 		if (!success) 
 		{
 			std::cerr << "Could not load geometry!" << std::endl;
 			assert(false);
 		}
-
-		m_texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
-		assert(m_texHandle && m_texHandle->GetWidth() > 0 && m_texHandle->GetHeight() > 0 && m_texHandle->GetMipLevelCount() > 0);
-
-		m_renderer = std::make_unique<RenderSys::Renderer3D>();
-		m_renderer->Init();
 
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
@@ -65,9 +62,8 @@ public:
 					out_uv = in_uv;
 				}
 			)";
-			RenderSys::Shader vertexShader("Vertex");
+			RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
 			vertexShader.type = RenderSys::ShaderType::SPIRV;
-			vertexShader.shaderSrc = vertexShaderSource;
 			vertexShader.stage = RenderSys::ShaderStage::Vertex;
 			m_renderer->SetShader(vertexShader);
 
@@ -97,9 +93,8 @@ public:
 					out_color = vec4(texColor, ubo.color.a);
 				}
 			)";
-			RenderSys::Shader fragmentShader("Fragment");
+			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
 			fragmentShader.type = RenderSys::ShaderType::SPIRV;
-			fragmentShader.shaderSrc = fragmentShaderSource;
 			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
 			m_renderer->SetShader(fragmentShader);
 		}
@@ -157,9 +152,8 @@ public:
 				return vec4f(corrected_color, uMyUniforms.color.a);
 			}
 			)";
-			RenderSys::Shader shader("Combined");
+			RenderSys::Shader shader("Combined", shaderSource);
 			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = shaderSource;
 			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 			m_renderer->SetShader(shader);
 		}
@@ -168,9 +162,41 @@ public:
 			assert(false);
 		}
 
-		m_renderer->CreateTexture(1, m_texHandle->GetDescriptor());
+		auto texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
+		m_renderer->CreateTexture(1, texture);
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
+
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
+
+		// Position attribute
+		vertexAttribs[0].location = 0;
+		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[0].offset = 0;
+
+		// Normal attribute
+		vertexAttribs[1].location = 1;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
+
+		// Color attribute
+		vertexAttribs[2].location = 2;
+		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
+
+		// UV attribute
+		vertexAttribs[3].location = 3;
+		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
+		vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
+
+		RenderSys::VertexBufferLayout vertexBufferLayout;
+		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
+		vertexBufferLayout.attributes = vertexAttribs.data();
+		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
+
+		assert(m_vertexBuffer.size() > 0);
+		m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
 	}
 
 	virtual void OnDetach() override
@@ -189,37 +215,6 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
-
-			// Position attribute
-			vertexAttribs[0].location = 0;
-			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[0].offset = 0;
-
-			// Normal attribute
-			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
-
-			// Color attribute
-			vertexAttribs[2].location = 2;
-			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
-
-			// UV attribute
-			vertexAttribs[3].location = 3;
-			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
-
-			RenderSys::VertexBufferLayout vertexBufferLayout;
-			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
-			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
-			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
-
-			assert(m_vertexBuffer.size() > 0);
-			m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
 
 			// Since we now have 2 bindings, we use a vector to store them
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
@@ -311,7 +306,6 @@ private:
 
 	MyUniforms m_uniformData;
 	RenderSys::VertexBuffer m_vertexBuffer;
-	std::unique_ptr<RenderSys::Texture> m_texHandle;
 	const char* m_shaderSource = nullptr;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 };

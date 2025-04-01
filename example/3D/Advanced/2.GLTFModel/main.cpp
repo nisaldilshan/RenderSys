@@ -12,25 +12,18 @@
 #include <RenderSys/Scene/Scene.h>
 #include <imgui.h>
 
-struct MyUniforms {
+struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
     glm::mat4x4 modelMatrix;
-    std::array<float, 4> color;
 	glm::vec3 cameraWorldPosition;
     float time;
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-struct LightingUniforms {
+struct alignas(16) LightingUniforms {
     std::array<glm::vec4, 2> directions;
     std::array<glm::vec4, 2> colors;
-	// Material properties
-	float hardness = 16.0f;
-	float kd = 2.0f;
-	float ks = 0.3f;
-
-	float _pad;
 };
 static_assert(sizeof(LightingUniforms) % 16 == 0);
 
@@ -62,9 +55,8 @@ public:
 					std::cerr << "Unable to open file." << std::endl;
 					assert(false);
 				}
-				RenderSys::Shader vertexShader("Vertex");
+				RenderSys::Shader vertexShader("Vertex", std::string(content.data(), content.size()));
 				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.shaderSrc = std::string(content.data(), content.size());
 				vertexShader.stage = RenderSys::ShaderStage::Vertex;
 				m_renderer->SetShader(vertexShader);
 			}
@@ -79,10 +71,10 @@ public:
 					assert(false);
 				}
 
-				RenderSys::Shader fragmentShader("Fragment");
+				RenderSys::Shader fragmentShader("Fragment", std::string(content.data(), content.size()));
 				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.shaderSrc = std::string(content.data(), content.size());
 				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				fragmentShader.SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
 				m_renderer->SetShader(fragmentShader);
 			}
 		}
@@ -96,9 +88,8 @@ public:
 				std::cerr << "Unable to open file." << std::endl;
 				assert(false);
 			}
-			RenderSys::Shader shader("Combined");
+			RenderSys::Shader shader("Combined", std::string(content.data(), content.size()));
 			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = std::string(content.data(), content.size());
 			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 			m_renderer->SetShader(shader);
 		}
@@ -107,15 +98,58 @@ public:
 			assert(false);
 		}
 
-		auto texHandle = RenderSys::loadTextureUnique(RESOURCE_DIR "/Textures/Woman.png");
-		assert(texHandle && texHandle->GetWidth() > 0 && texHandle->GetHeight() > 0 && texHandle->GetMipLevelCount() > 0);
-		m_renderer->CreateTexture(1, texHandle->GetDescriptor());
+		m_texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
+
+		RenderSys::Material material;
+		material.metallicFactor = 0.5f;
+		material.roughnessFactor = 0.9f;
+		material.baseColorTextureIndex = 0;
+		m_renderer->CreateModelMaterials(1, {material}, {m_texture}, 1);
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
+
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
+
+		// Position attribute
+		vertexAttribs[0].location = 0;
+		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[0].offset = 0;
+
+		// Normal attribute
+		vertexAttribs[1].location = 1;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
+
+		// UV attribute
+		vertexAttribs[2].location = 2;
+		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x2;
+		vertexAttribs[2].offset = offsetof(RenderSys::Vertex, texcoord0);
+
+		// Color attribute
+		vertexAttribs[3].location = 3;
+		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[3].offset = offsetof(RenderSys::Vertex, color);
+
+		// Tangent attribute
+		vertexAttribs[4].location = 4;
+		vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[4].offset = offsetof(RenderSys::Vertex, tangent);
+
+		RenderSys::VertexBufferLayout vertexBufferLayout;
+		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
+		vertexBufferLayout.attributes = vertexAttribs.data();
+		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
+
+		assert(m_vertexBuffer.size() > 0);
+		const auto vertexBufID = m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
+		assert(m_indexData.size() > 0);
+		m_renderer->SetIndexBufferData(vertexBufID, m_indexData);
 	}
 
 	virtual void OnDetach() override
 	{
+		m_texture.reset();
 		m_renderer->Destroy();
 	}
 
@@ -130,41 +164,7 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
-
-			// Position attribute
-			vertexAttribs[0].location = 0;
-			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[0].offset = 0;
-
-			// Normal attribute
-			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
-
-			// Color attribute
-			vertexAttribs[2].location = 2;
-			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
-
-			// UV attribute
-			vertexAttribs[3].location = 3;
-			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
-
-			RenderSys::VertexBufferLayout vertexBufferLayout;
-			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
-			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
-			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
-
-			assert(m_vertexBuffer.size() > 0);
-			m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
-			assert(m_indexData.size() > 0);
-			m_renderer->SetIndexBufferData(m_indexData);
-
-			// Since we now have 2 bindings, we use a vector to store them
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
+			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
 			// The uniform buffer binding that we already had
 			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 			uniformBindingLayout.setDefault();
@@ -173,19 +173,11 @@ public:
 			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 			uniformBindingLayout.buffer.hasDynamicOffset = false;
-
-			// The texture binding
-			RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
-			textureBindingLayout.setDefault();
-			textureBindingLayout.binding = 1;
-			textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
-			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
-
+			
 			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[2];
+			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
 			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 2;
+			lightingUniformLayout.binding = 1;
 			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
 			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
@@ -204,29 +196,28 @@ public:
 
 			m_renderer->BeginRenderPass();
 
-			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
-			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
-
 			glm::mat4x4 M1(1.0);
 			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.3f));
+			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
+			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
 			m_myUniformData.modelMatrix = M1;
-
-			m_myUniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
-
-			// Initial values
 			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
 			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
-			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
-			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
-			m_renderer->SetUniformBufferData(2, &m_lightingUniformData, 0);
+			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 1.0f, 1.0f };
+			m_lightingUniformData.colors[1] = { 0.8f, 0.9f, 1.0f, 1.0f };
+			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
-			m_renderer->RenderIndexed(0);
+			RenderSys::Mesh mesh;
+			mesh.id = 1;
+			mesh.vertexBufferID = 1;
+			mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, true, 0}};
+			m_renderer->RenderMesh(mesh);
 			m_renderer->EndRenderPass();
 		}
 
@@ -272,12 +263,13 @@ private:
 		m_scene->populate();
 		m_scene->applyVertexSkinning();
 
-		m_vertexBuffer.resize(m_scene->getVertexBuffer().size());
+		const auto& sceneVertexBuffer = m_scene->getVertexBuffer();
+		m_vertexBuffer.resize(sceneVertexBuffer.size());
 		for (size_t i = 0; i < m_vertexBuffer.size(); i++)
 		{
-			m_vertexBuffer[i].position = m_scene->getVertexBuffer()[i].pos;
-			m_vertexBuffer[i].normal = m_scene->getVertexBuffer()[i].normal;
-			m_vertexBuffer[i].texcoord0 = m_scene->getVertexBuffer()[i].uv0;
+			m_vertexBuffer[i].position = sceneVertexBuffer[i].pos;
+			m_vertexBuffer[i].normal = sceneVertexBuffer[i].normal;
+			m_vertexBuffer[i].texcoord0 = sceneVertexBuffer[i].uv0;
 		}
 		
 		m_indexData.resize(m_scene->getIndexBuffer().size());
@@ -300,6 +292,7 @@ private:
 	LightingUniforms m_lightingUniformData;
 	RenderSys::VertexBuffer m_vertexBuffer;
 	std::vector<uint32_t> m_indexData;
+	std::shared_ptr<RenderSys::Texture> m_texture;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 	std::unique_ptr<RenderSys::Scene> m_scene;
 };

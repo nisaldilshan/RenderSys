@@ -98,7 +98,7 @@ void VulkanCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayout
 
     for (const auto &bindGroupLayoutEntry : bindGroupLayoutEntries)
     {
-        auto vkBinding = GetVulkanBindGroupLayoutEntry(bindGroupLayoutEntry);
+        auto vkBinding = RenderSys::Vulkan::GetVulkanBindGroupLayoutEntry(bindGroupLayoutEntry);
         m_bindGroupBindings.push_back(vkBinding);
 
         auto mapIter = descriptorTypeCountMap.find(vkBinding.descriptorType);
@@ -165,8 +165,9 @@ void VulkanCompute::CreateShaders(RenderSys::Shader &shader)
     auto shaderMapIter = m_shaderMap.find(shader.GetName());
     if (shaderMapIter == m_shaderMap.end())
     {
-        compiledShader = RenderSys::ShaderUtils::compile_file(shader.GetName(), shader);
-        assert(compiledShader.size() > 0);
+        auto res = shader.Compile();
+        assert(res);
+        compiledShader = shader.GetCompiledShader();
         m_shaderMap.emplace(shader.GetName(), compiledShader);
     }
     else
@@ -466,13 +467,13 @@ std::vector<uint8_t>& VulkanCompute::GetMappedResult(uint32_t binding)
     assert(found != m_shaderOutputBuffers.end());
     std::shared_ptr<MappedBuffer> mappedBufferStruct = found->second;
 
-    auto currentCommandBuffer = BeginSingleTimeCommands(m_commandPool);
+    auto currentCommandBuffer = RenderSys::Vulkan::BeginSingleTimeCommands(m_commandPool);
 
     VkBufferCopy copyRegion = {};
     copyRegion.size = mappedBufferStruct->gpuBuffer.buffer.range;
     vkCmdCopyBuffer(currentCommandBuffer, mappedBufferStruct->gpuBuffer.buffer.buffer, mappedBufferStruct->mapBuffer.buffer.buffer, 1, &copyRegion);
 
-    EndSingleTimeCommands(currentCommandBuffer, m_commandPool);
+    RenderSys::Vulkan::EndSingleTimeCommands(currentCommandBuffer, m_commandPool);
 
     //Map the staging buffer and copy the data.
     void *buf;

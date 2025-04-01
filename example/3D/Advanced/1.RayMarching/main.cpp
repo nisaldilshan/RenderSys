@@ -150,9 +150,8 @@ public:
 
 			)";
 
-			RenderSys::Shader shader("Combined");
+			RenderSys::Shader shader("Combined", shaderSource);
 			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = shaderSource;
 			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 			m_renderer->SetShader(shader);
 
@@ -216,7 +215,7 @@ public:
 			uniformBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
 			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-			uniformBindingLayout.buffer.hasDynamicOffset = true;
+			uniformBindingLayout.buffer.hasDynamicOffset = false;
 
 			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);

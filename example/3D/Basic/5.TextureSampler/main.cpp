@@ -53,9 +53,8 @@ public:
 					out_uv = in_uv;
 				}
 			)";
-			RenderSys::Shader vertexShader("Vertex");
+			RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
 			vertexShader.type = RenderSys::ShaderType::SPIRV;
-			vertexShader.shaderSrc = vertexShaderSource;
 			vertexShader.stage = RenderSys::ShaderStage::Vertex;
 			m_renderer->SetShader(vertexShader);
 
@@ -85,9 +84,8 @@ public:
 					out_color = vec4(texColor, ubo.color.a);
 				}
 			)";
-			RenderSys::Shader fragmentShader("Fragment");
+			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
 			fragmentShader.type = RenderSys::ShaderType::SPIRV;
-			fragmentShader.shaderSrc = fragmentShaderSource;
 			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
 			m_renderer->SetShader(fragmentShader);
 		}
@@ -145,9 +143,8 @@ public:
 				return vec4f(corrected_color, uMyUniforms.color.a);
 			}
 			)";
-			RenderSys::Shader shader("Combined");
+			RenderSys::Shader shader("Combined", shaderSource);
 			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = shaderSource;
 			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 			m_renderer->SetShader(shader);
 		}
@@ -155,6 +152,62 @@ public:
 		{
 			assert(false);
 		}
+
+		RenderSys::VertexBuffer vertexData;
+		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cube.obj", vertexData);
+		if (!success) 
+		{
+			std::cerr << "Could not load geometry!" << std::endl;
+			assert(false);
+			return;
+		}
+
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
+
+		// Position attribute
+		vertexAttribs[0].location = 0;
+		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[0].offset = 0;
+
+		// Normal attribute
+		vertexAttribs[1].location = 1;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
+
+		// Color attribute
+		vertexAttribs[2].location = 2;
+		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
+
+		// UV attribute
+		vertexAttribs[3].location = 3;
+		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
+		vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
+
+		RenderSys::VertexBufferLayout vertexBufferLayout;
+		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
+		vertexBufferLayout.attributes = vertexAttribs.data();
+		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
+
+		m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
+
+		constexpr uint32_t texWidth = 256;
+		constexpr uint32_t texHeight = 256;
+		std::vector<uint8_t> pixels(4 * texWidth * texHeight);
+
+		for (uint32_t i = 0; i < texWidth; ++i) {
+			for (uint32_t j = 0; j < texHeight; ++j) {
+				uint8_t *p = &pixels[4 * (j * texWidth + i)];
+				p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
+				p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
+				p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
+				p[3] = 255; // a
+			}
+		}
+
+		auto texture = std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 8);
+		m_renderer->CreateTexture(1, texture);
 	}
 
 	virtual void OnDetach() override
@@ -174,45 +227,6 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			RenderSys::VertexBuffer vertexData;
-			bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cube.obj", vertexData);
-			if (!success) 
-			{
-				std::cerr << "Could not load geometry!" << std::endl;
-				assert(false);
-				return;
-			}
-
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
-
-			// Position attribute
-			vertexAttribs[0].location = 0;
-			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[0].offset = 0;
-
-			// Normal attribute
-			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
-
-			// Color attribute
-			vertexAttribs[2].location = 2;
-			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
-
-			// UV attribute
-			vertexAttribs[3].location = 3;
-			vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
-
-			RenderSys::VertexBufferLayout vertexBufferLayout;
-			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
-			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
-			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
-
-			m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
-
 			// Since we now have 2 bindings, we use a vector to store them
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
 			// The uniform buffer binding that we already had
@@ -222,7 +236,7 @@ public:
 			uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
 			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-			uniformBindingLayout.buffer.hasDynamicOffset = true;
+			uniformBindingLayout.buffer.hasDynamicOffset = false;
 
 			// The texture binding
 			RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
@@ -233,22 +247,6 @@ public:
 			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
 			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 2);
-
-			constexpr uint32_t texWidth = 256;
-			constexpr uint32_t texHeight = 256;
-			std::vector<uint8_t> pixels(4 * texWidth * texHeight);
-
-			for (uint32_t i = 0; i < texWidth; ++i) {
-				for (uint32_t j = 0; j < texHeight; ++j) {
-					uint8_t *p = &pixels[4 * (j * texWidth + i)];
-					p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
-					p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
-					p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
-					p[3] = 255; // a
-				}
-			}
-
-			m_renderer->CreateTexture(textureBindingLayout.binding, {pixels.data(), texWidth, texHeight, 8});
 
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
 			m_renderer->CreatePipeline();
@@ -274,25 +272,11 @@ public:
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
 
-			// Upload second value
-			glm::mat4x4 M2(1.0);
-			angle1 = time * 1.1f;
-			M2 = glm::rotate(M2, angle1, glm::vec3(0.0, 0.0, 1.0));
-			M2 = glm::translate(M2, glm::vec3(0.5, 0.0, 0.0));
-			M2 = glm::scale(M2, glm::vec3(0.3f));
-			m_uniformData.modelMatrix = M2;
-
-			m_uniformData.time = time;
-			m_uniformData.color = { 1.0f, 1.0f, 1.0f, 0.7f };
-			m_renderer->SetUniformBufferData(0, &m_uniformData, 1);
 			m_renderer->BindResources();
-
 			m_renderer->Render(0);
-			m_renderer->Render(1);
 			m_renderer->EndRenderPass();
 		}
        		
-
         m_lastRenderTime = timer.ElapsedMillis();
 	}
 

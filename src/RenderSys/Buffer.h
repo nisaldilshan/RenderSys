@@ -33,7 +33,7 @@ struct Material
     } texCoordSets;
 };
 
-struct Primitive
+struct SubMesh
 {
 	uint32_t firstIndex = 0;
 	uint32_t indexCount = 0;
@@ -44,16 +44,17 @@ struct Primitive
 
 struct Mesh
 {
-	std::vector<Primitive> primitives;
+    uint32_t id = 0;
+    uint32_t vertexBufferID = 0;
+	std::vector<SubMesh> subMeshes;
 };
 
-struct Vertex {
+struct alignas(16) Vertex {
     glm::vec3 position;
     glm::vec3 normal;
     glm::vec2 texcoord0;
     glm::vec3 color;
     glm::vec3 tangent;
-    float _pad[2];
 };
 
 static_assert(sizeof(Vertex) % 16 == 0);

@@ -3,7 +3,6 @@
 #include <memory>
 #include <vector>
 #include <stdint.h>
-#include <Walnut/ImageFormat.h>
 
 #include "Buffer.h"
 #include "RenderUtil.h"
@@ -45,22 +44,20 @@ public:
     void Init();
     void OnResize(uint32_t width, uint32_t height);
     void SetShader(RenderSys::Shader& shader);
-    void SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount);
-    void SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
-    void SetIndexBufferData(const std::vector<uint32_t>& bufferData);
+    uint32_t SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
+    void SetIndexBufferData(uint32_t vertexBufferID, const std::vector<uint32_t>& bufferData);
     void CreatePipeline();
     void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
-    void CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor);
-    void CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors);
-    void CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials);
-    void CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers);
+    void CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture);
+    void CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
+        , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels);
     void SetClearColor(glm::vec4 clearColor);
     void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, size_t bufferLength);
     void SetUniformBufferData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);
     void BindResources();
     void Render(uint32_t uniformIndex);
     void RenderIndexed(uint32_t uniformIndex);
-    void RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex);
+    void RenderMesh(const RenderSys::Mesh& mesh);
     void BeginRenderPass();
     void EndRenderPass();
 

@@ -1,5 +1,6 @@
 #include "WebGPURenderer3D.h"
 #include "WebGPURendererUtils.h"
+#include "WebGPUTexture.h"
 
 namespace GraphicsAPI
 {
@@ -87,7 +88,7 @@ void WebGPURenderer3D::CreateShaders(RenderSys::Shader& shader)
     // Set the chained struct's header
     shaderCodeDesc.chain.next = nullptr;
     shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
-    shaderCodeDesc.code = shader.shaderSrc.c_str();
+    shaderCodeDesc.code = shader.GetShaderSrc().c_str();
     // Connect the chain
     shaderDesc.nextInChain = &shaderCodeDesc.chain;
     m_shaderModule = WebGPU::GetDevice().createShaderModule(shaderDesc);
@@ -102,16 +103,23 @@ void WebGPURenderer3D::CreatePipeline()
     wgpu::RenderPipelineDescriptor pipelineDesc;
 
     // Vertex fetch
-    if (m_vertexBufferSize > 0)
+    assert(m_vertexIndexBufferInfoMap.size() == 1);
+    for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
     {
-        pipelineDesc.vertex.bufferCount = 1;
-        pipelineDesc.vertex.buffers = &m_vertexBufferLayout;
+        if (vertexIndexBufferInfo.second.m_vertexCount > 0)
+        {
+            pipelineDesc.vertex.bufferCount = 1;
+            pipelineDesc.vertex.buffers = &m_vertexBufferLayout;
+        }
+        else
+        {
+            pipelineDesc.vertex.bufferCount = 0;
+            pipelineDesc.vertex.buffers = nullptr;
+        }
+
+        break;
     }
-    else
-    {
-        pipelineDesc.vertex.bufferCount = 0;
-        pipelineDesc.vertex.buffers = nullptr;
-    }
+
     // Vertex shader
     pipelineDesc.vertex.module = m_shaderModule;
 	pipelineDesc.vertex.entryPoint = "vs_main";
@@ -198,46 +206,51 @@ void WebGPURenderer3D::CreateFrameBuffer()
 {
 }
 
-void WebGPURenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
+uint32_t WebGPURenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
 {
     std::cout << "Creating vertex buffer..." << std::endl;
-    m_vertexBufferSize = bufferData.vertices.size() * sizeof(RenderSys::Vertex);
-    m_vertexCount = m_vertexBufferSize / bufferLayout.arrayStride;
+    WebGPUVertexIndexBufferInfo vertexIndexBufferInfo;
+    const auto vertexBufferSize = bufferData.vertices.size() * sizeof(RenderSys::Vertex);
+    vertexIndexBufferInfo.m_vertexCount = vertexBufferSize / bufferLayout.arrayStride;
     m_vertexBufferLayout = GetWebGPUVertexBufferLayout(bufferLayout);
     wgpu::BufferDescriptor bufferDesc;
-    bufferDesc.size = m_vertexBufferSize;
+    bufferDesc.size = vertexBufferSize;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
     bufferDesc.label = "Vertex Buffer";
-    m_vertexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    vertexIndexBufferInfo.m_vertexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload vertex data to the buffer
-    WebGPU::GetQueue().writeBuffer(m_vertexBuffer, 0, bufferData.vertices.data(), bufferDesc.size);
-    std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
+    WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo.m_vertexBuffer, 0, bufferData.vertices.data(), bufferDesc.size);
+    std::cout << "Vertex buffer: " << vertexIndexBufferInfo.m_vertexBuffer << std::endl;
+    return m_vertexIndexBufferInfoMap.insert({m_vertexIndexBufferInfoMap.size() + 1, vertexIndexBufferInfo}).first->first;
 }
 
-void WebGPURenderer3D::CreateIndexBuffer(const std::vector<uint32_t> &bufferData)
+void WebGPURenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vector<uint32_t> &bufferData)
 {
     std::cout << "Creating index buffer..." << std::endl;
 
-    m_indexCount = bufferData.size();
+    const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
+    if (vertexIndexBufferInfoIter == m_vertexIndexBufferInfoMap.end())
+    {
+        std::cout << "Error: could not find vertexIndexBufferInfo!" << std::endl;
+        assert(false);
+        return;
+    }
+    WebGPUVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
+    vertexIndexBufferInfo.m_indexCount = bufferData.size();
 
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = bufferData.size() * sizeof(uint32_t);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
     bufferDesc.label = "Index Buffer";
-    m_indexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    vertexIndexBufferInfo.m_indexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload index data to the buffer
-    WebGPU::GetQueue().writeBuffer(m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
-    std::cout << "Index buffer: " << m_indexBuffer << std::endl;
+    WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo.m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
+    std::cout << "Index buffer: " << vertexIndexBufferInfo.m_indexBuffer << std::endl;
 }
 
-void WebGPURenderer3D::CreateStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount)
-{
-    CreateShaders(shader);
-    m_vertexCount = vertexShaderCallCount;
-}
 
 void WebGPURenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
@@ -292,9 +305,10 @@ void WebGPURenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
             else if (bindGroupLayoutEntry.texture.viewDimension == RenderSys::TextureViewDimension::_2D)
             {
                 if (bindingIndex == 1) // this is base color texture
-                    bindings[bindingIndex].textureView = m_texturesAndViews[0].second; // m_texturesAndViews[0] is the base color texture
+                    bindings[bindingIndex].textureView = m_textures[bindingIndex]->GetImageView(); // m_texturesAndViews[0] is the base color texture
                 else // this is normal texture
-                    bindings[bindingIndex].textureView = m_texturesAndViews[1].second; // m_texturesAndViews[0] is the normal texture
+                    bindings[bindingIndex].textureView = m_textures[bindingIndex]->GetImageView(); // m_texturesAndViews[0] is the normal texture
+                assert(bindings[bindingIndex].textureView != nullptr);
             }
             else
             {
@@ -352,13 +366,12 @@ uint32_t WebGPURenderer3D::GetUniformStride(const uint32_t& uniformIndex, const 
     return uniformStride * uniformIndex;
 }
 
-void WebGPURenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform, uint32_t uniformCountInBuffer)
+void WebGPURenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform)
 {
     // Create uniform buffer
     // The buffer will only contain 1 float with the value of uTime
     wgpu::BufferDescriptor bufferDesc;
-    const size_t maxUniformIndex = uniformCountInBuffer - 1;
-    bufferDesc.size = sizeOfOneUniform + GetUniformStride(maxUniformIndex, sizeOfOneUniform);
+    bufferDesc.size = sizeOfOneUniform;
     // Make sure to flag the buffer as BufferUsage::Uniform
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufferDesc.mappedAtCreation = false;
@@ -376,17 +389,15 @@ void WebGPURenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneU
     m_uniformBuffers.insert({binding, std::make_tuple(buffer, sizeOfOneUniform)});
 }
 
-void WebGPURenderer3D::SetUniformData(uint32_t binding, const void* bufferData, uint32_t uniformIndex)
+void WebGPURenderer3D::SetUniformData(uint32_t binding, const void* bufferData)
 {
     auto uniformBuffer = m_uniformBuffers.find(binding);
     if (uniformBuffer != m_uniformBuffers.end())
     {
         const auto buffer = std::get<0>(uniformBuffer->second);
         const auto bufferSize = std::get<1>(uniformBuffer->second);
-
-        auto offset = GetUniformStride(uniformIndex, bufferSize);
         assert(bufferSize > 0);
-        WebGPU::GetQueue().writeBuffer(buffer, offset, bufferData, bufferSize);
+        WebGPU::GetQueue().writeBuffer(buffer, 0, bufferData, bufferSize);
     }
     else
     {
@@ -398,57 +409,48 @@ void WebGPURenderer3D::BindResources()
 {
 }
 
-void WebGPURenderer3D::Render(uint32_t uniformIndex)
+void WebGPURenderer3D::Render()
 {
-    m_renderPass.setVertexBuffer(0, m_vertexBuffer, 0, m_vertexBufferSize);
-
     if (m_bindGroup)
     {
-        bool hasDynamicOffset = false;
-        for (const auto &bindGroupBinding : m_mainBindGroupBindings)
+        m_renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
+    }
+
+    assert(m_vertexIndexBufferInfoMap.size() > 0);
+    for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
+    {
+        m_renderPass.setVertexBuffer(0, vertexIndexBufferInfo.second.m_vertexBuffer, 0, vertexIndexBufferInfo.second.m_vertexCount * sizeof(RenderSys::Vertex));
+        if (vertexIndexBufferInfo.second.m_indexCount > 0)
         {
-            if (bindGroupBinding.buffer.hasDynamicOffset)
-            {
-                hasDynamicOffset = true;
-            }
-        }
-        
-        if (hasDynamicOffset)
-        {
-            auto& uniformBufferTuple = m_uniformBuffers[0]; // this is working because we have dynamicOffsetys only in binding 0;
-            const uint32_t dynamicOffset = GetUniformStride(uniformIndex, std::get<1>(uniformBufferTuple));
-            uint32_t dynamicOffsetCount = 1; // because we have enabled dynamic offset in only one binding in the bind group
-            m_renderPass.setBindGroup(0, m_bindGroup, dynamicOffsetCount, &dynamicOffset);
+            m_renderPass.setIndexBuffer(vertexIndexBufferInfo.second.m_indexBuffer, wgpu::IndexFormat::Uint16, 0, vertexIndexBufferInfo.second.m_indexCount * sizeof(uint16_t));
+            m_renderPass.drawIndexed(vertexIndexBufferInfo.second.m_indexCount, 1, 0, 0, 0);
         }
         else
         {
-            m_renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
+            m_renderPass.draw(vertexIndexBufferInfo.second.m_vertexCount, 1, 0, 0);
         }
-    }
 
-    if (m_indexCount > 0)
-    {
-        m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexCount * sizeof(uint16_t));
-        m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
+        break; // Only one vertex buffer is supported for now
     }
-    else
-        m_renderPass.draw(m_vertexCount, 1, 0, 0);
 }
 
-void WebGPURenderer3D::RenderIndexed(uint32_t uniformIndex)
+void WebGPURenderer3D::RenderIndexed()
 {
-    assert(m_indexBuffer);
-    m_renderPass.setVertexBuffer(0, m_vertexBuffer, 0, m_vertexBufferSize);
-    m_renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint32, 0, m_indexCount * sizeof(uint32_t));
+    uint32_t dynamicOffsetCount = 0;
+    m_renderPass.setBindGroup(0, m_bindGroup, dynamicOffsetCount, nullptr);
 
-    auto& uniformBufferTuple = m_uniformBuffers[0]; // this is working because we have dynamicOffsetys only in binding 0;
-    const uint32_t dynamicOffset = GetUniformStride(uniformIndex, std::get<1>(uniformBufferTuple));
-    uint32_t dynamicOffsetCount = 1; // because we have enabled dynamic offset in only one binding in the bind group
-    m_renderPass.setBindGroup(0, m_bindGroup, dynamicOffsetCount, &dynamicOffset);
-    m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
+    assert(m_vertexIndexBufferInfoMap.size() > 0);
+    for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
+    {
+        m_renderPass.setVertexBuffer(0, vertexIndexBufferInfo.second.m_vertexBuffer, 0, vertexIndexBufferInfo.second.m_vertexCount * sizeof(RenderSys::Vertex));
+        m_renderPass.setIndexBuffer(vertexIndexBufferInfo.second.m_indexBuffer, wgpu::IndexFormat::Uint32, 0, vertexIndexBufferInfo.second.m_indexCount * sizeof(uint32_t));
+        m_renderPass.drawIndexed(vertexIndexBufferInfo.second.m_indexCount, 1, 0, 0, 0);
+
+        break; // Only one vertex buffer is supported for now
+    }
 }
 
-void WebGPURenderer3D::RenderMesh(const RenderSys::Mesh &mesh, uint32_t uniformIndex)
+void WebGPURenderer3D::RenderMesh(const RenderSys::Mesh &mesh)
 {
 }
 
@@ -520,14 +522,25 @@ void WebGPURenderer3D::EndRenderPass()
 
 void WebGPURenderer3D::Destroy()
 {
-    m_vertexBuffer.destroy();
-	m_vertexBuffer.release();
-	m_indexBuffer.destroy();
-	m_indexBuffer.release();
-    // Destroy the depth texture and its view
-	m_depthTextureView.release();
+    for (auto &&vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
+    {
+        assert(vertexIndexBufferInfo.second.m_vertexBuffer != nullptr);
+        vertexIndexBufferInfo.second.m_vertexBuffer.destroy();
+        vertexIndexBufferInfo.second.m_vertexBuffer.release();
+        if (vertexIndexBufferInfo.second.m_indexBuffer != nullptr)
+        {
+            vertexIndexBufferInfo.second.m_indexBuffer.destroy();
+            vertexIndexBufferInfo.second.m_indexBuffer.release();
+        }
+    }
+    
+    m_vertexIndexBufferInfoMap.clear();
+
+    m_textures.clear();
+
 	m_depthTexture.destroy();
-	m_depthTexture.release();
+    m_depthTexture = nullptr;
+    m_depthTextureView = nullptr;
 }
 
 void WebGPURenderer3D::DestroyImages()
@@ -550,103 +563,25 @@ void WebGPURenderer3D::SubmitCommandBuffer()
     WebGPU::GetQueue().submit(commands);
 }
 
-void WebGPURenderer3D::CreateTextureSamplers(const std::vector<RenderSys::TextureSampler> &samplers)
+void WebGPURenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
 {
-}
-
-void WebGPURenderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor)
-{
-	wgpu::TextureDescriptor textureDesc;
-	textureDesc.dimension = wgpu::TextureDimension::_2D;
-	textureDesc.size = {(uint32_t)texDescriptor.width, (uint32_t)texDescriptor.height, 1};
-	textureDesc.format = wgpu::TextureFormat::RGBA8Unorm;;
-	textureDesc.mipLevelCount = texDescriptor.mipMapLevelCount;
-	textureDesc.sampleCount = 1;
-	textureDesc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
-	textureDesc.viewFormatCount = 0;
-	textureDesc.viewFormats = nullptr;
-	auto newTexture = WebGPU::GetDevice().createTexture(textureDesc);
-	std::cout << "texture created: " << newTexture << std::endl;
-
-	wgpu::TextureViewDescriptor textureViewDesc;
-	textureViewDesc.aspect = wgpu::TextureAspect::All;
-	textureViewDesc.baseArrayLayer = 0;
-	textureViewDesc.arrayLayerCount = 1;
-	textureViewDesc.baseMipLevel = 0;
-	textureViewDesc.mipLevelCount = textureDesc.mipLevelCount;
-	textureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
-	textureViewDesc.format = textureDesc.format;
-	auto newTextureView = newTexture.createView(textureViewDesc);
-	std::cout << "texture view created: " << newTextureView << std::endl;
-
-    m_texturesAndViews.emplace_back(std::make_pair(newTexture, newTextureView));
-
-    UploadTexture(newTexture, textureDesc, texDescriptor.data);
-}
-
-void WebGPURenderer3D::CreateTextures(const std::vector<RenderSys::TextureDescriptor> &texDescriptors)
-{
-}
-
-void WebGPURenderer3D::CreateMaterialBindGroups(const std::vector<RenderSys::Material> &materials)
-{
-}
-
-void WebGPURenderer3D::UploadTexture(wgpu::Texture texture, wgpu::TextureDescriptor textureDesc, const void* textureData)
-{
-    wgpu::ImageCopyTexture destination;
-    destination.texture = texture;
-    destination.origin = { 0, 0, 0 }; // equivalent of the offset argument of Queue::writeBuffer
-    destination.aspect = wgpu::TextureAspect::All; // only relevant for depth/Stencil textures
-
-    // Arguments telling how the C++ side pixel memory is laid out
-    wgpu::TextureDataLayout source;
-    source.offset = 0;
-
-    wgpu::Extent3D mipLevelSize = textureDesc.size;
-	std::vector<uint8_t> previousLevelPixels;
-    wgpu::Extent3D previousMipLevelSize;
-	for (uint32_t level = 0; level < textureDesc.mipLevelCount; ++level) 
+    const auto& [textureIter, inserted] = m_textures.insert(
+                                                    {
+                                                        binding, 
+                                                        texture->GetPlatformTexture()
+                                                    }
+                                                );
+    if (!inserted)
     {
-		// Create image data
-        std::vector<uint8_t> pixels(4 * mipLevelSize.width * mipLevelSize.height);
-        if (level == 0) 
-        {
-            memcpy(pixels.data(), textureData, 4 * mipLevelSize.width * mipLevelSize.height);
-        } 
-		else
-        {
-            // Create mip level data
-            for (uint32_t i = 0; i < mipLevelSize.width; ++i)
-            {
-                for (uint32_t j = 0; j < mipLevelSize.height; ++j)
-                {
-                    uint8_t *p = &pixels[4 * (j * mipLevelSize.width + i)];
-                    // Get the corresponding 4 pixels from the previous level
-                    uint8_t *p00 = &previousLevelPixels[4 * ((2 * j + 0) * previousMipLevelSize.width + (2 * i + 0))];
-                    uint8_t *p01 = &previousLevelPixels[4 * ((2 * j + 0) * previousMipLevelSize.width + (2 * i + 1))];
-                    uint8_t *p10 = &previousLevelPixels[4 * ((2 * j + 1) * previousMipLevelSize.width + (2 * i + 0))];
-                    uint8_t *p11 = &previousLevelPixels[4 * ((2 * j + 1) * previousMipLevelSize.width + (2 * i + 1))];
-                    // Average
-                    p[0] = (p00[0] + p01[0] + p10[0] + p11[0]) / 4;
-                    p[1] = (p00[1] + p01[1] + p10[1] + p11[1]) / 4;
-                    p[2] = (p00[2] + p01[2] + p10[2] + p11[2]) / 4;
-                    p[3] = (p00[3] + p01[3] + p10[3] + p11[3]) / 4;
-                }
-            }
-        }
-
-        // Change this to the current level
-        destination.mipLevel = level;
-        source.bytesPerRow = 4 * mipLevelSize.width;
-        source.rowsPerImage = mipLevelSize.height;
-        WebGPU::GetQueue().writeTexture(destination, pixels.data(), pixels.size(), source, mipLevelSize);
-
-        previousLevelPixels = std::move(pixels);
-        previousMipLevelSize = mipLevelSize;
-        mipLevelSize.width /= 2;
-        mipLevelSize.height /= 2;
+        return;
     }
+
+    //UploadTexture(newTexture, textureDesc, texDescriptor.data);
+}
+
+void WebGPURenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material> &materials, 
+                                            const std::vector<std::shared_ptr<RenderSys::Texture>> &textures, const int maxNumOfModels)
+{
 }
 
 void WebGPURenderer3D::CreateDefaultTextureSampler()

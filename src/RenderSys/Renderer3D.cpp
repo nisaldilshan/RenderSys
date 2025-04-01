@@ -44,19 +44,14 @@ void Renderer3D::SetShader(RenderSys::Shader& shader)
     m_rendererBackend->CreateShaders(shader);
 }
 
-void Renderer3D::SetStandaloneShader(RenderSys::Shader& shader, uint32_t vertexShaderCallCount)
+uint32_t Renderer3D::SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
 {
-    m_rendererBackend->CreateStandaloneShader(shader, vertexShaderCallCount);
+    return m_rendererBackend->CreateVertexBuffer(bufferData, bufferLayout);
 }
 
-void Renderer3D::SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
+void Renderer3D::SetIndexBufferData(uint32_t vertexBufferID, const std::vector<uint32_t>& bufferData)
 {
-    m_rendererBackend->CreateVertexBuffer(bufferData, bufferLayout);
-}
-
-void Renderer3D::SetIndexBufferData(const std::vector<uint32_t>& bufferData)
-{
-    m_rendererBackend->CreateIndexBuffer(bufferData);
+    m_rendererBackend->CreateIndexBuffer(vertexBufferID, bufferData);
 }
 
 void Renderer3D::CreatePipeline()
@@ -69,24 +64,15 @@ void Renderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEnt
     m_rendererBackend->CreateBindGroup(bindGroupLayoutEntries);
 }
 
-void Renderer3D::CreateTexture(uint32_t binding, const RenderSys::TextureDescriptor& texDescriptor)
+void Renderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
 {
-    m_rendererBackend->CreateTexture(binding, texDescriptor);
+    m_rendererBackend->CreateTexture(binding, texture);
 }
 
-void RenderSys::Renderer3D::CreateTextures(const std::vector<RenderSys::TextureDescriptor>& texDescriptors)
+void RenderSys::Renderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
+            , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels)
 {
-    m_rendererBackend->CreateTextures(texDescriptors);
-}
-
-void RenderSys::Renderer3D::CreateMaterialBindGroups(const std::vector<RenderSys::Material>& materials)
-{
-    m_rendererBackend->CreateMaterialBindGroups(materials);
-}
-
-void Renderer3D::CreateTextureSamplers(const std::vector<RenderSys::TextureSampler>& samplers)
-{
-    m_rendererBackend->CreateTextureSamplers(samplers);
+    m_rendererBackend->CreateModelMaterials(modelID, materials, textures, maxNumOfModels);
 }
 
 void Renderer3D::SetClearColor(glm::vec4 clearColor)
@@ -96,12 +82,12 @@ void Renderer3D::SetClearColor(glm::vec4 clearColor)
 
 void Renderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, size_t bufferLength)
 {
-    m_rendererBackend->CreateUniformBuffer(binding, sizeOfUniform, bufferLength);
+    m_rendererBackend->CreateUniformBuffer(binding, sizeOfUniform);
 }
 
 void Renderer3D::SetUniformBufferData(uint32_t binding, const void* bufferData, uint32_t uniformIndex)
 {
-    m_rendererBackend->SetUniformData(binding, bufferData, uniformIndex);
+    m_rendererBackend->SetUniformData(binding, bufferData);
 }
 
 void Renderer3D::BindResources()
@@ -121,17 +107,17 @@ void Renderer3D::Destroy()
 
 void Renderer3D::Render(uint32_t uniformIndex)
 {
-    m_rendererBackend->Render(uniformIndex);
+    m_rendererBackend->Render();
 }
 
 void Renderer3D::RenderIndexed(uint32_t uniformIndex)
 {
-    m_rendererBackend->RenderIndexed(uniformIndex);
+    m_rendererBackend->RenderIndexed();
 }
 
-void Renderer3D::RenderMesh(const RenderSys::Mesh& mesh, uint32_t uniformIndex)
+void Renderer3D::RenderMesh(const RenderSys::Mesh& mesh)
 {
-    m_rendererBackend->RenderMesh(mesh, uniformIndex);
+    m_rendererBackend->RenderMesh(mesh);
 }
 
 void Renderer3D::BeginRenderPass()

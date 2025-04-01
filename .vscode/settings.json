@@ -103,6 +103,8 @@
         "ranges": "cpp",
         "stack": "cpp",
         "numeric": "cpp",
-        "any": "cpp"
+        "any": "cpp",
+        "print": "cpp",
+        "queue": "cpp"
     }
 }

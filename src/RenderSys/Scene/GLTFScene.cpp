@@ -91,14 +91,14 @@ void GLTFScene::getNodeProps(const tinygltf::Node& node, const tinygltf::Model& 
     }
 }
 
-RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primitive, std::vector<Model::Vertex> &vertices, std::vector<uint32_t> &indices, const uint32_t indexCount)
+RenderSys::SubMesh GLTFScene::loadPrimitive(const tinygltf::Primitive &primitive, Model::ModelData &modelData, const uint32_t indexCount)
 {
     assert(primitive.attributes.find("POSITION") != primitive.attributes.end()); // position is mandatory
     const tinygltf::Accessor &posAccessor = m_model->accessors[primitive.attributes.find("POSITION")->second];
     const auto vertexCount = static_cast<uint32_t>(posAccessor.count);
     assert(vertexCount > 0);
-    const uint32_t vertexStart = vertices.size();
-    vertices.resize(vertexStart + vertexCount);
+    const uint32_t vertexStart = modelData.vertices.size();
+    modelData.vertices.resize(vertexStart + vertexCount);
 
     const tinygltf::BufferView &positionBufferView = m_model->bufferViews[posAccessor.bufferView];
     const auto* positionBuffer = reinterpret_cast<const float *>(&(m_model->buffers[positionBufferView.buffer].data[posAccessor.byteOffset + positionBufferView.byteOffset]));
@@ -107,13 +107,12 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
     for (size_t v = 0; v < vertexCount; v++) 
     {
-        Model::Vertex& vert = vertices[v + vertexStart];
+        Model::Vertex& vert = modelData.vertices[v + vertexStart];
         vert.pos = glm::vec4(glm::make_vec3(&positionBuffer[v * posByteStride]), 1.0f);
     }
 
     if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end())
     {
-        std::cout << "GLTFScene::loadVertexAttributes found TEXCOORD_0" << std::endl;
         const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("TEXCOORD_0")->second];
         const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
         const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
@@ -121,14 +120,13 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
         for (size_t v = 0; v < vertexCount; v++) 
         {
-            Model::Vertex& vert = vertices[v + vertexStart];
+            Model::Vertex& vert = modelData.vertices[v + vertexStart];
             vert.uv0 = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
         }
     }
 
     if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
     {
-        std::cout << "GLTFScene::loadVertexAttributes found NORMAL" << std::endl;
         const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("NORMAL")->second];
         const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
         const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
@@ -136,14 +134,13 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
         for (size_t v = 0; v < vertexCount; v++) 
         {
-            Model::Vertex& vert = vertices[v + vertexStart];
+            Model::Vertex& vert = modelData.vertices[v + vertexStart];
             vert.normal = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
         }
     }
 
     if (primitive.attributes.find("TANGENT") != primitive.attributes.end())
     {
-        std::cout << "GLTFScene::loadVertexAttributes found TANGENT" << std::endl;
         const tinygltf::Accessor &accessor = m_model->accessors[primitive.attributes.find("TANGENT")->second];
         const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
         const auto* bufferPos = reinterpret_cast<const float *>(&(m_model->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
@@ -151,17 +148,17 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
 
         for (size_t v = 0; v < vertexCount; v++) 
         {
-            Model::Vertex& vert = vertices[v + vertexStart];
+            Model::Vertex& vert = modelData.vertices[v + vertexStart];
             vert.tangent = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
         }
     }
 
-    RenderSys::Primitive prim;
+    RenderSys::SubMesh prim;
     prim.vertexCount = vertexCount;
     prim.hasIndices = primitive.indices > -1;
     if (prim.hasIndices)
     {
-        const uint32_t indexStart = indices.size();
+        const uint32_t indexStart = modelData.indices.size();
         prim.firstIndex = indexCount + indexStart;
         
         const tinygltf::Accessor &accessor = m_model->accessors[primitive.indices];
@@ -171,7 +168,7 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
         const auto currentIndexCount = static_cast<uint32_t>(accessor.count);
         assert(currentIndexCount > 0);
         prim.indexCount = currentIndexCount;
-        indices.resize(indexStart + currentIndexCount);
+        modelData.indices.resize(indexStart + currentIndexCount);
 
         const void *dataPtr = &(buffer.data[accessor.byteOffset + bufferView.byteOffset]);
 
@@ -179,21 +176,21 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
         case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
             const uint32_t *buf = static_cast<const uint32_t*>(dataPtr);
             for (size_t index = 0; index < accessor.count; index++) {
-                indices[index + indexStart] = buf[index] + vertexStart;
+                modelData.indices[index + indexStart] = buf[index] + vertexStart;
             }
             break;
         }
         case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
             const uint16_t *buf = static_cast<const uint16_t*>(dataPtr);
             for (size_t index = 0; index < accessor.count; index++) {
-                indices[index + indexStart] = buf[index] + vertexStart;
+                modelData.indices[index + indexStart] = buf[index] + vertexStart;
             }
             break;
         }
         case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE: {
             const uint8_t *buf = static_cast<const uint8_t*>(dataPtr);
             for (size_t index = 0; index < accessor.count; index++) {
-                indices[index + indexStart] = buf[index] + vertexStart;
+                modelData.indices[index + indexStart] = buf[index] + vertexStart;
             }
             break;
         }
@@ -207,12 +204,12 @@ RenderSys::Primitive GLTFScene::loadPrimitive(const tinygltf::Primitive &primiti
     return prim;
 }
 
-RenderSys::Mesh GLTFScene::loadMesh(const tinygltf::Mesh& gltfMesh, std::vector<Model::Vertex> &vertices, std::vector<uint32_t> &indices, const uint32_t indexCount)
+RenderSys::Mesh GLTFScene::loadMesh(const tinygltf::Mesh& gltfMesh, Model::ModelData &modelData, const uint32_t indexCount)
 {
     RenderSys::Mesh mesh;
     for (const auto &gltfPrimitive : gltfMesh.primitives)
     {
-        mesh.primitives.push_back(loadPrimitive(gltfPrimitive, vertices, indices, indexCount));
+        mesh.subMeshes.push_back(loadPrimitive(gltfPrimitive, modelData, indexCount));
     }
 
     return mesh;
@@ -274,8 +271,10 @@ void GLTFScene::loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatri
     std::memcpy(inverseBindMatrices.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
 }
 
-void GLTFScene::loadTextures(std::vector<Texture>& textures)
+void GLTFScene::loadTextures(std::vector<std::shared_ptr<Texture>>& textures)
 {
+    auto samplers = loadTextureSamplers();
+
     auto& gltfTextures = m_model->textures;
     if (gltfTextures.size() == 0)
         return;
@@ -295,52 +294,54 @@ void GLTFScene::loadTextures(std::vector<Texture>& textures)
                     << ", pixel_type=" << image.pixel_type 
                     << ", component=" << image.component 
                     << ", sampler=" << gltfTexture.sampler << std::endl;
-        textures.emplace_back((unsigned char*)image.image.data(), image.width, image.height, 1);
+        textures.emplace_back(std::make_shared<Texture>((unsigned char*)image.image.data(), image.width, image.height, 1));
+        textures.back()->SetSampler(samplers[gltfTexture.sampler]);
     }
 
     std::cout << "Texture loading completed!" << std::endl;
 }
 
-RenderSys::SamplerAddressMode getWrapMode(int32_t wrapMode)
+RenderSys::TextureSampler::AddressMode getWrapMode(int32_t wrapMode)
 {
     switch (wrapMode) {
     case -1:
     case 10497:
-        return RenderSys::SamplerAddressMode::REPEAT;
+        return RenderSys::TextureSampler::AddressMode::REPEAT;
     case 33071:
-        return RenderSys::SamplerAddressMode::CLAMP_TO_EDGE;
+        return RenderSys::TextureSampler::AddressMode::CLAMP_TO_EDGE;
     case 33648:
-        return RenderSys::SamplerAddressMode::MIRRORED_REPEAT;
+        return RenderSys::TextureSampler::AddressMode::MIRRORED_REPEAT;
     }
 
     std::cerr << "Unknown wrap mode for getVkWrapMode: " << wrapMode << std::endl;
-    return RenderSys::SamplerAddressMode::REPEAT;
+    return RenderSys::TextureSampler::AddressMode::REPEAT;
 }
 
-RenderSys::SamplerFilterMode getFilterMode(int32_t filterMode)
+RenderSys::TextureSampler::FilterMode getFilterMode(int32_t filterMode)
 {
     switch (filterMode) {
     case -1:
     case 9728:
-        return RenderSys::SamplerFilterMode::NEAREST;
+        return RenderSys::TextureSampler::FilterMode::NEAREST;
     case 9729:
-        return RenderSys::SamplerFilterMode::LINEAR;
+        return RenderSys::TextureSampler::FilterMode::LINEAR;
     case 9984:
-        return RenderSys::SamplerFilterMode::NEAREST;
+        return RenderSys::TextureSampler::FilterMode::NEAREST;
     case 9985:
-        return RenderSys::SamplerFilterMode::NEAREST;
+        return RenderSys::TextureSampler::FilterMode::NEAREST;
     case 9986:
-        return RenderSys::SamplerFilterMode::LINEAR;
+        return RenderSys::TextureSampler::FilterMode::LINEAR;
     case 9987:
-        return RenderSys::SamplerFilterMode::LINEAR;
+        return RenderSys::TextureSampler::FilterMode::LINEAR;
     }
 
     std::cerr << "Unknown filter mode for getVkFilterMode: " << filterMode << std::endl;
-    return RenderSys::SamplerFilterMode::NEAREST;
+    return RenderSys::TextureSampler::FilterMode::NEAREST;
 }
 
-void GLTFScene::loadTextureSamplers(std::vector<TextureSampler>& samplers)
+std::vector<TextureSampler> GLTFScene::loadTextureSamplers()
 {
+    std::vector<TextureSampler> samplers;
     for (const tinygltf::Sampler& smpl : m_model->samplers) {
         RenderSys::TextureSampler sampler{};
         sampler.minFilter = getFilterMode(smpl.minFilter);
@@ -350,6 +351,7 @@ void GLTFScene::loadTextureSamplers(std::vector<TextureSampler>& samplers)
         sampler.addressModeW = sampler.addressModeV;
         samplers.push_back(sampler);
     }
+    return samplers;
 }
 
 void GLTFScene::loadMaterials(std::vector<Material>& materials)
@@ -365,9 +367,9 @@ void GLTFScene::loadMaterials(std::vector<Material>& materials)
         material.baseColorFactor = glm::make_vec4(mat.pbrMetallicRoughness.baseColorFactor.data());
         material.metallicFactor = mat.pbrMetallicRoughness.metallicFactor;
         material.roughnessFactor = mat.pbrMetallicRoughness.roughnessFactor;
-        std::cout << "Material Name: " << mat.name 
-                    << ", metallicFactor=" << material.metallicFactor 
-                    << ", roughnessFactor=" << material.roughnessFactor << std::endl;
+        // std::cout << "Material Name: " << mat.name 
+        //             << ", metallicFactor=" << material.metallicFactor 
+        //             << ", roughnessFactor=" << material.roughnessFactor << std::endl;
         material.baseColorTextureIndex = mat.pbrMetallicRoughness.baseColorTexture.index;
         material.metallicRoughnessTextureIndex = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
         material.normalTextureIndex = mat.normalTexture.index;
@@ -375,7 +377,7 @@ void GLTFScene::loadMaterials(std::vector<Material>& materials)
     std::cout << "Materials loading completed!" << std::endl;
 }
 
-void GLTFScene::getNodeGraphs(std::vector<std::shared_ptr<SceneNode>>& rootNodes)
+void GLTFScene::getNodeGraphs(std::vector<std::shared_ptr<Model::ModelNode>>& rootNodes)
 {
     assert(m_model);
     const int nodeCount = m_model->nodes.size();
@@ -392,21 +394,19 @@ void GLTFScene::getNodeGraphs(std::vector<std::shared_ptr<SceneNode>>& rootNodes
     std::cout << "model has " << nodeCount << " total nodes and " << rootNodeCount << " root nodes. [IndexCount=" << indexCount << "]" << std::endl;
 }
 
-std::shared_ptr<SceneNode> GLTFScene::traverse(const std::shared_ptr<SceneNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount)
+std::shared_ptr<Model::ModelNode> GLTFScene::traverse(const std::shared_ptr<Model::ModelNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount)
 {
-    auto sceneNode = std::make_shared<SceneNode>(nodeIndex);
-    std::cout << node.name;
+    auto sceneNode = std::make_shared<Model::ModelNode>(nodeIndex);
     sceneNode->setNodeName(node.name);
 
     if (node.mesh > -1)
     {
-        std::cout << " : Mesh= " << node.mesh << ", ";
+        std::cout << node.name << " : Mesh= " << node.mesh << std::endl;
         const auto& gltfMesh = m_model->meshes.at(node.mesh);
-        const auto mesh = loadMesh(gltfMesh, sceneNode->m_vertices, sceneNode->m_indices, indexCount);
+        const auto mesh = loadMesh(gltfMesh, sceneNode->m_data, indexCount);
         sceneNode->setMesh(mesh);
-        indexCount += sceneNode->m_indices.size();
+        indexCount += sceneNode->m_data.indices.size();
     }
-    std::cout << std::endl;
 
     if (node.translation.size()) {
         sceneNode->setTranslation(glm::make_vec3(node.translation.data()));

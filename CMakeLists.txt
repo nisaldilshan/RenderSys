@@ -33,7 +33,9 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
     target_sources(RenderSys3D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
-                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp
+                    src/RenderSys/Vulkan/VulkanMemAlloc.cpp
+                    src/RenderSys/Vulkan/VulkanTexture.cpp)
     target_sources(ComputeSys PRIVATE
                     src/RenderSys/Vulkan/VulkanCompute.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
@@ -185,7 +187,8 @@ else()
     target_sources(RenderSys2D PRIVATE
                     src/RenderSys/WebGPU/WebGPURenderer2D.cpp)
     target_sources(RenderSys3D PRIVATE
-                    src/RenderSys/WebGPU/WebGPURenderer3D.cpp)
+                    src/RenderSys/WebGPU/WebGPURenderer3D.cpp
+                    src/RenderSys/WebGPU/WebGPUTexture.cpp)
     target_sources(ComputeSys PRIVATE
                     src/RenderSys/WebGPU/WebGPUCompute.cpp)
     

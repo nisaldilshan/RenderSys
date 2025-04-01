@@ -67,9 +67,8 @@ public:
 					out_color = in_color;
 				}
 			)";
-			RenderSys::Shader vertexShader("Vertex");
+			RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
 			vertexShader.type = RenderSys::ShaderType::SPIRV;
-			vertexShader.shaderSrc = vertexShaderSource;
 			vertexShader.stage = RenderSys::ShaderStage::Vertex;
 			m_renderer->SetShader(vertexShader);
 
@@ -106,9 +105,8 @@ public:
 					out_color = vec4(color, ubo.color.a);
 				}
 			)";
-			RenderSys::Shader fragmentShader("Fragment");
+			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
 			fragmentShader.type = RenderSys::ShaderType::SPIRV;
-			fragmentShader.shaderSrc = fragmentShaderSource;
 			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
 			m_renderer->SetShader(fragmentShader);
 		}
@@ -170,9 +168,8 @@ public:
 			}
 			)";
 
-			RenderSys::Shader shader("Combined");
+			RenderSys::Shader shader("Combined", shaderSource);
 			shader.type = RenderSys::ShaderType::WGSL;
-			shader.shaderSrc = shaderSource;
 			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 			m_renderer->SetShader(shader);
 		}
@@ -180,6 +177,39 @@ public:
 		{
 			assert(false);
 		}
+
+		RenderSys::VertexBuffer vertexData;
+		bool success = Geometry::loadGeometryFromObj(RESOURCE_DIR "/mammoth.obj", vertexData);
+		if (!success) 
+		{
+			std::cerr << "Could not load geometry!" << std::endl;
+			return;
+		}
+
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(3);
+
+		// Position attribute
+		vertexAttribs[0].location = 0;
+		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[0].offset = 0;
+
+		// Normal attribute
+		vertexAttribs[1].location = 1;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
+
+		// Color attribute
+		vertexAttribs[2].location = 2;
+		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
+
+		RenderSys::VertexBufferLayout vertexBufferLayout;
+		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
+		vertexBufferLayout.attributes = vertexAttribs.data();
+		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
+
+		m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
 	}
 
 	virtual void OnDetach() override
@@ -199,39 +229,6 @@ public:
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
 
-			RenderSys::VertexBuffer vertexData;
-			bool success = Geometry::loadGeometryFromObj(RESOURCE_DIR "/mammoth.obj", vertexData);
-			if (!success) 
-			{
-				std::cerr << "Could not load geometry!" << std::endl;
-				return;
-			}
-
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(3);
-
-			// Position attribute
-			vertexAttribs[0].location = 0;
-			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[0].offset = 0;
-
-			// Normal attribute
-			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
-
-			// Color attribute
-			vertexAttribs[2].location = 2;
-			vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-			vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
-
-			RenderSys::VertexBufferLayout vertexBufferLayout;
-			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
-			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
-			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
-
-			m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
-
 			// Create binding layout (don't forget to = Default)
 			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);
 			RenderSys::BindGroupLayoutEntry& bGLayoutEntry = bindingLayoutEntries[0];
@@ -243,7 +240,7 @@ public:
 			bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
 			bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
 			// Make this binding dynamic so we can offset it between draw calls
-			bGLayoutEntry.buffer.hasDynamicOffset = true;
+			bGLayoutEntry.buffer.hasDynamicOffset = false;
 
 			m_renderer->CreateUniformBuffer(bGLayoutEntry.binding, sizeof(MyUniforms), 2);
 			m_renderer->CreateBindGroup(bindingLayoutEntries);
@@ -285,21 +282,8 @@ public:
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
 
-			// Upload second value
-			glm::mat4x4 M2(1.0);
-			angle1 = time * 1.1f;
-			M2 = glm::rotate(M2, angle1, glm::vec3(0.0, 0.0, 1.0));
-			M2 = glm::translate(M2, glm::vec3(0.5, 0.0, 0.0));
-			M2 = glm::scale(M2, glm::vec3(0.3f));
-			m_uniformData.modelMatrix = M2;
-
-			m_uniformData.time = time;
-			m_uniformData.color = { 1.0f, 1.0f, 1.0f, 0.7f };
-			m_renderer->SetUniformBufferData(0, &m_uniformData, 1);
 			m_renderer->BindResources();
-
 			m_renderer->Render(0);
-			m_renderer->Render(1);
 			m_renderer->EndRenderPass();
 		}
        		

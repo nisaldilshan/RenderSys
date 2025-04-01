@@ -3,47 +3,18 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#if (RENDERER_BACKEND == 1)
+static_assert(false);
+#elif (RENDERER_BACKEND == 2)
+#include "Vulkan/VulkanTexture.h"
+#elif (RENDERER_BACKEND == 3)
+#include "WebGPU/WebGPUTexture.h"
+#else
+static_assert(false);
+#endif
+
 namespace RenderSys
 {
-
-Texture::Texture(unsigned char* textureData, int width, int height, uint32_t mipMapLevelCount)
-    : m_textureData(textureData)
-    , m_texWidth(width)
-    , m_texHeight(height)
-    , m_mipMapLevelCount(mipMapLevelCount)
-{}
-
-Texture::~Texture()
-{
-    stbi_image_free(m_textureData);
-}
-
-unsigned char* Texture::GetData() const
-{
-    return m_textureData;
-}
-
-int Texture::GetWidth() const
-{
-    return m_texWidth;
-}
-
-int Texture::GetHeight() const 
-{
-    return m_texHeight;
-}
-
-uint32_t Texture::GetMipLevelCount() const 
-{
-    return m_mipMapLevelCount;
-}
-
-TextureDescriptor Texture::GetDescriptor() const
-{
-    return TextureDescriptor{m_textureData, m_texWidth, m_texHeight, m_mipMapLevelCount, true};
-}
-
-namespace fs = std::filesystem;
 
 // Equivalent of std::bit_width that is available from C++20 onward
 inline uint32_t bit_width(uint32_t m) {
@@ -51,28 +22,40 @@ inline uint32_t bit_width(uint32_t m) {
     else { uint32_t w = 0; while (m >>= 1) ++w; return w; }
 }
 
-Texture* loadTextureRaw(const fs::path &path)
+Texture::Texture(unsigned char* textureData, int width, int height, uint32_t mipMapLevelCount)
+    : m_texWidth(width)
+    , m_texHeight(height)
+{
+    m_platformTexture = std::make_shared<RenderSys::TextureType>(m_texWidth, m_texHeight, mipMapLevelCount);
+    m_platformTexture->SetData(textureData);
+}
+
+Texture::Texture(const std::filesystem::path &path)
 {
     int channels;
-    int width;
-    int height;
-    unsigned char *pixelData = stbi_load(path.string().c_str(), &width, &height, &channels, 4 /* force 4 channels */);
+    unsigned char *pixelData = stbi_load(path.string().c_str(), &m_texWidth, &m_texHeight, &channels, 4 /* force 4 channels */);
     if (nullptr == pixelData)
     {
         assert(false);
-        return nullptr;
     }
 
-    uint32_t mipMapLevelCount = bit_width(std::max(width, height));
-    return new Texture(pixelData, width, height, mipMapLevelCount);
+    const uint32_t mipMapLevelCount = bit_width(std::max(m_texWidth, m_texHeight));
+    m_platformTexture = std::make_shared<RenderSys::TextureType>(m_texWidth, m_texHeight, mipMapLevelCount);
+    m_platformTexture->SetData(pixelData);
+    stbi_image_free(pixelData);
 }
 
-std::unique_ptr<Texture> loadTextureUnique(const fs::path &path)
+void Texture::SetSampler(const TextureSampler &sampler)
 {
-    return std::unique_ptr<Texture>(loadTextureRaw(path));
+    if (m_platformTexture)
+        m_platformTexture->SetSampler(sampler);
+    else
+        assert(false);
 }
 
-
-
+std::shared_ptr<RenderSys::TextureType> Texture::GetPlatformTexture() const
+{
+    return m_platformTexture;
+}
 
 }

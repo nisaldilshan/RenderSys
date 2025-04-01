@@ -74,7 +74,7 @@ void WebGPUCompute::CreateShaders(RenderSys::Shader& shader)
     // Set the chained struct's header
     shaderCodeDesc.chain.next = nullptr;
     shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
-    shaderCodeDesc.code = shader.shaderSrc.c_str();
+    shaderCodeDesc.code = shader.GetShaderSrc().c_str();
     // Connect the chain
     shaderDesc.nextInChain = &shaderCodeDesc.chain;
     m_shaderModule = WebGPU::GetDevice().createShaderModule(shaderDesc);

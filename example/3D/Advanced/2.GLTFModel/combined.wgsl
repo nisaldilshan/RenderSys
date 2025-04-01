@@ -1,8 +1,8 @@
 struct VertexInput {
     @location(0) position: vec3f,
     @location(1) normal: vec3f,
-    @location(2) color: vec3f,
-    @location(3) uv: vec2f,
+    @location(2) uv: vec2f,
+    @location(3) color: vec3f,
 };
 
 struct VertexOutput {
@@ -20,7 +20,6 @@ struct MyUniforms {
     projectionMatrix: mat4x4f,
     viewMatrix: mat4x4f,
     modelMatrix: mat4x4f,
-    color: vec4f,
     cameraWorldPosition: vec3f,
     time: f32,
 };

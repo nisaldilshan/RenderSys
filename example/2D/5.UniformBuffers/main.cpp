@@ -67,9 +67,8 @@ public:
 						vColor = aColor; // Pass color to fragment shader
 					}
 				)";
-				RenderSys::Shader vertexShader("Vertex");
+				RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
 				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.shaderSrc = vertexShaderSource;
 				vertexShader.stage = RenderSys::ShaderStage::Vertex;
 				m_renderer->SetShader(vertexShader);
 
@@ -83,9 +82,8 @@ public:
 						FragColor = vec4(vColor, 1.0); // Use the color from the vertex shader
 					}
 				)";
-				RenderSys::Shader fragmentShader("Fragment");
+				RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
 				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.shaderSrc = fragmentShaderSource;
 				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
 				m_renderer->SetShader(fragmentShader);
 			}
@@ -145,9 +143,8 @@ public:
 				}
 				)";
 
-				RenderSys::Shader shader("Combined");
+				RenderSys::Shader shader("Combined", shaderSource);
 				shader.type = RenderSys::ShaderType::WGSL;
-				shader.shaderSrc = shaderSource;
 				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
 				m_renderer->SetShader(shader);
 			}
