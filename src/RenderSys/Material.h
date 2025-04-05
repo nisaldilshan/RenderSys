@@ -57,6 +57,19 @@ struct MaterialProperties
     float m_EmissiveStrength{1.0f};
 };
 
+enum TextureIndices
+{
+    DIFFUSE_MAP_INDEX = 0,
+    NORMAL_MAP_INDEX,
+    ROUGHNESS_METALLIC_MAP_INDEX,
+    NUM_TEXTURES
+};
+
+class Texture; // forward declaration
+
+// fixed-size array for material textures
+typedef std::array<std::shared_ptr<Texture>, NUM_TEXTURES> MaterialTextures;
+
 class MaterialDescriptor
 {
 public:
@@ -68,9 +81,11 @@ public:
     MaterialDescriptor(MaterialDescriptor&&) = delete;
     MaterialDescriptor& operator=(MaterialDescriptor&&) = delete;
 
-    MaterialDescriptorType* GetPlatformDescriptor() const { return m_platformMaterialDescriptor.get(); }
+    void Init(MaterialTextures& textures);
+
+    MaterialDescriptorType* GetPlatformDescriptor() const { return m_platformDescriptor.get(); }
 private:
-    std::unique_ptr<MaterialDescriptorType> m_platformMaterialDescriptor;
+    std::unique_ptr<MaterialDescriptorType> m_platformDescriptor{nullptr};
 };
 
 
@@ -88,11 +103,13 @@ public:
     void Init();
     
     void SetMaterialProperties(const MaterialProperties& matProps) { m_materialProperties = matProps; }
+    void SetMaterialTexture(const TextureIndices textureIndex, std::shared_ptr<Texture> texture);
 
     std::shared_ptr<MaterialDescriptor> GetMaterialDescriptor() const { return m_MaterialDescriptor; }
     const MaterialProperties& GetMaterialProperties() const { return m_materialProperties; }
 private:
     MaterialProperties m_materialProperties;
+    MaterialTextures m_materialTextures;
     std::shared_ptr<MaterialDescriptor> m_MaterialDescriptor;
 };
 

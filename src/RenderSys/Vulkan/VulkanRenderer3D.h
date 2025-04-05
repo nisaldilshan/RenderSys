@@ -81,6 +81,11 @@ namespace GraphicsAPI
         void DestroyPipeline();
         void DestroyBindGroup();
         void Destroy();
+
+        static VkDescriptorPool GetMaterialBindGroupPool();
+        static VkDescriptorSetLayout GetMaterialBindGroupLayout();
+        static std::vector<VkDescriptorSetLayoutBinding> GetMaterialBindGroupBindings();
+
     private:
         void CreateDefaultTextureSampler();
         void CreatePipelineLayout();
@@ -117,9 +122,6 @@ namespace GraphicsAPI
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
         VkDescriptorSet m_mainBindGroup = VK_NULL_HANDLE;
-
-        VkDescriptorPool m_materialBindGroupPool = VK_NULL_HANDLE;
-        VkDescriptorSetLayout m_materialBindGroupLayout = VK_NULL_HANDLE;
 
         // map modelID to VulkanModelInfo
         std::unordered_map<uint32_t, VulkanModelInfo> m_models;

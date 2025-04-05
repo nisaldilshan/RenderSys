@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
+#include <RenderSys/Material.h>
 
 namespace RenderSys
 {
@@ -9,7 +10,7 @@ namespace RenderSys
 class VulkanMaterialDescriptor
 {
 public:
-    VulkanMaterialDescriptor();
+    VulkanMaterialDescriptor(MaterialTextures& textures);
     ~VulkanMaterialDescriptor();
 
     VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; // 1 bind group for different texture types of one material (baseColor/normal/metallic-roughness)

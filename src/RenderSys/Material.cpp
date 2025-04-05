@@ -17,6 +17,11 @@ MaterialDescriptor::MaterialDescriptor()
 {
 }
 
+void MaterialDescriptor::Init(MaterialTextures& textures)
+{
+    m_platformDescriptor = std::make_unique<MaterialDescriptorType>(textures);
+}
+
 Material::Material()
     : m_materialProperties()
     , m_MaterialDescriptor(std::make_shared<MaterialDescriptor>())
@@ -31,6 +36,12 @@ Material::~Material()
 
 void Material::Init()
 {
+    m_MaterialDescriptor->Init(m_materialTextures);
+}
+
+void Material::SetMaterialTexture(const TextureIndices textureIndex, std::shared_ptr<Texture> texture)
+{
+    m_materialTextures[textureIndex] = texture;
 }
 
 } // namespace RenderSys

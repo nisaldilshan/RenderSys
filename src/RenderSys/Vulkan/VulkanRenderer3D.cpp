@@ -2,6 +2,7 @@
 #include "VulkanRendererUtils.h"
 #include "VulkanMemAlloc.h"
 #include "VulkanTexture.h"
+#include "VulkanMaterial.h"
 
 #include <array>
 #include <iostream>
