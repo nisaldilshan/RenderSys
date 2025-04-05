@@ -17,6 +17,7 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Camera.cpp
                 src/RenderSys/Geometry.cpp
                 src/RenderSys/Texture.cpp
+                src/RenderSys/Material.cpp
                 src/RenderSys/Scene/GLTFScene.cpp
                 src/RenderSys/Scene/Scene.cpp
                 src/RenderSys/Scene/SceneNode.cpp)
@@ -35,7 +36,8 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
                     src/RenderSys/Vulkan/VulkanMemAlloc.cpp
-                    src/RenderSys/Vulkan/VulkanTexture.cpp)
+                    src/RenderSys/Vulkan/VulkanTexture.cpp
+                    src/RenderSys/Vulkan/VulkanMaterial.cpp)
     target_sources(ComputeSys PRIVATE
                     src/RenderSys/Vulkan/VulkanCompute.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
