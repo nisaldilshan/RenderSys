@@ -26,15 +26,6 @@ namespace GraphicsAPI
         std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
     };
 
-    struct VulkanMaterial
-    {
-        VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; // 1 bind group for different texture types of one material (baseColor/normal/metallic-roughness)
-        int materialUniformBufferSlot = -1;
-        int baseColorTextureIndex = -1;
-        int normalTextureIndex = -1;
-        int metallicRoughnessTextureIndex = -1;
-    };
-
     struct VulkanUniformBufferInfo
     {
         VkDescriptorBufferInfo m_bufferInfo = {VK_NULL_HANDLE, 0, 0};
@@ -42,29 +33,53 @@ namespace GraphicsAPI
         void* m_mappedBuffer = nullptr;
     };
 
-    struct alignas(16) MaterialItem {
-        std::array<float, 4> color;
-        float hardness = 16.0f;
-        float kd = 2.0f;
-        float ks = 0.3f;
-        float workflow = 1.0f;
-        float metallic = 0.0f;
-        float roughness = 0.0f;
-        int colorTextureSet;
-        int PhysicalDescriptorTextureSet;
-        int normalTextureSet;
+    // material
+#define GLSL_HAS_DIFFUSE_MAP (0x1 << 0x0)
+#define GLSL_HAS_NORMAL_MAP (0x1 << 0x1)
+#define GLSL_HAS_ROUGHNESS_MAP (0x1 << 0x2)
+#define GLSL_HAS_METALLIC_MAP (0x1 << 0x3)
+#define GLSL_HAS_ROUGHNESS_METALLIC_MAP (0x1 << 0x4)
+#define GLSL_HAS_EMISSIVE_COLOR (0x1 << 0x5)
+#define GLSL_HAS_EMISSIVE_MAP (0x1 << 0x6)
+
+#define GLSL_NUM_MULTI_MATERIAL 4
+
+    enum MaterialFeatures // bitset
+    {
+        HAS_DIFFUSE_MAP = GLSL_HAS_DIFFUSE_MAP,
+        HAS_NORMAL_MAP = GLSL_HAS_NORMAL_MAP,
+        HAS_ROUGHNESS_MAP = GLSL_HAS_ROUGHNESS_MAP,
+        HAS_METALLIC_MAP = GLSL_HAS_METALLIC_MAP,
+        HAS_ROUGHNESS_METALLIC_MAP = GLSL_HAS_ROUGHNESS_METALLIC_MAP,
+        HAS_EMISSIVE_COLOR = GLSL_HAS_EMISSIVE_COLOR,
+        HAS_EMISSIVE_MAP = GLSL_HAS_EMISSIVE_MAP
     };
-    
-    struct MaterialUniforms {
-        std::array<MaterialItem, 32> materials;
+
+    struct MaterialProperties
+    { // align data to blocks of 16 bytes
+        // byte 0 to 15
+        uint32_t m_features{0};
+        float m_roughness{0.0f};
+        float m_metallic{0.0f};
+        float m_NormalMapIntensity{1.0f};
+
+        // byte 16 to 31
+        glm::vec4 m_baseColor{1.0f, 1.0f, 1.0f, 1.0f};
+
+        // byte 32 to 47
+        glm::vec3 m_EmissiveColor{0.0f, 0.0f, 0.0f};
+        float m_EmissiveStrength{1.0f};
     };
-    static_assert(sizeof(MaterialUniforms) % 16 == 0);
+
+    struct VulkanMaterial
+    {
+        VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; // 1 bind group for different texture types of one material (baseColor/normal/metallic-roughness)
+        MaterialProperties m_materialProperties;
+    };
 
     struct VulkanModelInfo
     {
         std::vector<VulkanMaterial> m_materials;
-        // materials uniform buffer - max 32 materials
-        VulkanUniformBufferInfo m_materialUniformBuffer;
     };
 
     class VulkanRenderer3D

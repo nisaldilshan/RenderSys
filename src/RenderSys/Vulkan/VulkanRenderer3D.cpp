@@ -459,7 +459,7 @@ void VulkanRenderer3D::CreatePipelineLayout()
         
         VkPushConstantRange pushConstantRange{};
 		pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pushConstantRange.size = sizeof(uint32_t);
+        pushConstantRange.size = sizeof(MaterialProperties);
         pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
         pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
@@ -984,7 +984,7 @@ void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint
                                 , descriptorsets.size(), descriptorsets.data()
                                 , 0, nullptr);
 
-    vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t), &material.materialUniformBufferSlot);
+    vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(MaterialProperties), &material.m_materialProperties);
 
     assert(vertexBufferID >= 1);
     const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
@@ -1085,9 +1085,6 @@ void VulkanRenderer3D::DestroyTextures()
     for (auto &&model : m_models)
     {
         model.second.m_materials.clear();
-        vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), 
-                            model.second.m_materialUniformBuffer.m_bufferInfo.buffer, 
-                            model.second.m_materialUniformBuffer.m_uniformBufferMemory);
     }
     m_models.clear();
 }
@@ -1138,10 +1135,9 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
 {
     std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings
     {
-        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // uniform buffer
-        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
-        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
-        VkDescriptorSetLayoutBinding{3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
+        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
+        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
+        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
     };
 
     if (m_materialBindGroupLayout == VK_NULL_HANDLE)
@@ -1182,44 +1178,21 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     }
     VulkanModelInfo& model = modelIter->second;
 
-    //////////////////////////////////////////////////////////////////////////
-    // create uniform buffer
-    std::tie(model.m_materialUniformBuffer.m_bufferInfo.buffer, 
-            model.m_materialUniformBuffer.m_uniformBufferMemory) = RenderSys::Vulkan::CreateBuffer(
-                                                                            RenderSys::Vulkan::GetMemoryAllocator(), 
-                                                                            sizeof(MaterialUniforms), 
-                                                                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
-                                                                            VMA_MEMORY_USAGE_CPU_TO_GPU);
-    model.m_materialUniformBuffer.m_bufferInfo.range = sizeof(MaterialUniforms);
-    model.m_materialUniformBuffer.m_bufferInfo.offset = 0;
-
-    MaterialUniforms materialUniforms{};
-    int matCount = 0;
-    assert(materials.size() <= 32);
-    for (const auto& material : materials)
-    {
-        const auto& baseColor = material.baseColorFactor;
-        materialUniforms.materials[matCount].color = {
-            baseColor.x, baseColor.y, baseColor.z, baseColor.w
-        };
-        materialUniforms.materials[matCount].metallic = material.metallicFactor;
-        materialUniforms.materials[matCount].roughness = material.roughnessFactor;
-        materialUniforms.materials[matCount].colorTextureSet 
-            = material.baseColorTextureIndex == -1 ? -1 : 0; // material.texCoordSets.baseColor
-        materialUniforms.materials[matCount].PhysicalDescriptorTextureSet 
-            = material.normalTextureIndex == -1 ? -1 : 0; // material.texCoordSets.normal
-        materialUniforms.materials[matCount].normalTextureSet 
-            = material.metallicRoughnessTextureIndex == -1 ? -1 : 0;
-        matCount++;
-    }
-    RenderSys::Vulkan::SetBufferData(RenderSys::Vulkan::GetMemoryAllocator(), model.m_materialUniformBuffer.m_uniformBufferMemory, &materialUniforms, sizeof(MaterialUniforms));
-    //////////////////////////////////////////////////////////////////////////
-
     model.m_materials.resize(materials.size());
     int count = 0;
     for (const auto &material : materials)
     {
-        model.m_materials[count].materialUniformBufferSlot = count;
+        MaterialProperties materialProperties{};
+        materialProperties.m_baseColor = {material.baseColorFactor.x, material.baseColorFactor.y, material.baseColorFactor.z, material.baseColorFactor.w};
+        materialProperties.m_roughness = material.roughnessFactor;
+        materialProperties.m_metallic = material.metallicFactor;
+        if (material.baseColorTextureIndex != -1)
+            materialProperties.m_features |= MaterialFeatures::HAS_DIFFUSE_MAP;
+        if (material.normalTextureIndex != -1)
+            materialProperties.m_features |= MaterialFeatures::HAS_NORMAL_MAP;
+        if (material.metallicRoughnessTextureIndex != -1)
+            materialProperties.m_features |= MaterialFeatures::HAS_ROUGHNESS_METALLIC_MAP;
+        model.m_materials[count].m_materialProperties = materialProperties;
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = m_materialBindGroupPool;
@@ -1247,8 +1220,6 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     
             descriptorWrites.push_back(textureWrite);
         }
-
-        descriptorWrites[0].pBufferInfo = &model.m_materialUniformBuffer.m_bufferInfo;
     
         assert(material.baseColorTextureIndex >= 0);
         const auto baseColorTexture = textures[material.baseColorTextureIndex]->GetPlatformTexture();
@@ -1257,7 +1228,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
         {
             baseColorImageInfo.sampler = m_defaultTextureSampler;
         }
-        descriptorWrites[1].pImageInfo = &baseColorImageInfo;
+        descriptorWrites[0].pImageInfo = &baseColorImageInfo;
     
         if (material.normalTextureIndex >= 0)
         {
@@ -1267,11 +1238,11 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
             {
                 normalTextureImageInfo.sampler = m_defaultTextureSampler;
             }
-            descriptorWrites[2].pImageInfo = &normalTextureImageInfo;
+            descriptorWrites[1].pImageInfo = &normalTextureImageInfo;
         }
         else
         {
-            descriptorWrites[2].pImageInfo = &baseColorImageInfo;
+            descriptorWrites[1].pImageInfo = &baseColorImageInfo;
         }
     
         if (material.metallicRoughnessTextureIndex >= 0)
@@ -1282,11 +1253,11 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
             {
                 metallicRoughnessTextureImageInfo.sampler = m_defaultTextureSampler;
             }
-            descriptorWrites[3].pImageInfo = &metallicRoughnessTextureImageInfo;
+            descriptorWrites[2].pImageInfo = &metallicRoughnessTextureImageInfo;
         }
         else
         {
-            descriptorWrites[3].pImageInfo = &baseColorImageInfo;
+            descriptorWrites[2].pImageInfo = &baseColorImageInfo;
         }
     
         vkUpdateDescriptorSets(Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
