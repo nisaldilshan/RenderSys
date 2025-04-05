@@ -11,6 +11,7 @@
 #include <RenderSys/Shader.h>
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
+#include <RenderSys/Material.h>
 
 namespace GraphicsAPI
 {
@@ -33,48 +34,10 @@ namespace GraphicsAPI
         void* m_mappedBuffer = nullptr;
     };
 
-    // material
-#define GLSL_HAS_DIFFUSE_MAP (0x1 << 0x0)
-#define GLSL_HAS_NORMAL_MAP (0x1 << 0x1)
-#define GLSL_HAS_ROUGHNESS_MAP (0x1 << 0x2)
-#define GLSL_HAS_METALLIC_MAP (0x1 << 0x3)
-#define GLSL_HAS_ROUGHNESS_METALLIC_MAP (0x1 << 0x4)
-#define GLSL_HAS_EMISSIVE_COLOR (0x1 << 0x5)
-#define GLSL_HAS_EMISSIVE_MAP (0x1 << 0x6)
-
-#define GLSL_NUM_MULTI_MATERIAL 4
-
-    enum MaterialFeatures // bitset
-    {
-        HAS_DIFFUSE_MAP = GLSL_HAS_DIFFUSE_MAP,
-        HAS_NORMAL_MAP = GLSL_HAS_NORMAL_MAP,
-        HAS_ROUGHNESS_MAP = GLSL_HAS_ROUGHNESS_MAP,
-        HAS_METALLIC_MAP = GLSL_HAS_METALLIC_MAP,
-        HAS_ROUGHNESS_METALLIC_MAP = GLSL_HAS_ROUGHNESS_METALLIC_MAP,
-        HAS_EMISSIVE_COLOR = GLSL_HAS_EMISSIVE_COLOR,
-        HAS_EMISSIVE_MAP = GLSL_HAS_EMISSIVE_MAP
-    };
-
-    struct MaterialProperties
-    { // align data to blocks of 16 bytes
-        // byte 0 to 15
-        uint32_t m_features{0};
-        float m_roughness{0.0f};
-        float m_metallic{0.0f};
-        float m_NormalMapIntensity{1.0f};
-
-        // byte 16 to 31
-        glm::vec4 m_baseColor{1.0f, 1.0f, 1.0f, 1.0f};
-
-        // byte 32 to 47
-        glm::vec3 m_EmissiveColor{0.0f, 0.0f, 0.0f};
-        float m_EmissiveStrength{1.0f};
-    };
-
     struct VulkanMaterial
     {
         VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; // 1 bind group for different texture types of one material (baseColor/normal/metallic-roughness)
-        MaterialProperties m_materialProperties;
+        RenderSys::MaterialProperties m_materialProperties;
     };
 
     struct VulkanModelInfo
@@ -101,14 +64,14 @@ namespace GraphicsAPI
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform);
         // Textures get created as a part of main bindgroup
         void CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture);
-        void CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
+        void CreateModelMaterials(uint32_t modelID, const std::vector<std::shared_ptr<RenderSys::Material>>& materials
             , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels);
         void SetUniformData(uint32_t binding, const void* bufferData);
         void BindResources();
         void Render();
         void RenderIndexed();
         void RenderMesh(const RenderSys::Mesh& mesh);
-        void RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const VulkanMaterial &material);
+        void RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const std::shared_ptr<RenderSys::Material> material);
         void DrawPlane();
         void DrawCube();
         ImTextureID GetDescriptorSet();
