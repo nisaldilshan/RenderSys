@@ -954,38 +954,24 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
     }
 
     assert(m_mainBindGroup != VK_NULL_HANDLE);
-    auto modelIter = m_models.find(mesh.id);
-    if (modelIter == m_models.end())
-    {
-        std::cout << "Error: could not find Model!" << std::endl;
-        return;
-    }
-
-    const auto& model = modelIter->second;
     for (const auto &subMesh : mesh.subMeshes)
     {
-        assert(subMesh.materialIndex < model.m_materials.size());
-        RenderPrimitive(mesh.vertexBufferID, subMesh.indexCount, subMesh.firstIndex, model.m_materials[subMesh.materialIndex]);
+        assert(subMesh.m_Material);
+        RenderPrimitive(mesh.vertexBufferID, subMesh.m_IndexCount, subMesh.m_FirstIndex, subMesh.m_Material);
     }
 }
 
-void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const VulkanMaterial &material)
+void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const std::shared_ptr<RenderSys::Material> material)
 {
-    std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup};
-    if (material.m_bindGroup != VK_NULL_HANDLE)
-    {
-        descriptorsets.push_back(material.m_bindGroup);
-    }
-    else
-    {
-        std::cout << "Error: material bindGroup is null!" << std::endl;
-    }
+    auto materialBindGroup = material->GetMaterialDescriptor()->GetPlatformDescriptor()->m_bindGroup;
+    assert(materialBindGroup != VK_NULL_HANDLE);
+    std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, materialBindGroup};
 
     vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
                                 , descriptorsets.size(), descriptorsets.data()
                                 , 0, nullptr);
 
-    vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(MaterialProperties), &material.m_materialProperties);
+    vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RenderSys::MaterialProperties), &material->GetMaterialProperties());
 
     assert(vertexBufferID >= 1);
     const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
@@ -1105,6 +1091,65 @@ void VulkanRenderer3D::Destroy()
     RenderSys::Vulkan::DestroyMemoryAllocator();
 }
 
+VkDescriptorPool VulkanRenderer3D::GetMaterialBindGroupPool()
+{
+    static VkDescriptorPool materialBindGroupPool = VK_NULL_HANDLE;
+    if (materialBindGroupPool != VK_NULL_HANDLE)
+        return materialBindGroupPool;
+    
+    constexpr uint32_t maxNumOfModels = 10;
+    constexpr uint32_t maxMaterialsPerModel = 50;
+
+    std::vector<VkDescriptorPoolSize> poolSizes;
+    poolSizes.emplace_back(
+        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 * maxMaterialsPerModel * maxNumOfModels}
+    );
+    poolSizes.emplace_back(
+        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * maxMaterialsPerModel * maxNumOfModels}
+    );
+    
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = poolSizes.size();
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = maxMaterialsPerModel * maxNumOfModels;
+
+    
+    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &materialBindGroupPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor pool!");
+    }
+    return materialBindGroupPool;
+}
+
+VkDescriptorSetLayout VulkanRenderer3D::GetMaterialBindGroupLayout()
+{
+    static VkDescriptorSetLayout materialBindGroupLayout = VK_NULL_HANDLE;
+    if (materialBindGroupLayout != VK_NULL_HANDLE)
+        return materialBindGroupLayout;
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    auto bindings = GetMaterialBindGroupBindings();
+    layoutInfo.bindingCount = bindings.size();
+    layoutInfo.pBindings = bindings.data();
+
+    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &materialBindGroupLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+    return materialBindGroupLayout;
+}
+
+std::vector<VkDescriptorSetLayoutBinding> VulkanRenderer3D::GetMaterialBindGroupBindings()
+{
+    static std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings
+    {
+        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
+        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
+        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
+    };
+
+    return materialBindGroupBindings;
+}
+
 void VulkanRenderer3D::SubmitCommandBuffer()
 {
     auto err = vkEndCommandBuffer(m_commandBuffer);
@@ -1131,44 +1176,10 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<Ren
     }
 }
 
-void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material> &materials 
+void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<std::shared_ptr<RenderSys::Material>> &materials 
     , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels)
 {
-    std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings
-    {
-        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
-        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
-        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
-    };
-
-    if (m_materialBindGroupLayout == VK_NULL_HANDLE)
-    {
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = materialBindGroupBindings.size();
-        layoutInfo.pBindings = materialBindGroupBindings.data();
-        
-        if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_materialBindGroupLayout) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor set layout!");
-        }
-        
-        std::vector<VkDescriptorPoolSize> poolSizes;
-        poolSizes.emplace_back(
-            VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 * static_cast<uint32_t>(materials.size()) * maxNumOfModels}
-        );
-        poolSizes.emplace_back(
-            VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * static_cast<uint32_t>(materials.size()) * maxNumOfModels}
-        );
-        
-        VkDescriptorPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = poolSizes.size();
-        poolInfo.pPoolSizes = poolSizes.data();
-        poolInfo.maxSets = materials.size() * maxNumOfModels;
-        if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_materialBindGroupPool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor pool!");
-        }
-    }
+    
     
     const auto& [modelIter, inserted] = m_models.insert({modelID, VulkanModelInfo{}});
     if (!inserted)
@@ -1183,85 +1194,7 @@ void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<
     int count = 0;
     for (const auto &material : materials)
     {
-        MaterialProperties materialProperties{};
-        materialProperties.m_baseColor = {material.baseColorFactor.x, material.baseColorFactor.y, material.baseColorFactor.z, material.baseColorFactor.w};
-        materialProperties.m_roughness = material.roughnessFactor;
-        materialProperties.m_metallic = material.metallicFactor;
-        if (material.baseColorTextureIndex != -1)
-            materialProperties.m_features |= MaterialFeatures::HAS_DIFFUSE_MAP;
-        if (material.normalTextureIndex != -1)
-            materialProperties.m_features |= MaterialFeatures::HAS_NORMAL_MAP;
-        if (material.metallicRoughnessTextureIndex != -1)
-            materialProperties.m_features |= MaterialFeatures::HAS_ROUGHNESS_METALLIC_MAP;
-        model.m_materials[count].m_materialProperties = materialProperties;
-        VkDescriptorSetAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = m_materialBindGroupPool;
-        allocInfo.descriptorSetCount = 1;
-        allocInfo.pSetLayouts = &m_materialBindGroupLayout;
-    
-        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &model.m_materials[count].m_bindGroup) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        }
-    
-        std::vector<VkWriteDescriptorSet> descriptorWrites;
-        VkDescriptorImageInfo imageInfo{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED};
-        for (const auto &materialBindGroupBinding : materialBindGroupBindings)
-        {
-            VkWriteDescriptorSet textureWrite{};
-            textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            textureWrite.dstSet = model.m_materials[count].m_bindGroup;
-            textureWrite.dstBinding = materialBindGroupBinding.binding;
-            textureWrite.dstArrayElement = 0;
-            textureWrite.descriptorType = materialBindGroupBinding.descriptorType;
-            textureWrite.descriptorCount = 1;
-            textureWrite.pBufferInfo = nullptr;
-            textureWrite.pImageInfo = &imageInfo;
-            textureWrite.pTexelBufferView = nullptr;
-    
-            descriptorWrites.push_back(textureWrite);
-        }
-    
-        assert(material.baseColorTextureIndex >= 0);
-        const auto baseColorTexture = textures[material.baseColorTextureIndex]->GetPlatformTexture();
-        auto baseColorImageInfo = baseColorTexture->GetDescriptorImageInfo();
-        if (baseColorImageInfo.sampler == VK_NULL_HANDLE)
-        {
-            baseColorImageInfo.sampler = m_defaultTextureSampler;
-        }
-        descriptorWrites[0].pImageInfo = &baseColorImageInfo;
-    
-        if (material.normalTextureIndex >= 0)
-        {
-            const auto normalTexture = textures[material.normalTextureIndex]->GetPlatformTexture();
-            auto normalTextureImageInfo = normalTexture->GetDescriptorImageInfo();
-            if (normalTextureImageInfo.sampler == VK_NULL_HANDLE)
-            {
-                normalTextureImageInfo.sampler = m_defaultTextureSampler;
-            }
-            descriptorWrites[1].pImageInfo = &normalTextureImageInfo;
-        }
-        else
-        {
-            descriptorWrites[1].pImageInfo = &baseColorImageInfo;
-        }
-    
-        if (material.metallicRoughnessTextureIndex >= 0)
-        {
-            const auto metallicRoughnessTexture = textures[material.metallicRoughnessTextureIndex]->GetPlatformTexture();
-            auto metallicRoughnessTextureImageInfo = metallicRoughnessTexture->GetDescriptorImageInfo();
-            if (metallicRoughnessTextureImageInfo.sampler == VK_NULL_HANDLE)
-            {
-                metallicRoughnessTextureImageInfo.sampler = m_defaultTextureSampler;
-            }
-            descriptorWrites[2].pImageInfo = &metallicRoughnessTextureImageInfo;
-        }
-        else
-        {
-            descriptorWrites[2].pImageInfo = &baseColorImageInfo;
-        }
-    
-        vkUpdateDescriptorSets(Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+        
         count++;
     }
 }

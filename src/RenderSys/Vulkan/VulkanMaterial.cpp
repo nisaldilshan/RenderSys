@@ -53,6 +53,11 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
         }
         descriptorWrites[0].pImageInfo = &baseColorImageInfo;
     }
+    else
+    {
+        std::cerr << "Base color texture is null!" << std::endl;
+        return;
+    }
 
     const auto normalTexture = textures[RenderSys::TextureIndices::NORMAL_MAP_INDEX];
     if (normalTexture)
@@ -67,7 +72,8 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     }
     else
     {
-        //descriptorWrites[1].pImageInfo = &baseColorImageInfo;
+        auto platformTex = baseColorTexture->GetPlatformTexture();
+        descriptorWrites[1].pImageInfo = &platformTex->GetDescriptorImageInfo();
     }
 
     const auto metallicRoughnessTexture = textures[RenderSys::TextureIndices::ROUGHNESS_METALLIC_MAP_INDEX];
@@ -83,7 +89,8 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     }
     else
     {
-        //descriptorWrites[2].pImageInfo = &baseColorImageInfo;
+        auto platformTex = baseColorTexture->GetPlatformTexture();
+        descriptorWrites[2].pImageInfo = &platformTex->GetDescriptorImageInfo();
     }
 
     vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
