@@ -460,7 +460,7 @@ void VulkanRenderer3D::CreatePipelineLayout()
         
         VkPushConstantRange pushConstantRange{};
 		pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pushConstantRange.size = sizeof(MaterialProperties);
+        pushConstantRange.size = sizeof(RenderSys::MaterialProperties);
         pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
         pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
@@ -963,7 +963,7 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
 
 void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const std::shared_ptr<RenderSys::Material> material)
 {
-    auto materialBindGroup = material->GetMaterialDescriptor()->GetPlatformDescriptor()->m_bindGroup;
+    auto materialBindGroup = material->GetMaterialDescriptor()->GetPlatformDescriptor()->m_materialbindGroup;
     assert(materialBindGroup != VK_NULL_HANDLE);
     std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, materialBindGroup};
 

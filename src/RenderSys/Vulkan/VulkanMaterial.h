@@ -13,7 +13,8 @@ public:
     VulkanMaterialDescriptor(MaterialTextures& textures);
     ~VulkanMaterialDescriptor();
 
-    VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; // 1 bind group for different texture types of one material (baseColor/normal/metallic-roughness)
+    // 1 bind group for different texture types of one material (baseColor/normal/metallic-roughness)
+    VkDescriptorSet m_materialbindGroup = VK_NULL_HANDLE; 
 };
 
 

@@ -7,11 +7,6 @@ namespace RenderSys
 
 VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
 {
-    // Initialize the descriptor set layout and pool here if needed
-    // This is just a placeholder, actual initialization should be done in the Vulkan context
-    m_bindGroup = VK_NULL_HANDLE; // Placeholder for the Vulkan descriptor set
-
-
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = GraphicsAPI::VulkanRenderer3D::GetMaterialBindGroupPool();
@@ -19,7 +14,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     auto materialBindGroupLayout = GraphicsAPI::VulkanRenderer3D::GetMaterialBindGroupLayout();
     allocInfo.pSetLayouts = &materialBindGroupLayout;
 
-    if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_materialbindGroup) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
@@ -29,7 +24,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     {
         VkWriteDescriptorSet textureWrite{};
         textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        textureWrite.dstSet = m_bindGroup;
+        textureWrite.dstSet = m_materialbindGroup;
         textureWrite.dstBinding = materialBindGroupBinding.binding;
         textureWrite.dstArrayElement = 0;
         textureWrite.descriptorType = materialBindGroupBinding.descriptorType;
