@@ -82,6 +82,7 @@ public:
     MaterialDescriptor& operator=(MaterialDescriptor&&) = delete;
 
     void Init(MaterialTextures& textures);
+    void Destroy();
 
     MaterialDescriptorType* GetPlatformDescriptor() const { return m_platformDescriptor.get(); }
 private:

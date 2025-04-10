@@ -49,8 +49,6 @@ public:
     void CreatePipeline();
     void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
     void CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture);
-    void CreateModelMaterials(uint32_t modelID, const std::vector<std::shared_ptr<RenderSys::Material>>& materials
-        , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels);
     void SetClearColor(glm::vec4 clearColor);
     void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfUniform, size_t bufferLength);
     void SetUniformBufferData(uint32_t binding, const void* bufferData, uint32_t uniformIndex);

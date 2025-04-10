@@ -22,6 +22,14 @@ void MaterialDescriptor::Init(MaterialTextures& textures)
     m_platformDescriptor = std::make_unique<MaterialDescriptorType>(textures);
 }
 
+void MaterialDescriptor::Destroy()
+{
+    if (m_platformDescriptor)
+    {
+        m_platformDescriptor.reset();
+    }
+}
+
 Material::Material()
     : m_materialProperties()
     , m_MaterialDescriptor(std::make_shared<MaterialDescriptor>())
@@ -32,6 +40,11 @@ Material::Material()
 
 Material::~Material()
 {
+    if (m_MaterialDescriptor)
+    {
+        m_MaterialDescriptor->Destroy();
+        m_MaterialDescriptor.reset();
+    }
 }
 
 void Material::Init()

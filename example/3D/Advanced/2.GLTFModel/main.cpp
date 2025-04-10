@@ -99,6 +99,7 @@ public:
 		}
 
 		m_texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
+		m_texture->SetDefaultSampler();
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 
