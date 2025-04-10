@@ -24,7 +24,7 @@ public:
     const std::vector<Model::Vertex>& getVertexBuffer() const { return m_vertexBufferAltered.size() > 0 ? m_vertexBufferAltered : m_vertexBuffer; }
     const RenderSys::VertexBuffer getVertexBufferForRenderer() const;
     const std::vector<uint32_t>& getIndexBuffer() const { return m_indexBuffer; }
-    //const std::vector<std::shared_ptr<Texture>>& getTextures() const { return m_textures; }
+    const std::vector<std::shared_ptr<Texture>>& getTextures() const { return m_scene->GetTextures(); }
     const std::vector<std::shared_ptr<RenderSys::Material>>& getMaterials() const { return m_scene->GetMaterials(); }
     const std::vector<std::shared_ptr<Model::ModelNode>>& getRootNodes() const { return m_rootNodes; }
     

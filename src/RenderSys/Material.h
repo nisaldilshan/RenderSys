@@ -70,6 +70,13 @@ class Texture; // forward declaration
 // fixed-size array for material textures
 typedef std::array<std::shared_ptr<Texture>, NUM_TEXTURES> MaterialTextures;
 
+enum class ShaderWorkflow : int32_t
+{ 
+    PBR_WORKFLOW_METALLIC_ROUGHNESS = 0, 
+    PBR_WORKFLOW_SPECULAR_GLOSSINESS = 1 
+};
+static_assert(sizeof(ShaderWorkflow) == 4);
+
 class MaterialDescriptor
 {
 public:
@@ -87,6 +94,7 @@ public:
     MaterialDescriptorType* GetPlatformDescriptor() const { return m_platformDescriptor.get(); }
 private:
     std::unique_ptr<MaterialDescriptorType> m_platformDescriptor{nullptr};
+    ShaderWorkflow m_shaderWorkflow{ShaderWorkflow::PBR_WORKFLOW_METALLIC_ROUGHNESS};
 };
 
 

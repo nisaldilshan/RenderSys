@@ -33,6 +33,7 @@ public:
     void loadJointData(std::vector<glm::tvec4<uint16_t>>& jointVec, std::vector<int>& nodeToJoint, std::vector<glm::vec4>& weightVec);
     void loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatrices);
     void getNodeGraphs(std::vector<std::shared_ptr<Model::ModelNode>>& rootNodes);
+    const std::vector<std::shared_ptr<RenderSys::Texture>>& GetTextures() const { return m_textures; }
     const std::vector<std::shared_ptr<RenderSys::Material>>& GetMaterials() const { return m_materials; }
 private:
     std::vector<TextureSampler> loadTextureSamplers();
@@ -46,7 +47,7 @@ private:
     size_t m_vertexCount = 0;
     size_t m_indexCount = 0;
     std::filesystem::path m_sceneFilePath;
-    std::vector<std::shared_ptr<Texture>> m_textures;
+    std::vector<std::shared_ptr<RenderSys::Texture>> m_textures;
     std::vector<std::shared_ptr<RenderSys::Material>> m_materials;
 };
 
