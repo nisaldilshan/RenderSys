@@ -32,14 +32,14 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
+		m_renderer = std::make_unique<RenderSys::Renderer3D>();
+		m_renderer->Init();
+
 		if (!loadScene())
 		{
 			assert(false);
 			return;
 		}
-
-		m_renderer = std::make_unique<RenderSys::Renderer3D>();
-		m_renderer->Init();
 
 		const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
 		assert(!shaderDir.empty());
@@ -144,6 +144,7 @@ public:
 
 	virtual void OnDetach() override
 	{
+		m_scene.reset();
 		m_texture.reset();
 		m_renderer->Destroy();
 	}

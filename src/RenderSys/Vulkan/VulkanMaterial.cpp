@@ -9,7 +9,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
 {
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = GraphicsAPI::VulkanRenderer3D::GetMaterialBindGroupPool();
+    allocInfo.descriptorPool = GraphicsAPI::GetMaterialBindGroupPool();
     allocInfo.descriptorSetCount = 1;
     auto materialBindGroupLayout = GraphicsAPI::VulkanRenderer3D::GetMaterialBindGroupLayout();
     allocInfo.pSetLayouts = &materialBindGroupLayout;
@@ -94,7 +94,8 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
 
 VulkanMaterialDescriptor::~VulkanMaterialDescriptor()
 {
-
+    // All the descriptor sets are freed when the pool is destroyed
+    m_materialbindGroup = VK_NULL_HANDLE;
 }
 
 } // namespace RenderSys

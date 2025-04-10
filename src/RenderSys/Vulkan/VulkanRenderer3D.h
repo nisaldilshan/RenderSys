@@ -34,16 +34,9 @@ namespace GraphicsAPI
         void* m_mappedBuffer = nullptr;
     };
 
-    struct VulkanMaterial
-    {
-        VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; // 1 bind group for different texture types of one material (baseColor/normal/metallic-roughness)
-        RenderSys::MaterialProperties m_materialProperties;
-    };
-
-    struct VulkanModelInfo
-    {
-        std::vector<VulkanMaterial> m_materials;
-    };
+    void CreateMaterialBindGroupPool();
+    VkDescriptorPool GetMaterialBindGroupPool();
+    void DestroyMaterialBindGroupPool();
 
     class VulkanRenderer3D
     {
@@ -64,8 +57,6 @@ namespace GraphicsAPI
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform);
         // Textures get created as a part of main bindgroup
         void CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture);
-        void CreateModelMaterials(uint32_t modelID, const std::vector<std::shared_ptr<RenderSys::Material>>& materials
-            , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels);
         void SetUniformData(uint32_t binding, const void* bufferData);
         void BindResources();
         void Render();
@@ -82,7 +73,6 @@ namespace GraphicsAPI
         void DestroyBindGroup();
         void Destroy();
 
-        static VkDescriptorPool GetMaterialBindGroupPool();
         static VkDescriptorSetLayout GetMaterialBindGroupLayout();
         static std::vector<VkDescriptorSetLayoutBinding> GetMaterialBindGroupBindings();
 
@@ -122,9 +112,6 @@ namespace GraphicsAPI
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
         VkDescriptorSet m_mainBindGroup = VK_NULL_HANDLE;
-
-        // map modelID to VulkanModelInfo
-        std::unordered_map<uint32_t, VulkanModelInfo> m_models;
 
         std::unordered_map<uint32_t, std::shared_ptr<RenderSys::VulkanTexture>> m_textures;
         // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>

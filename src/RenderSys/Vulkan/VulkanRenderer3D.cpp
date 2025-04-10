@@ -10,6 +10,47 @@
 namespace GraphicsAPI
 {
 
+VkDescriptorPool g_materialBindGroupPool = VK_NULL_HANDLE;
+void CreateMaterialBindGroupPool()
+{
+    assert(g_materialBindGroupPool == VK_NULL_HANDLE);    
+    constexpr uint32_t maxNumOfModels = 10;
+    constexpr uint32_t maxMaterialsPerModel = 50;
+
+    std::vector<VkDescriptorPoolSize> poolSizes;
+    poolSizes.emplace_back(
+        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 * maxMaterialsPerModel * maxNumOfModels}
+    );
+    poolSizes.emplace_back(
+        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * maxMaterialsPerModel * maxNumOfModels}
+    );
+    
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = poolSizes.size();
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = maxMaterialsPerModel * maxNumOfModels;
+
+    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &g_materialBindGroupPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor pool!");
+    }
+}
+
+VkDescriptorPool GetMaterialBindGroupPool()
+{
+    assert(g_materialBindGroupPool != VK_NULL_HANDLE);   
+    return g_materialBindGroupPool;
+}
+
+void DestroyMaterialBindGroupPool()
+{
+    assert(g_materialBindGroupPool != VK_NULL_HANDLE); 
+    vkDeviceWaitIdle(Vulkan::GetDevice());
+    // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
+    vkDestroyDescriptorPool(Vulkan::GetDevice(), g_materialBindGroupPool, nullptr);
+    g_materialBindGroupPool = VK_NULL_HANDLE;
+}
+
 enum class ShapeType {
     Plane = 0,
     Cube,
@@ -96,7 +137,7 @@ bool VulkanRenderer3D::Init()
     CreateRenderPass();
     CreateCommandBuffers();
     CreateDefaultTextureSampler();
-
+    CreateMaterialBindGroupPool();
     return true;
 }
 
@@ -441,16 +482,11 @@ void VulkanRenderer3D::CreatePipelineLayout()
     {
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
         pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, m_materialBindGroupLayout};
+        std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, GetMaterialBindGroupLayout()};
         if (!m_bindGroupLayout)
         {
             pipelineLayoutCreateInfo.setLayoutCount = 0;
             pipelineLayoutCreateInfo.pSetLayouts = nullptr;
-        }
-        else if (!m_materialBindGroupLayout)
-        {
-            pipelineLayoutCreateInfo.setLayoutCount = 1;
-            pipelineLayoutCreateInfo.pSetLayouts = &m_bindGroupLayout;
         }
         else
         {
@@ -1058,26 +1094,17 @@ void VulkanRenderer3D::DestroyTextures()
     }
 
     // Destroy Material Bind Groups
-    if (m_materialBindGroupPool != VK_NULL_HANDLE && m_materialBindGroupLayout != VK_NULL_HANDLE)
-    {
-        vkDeviceWaitIdle(Vulkan::GetDevice());
-        // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
-        vkDestroyDescriptorPool(Vulkan::GetDevice(), m_materialBindGroupPool, nullptr);
-        m_materialBindGroupPool = VK_NULL_HANDLE;
-
-        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_materialBindGroupLayout, nullptr);
-        m_materialBindGroupLayout = VK_NULL_HANDLE;
-    }
-
-    for (auto &&model : m_models)
-    {
-        model.second.m_materials.clear();
-    }
-    m_models.clear();
+    // if (m_materialBindGroupPool != VK_NULL_HANDLE && m_materialBindGroupLayout != VK_NULL_HANDLE)
+    // {
+    //     vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_materialBindGroupLayout, nullptr);
+    //     m_materialBindGroupLayout = VK_NULL_HANDLE;
+    // }
 }
 
 void VulkanRenderer3D::Destroy()
 {
+    DestroyMaterialBindGroupPool();
+
     DestroyShaders();
 
     DestroyBindGroup();
@@ -1089,36 +1116,6 @@ void VulkanRenderer3D::Destroy()
     DestroyRenderPass();
 
     RenderSys::Vulkan::DestroyMemoryAllocator();
-}
-
-VkDescriptorPool VulkanRenderer3D::GetMaterialBindGroupPool()
-{
-    static VkDescriptorPool materialBindGroupPool = VK_NULL_HANDLE;
-    if (materialBindGroupPool != VK_NULL_HANDLE)
-        return materialBindGroupPool;
-    
-    constexpr uint32_t maxNumOfModels = 10;
-    constexpr uint32_t maxMaterialsPerModel = 50;
-
-    std::vector<VkDescriptorPoolSize> poolSizes;
-    poolSizes.emplace_back(
-        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 * maxMaterialsPerModel * maxNumOfModels}
-    );
-    poolSizes.emplace_back(
-        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * maxMaterialsPerModel * maxNumOfModels}
-    );
-    
-    VkDescriptorPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = poolSizes.size();
-    poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = maxMaterialsPerModel * maxNumOfModels;
-
-    
-    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &materialBindGroupPool) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor pool!");
-    }
-    return materialBindGroupPool;
 }
 
 VkDescriptorSetLayout VulkanRenderer3D::GetMaterialBindGroupLayout()
@@ -1173,29 +1170,6 @@ void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<Ren
     if (!inserted)
     {
         return;
-    }
-}
-
-void VulkanRenderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<std::shared_ptr<RenderSys::Material>> &materials 
-    , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels)
-{
-    
-    
-    const auto& [modelIter, inserted] = m_models.insert({modelID, VulkanModelInfo{}});
-    if (!inserted)
-    {
-        std::cout << "Error: Model materials already loaded!" << std::endl;
-        assert(false);
-        return;
-    }
-    VulkanModelInfo& model = modelIter->second;
-
-    model.m_materials.resize(materials.size());
-    int count = 0;
-    for (const auto &material : materials)
-    {
-        
-        count++;
     }
 }
 
