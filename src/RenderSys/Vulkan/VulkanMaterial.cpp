@@ -11,7 +11,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = GraphicsAPI::GetMaterialBindGroupPool();
     allocInfo.descriptorSetCount = 1;
-    auto materialBindGroupLayout = GraphicsAPI::VulkanRenderer3D::GetMaterialBindGroupLayout();
+    auto materialBindGroupLayout = GraphicsAPI::GetMaterialBindGroupLayout();
     allocInfo.pSetLayouts = &materialBindGroupLayout;
 
     if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_materialbindGroup) != VK_SUCCESS) {

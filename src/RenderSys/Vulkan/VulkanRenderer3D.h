@@ -38,6 +38,10 @@ namespace GraphicsAPI
     VkDescriptorPool GetMaterialBindGroupPool();
     void DestroyMaterialBindGroupPool();
 
+    void CreateMaterialBindGroupLayout();
+    VkDescriptorSetLayout GetMaterialBindGroupLayout();
+    void DestroyMaterialBindGroupLayout();
+
     class VulkanRenderer3D
     {
     public:
@@ -73,7 +77,6 @@ namespace GraphicsAPI
         void DestroyBindGroup();
         void Destroy();
 
-        static VkDescriptorSetLayout GetMaterialBindGroupLayout();
         static std::vector<VkDescriptorSetLayoutBinding> GetMaterialBindGroupBindings();
 
     private:

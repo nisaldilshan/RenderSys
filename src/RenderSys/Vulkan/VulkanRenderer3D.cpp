@@ -51,6 +51,34 @@ void DestroyMaterialBindGroupPool()
     g_materialBindGroupPool = VK_NULL_HANDLE;
 }
 
+VkDescriptorSetLayout g_materialBindGroupLayout = VK_NULL_HANDLE;
+void CreateMaterialBindGroupLayout()
+{
+    assert(g_materialBindGroupLayout == VK_NULL_HANDLE);
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    auto bindings = VulkanRenderer3D::GetMaterialBindGroupBindings();
+    layoutInfo.bindingCount = bindings.size();
+    layoutInfo.pBindings = bindings.data();
+
+    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &g_materialBindGroupLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+}
+
+VkDescriptorSetLayout GetMaterialBindGroupLayout()
+{
+    assert(g_materialBindGroupLayout != VK_NULL_HANDLE);
+    return g_materialBindGroupLayout;
+}
+
+void DestroyMaterialBindGroupLayout()
+{
+    assert(g_materialBindGroupLayout != VK_NULL_HANDLE);
+    vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), g_materialBindGroupLayout, nullptr);
+    g_materialBindGroupLayout = VK_NULL_HANDLE;
+}
+
 enum class ShapeType {
     Plane = 0,
     Cube,
@@ -138,6 +166,7 @@ bool VulkanRenderer3D::Init()
     CreateCommandBuffers();
     CreateDefaultTextureSampler();
     CreateMaterialBindGroupPool();
+    CreateMaterialBindGroupLayout();
     return true;
 }
 
@@ -1092,17 +1121,11 @@ void VulkanRenderer3D::DestroyTextures()
         vkDestroySampler(Vulkan::GetDevice(), m_defaultTextureSampler, nullptr);
         m_defaultTextureSampler = VK_NULL_HANDLE;
     }
-
-    // Destroy Material Bind Groups
-    // if (m_materialBindGroupPool != VK_NULL_HANDLE && m_materialBindGroupLayout != VK_NULL_HANDLE)
-    // {
-    //     vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_materialBindGroupLayout, nullptr);
-    //     m_materialBindGroupLayout = VK_NULL_HANDLE;
-    // }
 }
 
 void VulkanRenderer3D::Destroy()
 {
+    DestroyMaterialBindGroupLayout();
     DestroyMaterialBindGroupPool();
 
     DestroyShaders();
@@ -1116,23 +1139,6 @@ void VulkanRenderer3D::Destroy()
     DestroyRenderPass();
 
     RenderSys::Vulkan::DestroyMemoryAllocator();
-}
-
-VkDescriptorSetLayout VulkanRenderer3D::GetMaterialBindGroupLayout()
-{
-    static VkDescriptorSetLayout materialBindGroupLayout = VK_NULL_HANDLE;
-    if (materialBindGroupLayout != VK_NULL_HANDLE)
-        return materialBindGroupLayout;
-    VkDescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    auto bindings = GetMaterialBindGroupBindings();
-    layoutInfo.bindingCount = bindings.size();
-    layoutInfo.pBindings = bindings.data();
-
-    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &materialBindGroupLayout) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor set layout!");
-    }
-    return materialBindGroupLayout;
 }
 
 std::vector<VkDescriptorSetLayoutBinding> VulkanRenderer3D::GetMaterialBindGroupBindings()
