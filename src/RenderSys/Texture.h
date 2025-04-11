@@ -32,6 +32,7 @@ public:
     ~Texture() = default;
 
     void SetSampler(const TextureSampler& sampler);
+    void SetDefaultSampler();
     std::shared_ptr<RenderSys::TextureType> GetPlatformTexture() const;
 private:
     int m_texWidth = 0;

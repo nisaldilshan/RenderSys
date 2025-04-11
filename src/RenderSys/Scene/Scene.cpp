@@ -38,6 +38,9 @@ void loadVertexIndexData(std::shared_ptr<RenderSys::Model::ModelNode> node, uint
 
 void Scene::populate()
 {
+    m_scene->loadTextures();
+    m_scene->loadMaterials();
+
     // traverse through GLTF Scene nodes and prepare graph
     m_scene->getNodeGraphs(m_rootNodes);
 
@@ -54,9 +57,6 @@ void Scene::populate()
     
     assert(m_vertexBuffer.size() == vertexCount);
     assert(m_indexBuffer.size() == indexCount);
-
-    m_scene->loadTextures(m_textures);
-    m_scene->loadMaterials(m_materials);
 
     m_scene->loadJointData(m_jointVec, m_nodeToJoint, m_weightVec);
     m_scene->loadInverseBindMatrices(m_inverseBindMatrices);

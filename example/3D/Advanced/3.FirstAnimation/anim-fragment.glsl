@@ -15,15 +15,12 @@ layout(set = 0, binding = 1) uniform LightingUniforms {
     vec4 colors[2];
 } lightingUbo;
 
-layout(set = 1, binding = 0) uniform MaterialUniforms {
-    Material materials[32];
-} materialUbo;
+layout(set = 1, binding = 0) uniform sampler2D baseColorTexture;
+layout(set = 1, binding = 1) uniform sampler2D normalTexture;
 
-layout(set = 1, binding = 1) uniform sampler2D baseColorTexture;
-layout(set = 1, binding = 2) uniform sampler2D normalTexture;
-
-layout (push_constant) uniform PushConstants {
-    int materialIndex;
+layout (push_constant, std430) uniform PushFragment
+{
+    MaterialProperties m_materialProperties;
 } pushConstants;
 
 layout (location = 0) in vec3 in_viewDirection;
@@ -35,17 +32,15 @@ layout (location = 0) out vec4 out_color;
 
 void main()
 {
-    Material material = materialUbo.materials[pushConstants.materialIndex]; 
-
     vec3 N = normalize(in_normal);
     vec3 V = normalize(in_viewDirection);
     vec3 texColor = texture(baseColorTexture, in_uv).rgb; 
     vec3 texNormal = texture(normalTexture, in_uv).xyz * 2.0 - 1.0;
-    N = (material.normalTextureSet > -1) ? getNormalFromNormalMaps(texNormal, in_normal, in_tangent) : N;
-    vec3 albedo = texColor * material.color.rgb;
+    N = (bool(pushConstants.m_materialProperties.m_Features & GLSL_HAS_NORMAL_MAP)) ? getNormalFromNormalMaps(texNormal, in_normal, in_tangent) : N;
+    vec3 albedo = texColor * pushConstants.m_materialProperties.m_BaseColor.rgb;
 
-    float metallic = material.metallic;
-    float roughness = material.roughness;
+    float metallic = pushConstants.m_materialProperties.m_Metallic;
+    float roughness = pushConstants.m_materialProperties.m_Roughness;
 
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);

@@ -11,6 +11,7 @@
 #include <RenderSys/Shader.h>
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
+#include <RenderSys/Material.h>
 
 namespace GraphicsAPI
 {
@@ -26,15 +27,6 @@ namespace GraphicsAPI
         std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
     };
 
-    struct VulkanMaterial
-    {
-        VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; // 1 bind group for different texture types of one material (baseColor/normal/metallic-roughness)
-        int materialUniformBufferSlot = -1;
-        int baseColorTextureIndex = -1;
-        int normalTextureIndex = -1;
-        int metallicRoughnessTextureIndex = -1;
-    };
-
     struct VulkanUniformBufferInfo
     {
         VkDescriptorBufferInfo m_bufferInfo = {VK_NULL_HANDLE, 0, 0};
@@ -42,30 +34,13 @@ namespace GraphicsAPI
         void* m_mappedBuffer = nullptr;
     };
 
-    struct alignas(16) MaterialItem {
-        std::array<float, 4> color;
-        float hardness = 16.0f;
-        float kd = 2.0f;
-        float ks = 0.3f;
-        float workflow = 1.0f;
-        float metallic = 0.0f;
-        float roughness = 0.0f;
-        int colorTextureSet;
-        int PhysicalDescriptorTextureSet;
-        int normalTextureSet;
-    };
-    
-    struct MaterialUniforms {
-        std::array<MaterialItem, 32> materials;
-    };
-    static_assert(sizeof(MaterialUniforms) % 16 == 0);
+    void CreateMaterialBindGroupPool();
+    VkDescriptorPool GetMaterialBindGroupPool();
+    void DestroyMaterialBindGroupPool();
 
-    struct VulkanModelInfo
-    {
-        std::vector<VulkanMaterial> m_materials;
-        // materials uniform buffer - max 32 materials
-        VulkanUniformBufferInfo m_materialUniformBuffer;
-    };
+    void CreateMaterialBindGroupLayout();
+    VkDescriptorSetLayout GetMaterialBindGroupLayout();
+    void DestroyMaterialBindGroupLayout();
 
     class VulkanRenderer3D
     {
@@ -86,14 +61,12 @@ namespace GraphicsAPI
         void CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform);
         // Textures get created as a part of main bindgroup
         void CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture);
-        void CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
-            , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels);
         void SetUniformData(uint32_t binding, const void* bufferData);
         void BindResources();
         void Render();
         void RenderIndexed();
         void RenderMesh(const RenderSys::Mesh& mesh);
-        void RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const VulkanMaterial &material);
+        void RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const std::shared_ptr<RenderSys::Material> material);
         void DrawPlane();
         void DrawCube();
         ImTextureID GetDescriptorSet();
@@ -103,6 +76,9 @@ namespace GraphicsAPI
         void DestroyPipeline();
         void DestroyBindGroup();
         void Destroy();
+
+        static std::vector<VkDescriptorSetLayoutBinding> GetMaterialBindGroupBindings();
+
     private:
         void CreateDefaultTextureSampler();
         void CreatePipelineLayout();
@@ -139,12 +115,6 @@ namespace GraphicsAPI
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
         VkDescriptorSet m_mainBindGroup = VK_NULL_HANDLE;
-
-        VkDescriptorPool m_materialBindGroupPool = VK_NULL_HANDLE;
-        VkDescriptorSetLayout m_materialBindGroupLayout = VK_NULL_HANDLE;
-
-        // map modelID to VulkanModelInfo
-        std::unordered_map<uint32_t, VulkanModelInfo> m_models;
 
         std::unordered_map<uint32_t, std::shared_ptr<RenderSys::VulkanTexture>> m_textures;
         // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>

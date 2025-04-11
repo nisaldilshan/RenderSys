@@ -53,6 +53,17 @@ void Texture::SetSampler(const TextureSampler &sampler)
         assert(false);
 }
 
+void Texture::SetDefaultSampler()
+{
+    TextureSampler sampler;
+    sampler.minFilter = TextureSampler::FilterMode::LINEAR;
+    sampler.magFilter = TextureSampler::FilterMode::LINEAR;
+    sampler.addressModeU = TextureSampler::AddressMode::CLAMP_TO_EDGE;
+    sampler.addressModeV = TextureSampler::AddressMode::CLAMP_TO_EDGE;
+    sampler.addressModeW = TextureSampler::AddressMode::CLAMP_TO_EDGE;
+    SetSampler(sampler);
+}
+
 std::shared_ptr<RenderSys::TextureType> Texture::GetPlatformTexture() const
 {
     return m_platformTexture;

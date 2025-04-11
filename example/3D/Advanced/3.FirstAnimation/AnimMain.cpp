@@ -97,21 +97,8 @@ public:
 			assert(false);
 		}
 
-		{
-			const auto& sceneTextures = m_scenes[0].getTextures();
-			const auto& materials =  m_scenes[0].getMaterials();
-			m_renderer->CreateModelMaterials(1, materials, sceneTextures, 2);
-		}
-		{
-			m_womanTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
-
-			RenderSys::Material material;
-			material.metallicFactor = 0.5f;
-			material.roughnessFactor = 0.9f;
-			material.baseColorTextureIndex = 0;
-			m_renderer->CreateModelMaterials(2, {material}, {m_womanTexture}, 2);
-		}
-
+		m_womanTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
+		m_womanTexture->SetDefaultSampler();
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 500.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
@@ -231,7 +218,16 @@ public:
 					mesh.vertexBufferID = counter;
 					if (mesh.subMeshes.size() == 0)
 					{
-						mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, true, 0}};
+						const auto& materials = m_scenes[1].getMaterials();
+						assert(materials.size() == 1);
+						static bool firstTime = true;
+						if (firstTime)
+						{
+							materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, m_womanTexture);
+							materials[0]->Init();
+							firstTime = false;
+						}
+						mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 0, materials[0]}};
 					}
 					m_renderer->RenderMesh(mesh);
 				}

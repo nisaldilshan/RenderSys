@@ -69,12 +69,6 @@ void Renderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys
     m_rendererBackend->CreateTexture(binding, texture);
 }
 
-void RenderSys::Renderer3D::CreateModelMaterials(uint32_t modelID, const std::vector<RenderSys::Material>& materials
-            , const std::vector<std::shared_ptr<RenderSys::Texture>>& textures, const int maxNumOfModels)
-{
-    m_rendererBackend->CreateModelMaterials(modelID, materials, textures, maxNumOfModels);
-}
-
 void Renderer3D::SetClearColor(glm::vec4 clearColor)
 {
     m_rendererBackend->SetClearColor(clearColor);

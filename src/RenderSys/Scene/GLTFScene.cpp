@@ -154,12 +154,11 @@ RenderSys::SubMesh GLTFScene::loadPrimitive(const tinygltf::Primitive &primitive
     }
 
     RenderSys::SubMesh prim;
-    prim.vertexCount = vertexCount;
-    prim.hasIndices = primitive.indices > -1;
-    if (prim.hasIndices)
+    prim.m_VertexCount = vertexCount;
+    if (primitive.indices > -1)
     {
         const uint32_t indexStart = modelData.indices.size();
-        prim.firstIndex = indexCount + indexStart;
+        prim.m_FirstIndex = indexCount + indexStart;
         
         const tinygltf::Accessor &accessor = m_model->accessors[primitive.indices];
         const tinygltf::BufferView &bufferView = m_model->bufferViews[accessor.bufferView];
@@ -167,7 +166,7 @@ RenderSys::SubMesh GLTFScene::loadPrimitive(const tinygltf::Primitive &primitive
 
         const auto currentIndexCount = static_cast<uint32_t>(accessor.count);
         assert(currentIndexCount > 0);
-        prim.indexCount = currentIndexCount;
+        prim.m_IndexCount = currentIndexCount;
         modelData.indices.resize(indexStart + currentIndexCount);
 
         const void *dataPtr = &(buffer.data[accessor.byteOffset + bufferView.byteOffset]);
@@ -200,7 +199,7 @@ RenderSys::SubMesh GLTFScene::loadPrimitive(const tinygltf::Primitive &primitive
         }
     }
 
-    prim.materialIndex = primitive.material;
+    prim.m_Material = createMaterial(primitive.material);
     return prim;
 }
 
@@ -271,7 +270,7 @@ void GLTFScene::loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatri
     std::memcpy(inverseBindMatrices.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
 }
 
-void GLTFScene::loadTextures(std::vector<std::shared_ptr<Texture>>& textures)
+void GLTFScene::loadTextures()
 {
     auto samplers = loadTextureSamplers();
 
@@ -280,7 +279,7 @@ void GLTFScene::loadTextures(std::vector<std::shared_ptr<Texture>>& textures)
         return;
 
     std::cout << "Loading Textures - " << gltfTextures.size() << std::endl;
-    textures.reserve(gltfTextures.size());
+    m_textures.reserve(gltfTextures.size());
 
     for (const auto& gltfTexture : gltfTextures)
     {
@@ -294,8 +293,8 @@ void GLTFScene::loadTextures(std::vector<std::shared_ptr<Texture>>& textures)
                     << ", pixel_type=" << image.pixel_type 
                     << ", component=" << image.component 
                     << ", sampler=" << gltfTexture.sampler << std::endl;
-        textures.emplace_back(std::make_shared<Texture>((unsigned char*)image.image.data(), image.width, image.height, 1));
-        textures.back()->SetSampler(samplers[gltfTexture.sampler]);
+        m_textures.emplace_back(std::make_shared<Texture>((unsigned char*)image.image.data(), image.width, image.height, 1));
+        m_textures.back()->SetSampler(samplers[gltfTexture.sampler]);
     }
 
     std::cout << "Texture loading completed!" << std::endl;
@@ -354,7 +353,7 @@ std::vector<TextureSampler> GLTFScene::loadTextureSamplers()
     return samplers;
 }
 
-void GLTFScene::loadMaterials(std::vector<Material>& materials)
+void GLTFScene::loadMaterials()
 {
     if (m_model->materials.size() == 0)
         return;
@@ -362,17 +361,38 @@ void GLTFScene::loadMaterials(std::vector<Material>& materials)
     std::cout << "Loading Materials - " << m_model->materials.size() << std::endl;
     for (const auto& mat : m_model->materials)
     {
-        auto& material = materials.emplace_back();
-        material.doubleSided = mat.doubleSided;
-        material.baseColorFactor = glm::make_vec4(mat.pbrMetallicRoughness.baseColorFactor.data());
-        material.metallicFactor = mat.pbrMetallicRoughness.metallicFactor;
-        material.roughnessFactor = mat.pbrMetallicRoughness.roughnessFactor;
+        MaterialProperties materialProp{};
+        // materialProp.doubleSided = mat.doubleSided;
+        materialProp.m_baseColor = glm::make_vec4(mat.pbrMetallicRoughness.baseColorFactor.data());
+        materialProp.m_metallic = mat.pbrMetallicRoughness.metallicFactor;
+        materialProp.m_roughness = mat.pbrMetallicRoughness.roughnessFactor;
         // std::cout << "Material Name: " << mat.name 
         //             << ", metallicFactor=" << material.metallicFactor 
         //             << ", roughnessFactor=" << material.roughnessFactor << std::endl;
-        material.baseColorTextureIndex = mat.pbrMetallicRoughness.baseColorTexture.index;
-        material.metallicRoughnessTextureIndex = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
-        material.normalTextureIndex = mat.normalTexture.index;
+        
+
+        auto& material = m_materials.emplace_back(std::make_shared<RenderSys::Material>());
+        material->SetMaterialProperties(materialProp);
+
+        if (mat.pbrMetallicRoughness.baseColorTexture.index != -1)
+        {
+            materialProp.m_features |= RenderSys::MaterialFeatures::HAS_DIFFUSE_MAP;
+            auto baseColorTexture = m_textures[mat.pbrMetallicRoughness.baseColorTexture.index];
+            material->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, baseColorTexture);
+        }
+        if (mat.normalTexture.index != -1)
+        {
+            materialProp.m_features |= RenderSys::MaterialFeatures::HAS_NORMAL_MAP;
+            auto normalTexture = m_textures[mat.normalTexture.index];
+            material->SetMaterialTexture(RenderSys::TextureIndices::NORMAL_MAP_INDEX, normalTexture);
+        }
+        if (mat.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
+        {
+            materialProp.m_features |= RenderSys::MaterialFeatures::HAS_ROUGHNESS_METALLIC_MAP;
+            auto metallicRoughnessTexture = m_textures[mat.pbrMetallicRoughness.metallicRoughnessTexture.index];
+            material->SetMaterialTexture(RenderSys::TextureIndices::ROUGHNESS_METALLIC_MAP_INDEX, metallicRoughnessTexture);
+        }
+        
     }
     std::cout << "Materials loading completed!" << std::endl;
 }
@@ -440,4 +460,16 @@ std::shared_ptr<Model::ModelNode> GLTFScene::traverse(const std::shared_ptr<Mode
     return sceneNode;
 }
 
+std::shared_ptr<RenderSys::Material> GLTFScene::createMaterial(int materialIndex)
+{
+    if (materialIndex < 0 || materialIndex >= m_materials.size())
+    {
+        std::cerr << "Invalid material index: " << materialIndex << std::endl;
+        return std::shared_ptr<RenderSys::Material>();
+    }
+
+    auto mat = m_materials[materialIndex];
+    mat->Init();
+    return mat;
+}
 }

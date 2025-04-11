@@ -32,14 +32,14 @@ class Renderer3DLayer : public Walnut::Layer
 public:
 	virtual void OnAttach() override
 	{
+		m_renderer = std::make_unique<RenderSys::Renderer3D>();
+		m_renderer->Init();
+
 		if (!loadScene())
 		{
 			assert(false);
 			return;
 		}
-
-		m_renderer = std::make_unique<RenderSys::Renderer3D>();
-		m_renderer->Init();
 
 		const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
 		assert(!shaderDir.empty());
@@ -99,12 +99,7 @@ public:
 		}
 
 		m_texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
-
-		RenderSys::Material material;
-		material.metallicFactor = 0.5f;
-		material.roughnessFactor = 0.9f;
-		material.baseColorTextureIndex = 0;
-		m_renderer->CreateModelMaterials(1, {material}, {m_texture}, 1);
+		m_texture->SetDefaultSampler();
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 
@@ -149,6 +144,7 @@ public:
 
 	virtual void OnDetach() override
 	{
+		m_scene.reset();
 		m_texture.reset();
 		m_renderer->Destroy();
 	}
@@ -216,7 +212,16 @@ public:
 			RenderSys::Mesh mesh;
 			mesh.id = 1;
 			mesh.vertexBufferID = 1;
-			mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, true, 0}};
+			const auto& materials = m_scene->getMaterials();
+			assert(materials.size() == 1);
+			static bool firstTime = true;
+			if (firstTime)
+			{
+				materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, m_texture);
+				materials[0]->Init();
+				firstTime = false;
+			}
+			mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 0, materials[0]} };
 			m_renderer->RenderMesh(mesh);
 			m_renderer->EndRenderPass();
 		}
