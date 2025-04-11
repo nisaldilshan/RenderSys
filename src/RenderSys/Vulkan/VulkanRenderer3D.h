@@ -66,7 +66,6 @@ namespace GraphicsAPI
         void Render();
         void RenderIndexed();
         void RenderMesh(const RenderSys::Mesh& mesh);
-        void RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const std::shared_ptr<RenderSys::Material> material);
         void DrawPlane();
         void DrawCube();
         ImTextureID GetDescriptorSet();
@@ -80,6 +79,7 @@ namespace GraphicsAPI
         static std::vector<VkDescriptorSetLayoutBinding> GetMaterialBindGroupBindings();
 
     private:
+        void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh);
         void CreateDefaultTextureSampler();
         void CreatePipelineLayout();
         void CreateRenderPass();

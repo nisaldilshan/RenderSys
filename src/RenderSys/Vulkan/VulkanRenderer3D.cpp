@@ -1022,13 +1022,13 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
     for (const auto &subMesh : mesh.subMeshes)
     {
         assert(subMesh.m_Material);
-        RenderPrimitive(mesh.vertexBufferID, subMesh.m_IndexCount, subMesh.m_FirstIndex, subMesh.m_Material);
+        RenderSubMesh(mesh.vertexBufferID, subMesh);
     }
 }
 
-void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const std::shared_ptr<RenderSys::Material> material)
+void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh)
 {
-    auto materialBindGroup = material->GetMaterialDescriptor()->GetPlatformDescriptor()->m_materialbindGroup;
+    auto materialBindGroup = subMesh.m_Material->GetMaterialDescriptor()->GetPlatformDescriptor()->m_materialbindGroup;
     assert(materialBindGroup != VK_NULL_HANDLE);
     std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, materialBindGroup};
 
@@ -1036,7 +1036,8 @@ void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint
                                 , descriptorsets.size(), descriptorsets.data()
                                 , 0, nullptr);
 
-    vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RenderSys::MaterialProperties), &material->GetMaterialProperties());
+    vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 
+                    sizeof(RenderSys::MaterialProperties), &subMesh.m_Material->GetMaterialProperties());
 
     assert(vertexBufferID >= 1);
     const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
@@ -1050,9 +1051,9 @@ void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint
     VulkanVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
     if (vertexIndexBufferInfo.m_indexCount > 0)
     {
-        if (indexCount > 0)
+        if (subMesh.m_IndexCount > 0)
         {
-            vkCmdDrawIndexed(m_commandBuffer, indexCount, 1, firstIndex, 0, 0);
+            vkCmdDrawIndexed(m_commandBuffer, subMesh.m_IndexCount, 1, subMesh.m_FirstIndex, 0, 0);
         }
         else
         {
