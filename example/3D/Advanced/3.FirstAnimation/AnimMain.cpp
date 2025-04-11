@@ -227,7 +227,7 @@ public:
 							materials[0]->Init();
 							firstTime = false;
 						}
-						mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 0, materials[0]}};
+						mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 1, materials[0]}};
 					}
 					m_renderer->RenderMesh(mesh);
 				}

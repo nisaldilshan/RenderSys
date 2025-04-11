@@ -1051,13 +1051,14 @@ void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const Render
     VulkanVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
     if (vertexIndexBufferInfo.m_indexCount > 0)
     {
+        assert(subMesh.m_InstanceCount > 0);
         if (subMesh.m_IndexCount > 0)
         {
-            vkCmdDrawIndexed(m_commandBuffer, subMesh.m_IndexCount, 1, subMesh.m_FirstIndex, 0, 0);
+            vkCmdDrawIndexed(m_commandBuffer, subMesh.m_IndexCount, subMesh.m_InstanceCount, subMesh.m_FirstIndex, 0, 0);
         }
         else
         {
-            vkCmdDrawIndexed(m_commandBuffer, vertexIndexBufferInfo.m_indexCount, 1, 0, 0, 0);
+            vkCmdDrawIndexed(m_commandBuffer, vertexIndexBufferInfo.m_indexCount, subMesh.m_InstanceCount, 0, 0, 0);
         }
     }
     else

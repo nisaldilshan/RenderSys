@@ -13,12 +13,12 @@ namespace RenderSys
 
 struct SubMesh
 {
-    uint32_t m_FirstIndex;
-    uint32_t m_FirstVertex;
-    uint32_t m_IndexCount;
-    uint32_t m_VertexCount;
-    uint32_t m_InstanceCount;
-    std::shared_ptr<Material> m_Material;
+    uint32_t m_FirstIndex = 0;
+    uint32_t m_FirstVertex = 0;
+    uint32_t m_IndexCount = 0;
+    uint32_t m_VertexCount = 0;
+    uint32_t m_InstanceCount = 1;
+    std::shared_ptr<Material> m_Material = nullptr;
 };
 
 struct Mesh
@@ -59,4 +59,39 @@ enum class BufferType
 };
     
 } // namespace Compute
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum class BufferUsage
+{
+    UNIFORM_BUFFER_VISIBLE_TO_CPU,
+    STORAGE_BUFFER_VISIBLE_TO_CPU
+};
+
+class Buffer
+{
+public:
+    Buffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage = RenderSys::BufferUsage::UNIFORM_BUFFER_VISIBLE_TO_CPU);
+
+    ~Buffer();
+
+    Buffer(const Buffer &) = delete;
+    Buffer &operator=(const Buffer &) = delete;
+
+    void MapBuffer();
+    void WriteToBuffer(const void *data);
+    bool Flush();
+
+private:
+
+
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
 } // namespace RenderSys
