@@ -18,6 +18,7 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Geometry.cpp
                 src/RenderSys/Texture.cpp
                 src/RenderSys/Material.cpp
+                src/RenderSys/Buffer.cpp
                 src/RenderSys/Scene/GLTFScene.cpp
                 src/RenderSys/Scene/Scene.cpp
                 src/RenderSys/Scene/SceneNode.cpp)

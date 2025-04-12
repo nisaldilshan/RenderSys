@@ -11,6 +11,19 @@
 namespace RenderSys
 {
 
+#if (RENDERER_BACKEND == 1)
+class OpenGLBuffer;
+typedef OpenGLBuffer BufferType;
+#elif (RENDERER_BACKEND == 2)
+class VulkanBuffer;
+typedef VulkanBuffer BufferType;
+#elif (RENDERER_BACKEND == 3)
+class WebGPUBuffer;
+typedef WebGPUBuffer BufferType;
+#else
+static_assert(false);
+#endif
+
 struct SubMesh
 {
     uint32_t m_FirstIndex = 0;
@@ -72,20 +85,20 @@ enum class BufferUsage
 class Buffer
 {
 public:
-    Buffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage = RenderSys::BufferUsage::UNIFORM_BUFFER_VISIBLE_TO_CPU);
-
+    Buffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage);
     ~Buffer();
 
     Buffer(const Buffer &) = delete;
     Buffer &operator=(const Buffer &) = delete;
+    Buffer(Buffer &&) = delete;
+    Buffer &operator=(Buffer &&) = delete;
 
     void MapBuffer();
     void WriteToBuffer(const void *data);
     bool Flush();
 
 private:
-
-
+    std::shared_ptr<BufferType> m_platformBuffer;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
