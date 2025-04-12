@@ -37,6 +37,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
                     src/RenderSys/Vulkan/VulkanMemAlloc.cpp
+                    src/RenderSys/Vulkan/VulkanBuffer.cpp
                     src/RenderSys/Vulkan/VulkanTexture.cpp
                     src/RenderSys/Vulkan/VulkanMaterial.cpp)
     target_sources(ComputeSys PRIVATE

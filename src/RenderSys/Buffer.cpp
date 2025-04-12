@@ -14,7 +14,26 @@ namespace RenderSys
 {
 
 Buffer::Buffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage)
+    : m_platformBuffer(std::make_shared<BufferType>(byteSize, bufferUsage))
 {
+
+}
+
+Buffer::~Buffer()
+{
+}
+
+void Buffer::MapBuffer()
+{
+}
+
+void Buffer::WriteToBuffer(const void *data)
+{
+}
+
+bool Buffer::Flush()
+{
+    return false;
 }
 
 } // namespace RenderSys
