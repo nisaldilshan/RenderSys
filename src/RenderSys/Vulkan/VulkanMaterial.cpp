@@ -14,7 +14,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     auto materialBindGroupLayout = GraphicsAPI::GetMaterialBindGroupLayout();
     allocInfo.pSetLayouts = &materialBindGroupLayout;
 
-    if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_materialbindGroup) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
@@ -24,7 +24,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     {
         VkWriteDescriptorSet textureWrite{};
         textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        textureWrite.dstSet = m_materialbindGroup;
+        textureWrite.dstSet = m_bindGroup;
         textureWrite.dstBinding = materialBindGroupBinding.binding;
         textureWrite.dstArrayElement = 0;
         textureWrite.descriptorType = materialBindGroupBinding.descriptorType;
@@ -95,7 +95,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
 VulkanMaterialDescriptor::~VulkanMaterialDescriptor()
 {
     // All the descriptor sets are freed when the pool is destroyed
-    m_materialbindGroup = VK_NULL_HANDLE;
+    m_bindGroup = VK_NULL_HANDLE;
 }
 
 } // namespace RenderSys
