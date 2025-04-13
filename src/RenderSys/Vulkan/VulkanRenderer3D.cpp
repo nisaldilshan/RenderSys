@@ -3,6 +3,7 @@
 #include "VulkanMemAlloc.h"
 #include "VulkanTexture.h"
 #include "VulkanMaterial.h"
+#include "VulkanResource.h"
 
 #include <array>
 #include <iostream>

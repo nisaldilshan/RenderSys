@@ -8,6 +8,7 @@
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
 #include <RenderSys/Texture.h>
+#include <RenderSys/Resource.h>
 #include <RenderSys/Camera.h>
 #include <RenderSys/Scene/Scene.h>
 #include <imgui.h>
@@ -298,6 +299,7 @@ private:
 	RenderSys::VertexBuffer m_vertexBuffer;
 	std::vector<uint32_t> m_indexData;
 	std::shared_ptr<RenderSys::Texture> m_texture;
+	std::shared_ptr<RenderSys::Buffer> m_instanceBuffer;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 	std::unique_ptr<RenderSys::Scene> m_scene;
 };

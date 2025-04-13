@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 #include <RenderSys/Resource.h>
-
+#include "VulkanBuffer.h"
 namespace RenderSys
 {
 
@@ -13,7 +13,12 @@ public:
     VulkanResourceDescriptor();
     ~VulkanResourceDescriptor();
 
+    void AttachBuffer(uint32_t binding, const VkDescriptorBufferInfo& bufferInfo);
+    void Init();
+
     VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; 
+private:
+    std::vector<VkWriteDescriptorSet> m_Writes;
 };
 
 

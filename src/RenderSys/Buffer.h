@@ -100,6 +100,7 @@ public:
     void WriteToBuffer(const void *data);
     bool Flush();
 
+    std::shared_ptr<BufferType> GetPlatformBuffer() const { return m_platformBuffer; }
 private:
     std::shared_ptr<BufferType> m_platformBuffer;
 };

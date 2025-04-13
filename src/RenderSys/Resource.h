@@ -35,6 +35,8 @@ public:
     ResourceDescriptor& operator=(ResourceDescriptor&&) = delete;
     ~ResourceDescriptor();
 
+    void AttachBuffer(uint32_t binding, const std::shared_ptr<Buffer>& buffer);
+    void Init();
     ResourceDescriptorType* GetPlatformDescriptor() const { return m_platformDescriptor.get(); }
 
 private:
@@ -68,8 +70,9 @@ public:
     Resource(Resource&&) = delete;
     Resource& operator=(Resource&&) = delete;
 
+    void SetBuffer(BufferIndices index, const std::shared_ptr<Buffer>& buffer);
+    void Init();
     std::shared_ptr<ResourceDescriptor> GetDescriptor() const { return m_ResourceDescriptor; }
-
 private:
     std::shared_ptr<ResourceDescriptor> m_ResourceDescriptor;
     std::array<std::shared_ptr<Buffer>, Resource::NUM_BUFFERS> m_ResourceBuffers;
