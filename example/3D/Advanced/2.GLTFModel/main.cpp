@@ -222,7 +222,8 @@ public:
 				materials[0]->Init();
 				firstTime = false;
 			}
-			mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 1, materials[0]} };
+
+			m_instanceBuffer = std::make_shared<RenderSys::Buffer>(sizeof(glm::mat4x4) * 1, RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
 			m_renderer->RenderMesh(mesh);
 			m_renderer->EndRenderPass();
 		}

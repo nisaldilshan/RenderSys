@@ -34,14 +34,6 @@ namespace GraphicsAPI
         void* m_mappedBuffer = nullptr;
     };
 
-    void CreateMaterialBindGroupPool();
-    VkDescriptorPool GetMaterialBindGroupPool();
-    void DestroyMaterialBindGroupPool();
-
-    void CreateMaterialBindGroupLayout();
-    VkDescriptorSetLayout GetMaterialBindGroupLayout();
-    void DestroyMaterialBindGroupLayout();
-
     class VulkanRenderer3D
     {
     public:
@@ -75,8 +67,6 @@ namespace GraphicsAPI
         void DestroyPipeline();
         void DestroyBindGroup();
         void Destroy();
-
-        static std::vector<VkDescriptorSetLayoutBinding> GetMaterialBindGroupBindings();
 
     private:
         void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh);

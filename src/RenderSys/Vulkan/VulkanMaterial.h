@@ -7,6 +7,14 @@
 namespace RenderSys
 {
 
+void CreateMaterialBindGroupPool();
+VkDescriptorPool GetMaterialBindGroupPool();
+void DestroyMaterialBindGroupPool();
+
+void CreateMaterialBindGroupLayout();
+VkDescriptorSetLayout GetMaterialBindGroupLayout();
+void DestroyMaterialBindGroupLayout();
+
 class VulkanMaterialDescriptor
 {
 public:

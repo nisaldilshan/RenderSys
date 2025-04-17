@@ -7,6 +7,14 @@
 namespace RenderSys
 {
 
+void CreateResourceBindGroupPool();
+VkDescriptorPool GetResourceBindGroupPool();
+void DestroyResourceBindGroupPool();
+
+void CreateResourceBindGroupLayout();
+VkDescriptorSetLayout GetResourceBindGroupLayout();
+void DestroyResourceBindGroupLayout();
+
 class VulkanResourceDescriptor
 {
 public:
