@@ -8,9 +8,9 @@ std::vector<VkDescriptorSetLayoutBinding> GetResourceBindGroupBindings()
 {
     static std::vector<VkDescriptorSetLayoutBinding> resourceBindGroupBindings
     {
-        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
-        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
-        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
+        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr} // baseColor texture
+        // VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
+        // VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
     };
 
     return resourceBindGroupBindings;
@@ -28,7 +28,7 @@ void CreateResourceBindGroupPool()
         VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 * maxMaterialsPerModel * maxNumOfModels}
     );
     poolSizes.emplace_back(
-        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * maxMaterialsPerModel * maxNumOfModels}
+        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1 * maxMaterialsPerModel * maxNumOfModels}
     );
     
     VkDescriptorPoolCreateInfo poolInfo{};
@@ -105,13 +105,16 @@ VulkanResourceDescriptor::~VulkanResourceDescriptor()
 
 void VulkanResourceDescriptor::AttachBuffer(uint32_t binding, const VkDescriptorBufferInfo &bufferInfo)
 {
+    auto bindings = GetResourceBindGroupBindings(); // Ensure the bindings are created
+    assert(binding < bindings.size());
+
     VkWriteDescriptorSet write = {};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.dstSet = m_bindGroup;
     write.dstBinding = binding;
     write.dstArrayElement = 0;
     write.descriptorCount = 1;
-    write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    write.descriptorType = bindings[binding].descriptorType;
     write.pBufferInfo = &bufferInfo;
 
     m_Writes.push_back(write);

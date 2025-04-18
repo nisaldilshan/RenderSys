@@ -15,11 +15,13 @@ public:
     void MapBuffer();
     void WriteToBuffer(const void *data);
     bool Flush();
-    const VkDescriptorBufferInfo& GetBufferInfo() const { return m_bufferInfo; }
+    const VkDescriptorBufferInfo& GetBufferInfo() const;
 
 private:
+    VkDeviceSize m_bufferSize = 0;
     VkBuffer m_buffer = VK_NULL_HANDLE;
-    VmaAllocation m_bufferAllocation = VK_NULL_HANDLE;
+    VmaAllocation m_bufferMemory = VK_NULL_HANDLE;
+    void* m_mapped = nullptr;
     VkDescriptorBufferInfo m_bufferInfo = {VK_NULL_HANDLE, 0, 0};
 };
 

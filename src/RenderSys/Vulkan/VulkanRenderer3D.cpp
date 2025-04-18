@@ -99,6 +99,8 @@ bool VulkanRenderer3D::Init()
     CreateDefaultTextureSampler();
     RenderSys::CreateMaterialBindGroupPool();
     RenderSys::CreateMaterialBindGroupLayout();
+    RenderSys::CreateResourceBindGroupPool();
+    RenderSys::CreateResourceBindGroupLayout();
     return true;
 }
 
@@ -1059,6 +1061,8 @@ void VulkanRenderer3D::DestroyTextures()
 
 void VulkanRenderer3D::Destroy()
 {
+    RenderSys::DestroyResourceBindGroupLayout();
+    RenderSys::DestroyResourceBindGroupPool();
     RenderSys::DestroyMaterialBindGroupLayout();
     RenderSys::DestroyMaterialBindGroupPool();
 

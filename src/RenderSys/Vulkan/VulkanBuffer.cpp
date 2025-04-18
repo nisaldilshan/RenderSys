@@ -4,11 +4,12 @@ namespace RenderSys
 {
 
 VulkanBuffer::VulkanBuffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage)
+    : m_bufferSize(byteSize)
 {
     VkBufferCreateInfo bufferInfo{};
     VmaAllocationCreateInfo allocInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = byteSize;
+    bufferInfo.size = m_bufferSize;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     if (bufferUsage == RenderSys::BufferUsage::UNIFORM_BUFFER_VISIBLE_TO_CPU) 
@@ -31,14 +32,43 @@ VulkanBuffer::VulkanBuffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage
         assert(false);
     }
     
-    if (vmaCreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), &bufferInfo, &allocInfo, &m_buffer, &m_bufferAllocation, nullptr) != VK_SUCCESS) 
+    if (vmaCreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), &bufferInfo, &allocInfo, &m_buffer, &m_bufferMemory, nullptr) != VK_SUCCESS) 
     {
         assert(false);
     }
+
+    m_bufferInfo.buffer = m_buffer;
+    m_bufferInfo.offset = 0;
+    m_bufferInfo.range = m_bufferSize;
 }
 
 VulkanBuffer::~VulkanBuffer()
 {
+}
+
+void VulkanBuffer::MapBuffer()
+{
+    auto res = vmaMapMemory(RenderSys::Vulkan::GetMemoryAllocator(), m_bufferMemory, &m_mapped);
+    if (res != VK_SUCCESS) {
+        assert(false);
+    }
+    assert(m_mapped != nullptr);
+}
+
+void VulkanBuffer::WriteToBuffer(const void *data)
+{
+    assert(m_mapped != nullptr);
+    std::memcpy(m_mapped, data, m_bufferSize);
+}
+
+bool VulkanBuffer::Flush()
+{
+    return false;
+}
+
+const VkDescriptorBufferInfo& VulkanBuffer::GetBufferInfo() const
+{
+    return m_bufferInfo;
 }
 
 } // namespace RenderSys

@@ -25,10 +25,13 @@ Buffer::~Buffer()
 
 void Buffer::MapBuffer()
 {
+    m_platformBuffer->MapBuffer();
 }
 
 void Buffer::WriteToBuffer(const void *data)
 {
+    assert(data != nullptr);
+    m_platformBuffer->WriteToBuffer(data);
 }
 
 bool Buffer::Flush()

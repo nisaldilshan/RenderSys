@@ -221,9 +221,16 @@ public:
 				materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, m_texture);
 				materials[0]->Init();
 				firstTime = false;
-			}
 
-			m_instanceBuffer = std::make_shared<RenderSys::Buffer>(sizeof(glm::mat4x4) * 1, RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
+				m_instanceBuffer = std::make_shared<RenderSys::Buffer>(sizeof(glm::mat4x4) * 1, RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
+				m_instanceBuffer->MapBuffer();
+				glm::mat4x4 testMatrix(11.0f);
+				m_instanceBuffer->WriteToBuffer(&testMatrix);
+
+				m_resource = std::make_shared<RenderSys::Resource>();
+				m_resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, m_instanceBuffer);
+				m_resource->Init();
+			}
 			m_renderer->RenderMesh(mesh);
 			m_renderer->EndRenderPass();
 		}
@@ -301,6 +308,7 @@ private:
 	std::vector<uint32_t> m_indexData;
 	std::shared_ptr<RenderSys::Texture> m_texture;
 	std::shared_ptr<RenderSys::Buffer> m_instanceBuffer;
+	std::shared_ptr<RenderSys::Resource> m_resource;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 	std::unique_ptr<RenderSys::Scene> m_scene;
 };
