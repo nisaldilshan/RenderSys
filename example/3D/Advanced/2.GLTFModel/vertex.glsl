@@ -1,4 +1,7 @@
 #version 460
+
+#include "shaderresource.glsl"
+
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 projectionMatrix;
     mat4 viewMatrix;
@@ -6,6 +9,16 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     vec3 cameraWorldPosition;
     float time;
 } ubo;
+
+struct InstanceData
+{
+    mat4 m_ModelMatrix;
+};
+
+layout(set = 2, binding = 0) readonly buffer InstanceBuffer
+{
+    InstanceData m_InstanceData[MAX_INSTANCE];
+} uboInstanced;
 
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 in_normal;

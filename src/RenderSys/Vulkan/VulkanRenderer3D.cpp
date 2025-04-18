@@ -445,7 +445,9 @@ void VulkanRenderer3D::CreatePipelineLayout()
     {
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
         pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, RenderSys::GetMaterialBindGroupLayout()};
+        std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, 
+                                                    RenderSys::GetMaterialBindGroupLayout(),
+                                                    RenderSys::GetResourceBindGroupLayout()};
         if (!m_bindGroupLayout)
         {
             pipelineLayoutCreateInfo.setLayoutCount = 0;
@@ -962,9 +964,11 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
 
 void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh)
 {
-    auto materialBindGroup = subMesh.m_Material->GetMaterialDescriptor()->GetPlatformDescriptor()->m_materialbindGroup;
+    auto materialBindGroup = subMesh.m_Material->GetDescriptor()->GetPlatformDescriptor()->m_bindGroup;
     assert(materialBindGroup != VK_NULL_HANDLE);
-    std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, materialBindGroup};
+    auto resourceBindGroup = subMesh.m_Resource->GetDescriptor()->GetPlatformDescriptor()->m_bindGroup;
+    assert(resourceBindGroup != VK_NULL_HANDLE);
+    std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, materialBindGroup, resourceBindGroup};
 
     vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
                                 , descriptorsets.size(), descriptorsets.data()

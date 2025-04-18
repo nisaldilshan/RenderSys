@@ -59,6 +59,7 @@ public:
 				RenderSys::Shader vertexShader("Vertex", std::string(content.data(), content.size()));
 				vertexShader.type = RenderSys::ShaderType::SPIRV;
 				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				vertexShader.SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
 				m_renderer->SetShader(vertexShader);
 			}
 
@@ -231,6 +232,8 @@ public:
 				m_resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, m_instanceBuffer);
 				m_resource->Init();
 			}
+			
+			mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 1, materials[0], m_resource}};
 			m_renderer->RenderMesh(mesh);
 			m_renderer->EndRenderPass();
 		}
