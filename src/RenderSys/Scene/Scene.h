@@ -39,7 +39,7 @@ private:
     std::vector<uint32_t> m_indexBuffer;
     
     std::vector<std::shared_ptr<Model::ModelNode>> m_rootNodes;
-    std::unique_ptr<GLTFScene> m_scene;
+    std::unique_ptr<GLTFModel> m_scene;
 };
 
 }

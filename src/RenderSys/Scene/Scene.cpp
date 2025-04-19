@@ -5,7 +5,7 @@ namespace RenderSys
 {
 
 Scene::Scene()
-    : m_scene(std::make_unique<GLTFScene>())
+    : m_scene(std::make_unique<GLTFModel>())
 {}
 
 bool Scene::load(const std::filesystem::path &filePath, const std::string &textureFilename)
