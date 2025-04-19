@@ -16,7 +16,6 @@
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
-    glm::mat4x4 modelMatrix;
 	glm::vec3 cameraWorldPosition;
     float time;
 };
@@ -148,6 +147,8 @@ public:
 	{
 		m_scene.reset();
 		m_texture.reset();
+		m_instanceBuffer.reset();
+		m_resource.reset();
 		m_renderer->Destroy();
 	}
 
@@ -194,13 +195,8 @@ public:
 
 			m_renderer->BeginRenderPass();
 
-			glm::mat4x4 M1(1.0);
-			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
-			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
-			M1 = glm::scale(M1, glm::vec3(0.3f));
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
 			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
-			m_myUniformData.modelMatrix = M1;
 			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
@@ -217,23 +213,31 @@ public:
 			const auto& materials = m_scene->getMaterials();
 			assert(materials.size() == 1);
 			static bool firstTime = true;
+
+			glm::mat4x4 M1(1.0);
+			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
+			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
+			M1 = glm::scale(M1, glm::vec3(0.3f));
+			static std::vector<glm::mat4x4> instances;
+			instances.push_back(M1);
+			instances.push_back(M1);
+			instances[1] = glm::translate(instances[1], glm::vec3(0.0f, 0.0f, -2.0f));
 			if (firstTime)
 			{
 				materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, m_texture);
 				materials[0]->Init();
 				firstTime = false;
 
-				m_instanceBuffer = std::make_shared<RenderSys::Buffer>(sizeof(glm::mat4x4) * 1, RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
+				m_instanceBuffer = std::make_shared<RenderSys::Buffer>(sizeof(glm::mat4x4) * 2, RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
 				m_instanceBuffer->MapBuffer();
-				glm::mat4x4 testMatrix(11.0f);
-				m_instanceBuffer->WriteToBuffer(&testMatrix);
+				m_instanceBuffer->WriteToBuffer(instances.data());
 
 				m_resource = std::make_shared<RenderSys::Resource>();
 				m_resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, m_instanceBuffer);
 				m_resource->Init();
 			}
 			
-			mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 1, materials[0], m_resource}};
+			mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 2, materials[0], m_resource}};
 			m_renderer->RenderMesh(mesh);
 			m_renderer->EndRenderPass();
 		}

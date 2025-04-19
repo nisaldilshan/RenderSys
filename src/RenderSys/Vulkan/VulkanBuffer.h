@@ -13,6 +13,7 @@ public:
     ~VulkanBuffer();
 
     void MapBuffer();
+    void UnmapBuffer() ;
     void WriteToBuffer(const void *data);
     bool Flush();
     const VkDescriptorBufferInfo& GetBufferInfo() const;

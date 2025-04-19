@@ -5,7 +5,6 @@
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 projectionMatrix;
     mat4 viewMatrix;
-    mat4 modelMatrix;
     vec3 cameraWorldPosition;
     float time;
 } ubo;
@@ -33,10 +32,12 @@ layout (location = 3) out vec3 out_tangent;
 
 void main() 
 {
-    vec4 worldPosition = ubo.modelMatrix * vec4(aPos, 1.0);
+    mat4 modelMatrix = uboInstanced.m_InstanceData[gl_InstanceIndex].m_ModelMatrix;
+
+    vec4 worldPosition = modelMatrix * vec4(aPos, 1.0);
     gl_Position = ubo.projectionMatrix * ubo.viewMatrix * worldPosition;
     out_viewDirection = ubo.cameraWorldPosition - worldPosition.xyz;
     out_uv = in_uv;
-	out_normal = (ubo.modelMatrix * vec4(in_normal, 0.0)).xyz;
-    out_tangent = (ubo.modelMatrix * vec4(in_tangent, 0.0)).xyz;
+	out_normal = (modelMatrix * vec4(in_normal, 0.0)).xyz;
+    out_tangent = (modelMatrix * vec4(in_tangent, 0.0)).xyz;
 }

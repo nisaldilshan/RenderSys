@@ -101,6 +101,8 @@ VulkanResourceDescriptor::VulkanResourceDescriptor()
 
 VulkanResourceDescriptor::~VulkanResourceDescriptor()
 {
+    // All the descriptor sets are freed when the pool is destroyed
+    m_bindGroup = VK_NULL_HANDLE;
 }
 
 void VulkanResourceDescriptor::AttachBuffer(uint32_t binding, const VkDescriptorBufferInfo &bufferInfo)

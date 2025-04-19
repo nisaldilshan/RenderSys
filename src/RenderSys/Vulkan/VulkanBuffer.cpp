@@ -44,6 +44,13 @@ VulkanBuffer::VulkanBuffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage
 
 VulkanBuffer::~VulkanBuffer()
 {
+    UnmapBuffer();
+    if (m_buffer != VK_NULL_HANDLE)
+    {
+        vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), m_buffer, m_bufferMemory);
+        m_buffer = VK_NULL_HANDLE;
+        m_bufferMemory = VK_NULL_HANDLE;
+    }
 }
 
 void VulkanBuffer::MapBuffer()
@@ -53,6 +60,15 @@ void VulkanBuffer::MapBuffer()
         assert(false);
     }
     assert(m_mapped != nullptr);
+}
+
+void VulkanBuffer::UnmapBuffer()
+{
+    if (m_mapped == nullptr) {
+        return;
+    }
+    vmaUnmapMemory(RenderSys::Vulkan::GetMemoryAllocator(), m_bufferMemory);
+    m_mapped = nullptr;
 }
 
 void VulkanBuffer::WriteToBuffer(const void *data)
