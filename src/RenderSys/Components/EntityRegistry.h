@@ -5,19 +5,12 @@
 namespace RenderSys
 {
 
-class EntityRegistry
+namespace EntityRegistry
 {
-public:
-    EntityRegistry() = default;
-    static entt::registry& Get();
-    ~EntityRegistry() = default;
-    EntityRegistry(const EntityRegistry&) = delete;
-    EntityRegistry& operator=(const EntityRegistry&) = delete;
-    EntityRegistry(EntityRegistry&&) = delete;
-    EntityRegistry& operator=(EntityRegistry&&) = delete;
-private:
-    
-};
+entt::registry& Get();   
+} // namespace EntityRegistry
+
+
     
 } // namespace RenderSys
     

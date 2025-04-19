@@ -41,6 +41,7 @@ struct ModelData
 class ModelNode 
 {
   public:
+    ModelNode() = delete; 
     ModelNode(int nodeNum);
     ~ModelNode() = default;
 
@@ -54,7 +55,6 @@ class ModelNode
 	void setMesh(RenderSys::Mesh mesh);
     entt::entity& getEntity();
 
-    void calculateNodeMatrix(glm::mat4 parentNodeMatrix);
     void calculateJointMatrices(const std::vector<glm::mat4>& inverseBindMatrices, const std::vector<int>& nodeToJoint, std::vector<glm::mat4>& jointMatrices);
     glm::mat4 getNodeMatrix();
     Mesh getMesh();

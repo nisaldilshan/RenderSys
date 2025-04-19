@@ -12,7 +12,9 @@ namespace Model
 
 ModelNode::ModelNode(int nodeNum)
     : m_nodeNum(nodeNum)
+    , m_entity(EntityRegistry::Get().create())
 {
+    std::cout << "ModelNode(" << this << ") created with nodeNum: " << m_nodeNum << ", Entity:" << int(m_entity) << std::endl;
 }
 
 int ModelNode::getNodeNum()
@@ -34,14 +36,6 @@ entt::entity &ModelNode::getEntity()
 {
     assert(m_entity != entt::null);
     return m_entity;
-}
-
-void ModelNode::calculateNodeMatrix(glm::mat4 parentNodeMatrix)
-{
-    assert(m_entity != entt::null);
-    auto& registry = EntityRegistry::Get();
-    auto& transform = registry.get<RenderSys::TransformComponent>(m_entity);
-    transform.SetMat4Global(parentNodeMatrix);
 }
 
 void ModelNode::calculateJointMatrices(const std::vector<glm::mat4> &inverseBindMatrices, const std::vector<int> &nodeToJoint, std::vector<glm::mat4> &jointMatrices)

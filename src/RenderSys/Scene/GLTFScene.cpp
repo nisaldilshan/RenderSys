@@ -344,7 +344,7 @@ RenderSys::TextureSampler::FilterMode getFilterMode(int32_t filterMode)
 void GLTFModel::loadTransform(std::shared_ptr<Model::ModelNode> currentNode, const tinygltf::Node &gltfNode, std::shared_ptr<Model::ModelNode> parentNode)
 {
     auto& registry = EntityRegistry::Get();
-    auto& transform = registry.get<RenderSys::TransformComponent>(currentNode->getEntity());
+    TransformComponent& transform{registry.emplace<TransformComponent>(currentNode->getEntity())};
     if (gltfNode.matrix.size() == 16)
     {
         transform.SetMat4Local(glm::make_mat4x4(gltfNode.matrix.data()));
@@ -372,11 +372,13 @@ void GLTFModel::loadTransform(std::shared_ptr<Model::ModelNode> currentNode, con
 
     if (parentNode == nullptr)
     {
-        currentNode->calculateNodeMatrix(glm::mat4(1.0f));
+        auto parentNodeMatrix = glm::mat4(1.0f);
+        transform.SetMat4Global(parentNodeMatrix);
     }
     else
     {
-        currentNode->calculateNodeMatrix(parentNode->getNodeMatrix());
+        auto parentNodeMatrix = parentNode->getNodeMatrix();
+        transform.SetMat4Global(parentNodeMatrix);
     }
 }
 

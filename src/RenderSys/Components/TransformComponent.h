@@ -11,10 +11,14 @@ namespace RenderSys
     {
     public:
         TransformComponent();
-        TransformComponent(const glm::mat4 &mat4);
-        TransformComponent(glm::vec3 &scale, glm::quat &rotation, glm::vec3 &translation);
+        ~TransformComponent() = default;
+        TransformComponent(const TransformComponent&) = delete;
+        TransformComponent &operator=(const TransformComponent&) = delete;
+        TransformComponent(TransformComponent&&) = delete;
+        TransformComponent &operator=(TransformComponent&&) = delete;
 
         void SetScale(const glm::vec3 &scale);
+        void SetRotation(const glm::vec3& rotation);
         void SetRotation(const glm::quat &quaternion);
         void SetTranslation(const glm::vec3 &translation);
 
