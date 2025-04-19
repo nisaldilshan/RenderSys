@@ -47,7 +47,7 @@ private:
     std::shared_ptr<Model::ModelNode> traverse(const std::shared_ptr<Model::ModelNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount);
     std::shared_ptr<RenderSys::Material> createMaterial(int materialIndex);
 
-    std::shared_ptr<tinygltf::Model> m_gltfModel;
+    std::unique_ptr<tinygltf::Model> m_gltfModel;
     size_t m_vertexCount = 0;
     size_t m_indexCount = 0;
     std::filesystem::path m_sceneFilePath;

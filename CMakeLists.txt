@@ -5,6 +5,7 @@ find_package(walnut REQUIRED)
 find_package(tinyobjloader REQUIRED)
 find_package(shaderc REQUIRED)
 find_package(tinygltf REQUIRED)
+find_package(entt REQUIRED)
 
 add_library (RenderSys2D STATIC
                 src/RenderSys/Renderer2D.cpp
@@ -226,7 +227,7 @@ target_include_directories(RenderSys3D PRIVATE src)
 target_include_directories(ComputeSys PRIVATE src)
 
 target_link_libraries(RenderSys2D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc)
-target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc TinyGLTF::TinyGLTF)
+target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc TinyGLTF::TinyGLTF EnTT::EnTT)
 target_link_libraries(ComputeSys PRIVATE walnut::walnut shaderc::shaderc)
 
 install(TARGETS RenderSys2D

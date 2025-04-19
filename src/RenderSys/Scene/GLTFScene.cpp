@@ -10,7 +10,7 @@ namespace RenderSys
 {
 
 GLTFModel::GLTFModel()
-    : m_gltfModel(std::make_shared<tinygltf::Model>())
+    : m_gltfModel(std::make_unique<tinygltf::Model>())
 {
 }
 

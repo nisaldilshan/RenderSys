@@ -33,6 +33,7 @@ class RenderSysConan(ConanFile):
             self.requires("WebGPU/latest")
         else:
             raise ConanInvalidConfiguration("Unsupported Renderer Type")
+        self.requires('entt/3.14.0')
 
     def build_requirements(self):
         self.tool_requires('cmake/3.25.3')
