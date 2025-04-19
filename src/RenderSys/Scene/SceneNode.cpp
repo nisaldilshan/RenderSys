@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <string>
+#include <RenderSys/Components/TransformComponent.h>
 
 namespace RenderSys
 {
