@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <string>
+#include <RenderSys/Components/EntityRegistry.h>
 #include <RenderSys/Components/TransformComponent.h>
 
 namespace RenderSys
@@ -24,43 +25,29 @@ void ModelNode::setNodeName(std::string name)
     m_nodeName = name;
 }
 
-void ModelNode::setScale(glm::vec3 scale)
-{
-    m_scale = scale;
-}
-
-void ModelNode::setTranslation(glm::vec3 translation)
-{
-    m_translation = translation;
-}
-
-void ModelNode::setRotation(glm::quat rotation)
-{
-    m_rotation = rotation;
-}
-
 void ModelNode::setMesh(RenderSys::Mesh mesh)
 {
     m_mesh = mesh;
 }
 
-void ModelNode::calculateLocalTRSMatrix()
+entt::entity &ModelNode::getEntity()
 {
-    glm::mat4 sMatrix = glm::scale(glm::mat4(1.0f), m_scale);
-    glm::mat4 rMatrix = glm::mat4_cast(m_rotation);
-    glm::mat4 tMatrix = glm::translate(glm::mat4(1.0f), m_translation);
-    mLocalTRSMatrix = tMatrix * rMatrix * sMatrix;
+    assert(m_entity != entt::null);
+    return m_entity;
 }
 
 void ModelNode::calculateNodeMatrix(glm::mat4 parentNodeMatrix)
 {
-    m_nodeMatrix = parentNodeMatrix * mLocalTRSMatrix;
+    assert(m_entity != entt::null);
+    auto& registry = EntityRegistry::Get();
+    auto& transform = registry.get<RenderSys::TransformComponent>(m_entity);
+    transform.SetMat4Global(parentNodeMatrix);
 }
 
 void ModelNode::calculateJointMatrices(const std::vector<glm::mat4> &inverseBindMatrices, const std::vector<int> &nodeToJoint, std::vector<glm::mat4> &jointMatrices)
 {
     auto placeHolder = nodeToJoint.at(m_nodeNum);
-    jointMatrices.at(placeHolder) = m_nodeMatrix * inverseBindMatrices.at(placeHolder);
+    jointMatrices.at(placeHolder) = getNodeMatrix() * inverseBindMatrices.at(placeHolder);
 
     for (const auto& childNode : m_childNodes)
     {
@@ -70,7 +57,10 @@ void ModelNode::calculateJointMatrices(const std::vector<glm::mat4> &inverseBind
 
 glm::mat4 ModelNode::getNodeMatrix()
 {
-    return m_nodeMatrix;
+    assert(m_entity != entt::null);
+    auto& registry = EntityRegistry::Get();
+    auto& transform = registry.get<RenderSys::TransformComponent>(m_entity);
+    return transform.GetMat4Global();
 }
 
 Mesh ModelNode::getMesh()

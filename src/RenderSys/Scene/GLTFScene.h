@@ -40,6 +40,7 @@ public:
     const std::vector<std::shared_ptr<RenderSys::Texture>>& GetTextures() const { return m_textures; }
     const std::vector<std::shared_ptr<RenderSys::Material>>& GetMaterials() const { return m_materials; }
 private:
+    void loadTransform(std::shared_ptr<Model::ModelNode> currentNode, const tinygltf::Node &gltfNode, std::shared_ptr<Model::ModelNode> parentNode);
     std::vector<TextureSampler> loadTextureSamplers();
     static void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount);
     RenderSys::SubMesh loadPrimitive(const tinygltf::Primitive &primitive, Model::ModelData &modelData, const uint32_t indexCount);

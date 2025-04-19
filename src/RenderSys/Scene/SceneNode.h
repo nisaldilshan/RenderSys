@@ -51,12 +51,9 @@ class ModelNode
 
     int getNodeNum();
     void setNodeName(std::string name);
-    void setScale(glm::vec3 scale);
-    void setTranslation(glm::vec3 translation);
-    void setRotation(glm::quat rotation);
 	void setMesh(RenderSys::Mesh mesh);
+    entt::entity& getEntity();
 
-    void calculateLocalTRSMatrix();
     void calculateNodeMatrix(glm::mat4 parentNodeMatrix);
     void calculateJointMatrices(const std::vector<glm::mat4>& inverseBindMatrices, const std::vector<int>& nodeToJoint, std::vector<glm::mat4>& jointMatrices);
     glm::mat4 getNodeMatrix();
@@ -71,12 +68,7 @@ class ModelNode
     std::string m_nodeName;
     Mesh m_mesh;
     int m_materialIndex = 0;
-
-    glm::vec3 m_scale = glm::vec3(1.0f);
-    glm::vec3 m_translation = glm::vec3(0.0f);
-    glm::quat m_rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-    glm::mat4 mLocalTRSMatrix = glm::mat4(1.0f);
-    glm::mat4 m_nodeMatrix = glm::mat4(1.0f);
+    entt::entity m_entity;
 };
 
 } // namespace Model

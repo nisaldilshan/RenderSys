@@ -6,6 +6,9 @@
 #define TINYGLTF_IMPLEMENTATION
 #include <tiny_gltf.h>
 
+#include <RenderSys/Components/EntityRegistry.h>
+#include <RenderSys/Components/TransformComponent.h>
+
 namespace RenderSys
 {
 
@@ -338,6 +341,45 @@ RenderSys::TextureSampler::FilterMode getFilterMode(int32_t filterMode)
     return RenderSys::TextureSampler::FilterMode::NEAREST;
 }
 
+void GLTFModel::loadTransform(std::shared_ptr<Model::ModelNode> currentNode, const tinygltf::Node &gltfNode, std::shared_ptr<Model::ModelNode> parentNode)
+{
+    auto& registry = EntityRegistry::Get();
+    auto& transform = registry.get<RenderSys::TransformComponent>(currentNode->getEntity());
+    if (gltfNode.matrix.size() == 16)
+    {
+        transform.SetMat4Local(glm::make_mat4x4(gltfNode.matrix.data()));
+    }
+    else
+    {
+        if (gltfNode.rotation.size() == 4)
+        {
+            float x = gltfNode.rotation[0];
+            float y = gltfNode.rotation[1];
+            float z = gltfNode.rotation[2];
+            float w = gltfNode.rotation[3];
+
+            transform.SetRotation({w, x, y, z});
+        }
+        if (gltfNode.scale.size() == 3)
+        {
+            transform.SetScale({gltfNode.scale[0], gltfNode.scale[1], gltfNode.scale[2]});
+        }
+        if (gltfNode.translation.size() == 3)
+        {
+            transform.SetTranslation({gltfNode.translation[0], gltfNode.translation[1], gltfNode.translation[2]});
+        }
+    }
+
+    if (parentNode == nullptr)
+    {
+        currentNode->calculateNodeMatrix(glm::mat4(1.0f));
+    }
+    else
+    {
+        currentNode->calculateNodeMatrix(parentNode->getNodeMatrix());
+    }
+}
+
 std::vector<TextureSampler> GLTFModel::loadTextureSamplers()
 {
     std::vector<TextureSampler> samplers;
@@ -428,27 +470,8 @@ std::shared_ptr<Model::ModelNode> GLTFModel::traverse(const std::shared_ptr<Mode
         indexCount += sceneNode->m_data.indices.size();
     }
 
-    if (node.translation.size()) {
-        sceneNode->setTranslation(glm::make_vec3(node.translation.data()));
-    }
-    if (node.rotation.size()) {
-        sceneNode->setRotation(glm::make_quat(node.rotation.data()));
-    }
-    if (node.scale.size()) {
-        sceneNode->setScale(glm::make_vec3(node.scale.data()));
-    }
-
-    sceneNode->calculateLocalTRSMatrix();
-
-    if (parent == nullptr)
-    {
-        sceneNode->calculateNodeMatrix(glm::mat4(1.0f));
-    }
-    else
-    {
-        sceneNode->calculateNodeMatrix(parent->getNodeMatrix());
-    }
-
+    loadTransform(sceneNode, node, parent);
+    
     if (node.children.size() > 0) 
     {
         for (size_t i = 0; i < node.children.size(); i++) 

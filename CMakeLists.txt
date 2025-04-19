@@ -23,7 +23,9 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Resource.cpp
                 src/RenderSys/Scene/GLTFScene.cpp
                 src/RenderSys/Scene/Scene.cpp
-                src/RenderSys/Scene/SceneNode.cpp)
+                src/RenderSys/Scene/SceneNode.cpp
+                src/RenderSys/Components/TransformComponent.cpp
+                src/RenderSys/Components/EntityRegistry.cpp)
 
 add_library (ComputeSys STATIC
                 src/RenderSys/Compute.cpp
@@ -227,7 +229,8 @@ target_include_directories(RenderSys3D PRIVATE src)
 target_include_directories(ComputeSys PRIVATE src)
 
 target_link_libraries(RenderSys2D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc)
-target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc TinyGLTF::TinyGLTF EnTT::EnTT)
+target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc TinyGLTF::TinyGLTF)
+target_link_libraries(RenderSys3D PUBLIC EnTT::EnTT)
 target_link_libraries(ComputeSys PRIVATE walnut::walnut shaderc::shaderc)
 
 install(TARGETS RenderSys2D
