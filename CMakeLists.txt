@@ -209,7 +209,11 @@ target_sources(RenderSys3D
                 PUBLIC FILE_SET renderSysFileSet 
                 TYPE HEADERS 
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
-                FILES src/RenderSys/Renderer3D.h src/RenderSys/RenderUtil.h src/RenderSys/Texture.h src/RenderSys/Camera.h)
+                FILES   src/RenderSys/Renderer3D.h 
+                        src/RenderSys/RenderUtil.h 
+                        src/RenderSys/Texture.h 
+                        src/RenderSys/Camera.h
+                        src/RenderSys/Material.h)
 target_sources(ComputeSys 
                 PUBLIC FILE_SET renderSysFileSet 
                 TYPE HEADERS 
