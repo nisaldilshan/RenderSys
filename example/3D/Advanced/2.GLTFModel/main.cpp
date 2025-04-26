@@ -7,15 +7,17 @@
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
-#include <RenderSys/Texture.h>
+#include <RenderSys/Resource.h>
 #include <RenderSys/Camera.h>
 #include <RenderSys/Scene/Scene.h>
+#include <RenderSys/Components/EntityRegistry.h>
+#include <RenderSys/Components/TransformComponent.h>
+#include <RenderSys/Components/MeshComponent.h>
 #include <imgui.h>
 
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
-    glm::mat4x4 modelMatrix;
 	glm::vec3 cameraWorldPosition;
     float time;
 };
@@ -58,6 +60,7 @@ public:
 				RenderSys::Shader vertexShader("Vertex", std::string(content.data(), content.size()));
 				vertexShader.type = RenderSys::ShaderType::SPIRV;
 				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				vertexShader.SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
 				m_renderer->SetShader(vertexShader);
 			}
 
@@ -136,16 +139,29 @@ public:
 		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-		assert(m_vertexBuffer.size() > 0);
-		const auto vertexBufID = m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
-		assert(m_indexData.size() > 0);
-		m_renderer->SetIndexBufferData(vertexBufID, m_indexData);
+		auto& registry = RenderSys::EntityRegistry::Get();
+		auto view = registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+		for (auto entity : view)
+		{
+			auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
+			auto& transformComponent = view.get<RenderSys::TransformComponent>(entity);
+
+			auto vertexBuffer = meshComponent.m_Mesh->m_modelData->getVertexBufferForRenderer();
+			m_scene->applyVertexSkinning(vertexBuffer);
+			assert(vertexBuffer.size() > 0);
+			const auto vertexBufID = m_renderer->SetVertexBufferData(vertexBuffer, vertexBufferLayout);
+			assert(meshComponent.m_Mesh->m_modelData->indices.size() > 0);
+			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_modelData->indices);
+		}
 	}
 
 	virtual void OnDetach() override
 	{
 		m_scene.reset();
 		m_texture.reset();
+		m_instanceBuffer.reset();
+		m_resource.reset();
+		RenderSys::EntityRegistry::Destroy();
 		m_renderer->Destroy();
 	}
 
@@ -169,7 +185,6 @@ public:
 			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 			uniformBindingLayout.buffer.hasDynamicOffset = false;
-			
 			// Lighting Uniforms
 			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
 			lightingUniformLayout.setDefault();
@@ -192,13 +207,8 @@ public:
 
 			m_renderer->BeginRenderPass();
 
-			glm::mat4x4 M1(1.0);
-			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
-			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
-			M1 = glm::scale(M1, glm::vec3(0.3f));
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
 			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
-			m_myUniformData.modelMatrix = M1;
 			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
@@ -209,20 +219,46 @@ public:
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
-			RenderSys::Mesh mesh;
-			mesh.id = 1;
-			mesh.vertexBufferID = 1;
 			const auto& materials = m_scene->getMaterials();
 			assert(materials.size() == 1);
 			static bool firstTime = true;
+
+			glm::mat4x4 M1(1.0);
+			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
+			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
+			M1 = glm::scale(M1, glm::vec3(0.3f));
+			static std::vector<glm::mat4x4> instances;
+			instances.push_back(M1);
+			instances.push_back(M1);
+			instances[1] = glm::translate(instances[1], glm::vec3(0.0f, 0.0f, -2.0f));
 			if (firstTime)
 			{
 				materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, m_texture);
 				materials[0]->Init();
 				firstTime = false;
+
+				m_instanceBuffer = std::make_shared<RenderSys::Buffer>(sizeof(glm::mat4x4) * 2, RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
+				m_instanceBuffer->MapBuffer();
+				m_instanceBuffer->WriteToBuffer(instances.data());
+
+				m_resource = std::make_shared<RenderSys::Resource>();
+				m_resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, m_instanceBuffer);
+				m_resource->Init();
 			}
-			mesh.subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 0, materials[0]} };
-			m_renderer->RenderMesh(mesh);
+
+			auto& registry = RenderSys::EntityRegistry::Get();
+			auto view = registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+			for (auto entity : view)
+			{
+				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
+				auto& transformComponent = view.get<RenderSys::TransformComponent>(entity);
+
+				auto mesh = meshComponent.m_Mesh;
+				mesh->vertexBufferID = 1;
+				mesh->subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 2, materials[0], m_resource}};
+				m_renderer->RenderMesh(*mesh);
+			}
+
 			m_renderer->EndRenderPass();
 		}
 
@@ -258,7 +294,7 @@ public:
 private:
 	bool loadScene()
 	{
-		m_scene = std::make_unique<RenderSys::Scene>();
+		m_scene = std::make_unique<RenderSys::Model>();
 		if (!m_scene->load(RESOURCE_DIR "/Models/Woman.gltf", ""))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
@@ -266,23 +302,6 @@ private:
 		}
 
 		m_scene->populate();
-		m_scene->applyVertexSkinning();
-
-		const auto& sceneVertexBuffer = m_scene->getVertexBuffer();
-		m_vertexBuffer.resize(sceneVertexBuffer.size());
-		for (size_t i = 0; i < m_vertexBuffer.size(); i++)
-		{
-			m_vertexBuffer[i].position = sceneVertexBuffer[i].pos;
-			m_vertexBuffer[i].normal = sceneVertexBuffer[i].normal;
-			m_vertexBuffer[i].texcoord0 = sceneVertexBuffer[i].uv0;
-		}
-		
-		m_indexData.resize(m_scene->getIndexBuffer().size());
-		for (size_t i = 0; i < m_indexData.size(); i++)
-		{
-			m_indexData[i] = m_scene->getIndexBuffer()[i];
-		}
-
 		m_scene->printNodeGraph();
 		return true;
 	}
@@ -295,11 +314,11 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
-	RenderSys::VertexBuffer m_vertexBuffer;
-	std::vector<uint32_t> m_indexData;
 	std::shared_ptr<RenderSys::Texture> m_texture;
+	std::shared_ptr<RenderSys::Buffer> m_instanceBuffer;
+	std::shared_ptr<RenderSys::Resource> m_resource;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
-	std::unique_ptr<RenderSys::Scene> m_scene;
+	std::unique_ptr<RenderSys::Model> m_scene;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

@@ -11,22 +11,18 @@
 namespace RenderSys
 {
 
-struct SubMesh
-{
-    uint32_t m_FirstIndex;
-    uint32_t m_FirstVertex;
-    uint32_t m_IndexCount;
-    uint32_t m_VertexCount;
-    uint32_t m_InstanceCount;
-    std::shared_ptr<Material> m_Material;
-};
-
-struct Mesh
-{
-    uint32_t id = 0;
-    uint32_t vertexBufferID = 0;
-	std::vector<SubMesh> subMeshes;
-};
+#if (RENDERER_BACKEND == 1)
+class OpenGLBuffer;
+typedef OpenGLBuffer BufferType;
+#elif (RENDERER_BACKEND == 2)
+class VulkanBuffer;
+typedef VulkanBuffer BufferType;
+#elif (RENDERER_BACKEND == 3)
+class WebGPUBuffer;
+typedef WebGPUBuffer BufferType;
+#else
+static_assert(false);
+#endif
 
 struct alignas(16) Vertex {
     glm::vec3 position;
@@ -59,4 +55,41 @@ enum class BufferType
 };
     
 } // namespace Compute
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum class BufferUsage
+{
+    UNIFORM_BUFFER_VISIBLE_TO_CPU,
+    STORAGE_BUFFER_VISIBLE_TO_CPU,
+    TRANSFER_SRC_VISIBLE_TO_GPU
+};
+
+class Buffer
+{
+public:
+    Buffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage);
+    ~Buffer();
+
+    Buffer(const Buffer &) = delete;
+    Buffer &operator=(const Buffer &) = delete;
+    Buffer(Buffer &&) = delete;
+    Buffer &operator=(Buffer &&) = delete;
+
+    void MapBuffer();
+    void WriteToBuffer(const void *data);
+    bool Flush();
+
+    std::shared_ptr<BufferType> GetPlatformBuffer() const { return m_platformBuffer; }
+private:
+    std::shared_ptr<BufferType> m_platformBuffer;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
 } // namespace RenderSys

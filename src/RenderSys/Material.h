@@ -114,7 +114,7 @@ public:
     void SetMaterialProperties(const MaterialProperties& matProps) { m_materialProperties = matProps; }
     void SetMaterialTexture(const TextureIndices textureIndex, std::shared_ptr<Texture> texture);
 
-    std::shared_ptr<MaterialDescriptor> GetMaterialDescriptor() const { return m_MaterialDescriptor; }
+    std::shared_ptr<MaterialDescriptor> GetDescriptor() const { return m_MaterialDescriptor; }
     const MaterialProperties& GetMaterialProperties() const { return m_materialProperties; }
 private:
     MaterialProperties m_materialProperties;

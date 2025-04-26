@@ -10,6 +10,7 @@
 #include <RenderSys/Shader.h>
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
+#include <RenderSys/Scene/SceneNode.h>
 
 namespace GraphicsAPI
 {

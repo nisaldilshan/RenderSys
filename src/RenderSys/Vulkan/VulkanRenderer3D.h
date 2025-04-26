@@ -12,6 +12,7 @@
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
 #include <RenderSys/Material.h>
+#include <RenderSys/Scene/SceneNode.h>
 
 namespace GraphicsAPI
 {
@@ -33,14 +34,6 @@ namespace GraphicsAPI
         VmaAllocation m_uniformBufferMemory = VK_NULL_HANDLE;
         void* m_mappedBuffer = nullptr;
     };
-
-    void CreateMaterialBindGroupPool();
-    VkDescriptorPool GetMaterialBindGroupPool();
-    void DestroyMaterialBindGroupPool();
-
-    void CreateMaterialBindGroupLayout();
-    VkDescriptorSetLayout GetMaterialBindGroupLayout();
-    void DestroyMaterialBindGroupLayout();
 
     class VulkanRenderer3D
     {
@@ -66,7 +59,6 @@ namespace GraphicsAPI
         void Render();
         void RenderIndexed();
         void RenderMesh(const RenderSys::Mesh& mesh);
-        void RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const std::shared_ptr<RenderSys::Material> material);
         void DrawPlane();
         void DrawCube();
         ImTextureID GetDescriptorSet();
@@ -77,9 +69,8 @@ namespace GraphicsAPI
         void DestroyBindGroup();
         void Destroy();
 
-        static std::vector<VkDescriptorSetLayoutBinding> GetMaterialBindGroupBindings();
-
     private:
+        void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh);
         void CreateDefaultTextureSampler();
         void CreatePipelineLayout();
         void CreateRenderPass();

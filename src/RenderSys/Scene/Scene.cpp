@@ -4,59 +4,23 @@
 namespace RenderSys
 {
 
-Scene::Scene()
-    : m_scene(std::make_unique<GLTFScene>())
+Model::Model()
+    : m_scene(std::make_unique<GLTFModel>())
 {}
 
-bool Scene::load(const std::filesystem::path &filePath, const std::string &textureFilename)
+bool Model::load(const std::filesystem::path &filePath, const std::string &textureFilename)
 {
     return m_scene->load(filePath, textureFilename);
 }
 
-void loadVertexIndexData(std::shared_ptr<RenderSys::Model::ModelNode> node, uint32_t& vertexCount, uint32_t& indexCount, std::vector<Model::Vertex>& m_vertexBuffer, std::vector<uint32_t>& m_indexBuffer)
-{
-    for (size_t i = vertexCount; i < node->m_data.vertices.size() + vertexCount; i++)
-    {
-        m_vertexBuffer[i] = node->m_data.vertices[i-vertexCount];
-    }
-
-    for (size_t i = indexCount; i < node->m_data.indices.size() + indexCount; i++)
-    {
-        auto indexVal = node->m_data.indices[i-indexCount] + vertexCount;
-        assert(indexVal < m_vertexBuffer.size());
-        m_indexBuffer[i] = indexVal;
-    }
-                
-    vertexCount += node->m_data.vertices.size();
-    indexCount += node->m_data.indices.size();
-
-    for (auto& childNode : node->m_childNodes)
-    {
-        loadVertexIndexData(childNode, vertexCount, indexCount, m_vertexBuffer, m_indexBuffer);
-    }
-}
-
-void Scene::populate()
+void Model::populate()
 {
     m_scene->loadTextures();
     m_scene->loadMaterials();
 
     // traverse through GLTF Scene nodes and prepare graph
     m_scene->getNodeGraphs(m_rootNodes);
-
     m_scene->computeProps();
-    m_vertexBuffer.resize(m_scene->getVertexCount());
-    m_indexBuffer.resize(m_scene->getIndexCount());
-
-    uint32_t vertexCount = 0;
-    uint32_t indexCount = 0;
-    for (auto &rootNode : m_rootNodes)
-    {
-        loadVertexIndexData(rootNode, vertexCount, indexCount, m_vertexBuffer, m_indexBuffer);
-    }
-    
-    assert(m_vertexBuffer.size() == vertexCount);
-    assert(m_indexBuffer.size() == indexCount);
 
     m_scene->loadJointData(m_jointVec, m_nodeToJoint, m_weightVec);
     m_scene->loadInverseBindMatrices(m_inverseBindMatrices);
@@ -69,7 +33,7 @@ void Scene::populate()
     }
 }
 
-void Scene::printNodeGraph()
+void Model::printNodeGraph()
 {
     std::cout << "---- Scene begin ----\n";
     for (auto &rootNode : m_rootNodes)
@@ -79,10 +43,8 @@ void Scene::printNodeGraph()
     std::cout << " -- Scene end --" << std::endl;
 }
 
-void Scene::applyVertexSkinning()
+void Model::applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer)
 {
-    assert(m_vertexBuffer.size() > 0);
-    
     if (m_jointVec.size() == 0)
     {
         return;
@@ -96,8 +58,6 @@ void Scene::applyVertexSkinning()
         return;
     }
 
-    m_vertexBufferAltered = m_vertexBuffer;
-
     for (int i = 0; i < m_jointVec.size(); ++i) 
     {
         glm::ivec4 jointIndex = glm::make_vec4(m_jointVec.at(i));
@@ -107,23 +67,8 @@ void Scene::applyVertexSkinning()
             weightIndex.y * m_jointMatrices.at(jointIndex.y) +
             weightIndex.z * m_jointMatrices.at(jointIndex.z) +
             weightIndex.w * m_jointMatrices.at(jointIndex.w);
-        m_vertexBufferAltered.at(i).pos = skinMat * glm::vec4(m_vertexBufferAltered.at(i).pos, 1.0f);
+        vertexBuffer.vertices.at(i).position = skinMat * glm::vec4(vertexBuffer.vertices.at(i).position, 1.0f);
     }
 }
 
-const RenderSys::VertexBuffer Scene::getVertexBufferForRenderer() const
-{
-    const auto& bufRef = getVertexBuffer();
-    RenderSys::VertexBuffer buffer;
-    buffer.resize(bufRef.size());
-    for (size_t i = 0; i < buffer.size(); i++)
-    {
-        buffer[i].position = bufRef[i].pos;
-        buffer[i].normal = bufRef[i].normal;
-        buffer[i].texcoord0 = bufRef[i].uv0;
-        buffer[i].tangent = bufRef[i].tangent;
-    }
-    return buffer;
-}
-
-}
+} // namespace RenderSys

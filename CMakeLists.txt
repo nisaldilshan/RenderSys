@@ -5,6 +5,7 @@ find_package(walnut REQUIRED)
 find_package(tinyobjloader REQUIRED)
 find_package(shaderc REQUIRED)
 find_package(tinygltf REQUIRED)
+find_package(entt REQUIRED)
 
 add_library (RenderSys2D STATIC
                 src/RenderSys/Renderer2D.cpp
@@ -16,11 +17,16 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Shader.cpp
                 src/RenderSys/Camera.cpp
                 src/RenderSys/Geometry.cpp
+                src/RenderSys/Buffer.cpp
                 src/RenderSys/Texture.cpp
                 src/RenderSys/Material.cpp
+                src/RenderSys/Resource.cpp
                 src/RenderSys/Scene/GLTFScene.cpp
                 src/RenderSys/Scene/Scene.cpp
-                src/RenderSys/Scene/SceneNode.cpp)
+                src/RenderSys/Scene/SceneNode.cpp
+                src/RenderSys/Components/TransformComponent.cpp
+                src/RenderSys/Components/MeshComponent.cpp
+                src/RenderSys/Components/EntityRegistry.cpp)
 
 add_library (ComputeSys STATIC
                 src/RenderSys/Compute.cpp
@@ -36,8 +42,10 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
                     src/RenderSys/Vulkan/VulkanMemAlloc.cpp
+                    src/RenderSys/Vulkan/VulkanBuffer.cpp
                     src/RenderSys/Vulkan/VulkanTexture.cpp
-                    src/RenderSys/Vulkan/VulkanMaterial.cpp)
+                    src/RenderSys/Vulkan/VulkanMaterial.cpp
+                    src/RenderSys/Vulkan/VulkanResource.cpp)
     target_sources(ComputeSys PRIVATE
                     src/RenderSys/Vulkan/VulkanCompute.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
@@ -209,7 +217,12 @@ target_sources(RenderSys3D
                 PUBLIC FILE_SET renderSysFileSet 
                 TYPE HEADERS 
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
-                FILES src/RenderSys/Renderer3D.h src/RenderSys/RenderUtil.h src/RenderSys/Texture.h src/RenderSys/Camera.h)
+                FILES   src/RenderSys/Renderer3D.h 
+                        src/RenderSys/RenderUtil.h 
+                        src/RenderSys/Texture.h 
+                        src/RenderSys/Camera.h
+                        src/RenderSys/Material.h
+                        src/RenderSys/Resource.h)
 target_sources(ComputeSys 
                 PUBLIC FILE_SET renderSysFileSet 
                 TYPE HEADERS 
@@ -223,6 +236,7 @@ target_include_directories(ComputeSys PRIVATE src)
 
 target_link_libraries(RenderSys2D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc)
 target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc TinyGLTF::TinyGLTF)
+target_link_libraries(RenderSys3D PUBLIC EnTT::EnTT)
 target_link_libraries(ComputeSys PRIVATE walnut::walnut shaderc::shaderc)
 
 install(TARGETS RenderSys2D
