@@ -117,7 +117,7 @@ void VulkanResourceDescriptor::AttachBuffer(uint32_t binding, const std::shared_
     write.dstArrayElement = 0;
     write.descriptorCount = 1;
     write.descriptorType = bindings[binding].descriptorType;
-    write.pBufferInfo = &bufferInfo;
+    write.pBufferInfo = &buffer->GetBufferInfo();
 
     m_Writes.push_back(write);
 }
