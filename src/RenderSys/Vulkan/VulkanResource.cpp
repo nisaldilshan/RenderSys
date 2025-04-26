@@ -105,7 +105,7 @@ VulkanResourceDescriptor::~VulkanResourceDescriptor()
     m_bindGroup = VK_NULL_HANDLE;
 }
 
-void VulkanResourceDescriptor::AttachBuffer(uint32_t binding, const VkDescriptorBufferInfo &bufferInfo)
+void VulkanResourceDescriptor::AttachBuffer(uint32_t binding, const std::shared_ptr<RenderSys::VulkanBuffer>& buffer)
 {
     auto bindings = GetResourceBindGroupBindings(); // Ensure the bindings are created
     assert(binding < bindings.size());

@@ -21,7 +21,7 @@ public:
     VulkanResourceDescriptor();
     ~VulkanResourceDescriptor();
 
-    void AttachBuffer(uint32_t binding, const VkDescriptorBufferInfo& bufferInfo);
+    void AttachBuffer(uint32_t binding, const std::shared_ptr<RenderSys::VulkanBuffer>& buffer);
     void Init();
 
     VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; 

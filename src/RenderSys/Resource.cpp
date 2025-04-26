@@ -26,7 +26,7 @@ ResourceDescriptor::~ResourceDescriptor()
 
 void ResourceDescriptor::AttachBuffer(uint32_t binding, const std::shared_ptr<Buffer> &buffer)
 {
-    m_platformDescriptor->AttachBuffer(binding, buffer->GetPlatformBuffer()->GetBufferInfo());
+    m_platformDescriptor->AttachBuffer(binding, buffer->GetPlatformBuffer());
 }
 
 void ResourceDescriptor::Init()
