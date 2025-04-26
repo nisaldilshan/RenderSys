@@ -3,81 +3,13 @@
 #include "VulkanMemAlloc.h"
 #include "VulkanTexture.h"
 #include "VulkanMaterial.h"
+#include "VulkanResource.h"
 
 #include <array>
 #include <iostream>
 
 namespace GraphicsAPI
 {
-
-VkDescriptorPool g_materialBindGroupPool = VK_NULL_HANDLE;
-void CreateMaterialBindGroupPool()
-{
-    assert(g_materialBindGroupPool == VK_NULL_HANDLE);    
-    constexpr uint32_t maxNumOfModels = 10;
-    constexpr uint32_t maxMaterialsPerModel = 50;
-
-    std::vector<VkDescriptorPoolSize> poolSizes;
-    poolSizes.emplace_back(
-        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 * maxMaterialsPerModel * maxNumOfModels}
-    );
-    poolSizes.emplace_back(
-        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * maxMaterialsPerModel * maxNumOfModels}
-    );
-    
-    VkDescriptorPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = poolSizes.size();
-    poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = maxMaterialsPerModel * maxNumOfModels;
-
-    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &g_materialBindGroupPool) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor pool!");
-    }
-}
-
-VkDescriptorPool GetMaterialBindGroupPool()
-{
-    assert(g_materialBindGroupPool != VK_NULL_HANDLE);   
-    return g_materialBindGroupPool;
-}
-
-void DestroyMaterialBindGroupPool()
-{
-    assert(g_materialBindGroupPool != VK_NULL_HANDLE); 
-    vkDeviceWaitIdle(Vulkan::GetDevice());
-    // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
-    vkDestroyDescriptorPool(Vulkan::GetDevice(), g_materialBindGroupPool, nullptr);
-    g_materialBindGroupPool = VK_NULL_HANDLE;
-}
-
-VkDescriptorSetLayout g_materialBindGroupLayout = VK_NULL_HANDLE;
-void CreateMaterialBindGroupLayout()
-{
-    assert(g_materialBindGroupLayout == VK_NULL_HANDLE);
-    VkDescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    auto bindings = VulkanRenderer3D::GetMaterialBindGroupBindings();
-    layoutInfo.bindingCount = bindings.size();
-    layoutInfo.pBindings = bindings.data();
-
-    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &g_materialBindGroupLayout) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor set layout!");
-    }
-}
-
-VkDescriptorSetLayout GetMaterialBindGroupLayout()
-{
-    assert(g_materialBindGroupLayout != VK_NULL_HANDLE);
-    return g_materialBindGroupLayout;
-}
-
-void DestroyMaterialBindGroupLayout()
-{
-    assert(g_materialBindGroupLayout != VK_NULL_HANDLE);
-    vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), g_materialBindGroupLayout, nullptr);
-    g_materialBindGroupLayout = VK_NULL_HANDLE;
-}
 
 enum class ShapeType {
     Plane = 0,
@@ -165,8 +97,10 @@ bool VulkanRenderer3D::Init()
     CreateRenderPass();
     CreateCommandBuffers();
     CreateDefaultTextureSampler();
-    CreateMaterialBindGroupPool();
-    CreateMaterialBindGroupLayout();
+    RenderSys::CreateMaterialBindGroupPool();
+    RenderSys::CreateMaterialBindGroupLayout();
+    RenderSys::CreateResourceBindGroupPool();
+    RenderSys::CreateResourceBindGroupLayout();
     return true;
 }
 
@@ -511,7 +445,9 @@ void VulkanRenderer3D::CreatePipelineLayout()
     {
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
         pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, GetMaterialBindGroupLayout()};
+        std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, 
+                                                    RenderSys::GetMaterialBindGroupLayout(),
+                                                    RenderSys::GetResourceBindGroupLayout()};
         if (!m_bindGroupLayout)
         {
             pipelineLayoutCreateInfo.setLayoutCount = 0;
@@ -1022,21 +958,24 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
     for (const auto &subMesh : mesh.subMeshes)
     {
         assert(subMesh.m_Material);
-        RenderPrimitive(mesh.vertexBufferID, subMesh.m_IndexCount, subMesh.m_FirstIndex, subMesh.m_Material);
+        RenderSubMesh(mesh.vertexBufferID, subMesh);
     }
 }
 
-void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint32_t indexCount, const uint32_t firstIndex, const std::shared_ptr<RenderSys::Material> material)
+void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh)
 {
-    auto materialBindGroup = material->GetMaterialDescriptor()->GetPlatformDescriptor()->m_materialbindGroup;
+    auto materialBindGroup = subMesh.m_Material->GetDescriptor()->GetPlatformDescriptor()->m_bindGroup;
     assert(materialBindGroup != VK_NULL_HANDLE);
-    std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, materialBindGroup};
+    auto resourceBindGroup = subMesh.m_Resource->GetDescriptor()->GetPlatformDescriptor()->m_bindGroup;
+    assert(resourceBindGroup != VK_NULL_HANDLE);
+    std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, materialBindGroup, resourceBindGroup};
 
     vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
                                 , descriptorsets.size(), descriptorsets.data()
                                 , 0, nullptr);
 
-    vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RenderSys::MaterialProperties), &material->GetMaterialProperties());
+    vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 
+                    sizeof(RenderSys::MaterialProperties), &subMesh.m_Material->GetMaterialProperties());
 
     assert(vertexBufferID >= 1);
     const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
@@ -1050,13 +989,14 @@ void VulkanRenderer3D::RenderPrimitive(const uint32_t vertexBufferID, const uint
     VulkanVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
     if (vertexIndexBufferInfo.m_indexCount > 0)
     {
-        if (indexCount > 0)
+        assert(subMesh.m_InstanceCount > 0);
+        if (subMesh.m_IndexCount > 0)
         {
-            vkCmdDrawIndexed(m_commandBuffer, indexCount, 1, firstIndex, 0, 0);
+            vkCmdDrawIndexed(m_commandBuffer, subMesh.m_IndexCount, subMesh.m_InstanceCount, subMesh.m_FirstIndex, 0, 0);
         }
         else
         {
-            vkCmdDrawIndexed(m_commandBuffer, vertexIndexBufferInfo.m_indexCount, 1, 0, 0, 0);
+            vkCmdDrawIndexed(m_commandBuffer, vertexIndexBufferInfo.m_indexCount, subMesh.m_InstanceCount, 0, 0, 0);
         }
     }
     else
@@ -1125,8 +1065,10 @@ void VulkanRenderer3D::DestroyTextures()
 
 void VulkanRenderer3D::Destroy()
 {
-    DestroyMaterialBindGroupLayout();
-    DestroyMaterialBindGroupPool();
+    RenderSys::DestroyResourceBindGroupLayout();
+    RenderSys::DestroyResourceBindGroupPool();
+    RenderSys::DestroyMaterialBindGroupLayout();
+    RenderSys::DestroyMaterialBindGroupPool();
 
     DestroyShaders();
 
@@ -1139,18 +1081,6 @@ void VulkanRenderer3D::Destroy()
     DestroyRenderPass();
 
     RenderSys::Vulkan::DestroyMemoryAllocator();
-}
-
-std::vector<VkDescriptorSetLayoutBinding> VulkanRenderer3D::GetMaterialBindGroupBindings()
-{
-    static std::vector<VkDescriptorSetLayoutBinding> materialBindGroupBindings
-    {
-        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
-        VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
-        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
-    };
-
-    return materialBindGroupBindings;
 }
 
 void VulkanRenderer3D::SubmitCommandBuffer()

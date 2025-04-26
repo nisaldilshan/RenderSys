@@ -6,11 +6,22 @@
 #include <filesystem>
 #include <shaderc/shaderc.hpp>
 
+#if (RENDERER_BACKEND == 1) // OpenGL
+static_assert(false);
+#elif (RENDERER_BACKEND == 2) // Vulkan
+#define USE_SHADERC
+#elif (RENDERER_BACKEND == 3) // WebGPU
+#else
+static_assert(false);
+#endif
+
 namespace RenderSys
 {
 
 namespace ShaderUtils
 {
+
+#if defined(USE_SHADERC)
 
 class MyIncluder : public shaderc::CompileOptions::IncluderInterface
 {
@@ -48,22 +59,22 @@ public:
 private:
     std::string includeDir_;
 
-    std::string readFile(const std::string &filename)
-    {
-        // std::ifstream file(filename, std::ios::ate | std::ios::binary);
-        // if (!file.is_open())
-        // {
-        //     return "";
-        // }
-        // size_t fileSize = (size_t)file.tellg();
-        // std::vector<char> buffer(fileSize);
-        // file.seekg(0);
-        // file.read(buffer.data(), fileSize);
-        // file.close();
-        // return std::string(buffer.begin(), buffer.end());
+    // std::string readFile(const std::string &filename)
+    // {
+    //     std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    //     if (!file.is_open())
+    //     {
+    //         return "";
+    //     }
+    //     size_t fileSize = (size_t)file.tellg();
+    //     std::vector<char> buffer(fileSize);
+    //     file.seekg(0);
+    //     file.read(buffer.data(), fileSize);
+    //     file.close();
+    //     return std::string(buffer.begin(), buffer.end());
 
-        return "";
-    }
+    //     return "";
+    // }
 };
 
 // Compiles a shader to a SPIR-V binary. Returns the binary as
@@ -116,6 +127,13 @@ std::vector<uint32_t> compile_file(const std::string &name,
 
     return {module.cbegin(), module.cend()};
 }
+
+#else
+std::vector<uint32_t> compile_file(const std::string &name, Shader& shader, bool optimize)
+{
+    return std::vector<uint32_t>();
+}
+#endif
 
 } // namespace ShaderUtils
 

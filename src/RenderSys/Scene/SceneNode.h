@@ -3,15 +3,13 @@
 #include <memory>
 #include <string>
 #include <glm/ext.hpp>
-
+#include <entt/entt.hpp>
 #include <RenderSys/Buffer.h>
 
 namespace RenderSys
 {
 
-namespace Model
-{
-struct Vertex {
+struct ModelVertex {
     glm::vec3 pos;
     glm::vec3 normal;
     glm::vec2 uv0;
@@ -31,16 +29,60 @@ struct ModelData
     ModelData(ModelData&&) = delete;
     ModelData &operator=(ModelData&&) = delete;
 
-    const std::vector<Vertex>& getVertices() const;
-    bool hasTangents() const;
+    const RenderSys::VertexBuffer getVertexBufferForRenderer() const
+    {
+        RenderSys::VertexBuffer buffer;
+        buffer.resize(vertices.size());
+        for (size_t i = 0; i < buffer.size(); i++)
+        {
+            buffer[i].position = vertices[i].pos;
+            buffer[i].normal = vertices[i].normal;
+            buffer[i].texcoord0 = vertices[i].uv0;
+            buffer[i].tangent = vertices[i].tangent;
+        }
+        return buffer;
+    }
 
-    std::vector<Vertex> vertices;
+    std::vector<ModelVertex> vertices;
     std::vector<uint32_t> indices;
 };
+
+class Resource;
+struct SubMesh
+{
+    uint32_t m_FirstIndex = 0;
+    uint32_t m_FirstVertex = 0;
+    uint32_t m_IndexCount = 0;
+    uint32_t m_VertexCount = 0;
+    uint32_t m_InstanceCount = 1;
+    std::shared_ptr<Material> m_Material = nullptr;
+    std::shared_ptr<Resource> m_Resource = nullptr;
+};
+
+struct Mesh
+{
+    Mesh(std::shared_ptr<ModelData> modelData)
+        : vertexBufferID(0)
+        , m_modelData(modelData)
+    {}
+
+    ~Mesh() = default;
+    Mesh(const Mesh&) = delete;
+    Mesh &operator=(const Mesh&) = delete;
+    Mesh(Mesh&&) = delete;
+    Mesh &operator=(Mesh&&) = delete;
+
+    uint32_t vertexBufferID = 0;
+    std::shared_ptr<ModelData> m_modelData;
+    std::vector<SubMesh> subMeshes;
+};
+
+
 
 class ModelNode 
 {
   public:
+    ModelNode() = delete; 
     ModelNode(int nodeNum);
     ~ModelNode() = default;
 
@@ -51,33 +93,20 @@ class ModelNode
 
     int getNodeNum();
     void setNodeName(std::string name);
-    void setScale(glm::vec3 scale);
-    void setTranslation(glm::vec3 translation);
-    void setRotation(glm::quat rotation);
-	void setMesh(RenderSys::Mesh mesh);
+    entt::entity& getEntity();
 
-    void calculateLocalTRSMatrix();
-    void calculateNodeMatrix(glm::mat4 parentNodeMatrix);
     void calculateJointMatrices(const std::vector<glm::mat4>& inverseBindMatrices, const std::vector<int>& nodeToJoint, std::vector<glm::mat4>& jointMatrices);
     glm::mat4 getNodeMatrix();
-    Mesh getMesh();
     void printHierarchy(int indent);
 
     std::vector<std::shared_ptr<ModelNode>> m_childNodes{};
-	ModelData m_data;
-  private:
+    std::shared_ptr<ModelData> m_data;
 
+  private:
     int m_nodeNum = 0;
     std::string m_nodeName;
-    Mesh m_mesh;
     int m_materialIndex = 0;
-
-    glm::vec3 m_scale = glm::vec3(1.0f);
-    glm::vec3 m_translation = glm::vec3(0.0f);
-    glm::quat m_rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-    glm::mat4 mLocalTRSMatrix = glm::mat4(1.0f);
-    glm::mat4 m_nodeMatrix = glm::mat4(1.0f);
+    entt::entity m_entity;
 };
 
-} // namespace Model
 } // namespace RenderSys

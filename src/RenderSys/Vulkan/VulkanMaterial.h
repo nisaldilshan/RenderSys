@@ -7,6 +7,14 @@
 namespace RenderSys
 {
 
+void CreateMaterialBindGroupPool();
+VkDescriptorPool GetMaterialBindGroupPool();
+void DestroyMaterialBindGroupPool();
+
+void CreateMaterialBindGroupLayout();
+VkDescriptorSetLayout GetMaterialBindGroupLayout();
+void DestroyMaterialBindGroupLayout();
+
 class VulkanMaterialDescriptor
 {
 public:
@@ -14,7 +22,7 @@ public:
     ~VulkanMaterialDescriptor();
 
     // 1 bind group for different texture types of one material (baseColor/normal/metallic-roughness)
-    VkDescriptorSet m_materialbindGroup = VK_NULL_HANDLE; 
+    VkDescriptorSet m_bindGroup = VK_NULL_HANDLE; 
 };
 
 
