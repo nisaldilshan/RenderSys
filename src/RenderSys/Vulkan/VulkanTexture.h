@@ -16,7 +16,7 @@ public:
     ~VulkanTexture();
     void SetData(unsigned char *textureData);
     void SetSampler(RenderSys::TextureSampler sampler);
-    VkDescriptorImageInfo GetDescriptorImageInfo() const;
+    const VkDescriptorImageInfo* GetDescriptorImageInfoAddr() const;
 private:
     VkImage m_image;
     VmaAllocation m_imageMemory;

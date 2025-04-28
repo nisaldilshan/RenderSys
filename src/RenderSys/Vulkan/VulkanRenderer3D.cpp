@@ -419,7 +419,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
         VkDescriptorImageInfo imageInfo{};
         if (textureIter != m_textures.end())
         {
-            imageInfo = textureIter->second->GetDescriptorImageInfo();
+            imageInfo = *textureIter->second->GetDescriptorImageInfoAddr();
             if (imageInfo.sampler == VK_NULL_HANDLE)
             {
                 imageInfo.sampler = m_defaultTextureSampler;

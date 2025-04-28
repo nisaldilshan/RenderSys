@@ -122,12 +122,12 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     if (baseColorTexture)
     {
         auto platformTex = baseColorTexture->GetPlatformTexture();
-        auto baseColorImageInfo = platformTex->GetDescriptorImageInfo();
-        if (baseColorImageInfo.sampler == VK_NULL_HANDLE)
+        auto* baseColorImageInfo = platformTex->GetDescriptorImageInfoAddr();
+        if (baseColorImageInfo->sampler == VK_NULL_HANDLE)
         {
             //baseColorImageInfo.sampler = m_defaultTextureSampler;
         }
-        descriptorWrites[0].pImageInfo = &baseColorImageInfo;
+        descriptorWrites[0].pImageInfo = baseColorImageInfo;
     }
     else
     {
@@ -139,34 +139,34 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     if (normalTexture)
     {
         auto platformTex = normalTexture->GetPlatformTexture();
-        auto normalTextureImageInfo = platformTex->GetDescriptorImageInfo();
-        if (normalTextureImageInfo.sampler == VK_NULL_HANDLE)
+        auto* normalTextureImageInfo = platformTex->GetDescriptorImageInfoAddr();
+        if (normalTextureImageInfo->sampler == VK_NULL_HANDLE)
         {
             //normalTextureImageInfo.sampler = m_defaultTextureSampler;
         }
-        descriptorWrites[1].pImageInfo = &normalTextureImageInfo;
+        descriptorWrites[1].pImageInfo = normalTextureImageInfo;
     }
     else
     {
         auto platformTex = baseColorTexture->GetPlatformTexture();
-        descriptorWrites[1].pImageInfo = &platformTex->GetDescriptorImageInfo();
+        descriptorWrites[1].pImageInfo = platformTex->GetDescriptorImageInfoAddr();
     }
 
     const auto metallicRoughnessTexture = textures[RenderSys::TextureIndices::ROUGHNESS_METALLIC_MAP_INDEX];
     if (metallicRoughnessTexture)
     {
         auto platformTex = metallicRoughnessTexture->GetPlatformTexture();
-        auto metallicRoughnessTextureImageInfo = platformTex->GetDescriptorImageInfo();
-        if (metallicRoughnessTextureImageInfo.sampler == VK_NULL_HANDLE)
+        auto* metallicRoughnessTextureImageInfo = platformTex->GetDescriptorImageInfoAddr();
+        if (metallicRoughnessTextureImageInfo->sampler == VK_NULL_HANDLE)
         {
             //metallicRoughnessTextureImageInfo.sampler = m_defaultTextureSampler;
         }
-        descriptorWrites[2].pImageInfo = &metallicRoughnessTextureImageInfo;
+        descriptorWrites[2].pImageInfo = metallicRoughnessTextureImageInfo;
     }
     else
     {
         auto platformTex = baseColorTexture->GetPlatformTexture();
-        descriptorWrites[2].pImageInfo = &platformTex->GetDescriptorImageInfo();
+        descriptorWrites[2].pImageInfo = platformTex->GetDescriptorImageInfoAddr();
     }
 
     vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
