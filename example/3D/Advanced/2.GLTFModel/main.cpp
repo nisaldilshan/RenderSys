@@ -9,7 +9,7 @@
 #include <RenderSys/Geometry.h>
 #include <RenderSys/Resource.h>
 #include <RenderSys/Camera.h>
-#include <RenderSys/Scene/Scene.h>
+#include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/EntityRegistry.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
@@ -103,6 +103,10 @@ public:
 
 		m_texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
 		m_texture->SetDefaultSampler();
+		const auto& materials = m_scene->getMaterials();
+		assert(materials.size() == 1);
+		materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, m_texture);
+		materials[0]->Init();
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
 
@@ -219,8 +223,6 @@ public:
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
-			const auto& materials = m_scene->getMaterials();
-			assert(materials.size() == 1);
 			static bool firstTime = true;
 
 			glm::mat4x4 M1(1.0);
@@ -233,8 +235,6 @@ public:
 			instances[1] = glm::translate(instances[1], glm::vec3(0.0f, 0.0f, -2.0f));
 			if (firstTime)
 			{
-				materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, m_texture);
-				materials[0]->Init();
 				firstTime = false;
 
 				m_instanceBuffer = std::make_shared<RenderSys::Buffer>(sizeof(glm::mat4x4) * 2, RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
@@ -255,7 +255,8 @@ public:
 
 				auto mesh = meshComponent.m_Mesh;
 				mesh->vertexBufferID = 1;
-				mesh->subMeshes = {RenderSys::SubMesh{0, 0, 0, 0, 2, materials[0], m_resource}};
+				mesh->subMeshes[0].m_InstanceCount = 2;
+				mesh->subMeshes[0].m_Resource = m_resource;
 				m_renderer->RenderMesh(*mesh);
 			}
 
@@ -277,6 +278,9 @@ public:
 			m_clearColor = newClearColor;
 			m_renderer->SetClearColor(m_clearColor);
 		}
+		
+        ImGui::InputInt("input int", &m_instanceCount);
+		
 		ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -315,6 +319,7 @@ private:
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
 	std::shared_ptr<RenderSys::Texture> m_texture;
+	int m_instanceCount = 1;
 	std::shared_ptr<RenderSys::Buffer> m_instanceBuffer;
 	std::shared_ptr<RenderSys::Resource> m_resource;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;

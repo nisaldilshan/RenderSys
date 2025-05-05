@@ -9,7 +9,7 @@
 #include <RenderSys/Geometry.h>
 #include <RenderSys/Resource.h>
 #include <RenderSys/Camera.h>
-#include <RenderSys/Scene/Scene.h>
+#include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/EntityRegistry.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>

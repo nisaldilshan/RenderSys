@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GLTFScene.h"
+#include "GLTFModel.h"
 #include "SceneNode.h"
 #include <RenderSys/Buffer.h>
 

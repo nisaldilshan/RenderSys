@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include <RenderSys/Scene/Scene.h>
+#include <RenderSys/Scene/SceneNode.h>
 
 namespace RenderSys
 {

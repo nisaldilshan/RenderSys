@@ -1,4 +1,4 @@
-#include "GLTFScene.h"
+#include "GLTFModel.h"
 
 #include <iostream>
 

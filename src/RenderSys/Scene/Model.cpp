@@ -1,4 +1,4 @@
-#include "Scene.h"
+#include "Model.h"
 #include <iostream>
 
 namespace RenderSys
