@@ -95,7 +95,7 @@ void GLTFModel::getNodeProps(const tinygltf::Node& node, const tinygltf::Model& 
     }
 }
 
-RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive, std::shared_ptr<ModelData> modelData, const uint32_t indexCount)
+RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive, std::shared_ptr<MeshData> modelData, const uint32_t indexCount)
 {
     assert(primitive.attributes.find("POSITION") != primitive.attributes.end()); // position is mandatory
     const tinygltf::Accessor &posAccessor = m_gltfModel->accessors[primitive.attributes.find("POSITION")->second];

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GLTFModel.h"
-#include "SceneNode.h"
+#include "ModelNode.h"
 #include <RenderSys/Buffer.h>
 
 namespace RenderSys

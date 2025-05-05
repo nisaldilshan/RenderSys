@@ -4,7 +4,7 @@
 #include <memory>
 #include <filesystem>
 
-#include "SceneNode.h"
+#include "ModelNode.h"
 #include <RenderSys/Texture.h>
 
 namespace tinygltf
@@ -17,7 +17,7 @@ class Primitive;
 
 namespace RenderSys
 {
-
+class MeshData;
 class GLTFModel
 {
 public:
@@ -46,7 +46,7 @@ private:
     void loadTransform(std::shared_ptr<ModelNode> currentNode, const tinygltf::Node &gltfNode, std::shared_ptr<ModelNode> parentNode);
     std::vector<TextureSampler> loadTextureSamplers();
     static void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount);
-    RenderSys::SubMesh loadPrimitive(const tinygltf::Primitive &primitive, std::shared_ptr<ModelData> modelData, const uint32_t indexCount);
+    RenderSys::SubMesh loadPrimitive(const tinygltf::Primitive &primitive, std::shared_ptr<MeshData> modelData, const uint32_t indexCount);
     void loadMesh(const tinygltf::Mesh& gltfMesh, std::shared_ptr<ModelNode> node, const uint32_t indexCount);
     std::shared_ptr<ModelNode> traverse(const std::shared_ptr<ModelNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount);
     std::shared_ptr<RenderSys::Material> createMaterial(int materialIndex);

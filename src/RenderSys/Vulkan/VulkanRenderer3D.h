@@ -12,7 +12,7 @@
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
 #include <RenderSys/Material.h>
-#include <RenderSys/Scene/SceneNode.h>
+#include <RenderSys/Scene/Mesh.h>
 
 namespace GraphicsAPI
 {

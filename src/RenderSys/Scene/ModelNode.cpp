@@ -1,4 +1,4 @@
-#include "SceneNode.h"
+#include "ModelNode.h"
 
 #include <iostream>
 #include <string>
@@ -9,7 +9,7 @@ namespace RenderSys
 
 ModelNode::ModelNode(int nodeNum, entt::entity entity)
     : m_nodeNum(nodeNum)
-    , m_data(std::make_shared<ModelData>())
+    , m_data(std::make_shared<MeshData>())
     , m_entity(entity)
 {
     //std::cout << "ModelNode(" << this << ") created with nodeNum: " << m_nodeNum << ", Entity:" << int(m_entity) << std::endl;
