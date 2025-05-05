@@ -4,8 +4,8 @@
 namespace RenderSys
 {
 
-Model::Model()
-    : m_scene(std::make_unique<GLTFModel>())
+Model::Model(entt::registry& registry)
+    : m_scene(std::make_unique<GLTFModel>(registry))
 {}
 
 bool Model::load(const std::filesystem::path &filePath, const std::string &textureFilename)
@@ -22,15 +22,9 @@ void Model::populate()
     m_scene->getNodeGraphs(m_rootNodes);
     m_scene->computeProps();
 
-    m_scene->loadJointData(m_jointVec, m_nodeToJoint, m_weightVec);
-    m_scene->loadInverseBindMatrices(m_inverseBindMatrices);
-    // traverse through the graph again and compute JointMatrices
-    if(m_inverseBindMatrices.size() > 0 && m_nodeToJoint.size() > 0)
-    {
-        m_jointMatrices.resize(m_inverseBindMatrices.size());
-        for (auto &rootNode : m_rootNodes)
-            rootNode->calculateJointMatrices(m_inverseBindMatrices, m_nodeToJoint, m_jointMatrices);
-    }
+    m_scene->loadJointData(m_jointVec, m_weightVec);
+    m_scene->loadInverseBindMatrices();
+    m_scene->loadjointMatrices(m_rootNodes);
 }
 
 void Model::printNodeGraph()
@@ -53,7 +47,8 @@ void Model::applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer)
     {
         return;
     }
-    if (m_jointMatrices.size() == 0)
+    auto jointMatrices = m_scene->GetJointMatrices();
+    if (jointMatrices.size() == 0)
     {
         return;
     }
@@ -63,10 +58,10 @@ void Model::applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer)
         glm::ivec4 jointIndex = glm::make_vec4(m_jointVec.at(i));
         glm::vec4 weightIndex = glm::make_vec4(m_weightVec.at(i));
         glm::mat4 skinMat =
-            weightIndex.x * m_jointMatrices.at(jointIndex.x) +
-            weightIndex.y * m_jointMatrices.at(jointIndex.y) +
-            weightIndex.z * m_jointMatrices.at(jointIndex.z) +
-            weightIndex.w * m_jointMatrices.at(jointIndex.w);
+            weightIndex.x * jointMatrices.at(jointIndex.x) +
+            weightIndex.y * jointMatrices.at(jointIndex.y) +
+            weightIndex.z * jointMatrices.at(jointIndex.z) +
+            weightIndex.w * jointMatrices.at(jointIndex.w);
         vertexBuffer.vertices.at(i).position = skinMat * glm::vec4(vertexBuffer.vertices.at(i).position, 1.0f);
     }
 }

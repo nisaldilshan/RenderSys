@@ -10,7 +10,6 @@
 #include <RenderSys/Resource.h>
 #include <RenderSys/Camera.h>
 #include <RenderSys/Scene/Model.h>
-#include <RenderSys/Components/EntityRegistry.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
 #include <imgui.h>
@@ -103,7 +102,7 @@ public:
 
 		m_texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
 		m_texture->SetDefaultSampler();
-		const auto& materials = m_scene->getMaterials();
+		const auto& materials = m_model->getMaterials();
 		assert(materials.size() == 1);
 		materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, m_texture);
 		materials[0]->Init();
@@ -143,15 +142,14 @@ public:
 		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-		auto& registry = RenderSys::EntityRegistry::Get();
-		auto view = registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+		auto view = m_entityRegistry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
 		for (auto entity : view)
 		{
 			auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
 			auto& transformComponent = view.get<RenderSys::TransformComponent>(entity);
 
 			auto vertexBuffer = meshComponent.m_Mesh->m_modelData->getVertexBufferForRenderer();
-			m_scene->applyVertexSkinning(vertexBuffer);
+			m_model->applyVertexSkinning(vertexBuffer);
 			assert(vertexBuffer.size() > 0);
 			const auto vertexBufID = m_renderer->SetVertexBufferData(vertexBuffer, vertexBufferLayout);
 			assert(meshComponent.m_Mesh->m_modelData->indices.size() > 0);
@@ -161,11 +159,18 @@ public:
 
 	virtual void OnDetach() override
 	{
-		m_scene.reset();
+		m_model.reset();
 		m_texture.reset();
 		m_instanceBuffer.reset();
 		m_resource.reset();
-		RenderSys::EntityRegistry::Destroy();
+		
+		auto allEntities = m_entityRegistry.view<entt::entity>(); // Create a view of all entities
+		std::cout << "Destroying all entities." << std::endl;
+		for (auto entity : allEntities) {
+			//std::cout << "Destroying Entity [ID: " << int(entity) << "]" << std::endl;
+			m_entityRegistry.destroy(entity);
+		}
+
 		m_renderer->Destroy();
 	}
 
@@ -246,8 +251,7 @@ public:
 				m_resource->Init();
 			}
 
-			auto& registry = RenderSys::EntityRegistry::Get();
-			auto view = registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+			auto view = m_entityRegistry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
 			for (auto entity : view)
 			{
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
@@ -298,15 +302,15 @@ public:
 private:
 	bool loadScene()
 	{
-		m_scene = std::make_unique<RenderSys::Model>();
-		if (!m_scene->load(RESOURCE_DIR "/Models/Woman.gltf", ""))
+		m_model = std::make_unique<RenderSys::Model>(m_entityRegistry);
+		if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf", ""))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
 		}
 
-		m_scene->populate();
-		m_scene->printNodeGraph();
+		m_model->populate();
+		m_model->printNodeGraph();
 		return true;
 	}
 
@@ -323,7 +327,8 @@ private:
 	std::shared_ptr<RenderSys::Buffer> m_instanceBuffer;
 	std::shared_ptr<RenderSys::Resource> m_resource;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
-	std::unique_ptr<RenderSys::Model> m_scene;
+	entt::registry m_entityRegistry;
+	std::unique_ptr<RenderSys::Model> m_model;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

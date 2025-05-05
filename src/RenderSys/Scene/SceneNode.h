@@ -83,7 +83,7 @@ class ModelNode
 {
   public:
     ModelNode() = delete; 
-    ModelNode(int nodeNum);
+    ModelNode(int nodeNum, entt::entity entity);
     ~ModelNode() = default;
 
 	ModelNode(const ModelNode&) = delete;
@@ -95,8 +95,8 @@ class ModelNode
     void setNodeName(std::string name);
     entt::entity& getEntity();
 
-    void calculateJointMatrices(const std::vector<glm::mat4>& inverseBindMatrices, const std::vector<int>& nodeToJoint, std::vector<glm::mat4>& jointMatrices);
-    glm::mat4 getNodeMatrix();
+    void calculateJointMatrices(const std::vector<glm::mat4>& inverseBindMatrices, const std::vector<int>& nodeToJoint
+        , std::vector<glm::mat4>& jointMatrices, entt::registry& registry);
     void printHierarchy(int indent);
 
     std::vector<std::shared_ptr<ModelNode>> m_childNodes{};

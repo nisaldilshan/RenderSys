@@ -10,12 +10,12 @@ namespace RenderSys
 class Model
 {
 public:
-    Model();
+    Model(entt::registry& registry);
     ~Model() = default;
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
-    Model(Model&&) = delete;
-    Model& operator=(Model&&) = delete;
+    Model(Model&&) = default;
+    Model& operator=(Model&&) = default;
     
     bool load(const std::filesystem::path &filePath, const std::string& textureFilename);
     void populate();
@@ -26,10 +26,7 @@ public:
     const std::vector<std::shared_ptr<ModelNode>>& getRootNodes() const { return m_rootNodes; }
     
     std::vector<glm::tvec4<uint16_t>> m_jointVec;
-    std::vector<int> m_nodeToJoint;
     std::vector<glm::vec4> m_weightVec;
-    std::vector<glm::mat4> m_inverseBindMatrices;
-    std::vector<glm::mat4> m_jointMatrices;
 
 private:
     std::vector<std::shared_ptr<ModelNode>> m_rootNodes;

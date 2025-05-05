@@ -10,7 +10,6 @@
 #include <RenderSys/Resource.h>
 #include <RenderSys/Camera.h>
 #include <RenderSys/Scene/Model.h>
-#include <RenderSys/Components/EntityRegistry.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
 #include <imgui.h>
@@ -138,8 +137,7 @@ public:
 		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-		auto& registry = RenderSys::EntityRegistry::Get();
-		auto view = registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+		auto view = m_entityRegistry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
 		for (auto entity : view)
 		{
 			auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
@@ -147,7 +145,7 @@ public:
 
 			auto vertexBuffer = meshComponent.m_Mesh->m_modelData->getVertexBufferForRenderer();
 			if (vertexBuffer.size() == 5718) // woman model
-				m_scenes[1].applyVertexSkinning(vertexBuffer);
+				m_models[1].applyVertexSkinning(vertexBuffer);
 			assert(vertexBuffer.size() > 0);
 			const auto vertexBufID = m_renderer->SetVertexBufferData(vertexBuffer, vertexBufferLayout);
 			assert(meshComponent.m_Mesh->m_modelData->indices.size() > 0);
@@ -158,10 +156,17 @@ public:
 	virtual void OnDetach() override
 	{
 		m_womanTexture.reset();
-		m_scenes.clear();
+		m_models.clear();
 		m_instanceBuffers.clear();
 		m_resources.clear();
-		RenderSys::EntityRegistry::Destroy();
+		
+		auto allEntities = m_entityRegistry.view<entt::entity>(); // Create a view of all entities
+		std::cout << "Destroying all entities." << std::endl;
+		for (auto entity : allEntities) {
+			//std::cout << "Destroying Entity [ID: " << int(entity) << "]" << std::endl;
+			m_entityRegistry.destroy(entity);
+		}
+
 		m_renderer->Destroy();
 	}
 
@@ -219,7 +224,7 @@ public:
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
-			const auto& materials = m_scenes[1].getMaterials();
+			const auto& materials = m_models[1].getMaterials();
 			assert(materials.size() == 1);
 			static bool firstTime = true;
 
@@ -252,8 +257,7 @@ public:
 				m_resources[1]->Init();
 			}
 
-			auto& registry = RenderSys::EntityRegistry::Get();
-			auto view = registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+			auto view = m_entityRegistry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
 			int counter = 1;
 			for (auto entity : view)
 			{
@@ -311,18 +315,21 @@ public:
 private:
 	bool loadScene()
 	{
-		if (!m_scenes[0].load(RESOURCE_DIR "/Models/Sponza/glTF/Sponza.gltf", ""))
-		{
-			std::cout << "Error loading GLTF model!" << std::endl;
-			return false;
-		}
-		if (!m_scenes[1].load(RESOURCE_DIR "/Models/Woman.gltf", ""))
+		auto& model1 = m_models.emplace_back(RenderSys::Model(m_entityRegistry));
+		if (!model1.load(RESOURCE_DIR "/Models/Sponza/glTF/Sponza.gltf", ""))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
 		}
 
-		for (auto &scene : m_scenes)
+		auto& model2 = m_models.emplace_back(RenderSys::Model(m_entityRegistry));
+		if (!model2.load(RESOURCE_DIR "/Models/Woman.gltf", ""))
+		{
+			std::cout << "Error loading GLTF model!" << std::endl;
+			return false;
+		}
+
+		for (auto &scene : m_models)
 		{
 			scene.populate();
 			scene.printNodeGraph();
@@ -341,7 +348,8 @@ private:
 	LightingUniforms m_lightingUniformData;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 	std::shared_ptr<RenderSys::Texture> m_womanTexture;
-	std::vector<RenderSys::Model> m_scenes{2};
+	entt::registry m_entityRegistry;
+	std::vector<RenderSys::Model> m_models;
 	std::vector<std::shared_ptr<RenderSys::Buffer>> m_instanceBuffers{2};
 	std::vector<std::shared_ptr<RenderSys::Resource>> m_resources{2};
 };

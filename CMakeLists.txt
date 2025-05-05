@@ -25,8 +25,7 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Scene/Model.cpp
                 src/RenderSys/Scene/SceneNode.cpp
                 src/RenderSys/Components/TransformComponent.cpp
-                src/RenderSys/Components/MeshComponent.cpp
-                src/RenderSys/Components/EntityRegistry.cpp)
+                src/RenderSys/Components/MeshComponent.cpp)
 
 add_library (ComputeSys STATIC
                 src/RenderSys/Compute.cpp

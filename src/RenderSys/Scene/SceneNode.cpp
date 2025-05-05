@@ -2,16 +2,15 @@
 
 #include <iostream>
 #include <string>
-#include <RenderSys/Components/EntityRegistry.h>
 #include <RenderSys/Components/TransformComponent.h>
 
 namespace RenderSys
 {
 
-ModelNode::ModelNode(int nodeNum)
+ModelNode::ModelNode(int nodeNum, entt::entity entity)
     : m_nodeNum(nodeNum)
     , m_data(std::make_shared<ModelData>())
-    , m_entity(EntityRegistry::Get().create())
+    , m_entity(entity)
 {
     //std::cout << "ModelNode(" << this << ") created with nodeNum: " << m_nodeNum << ", Entity:" << int(m_entity) << std::endl;
 }
@@ -32,23 +31,17 @@ entt::entity &ModelNode::getEntity()
     return m_entity;
 }
 
-void ModelNode::calculateJointMatrices(const std::vector<glm::mat4> &inverseBindMatrices, const std::vector<int> &nodeToJoint, std::vector<glm::mat4> &jointMatrices)
+void ModelNode::calculateJointMatrices(const std::vector<glm::mat4> &inverseBindMatrices, const std::vector<int> &nodeToJoint
+    , std::vector<glm::mat4> &jointMatrices, entt::registry& registry)
 {
     auto placeHolder = nodeToJoint.at(m_nodeNum);
-    jointMatrices.at(placeHolder) = getNodeMatrix() * inverseBindMatrices.at(placeHolder);
+    auto& transform = registry.get<RenderSys::TransformComponent>(m_entity);
+    jointMatrices.at(placeHolder) = transform.GetMat4Global() * inverseBindMatrices.at(placeHolder);
 
     for (const auto& childNode : m_childNodes)
     {
-        childNode->calculateJointMatrices(inverseBindMatrices, nodeToJoint, jointMatrices);
+        childNode->calculateJointMatrices(inverseBindMatrices, nodeToJoint, jointMatrices, registry);
     }
-}
-
-glm::mat4 ModelNode::getNodeMatrix()
-{
-    assert(m_entity != entt::null);
-    auto& registry = EntityRegistry::Get();
-    auto& transform = registry.get<RenderSys::TransformComponent>(m_entity);
-    return transform.GetMat4Global();
 }
 
 void ModelNode::printHierarchy(int indent)

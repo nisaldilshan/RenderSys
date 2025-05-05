@@ -6,15 +6,15 @@
 #define TINYGLTF_IMPLEMENTATION
 #include <tiny_gltf.h>
 
-#include <RenderSys/Components/EntityRegistry.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
 
 namespace RenderSys
 {
 
-GLTFModel::GLTFModel()
-    : m_gltfModel(std::make_unique<tinygltf::Model>())
+GLTFModel::GLTFModel(entt::registry& registry)
+    : m_registryRef(registry)
+    , m_gltfModel(std::make_unique<tinygltf::Model>())
 {
 }
 
@@ -209,15 +209,14 @@ RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive
 
 void GLTFModel::loadMesh(const tinygltf::Mesh& gltfMesh, std::shared_ptr<ModelNode> node, const uint32_t indexCount)
 {
-    auto& registry = EntityRegistry::Get();
-    MeshComponent& meshComponent{registry.emplace<MeshComponent>(node->getEntity(), "", std::make_shared<Mesh>(node->m_data))};
+    MeshComponent& meshComponent{m_registryRef.emplace<MeshComponent>(node->getEntity(), "", std::make_shared<Mesh>(node->m_data))};
     for (const auto &gltfPrimitive : gltfMesh.primitives)
     {
         meshComponent.m_Mesh->subMeshes.push_back(loadPrimitive(gltfPrimitive, node->m_data, indexCount));
     }    
 }
 
-void GLTFModel::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::vector<int>& nodeToJoint, std::vector<glm::vec4> &weightVec)
+void GLTFModel::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::vector<glm::vec4> &weightVec)
 {
     if(m_gltfModel->meshes.at(0).primitives.at(0).attributes.find("JOINTS_0") == m_gltfModel->meshes.at(0).primitives.at(0).attributes.end())
     {
@@ -235,11 +234,11 @@ void GLTFModel::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::
         std::memcpy(jointVec.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
     }
 
-    nodeToJoint.resize(m_gltfModel->nodes.size());
+    m_nodeToJoint.resize(m_gltfModel->nodes.size());
     const tinygltf::Skin &skin = m_gltfModel->skins.at(0);
     for (int i = 0; i < skin.joints.size(); ++i) {
         int destinationNode = skin.joints.at(i);
-        nodeToJoint.at(destinationNode) = i;
+        m_nodeToJoint.at(destinationNode) = i;
     }
 
     // Weights
@@ -255,7 +254,7 @@ void GLTFModel::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::
     }
 }
 
-void GLTFModel::loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatrices)
+void GLTFModel::loadInverseBindMatrices()
 {
     if (m_gltfModel->skins.size() == 0)
     {
@@ -269,8 +268,19 @@ void GLTFModel::loadInverseBindMatrices(std::vector<glm::mat4>& inverseBindMatri
     const tinygltf::BufferView &bufferView = m_gltfModel->bufferViews.at(accessor.bufferView);
     const tinygltf::Buffer &buffer = m_gltfModel->buffers.at(bufferView.buffer);
 
-    inverseBindMatrices.resize(skin.joints.size());
-    std::memcpy(inverseBindMatrices.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
+    m_inverseBindMatrices.resize(skin.joints.size());
+    std::memcpy(m_inverseBindMatrices.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
+}
+
+void GLTFModel::loadjointMatrices(std::vector<std::shared_ptr<ModelNode>>& rootNodes)
+{
+    // traverse through the graph again and compute JointMatrices
+    if(m_inverseBindMatrices.size() > 0 && m_nodeToJoint.size() > 0)
+    {
+        m_jointMatrices.resize(m_inverseBindMatrices.size());
+        for (auto &rootNode : rootNodes)
+            rootNode->calculateJointMatrices(m_inverseBindMatrices, m_nodeToJoint, m_jointMatrices, m_registryRef);
+    }
 }
 
 void GLTFModel::loadTextures()
@@ -343,8 +353,7 @@ RenderSys::TextureSampler::FilterMode getFilterMode(int32_t filterMode)
 
 void GLTFModel::loadTransform(std::shared_ptr<ModelNode> currentNode, const tinygltf::Node &gltfNode, std::shared_ptr<ModelNode> parentNode)
 {
-    auto& registry = EntityRegistry::Get();
-    TransformComponent& transform{registry.emplace<TransformComponent>(currentNode->getEntity())};
+    TransformComponent& transform{m_registryRef.emplace<TransformComponent>(currentNode->getEntity())};
     if (gltfNode.matrix.size() == 16)
     {
         transform.SetMat4Local(glm::make_mat4x4(gltfNode.matrix.data()));
@@ -377,8 +386,9 @@ void GLTFModel::loadTransform(std::shared_ptr<ModelNode> currentNode, const tiny
     }
     else
     {
-        auto parentNodeMatrix = parentNode->getNodeMatrix();
-        transform.SetMat4Global(parentNodeMatrix);
+        auto parentEntity = parentNode->getEntity();
+        auto& parentTransform = m_registryRef.get<RenderSys::TransformComponent>(parentEntity);
+        transform.SetMat4Global(parentTransform.GetMat4Global());
     }
 }
 
@@ -460,7 +470,7 @@ void GLTFModel::getNodeGraphs(std::vector<std::shared_ptr<ModelNode>>& rootNodes
 
 std::shared_ptr<ModelNode> GLTFModel::traverse(const std::shared_ptr<ModelNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount)
 {
-    auto sceneNode = std::make_shared<ModelNode>(nodeIndex);
+    auto sceneNode = std::make_shared<ModelNode>(nodeIndex, m_registryRef.create());
     sceneNode->setNodeName(node.name);
 
     if (node.mesh > -1)
