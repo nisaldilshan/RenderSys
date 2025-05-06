@@ -60,7 +60,7 @@ struct Mesh
 {
     Mesh(std::shared_ptr<MeshData> modelData)
         : vertexBufferID(0)
-        , m_modelData(modelData)
+        , m_meshData(modelData)
     {}
 
     ~Mesh() = default;
@@ -70,7 +70,7 @@ struct Mesh
     Mesh &operator=(Mesh&&) = delete;
 
     uint32_t vertexBufferID = 0;
-    std::shared_ptr<MeshData> m_modelData;
+    std::shared_ptr<MeshData> m_meshData;
     std::vector<SubMesh> subMeshes;
 };
 

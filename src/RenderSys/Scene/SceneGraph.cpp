@@ -1,4 +1,5 @@
 #include "SceneGraph.h"
+#include <iostream>
 
 namespace RenderSys
 {
@@ -55,6 +56,7 @@ void SceneGraph::TraverseLog(uint32_t nodeIndex, uint32_t indent)
     TreeNode& treeNode = m_Nodes[nodeIndex];
     // LOG_CORE_INFO("{0}game object `{1}`, name: `{2}`", indentStr, static_cast<uint32_t>(treeNode.GetGameObject()),
     //                 treeNode.GetName());
+    std::cout << indentStr << "game object `" << static_cast<uint32_t>(treeNode.GetGameObject()) << "`, name: `" << treeNode.GetName() << "`" << std::endl;
     for (uint32_t childIndex = 0; childIndex < treeNode.Children(); ++childIndex)
     {
         TraverseLog(treeNode.GetChild(childIndex), indent + 4);

@@ -11,17 +11,16 @@ namespace RenderSys
 
 class ModelNode 
 {
-  public:
+public:
     ModelNode() = delete; 
     ModelNode(int nodeNum, entt::entity entity);
     ~ModelNode() = default;
 
-	ModelNode(const ModelNode&) = delete;
-	ModelNode &operator=(const ModelNode&) = delete;
-	ModelNode(ModelNode&&) = delete;
-	ModelNode &operator=(ModelNode&&) = delete;
+    ModelNode(const ModelNode&) = delete;
+    ModelNode &operator=(const ModelNode&) = delete;
+    ModelNode(ModelNode&&) = delete;
+    ModelNode &operator=(ModelNode&&) = delete;
 
-    int getNodeNum();
     void setNodeName(std::string name);
     entt::entity& getEntity();
 
@@ -30,9 +29,8 @@ class ModelNode
     void printHierarchy(int indent);
 
     std::vector<std::shared_ptr<ModelNode>> m_childNodes{};
-    std::shared_ptr<MeshData> m_data;
 
-  private:
+private:
     int m_nodeNum = 0;
     std::string m_nodeName;
     int m_materialIndex = 0;

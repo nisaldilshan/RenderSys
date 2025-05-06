@@ -143,13 +143,13 @@ public:
 			auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
 			auto& transformComponent = view.get<RenderSys::TransformComponent>(entity);
 
-			auto vertexBuffer = meshComponent.m_Mesh->m_modelData->getVertexBufferForRenderer();
+			auto vertexBuffer = meshComponent.m_Mesh->m_meshData->getVertexBufferForRenderer();
 			if (vertexBuffer.size() == 5718) // woman model
 				m_models[1].applyVertexSkinning(vertexBuffer);
 			assert(vertexBuffer.size() > 0);
 			const auto vertexBufID = m_renderer->SetVertexBufferData(vertexBuffer, vertexBufferLayout);
-			assert(meshComponent.m_Mesh->m_modelData->indices.size() > 0);
-			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_modelData->indices);
+			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);
+			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 	}
 
@@ -316,14 +316,14 @@ private:
 	bool loadScene()
 	{
 		auto& model1 = m_models.emplace_back(RenderSys::Model(m_entityRegistry));
-		if (!model1.load(RESOURCE_DIR "/Models/Sponza/glTF/Sponza.gltf", ""))
+		if (!model1.load(RESOURCE_DIR "/Models/Sponza/glTF/Sponza.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
 		}
 
 		auto& model2 = m_models.emplace_back(RenderSys::Model(m_entityRegistry));
-		if (!model2.load(RESOURCE_DIR "/Models/Woman.gltf", ""))
+		if (!model2.load(RESOURCE_DIR "/Models/Woman.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
@@ -331,7 +331,6 @@ private:
 
 		for (auto &scene : m_models)
 		{
-			scene.populate();
 			scene.printNodeGraph();
 		}
 

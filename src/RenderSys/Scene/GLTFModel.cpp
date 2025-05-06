@@ -22,7 +22,7 @@ GLTFModel::~GLTFModel()
 {
 }
 
-bool GLTFModel::load(const std::filesystem::path &filePath, const std::string &textureFilename)
+bool GLTFModel::load(const std::filesystem::path &filePath)
 {
     m_sceneFilePath = filePath;
 
@@ -41,19 +41,18 @@ bool GLTFModel::load(const std::filesystem::path &filePath, const std::string &t
     }
 
     if (!loaderWarnings.empty()) {
-        //Logger::log(1, "%s: warnings while loading glTF model:\n%s\n", __FUNCTION__, loaderWarnings.c_str());
+        std::cout << "GLTFModel: warnings while loading glTF model:\n" << loaderWarnings << std::endl;
     }
 
     if (!loaderErrors.empty()) {
-        //Logger::log(1, "%s: errors while loading glTF model:\n%s\n", __FUNCTION__, loaderErrors.c_str());
+        std::cout << "GLTFModel: errors while loading glTF model:\n" << loaderErrors << std::endl;
     }
 
     if (!result) {
-        //Logger::log(1, "%s error: could not load file '%s'\n", __FUNCTION__, modelFilename.c_str());
-        return false;
+        std::cout << "GLTFModel: failed to load glTF model from file: " << filePath.string() << std::endl;
     }
 
-    return true;
+    return result;
 }
 
 void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount)
@@ -200,16 +199,17 @@ RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive
     return prim;
 }
 
-void GLTFModel::loadMesh(const tinygltf::Mesh& gltfMesh, std::shared_ptr<ModelNode> node, const uint32_t indexCount)
+void GLTFModel::loadMesh(const tinygltf::Mesh& gltfMesh, entt::entity& nodeEntity, uint32_t& indexCount)
 {
-    MeshComponent& meshComponent{m_registryRef.emplace<MeshComponent>(node->getEntity(), "", std::make_shared<Mesh>(node->m_data))};
+    MeshComponent& meshComponent{m_registryRef.emplace<MeshComponent>(nodeEntity, "", std::make_shared<Mesh>(std::make_shared<MeshData>()))};
     for (const auto &gltfPrimitive : gltfMesh.primitives)
     {
-        meshComponent.m_Mesh->subMeshes.push_back(loadPrimitive(gltfPrimitive, node->m_data, indexCount));
+        meshComponent.m_Mesh->subMeshes.push_back(loadPrimitive(gltfPrimitive, meshComponent.m_Mesh->m_meshData, indexCount));
     }    
+    indexCount += meshComponent.m_Mesh->m_meshData->indices.size();
 }
 
-void GLTFModel::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::vector<glm::vec4> &weightVec)
+void GLTFModel::loadJointData()
 {
     if(m_gltfModel->meshes.at(0).primitives.at(0).attributes.find("JOINTS_0") == m_gltfModel->meshes.at(0).primitives.at(0).attributes.end())
     {
@@ -223,8 +223,8 @@ void GLTFModel::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::
         const tinygltf::Buffer &buffer = m_gltfModel->buffers.at(bufferView.buffer);
 
         assert(accessor.count > 0);
-        jointVec.resize(accessor.count);
-        std::memcpy(jointVec.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
+        m_jointVec.resize(accessor.count);
+        std::memcpy(m_jointVec.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
     }
 
     m_nodeToJoint.resize(m_gltfModel->nodes.size());
@@ -242,8 +242,8 @@ void GLTFModel::loadJointData(std::vector<glm::tvec4<uint16_t>> &jointVec, std::
         const tinygltf::Buffer &buffer = m_gltfModel->buffers.at(bufferView.buffer);
 
         assert(accessor.count > 0);
-        weightVec.resize(accessor.count);
-        std::memcpy(weightVec.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
+        m_weightVec.resize(accessor.count);
+        std::memcpy(m_weightVec.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
     }
 }
 
@@ -265,15 +265,15 @@ void GLTFModel::loadInverseBindMatrices()
     std::memcpy(m_inverseBindMatrices.data(), &buffer.data.at(0) + bufferView.byteOffset, bufferView.byteLength);
 }
 
-void GLTFModel::loadjointMatrices(std::vector<std::shared_ptr<ModelNode>>& rootNodes)
+void GLTFModel::loadjointMatrices()
 {
     // traverse through the graph again and compute JointMatrices
-    if(m_inverseBindMatrices.size() > 0 && m_nodeToJoint.size() > 0)
-    {
-        m_jointMatrices.resize(m_inverseBindMatrices.size());
-        for (auto &rootNode : rootNodes)
-            rootNode->calculateJointMatrices(m_inverseBindMatrices, m_nodeToJoint, m_jointMatrices, m_registryRef);
-    }
+    // if(m_inverseBindMatrices.size() > 0 && m_nodeToJoint.size() > 0)
+    // {
+    //     m_jointMatrices.resize(m_inverseBindMatrices.size());
+    //     for (auto &rootNode : rootNodes)
+    //         rootNode->calculateJointMatrices(m_inverseBindMatrices, m_nodeToJoint, m_jointMatrices, m_registryRef);
+    // }
 }
 
 void GLTFModel::loadTextures()
@@ -344,9 +344,9 @@ RenderSys::TextureSampler::FilterMode getFilterMode(int32_t filterMode)
     return RenderSys::TextureSampler::FilterMode::NEAREST;
 }
 
-void GLTFModel::loadTransform(std::shared_ptr<ModelNode> currentNode, const tinygltf::Node &gltfNode, std::shared_ptr<ModelNode> parentNode)
+void GLTFModel::loadTransform(entt::entity& nodeEntity, const tinygltf::Node &gltfNode, const uint32_t parent)
 {
-    TransformComponent& transform{m_registryRef.emplace<TransformComponent>(currentNode->getEntity())};
+    TransformComponent& transform{m_registryRef.emplace<TransformComponent>(nodeEntity)};
     if (gltfNode.matrix.size() == 16)
     {
         transform.SetMat4Local(glm::make_mat4x4(gltfNode.matrix.data()));
@@ -372,14 +372,14 @@ void GLTFModel::loadTransform(std::shared_ptr<ModelNode> currentNode, const tiny
         }
     }
 
-    if (parentNode == nullptr)
+    auto parentEntity = m_sceneGraph.GetNode(parent).GetGameObject();
+    if (!m_registryRef.all_of<TransformComponent>(parentEntity))
     {
         auto parentNodeMatrix = glm::mat4(1.0f);
         transform.SetMat4Global(parentNodeMatrix);
     }
     else
     {
-        auto parentEntity = parentNode->getEntity();
         auto& parentTransform = m_registryRef.get<RenderSys::TransformComponent>(parentEntity);
         transform.SetMat4Global(parentTransform.GetMat4Global());
     }
@@ -444,7 +444,7 @@ void GLTFModel::loadMaterials()
     //std::cout << "Materials loading completed!" << std::endl;
 }
 
-void GLTFModel::getNodeGraphs(std::vector<std::shared_ptr<ModelNode>>& rootNodes)
+void GLTFModel::getNodeGraphs()
 {
     assert(m_gltfModel);
     const int nodeCount = m_gltfModel->nodes.size();
@@ -452,39 +452,41 @@ void GLTFModel::getNodeGraphs(std::vector<std::shared_ptr<ModelNode>>& rootNodes
     const int rootNodeCount = m_gltfModel->scenes.at(0).nodes.size(); // we are considering only one scene
     assert(rootNodeCount > 0);
     uint32_t indexCount = 0;
+    m_modelRootNodeIndex = m_sceneGraph.CreateRootNode(m_registryRef.create(), "RootNode");
     for (const auto &rootNodeNum : m_gltfModel->scenes.at(0).nodes)
     {
-        const tinygltf::Node &node = m_gltfModel->nodes.at(rootNodeNum);
-        auto rootNode = traverse(nullptr, node, rootNodeNum, indexCount);
-        rootNodes.push_back(rootNode);
+        traverse(m_modelRootNodeIndex, rootNodeNum, indexCount);
     }
     std::cout << "model has " << nodeCount << " total nodes and " << rootNodeCount << " root nodes. [IndexCount=" << indexCount << "]" << std::endl;
 }
 
-std::shared_ptr<ModelNode> GLTFModel::traverse(const std::shared_ptr<ModelNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount)
+void GLTFModel::printNodeGraph()
 {
-    auto sceneNode = std::make_shared<ModelNode>(nodeIndex, m_registryRef.create());
-    sceneNode->setNodeName(node.name);
+    m_sceneGraph.TraverseLog(m_modelRootNodeIndex);
+}
+
+void GLTFModel::traverse(const uint32_t parent, uint32_t nodeIndex, uint32_t& indexCount)
+{
+    const tinygltf::Node &node = m_gltfModel->nodes.at(nodeIndex);
+    auto nodeEntity = m_registryRef.create();
+    auto sceneNode = m_sceneGraph.CreateNode(parent, nodeEntity, node.name + std::to_string(nodeIndex) + "_Node"); 
 
     if (node.mesh > -1)
     {
         std::cout << node.name << " : Mesh= " << node.mesh << std::endl;
         const auto& gltfMesh = m_gltfModel->meshes.at(node.mesh);
-        loadMesh(gltfMesh, sceneNode, indexCount);
-        indexCount += sceneNode->m_data->indices.size();
+        loadMesh(gltfMesh, nodeEntity, indexCount);
+        
     }
 
-    loadTransform(sceneNode, node, parent);
-    
-    if (node.children.size() > 0) 
+    loadTransform(nodeEntity, node, parent);
+
+    size_t childNodeCount = node.children.size();
+    for (size_t childNodeIndex = 0; childNodeIndex < childNodeCount; ++childNodeIndex)
     {
-        for (size_t i = 0; i < node.children.size(); i++) 
-        {
-            sceneNode->m_childNodes.push_back(traverse(sceneNode, m_gltfModel->nodes[node.children[i]], node.children[i], indexCount));
-        }
+        int gltfChildNodeIndex = node.children[childNodeIndex];
+        traverse(sceneNode, gltfChildNodeIndex, indexCount);
     }
-
-    return sceneNode;
 }
 
 std::shared_ptr<RenderSys::Material> GLTFModel::createMaterial(int materialIndex)

@@ -9,15 +9,9 @@ namespace RenderSys
 
 ModelNode::ModelNode(int nodeNum, entt::entity entity)
     : m_nodeNum(nodeNum)
-    , m_data(std::make_shared<MeshData>())
     , m_entity(entity)
 {
     //std::cout << "ModelNode(" << this << ") created with nodeNum: " << m_nodeNum << ", Entity:" << int(m_entity) << std::endl;
-}
-
-int ModelNode::getNodeNum()
-{
-    return m_nodeNum;
 }
 
 void ModelNode::setNodeName(std::string name)
@@ -55,11 +49,11 @@ void ModelNode::printHierarchy(int indent)
     std::string printStr;
     if (indent == 0)
     {
-        printStr = " root : " + std::to_string(m_nodeNum) + " (" + m_nodeName + ")";
+        printStr = " root : " + m_nodeName;
     }
     else
     {
-        printStr = indendString + " child : " + std::to_string(m_nodeNum) + " (" + m_nodeName + ")";
+        printStr = indendString + " child : " +  m_nodeName;
     }
     
     std::cout << printStr << std::endl;

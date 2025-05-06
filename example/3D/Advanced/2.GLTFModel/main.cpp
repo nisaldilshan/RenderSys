@@ -148,12 +148,12 @@ public:
 			auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
 			auto& transformComponent = view.get<RenderSys::TransformComponent>(entity);
 
-			auto vertexBuffer = meshComponent.m_Mesh->m_modelData->getVertexBufferForRenderer();
+			auto vertexBuffer = meshComponent.m_Mesh->m_meshData->getVertexBufferForRenderer();
 			m_model->applyVertexSkinning(vertexBuffer);
 			assert(vertexBuffer.size() > 0);
 			const auto vertexBufID = m_renderer->SetVertexBufferData(vertexBuffer, vertexBufferLayout);
-			assert(meshComponent.m_Mesh->m_modelData->indices.size() > 0);
-			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_modelData->indices);
+			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);
+			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 	}
 
@@ -303,13 +303,12 @@ private:
 	bool loadScene()
 	{
 		m_model = std::make_unique<RenderSys::Model>(m_entityRegistry);
-		if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf", ""))
+		if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
 		}
 
-		m_model->populate();
 		m_model->printNodeGraph();
 		return true;
 	}
