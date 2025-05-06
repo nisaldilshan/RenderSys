@@ -5,26 +5,25 @@ namespace RenderSys
 {
 
 Model::Model(entt::registry& registry)
-    : m_scene(std::make_unique<GLTFModel>(registry))
+    : m_model(std::make_unique<GLTFModel>(registry))
 {}
 
 bool Model::load(const std::filesystem::path &filePath, const std::string &textureFilename)
 {
-    return m_scene->load(filePath, textureFilename);
+    return m_model->load(filePath, textureFilename);
 }
 
 void Model::populate()
 {
-    m_scene->loadTextures();
-    m_scene->loadMaterials();
+    m_model->computeProps(); // just to print the number of vertices and indices
+    m_model->loadTextures();
+    m_model->loadMaterials();
+    m_model->loadJointData(m_jointVec, m_weightVec);
+    m_model->loadInverseBindMatrices();
 
     // traverse through GLTF Scene nodes and prepare graph
-    m_scene->getNodeGraphs(m_rootNodes);
-    m_scene->computeProps();
-
-    m_scene->loadJointData(m_jointVec, m_weightVec);
-    m_scene->loadInverseBindMatrices();
-    m_scene->loadjointMatrices(m_rootNodes);
+    m_model->getNodeGraphs(m_rootNodes);
+    m_model->loadjointMatrices(m_rootNodes);
 }
 
 void Model::printNodeGraph()
@@ -47,7 +46,7 @@ void Model::applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer)
     {
         return;
     }
-    auto jointMatrices = m_scene->GetJointMatrices();
+    auto jointMatrices = m_model->GetJointMatrices();
     if (jointMatrices.size() == 0)
     {
         return;

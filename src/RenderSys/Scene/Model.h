@@ -21,8 +21,8 @@ public:
     void populate();
     void printNodeGraph();
     void applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer);
-    const std::vector<std::shared_ptr<Texture>>& getTextures() const { return m_scene->GetTextures(); }
-    const std::vector<std::shared_ptr<RenderSys::Material>>& getMaterials() const { return m_scene->GetMaterials(); }
+    const std::vector<std::shared_ptr<Texture>>& getTextures() const { return m_model->GetTextures(); }
+    const std::vector<std::shared_ptr<RenderSys::Material>>& getMaterials() const { return m_model->GetMaterials(); }
     const std::vector<std::shared_ptr<ModelNode>>& getRootNodes() const { return m_rootNodes; }
     
     std::vector<glm::tvec4<uint16_t>> m_jointVec;
@@ -30,7 +30,7 @@ public:
 
 private:
     std::vector<std::shared_ptr<ModelNode>> m_rootNodes;
-    std::unique_ptr<GLTFModel> m_scene;
+    std::unique_ptr<GLTFModel> m_model;
 };
 
 }

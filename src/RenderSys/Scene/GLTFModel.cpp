@@ -56,27 +56,7 @@ bool GLTFModel::load(const std::filesystem::path &filePath, const std::string &t
     return true;
 }
 
-void GLTFModel::computeProps()
-{
-    const tinygltf::Scene& scene = m_gltfModel->scenes[m_gltfModel->defaultScene > -1 ? m_gltfModel->defaultScene : 0];
-    for (size_t i = 0; i < scene.nodes.size(); i++) {
-        getNodeProps(m_gltfModel->nodes[scene.nodes[i]], *m_gltfModel, m_vertexCount, m_indexCount);
-    }
-
-    std::cout << "GLTFModel: [VertexCount=" << m_vertexCount << "], [IndexCount=" << m_indexCount << "]" << std::endl;
-}
-
-size_t GLTFModel::getVertexCount() const
-{
-    return m_vertexCount;
-}
-
-size_t GLTFModel::getIndexCount() const
-{
-    return m_indexCount;
-}
-
-void GLTFModel::getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount)
+void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount)
 {
     if (node.children.size() > 0) {
         for (size_t i = 0; i < node.children.size(); i++) {
@@ -93,6 +73,19 @@ void GLTFModel::getNodeProps(const tinygltf::Node& node, const tinygltf::Model& 
             }
         }
     }
+}
+
+void GLTFModel::computeProps()
+{
+    static size_t s_vertexCount = 0;
+    static size_t s_indexCount = 0;
+    const tinygltf::Scene& scene = m_gltfModel->scenes[m_gltfModel->defaultScene > -1 ? m_gltfModel->defaultScene : 0];
+    for (size_t i = 0; i < scene.nodes.size(); i++) {
+        getNodeProps(m_gltfModel->nodes[scene.nodes[i]], *m_gltfModel, s_vertexCount, s_indexCount);
+    }
+    std::cout << "GLTFModel: [VertexCount=" << s_vertexCount << "], [IndexCount=" << s_indexCount << "]" << std::endl;
+    s_vertexCount = 0;
+    s_indexCount = 0;
 }
 
 RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive, std::shared_ptr<MeshData> modelData, const uint32_t indexCount)

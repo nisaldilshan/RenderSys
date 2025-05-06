@@ -29,8 +29,6 @@ public:
     GLTFModel &operator=(GLTFModel&&) = delete;
     bool load(const std::filesystem::path &filePath, const std::string& textureFilename);
     void computeProps();
-    size_t getVertexCount() const;
-    size_t getIndexCount() const;
     
     void loadTextures();
     void loadMaterials();
@@ -45,7 +43,6 @@ public:
 private:
     void loadTransform(std::shared_ptr<ModelNode> currentNode, const tinygltf::Node &gltfNode, std::shared_ptr<ModelNode> parentNode);
     std::vector<TextureSampler> loadTextureSamplers();
-    static void getNodeProps(const tinygltf::Node& node, const tinygltf::Model& model, size_t& vertexCount, size_t& indexCount);
     RenderSys::SubMesh loadPrimitive(const tinygltf::Primitive &primitive, std::shared_ptr<MeshData> modelData, const uint32_t indexCount);
     void loadMesh(const tinygltf::Mesh& gltfMesh, std::shared_ptr<ModelNode> node, const uint32_t indexCount);
     std::shared_ptr<ModelNode> traverse(const std::shared_ptr<ModelNode> parent, const tinygltf::Node &node, uint32_t nodeIndex, uint32_t& indexCount);
@@ -53,12 +50,10 @@ private:
 
     entt::registry& m_registryRef;
     std::unique_ptr<tinygltf::Model> m_gltfModel;
-    size_t m_vertexCount = 0;
-    size_t m_indexCount = 0;
     std::filesystem::path m_sceneFilePath;
+
     std::vector<std::shared_ptr<RenderSys::Texture>> m_textures;
     std::vector<std::shared_ptr<RenderSys::Material>> m_materials;
-
     std::vector<int> m_nodeToJoint;
     std::vector<glm::mat4> m_inverseBindMatrices;
     std::vector<glm::mat4> m_jointMatrices;
