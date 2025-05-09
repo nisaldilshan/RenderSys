@@ -1,16 +1,26 @@
 #include "Model.h"
 #include <iostream>
+#include "GLTFModel.h"
 
 namespace RenderSys
 {
 
 Model::Model(entt::registry& registry)
-    : m_model(std::make_unique<GLTFModel>(registry))
+    : m_model(new GLTFModel(registry))
 {}
 
-bool Model::load(const std::filesystem::path &filePath, const std::string &textureFilename)
+Model::~Model()
 {
-    return m_model->load(filePath, textureFilename);
+    delete m_model;
+    m_model = nullptr;
+}
+
+bool Model::load(const std::filesystem::path &filePath)
+{
+    if (!m_model->load(filePath))
+        return false;
+    populate();
+    return true;
 }
 
 void Model::populate()
@@ -18,51 +28,36 @@ void Model::populate()
     m_model->computeProps(); // just to print the number of vertices and indices
     m_model->loadTextures();
     m_model->loadMaterials();
-    m_model->loadJointData(m_jointVec, m_weightVec);
+    m_model->loadJointData();
     m_model->loadInverseBindMatrices();
 
     // traverse through GLTF Scene nodes and prepare graph
-    m_model->getNodeGraphs(m_rootNodes);
-    m_model->loadjointMatrices(m_rootNodes);
+    m_model->getNodeGraphs();
+    m_model->loadSkeletons();
+    m_model->loadAnimations();
+    m_model->loadjointMatrices();
 }
 
 void Model::printNodeGraph()
 {
     std::cout << "---- Scene begin ----\n";
-    for (auto &rootNode : m_rootNodes)
-    {
-        rootNode->printHierarchy(0);
-    }
+    m_model->printNodeGraph();
     std::cout << " -- Scene end --" << std::endl;
 }
 
 void Model::applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer)
 {
-    if (m_jointVec.size() == 0)
-    {
-        return;
-    }
-    if (m_weightVec.size() == 0)
-    {
-        return;
-    }
-    auto jointMatrices = m_model->GetJointMatrices();
-    if (jointMatrices.size() == 0)
-    {
-        return;
-    }
+    m_model->applyVertexSkinning(vertexBuffer);
+}
 
-    for (int i = 0; i < m_jointVec.size(); ++i) 
-    {
-        glm::ivec4 jointIndex = glm::make_vec4(m_jointVec.at(i));
-        glm::vec4 weightIndex = glm::make_vec4(m_weightVec.at(i));
-        glm::mat4 skinMat =
-            weightIndex.x * jointMatrices.at(jointIndex.x) +
-            weightIndex.y * jointMatrices.at(jointIndex.y) +
-            weightIndex.z * jointMatrices.at(jointIndex.z) +
-            weightIndex.w * jointMatrices.at(jointIndex.w);
-        vertexBuffer.vertices.at(i).position = skinMat * glm::vec4(vertexBuffer.vertices.at(i).position, 1.0f);
-    }
+const std::vector<std::shared_ptr<Texture>> &Model::getTextures() const
+{
+    return m_model->GetTextures();
+}
+
+const std::vector<std::shared_ptr<RenderSys::Material>> &Model::getMaterials() const
+{
+    return m_model->GetMaterials();
 }
 
 } // namespace RenderSys

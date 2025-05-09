@@ -233,7 +233,7 @@ public:
 			glm::mat4x4 M1(1.0);
 			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
 			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
-			M1 = glm::scale(M1, glm::vec3(0.3f));
+			M1 = glm::scale(M1, glm::vec3(0.05f));
 			static std::vector<glm::mat4x4> instances;
 			instances.push_back(M1);
 			instances.push_back(M1);

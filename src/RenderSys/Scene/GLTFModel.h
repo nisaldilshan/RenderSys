@@ -3,9 +3,11 @@
 #include <string>
 #include <memory>
 #include <filesystem>
+#include <tiny_gltf.h>
 
-#include "ModelNode.h"
 #include <RenderSys/Texture.h>
+#include <RenderSys/Material.h>
+#include <RenderSys/Scene/Mesh.h>
 #include <RenderSys/Scene/SceneGraph.h>
 
 namespace tinygltf
@@ -36,12 +38,13 @@ public:
     void loadJointData();
     void loadInverseBindMatrices();
     void loadjointMatrices();
-
+    void loadSkeletons();
+    void loadAnimations();
+    void applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer);
     void getNodeGraphs();
     void printNodeGraph();
     const std::vector<std::shared_ptr<RenderSys::Texture>>& GetTextures() const { return m_textures; }
     const std::vector<std::shared_ptr<RenderSys::Material>>& GetMaterials() const { return m_materials; }
-    const std::vector<glm::mat4>& GetJointMatrices() const { return m_jointMatrices; }
 private:
     void loadTransform(entt::entity& nodeEntity, const tinygltf::Node &gltfNode, const uint32_t parent);
     std::vector<TextureSampler> loadTextureSamplers();
@@ -49,6 +52,23 @@ private:
     void loadMesh(const tinygltf::Mesh& gltfMesh, entt::entity& nodeEntity, uint32_t& indexCount);
     void traverse(const uint32_t parent, uint32_t nodeIndex, uint32_t& indexCount);
     std::shared_ptr<RenderSys::Material> createMaterial(int materialIndex);
+
+    template <typename T>
+    int LoadAccessor(const tinygltf::Accessor& accessor, const T*& pointer, uint32_t* count = nullptr, int* type = nullptr)
+    {
+        const tinygltf::BufferView& view = m_gltfModel->bufferViews[accessor.bufferView];
+        pointer =
+            reinterpret_cast<const T*>(&(m_gltfModel->buffers[view.buffer].data[accessor.byteOffset + view.byteOffset]));
+        if (count)
+        {
+            *count = static_cast<uint32_t>(accessor.count);
+        }
+        if (type)
+        {
+            *type = accessor.type;
+        }
+        return accessor.componentType;
+    }
 
     entt::registry& m_registryRef;
     std::unique_ptr<tinygltf::Model> m_gltfModel;
