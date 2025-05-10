@@ -28,8 +28,8 @@ public:
     ~GLTFModel();
     GLTFModel(const GLTFModel&) = delete;
     GLTFModel &operator=(const GLTFModel&) = delete;
-    GLTFModel(GLTFModel&&) = delete;
-    GLTFModel &operator=(GLTFModel&&) = delete;
+    GLTFModel(GLTFModel&&) = default;
+    GLTFModel &operator=(GLTFModel&&) = default;
     bool load(const std::filesystem::path &filePath);
     void computeProps();
     
@@ -42,7 +42,7 @@ public:
     void loadAnimations();
     void applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer);
     void getNodeGraphs();
-    void printNodeGraph();
+    void printNodeGraph() const;
     const std::vector<std::shared_ptr<RenderSys::Texture>>& GetTextures() const { return m_textures; }
     const std::vector<std::shared_ptr<RenderSys::Material>>& GetMaterials() const { return m_materials; }
 private:

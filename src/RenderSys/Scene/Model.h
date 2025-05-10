@@ -20,7 +20,7 @@ public:
     
     bool load(const std::filesystem::path &filePath);
     void populate();
-    void printNodeGraph();
+    void printNodeGraph() const;
     void applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer);
     const std::vector<std::shared_ptr<Texture>>& getTextures() const;
     const std::vector<std::shared_ptr<RenderSys::Material>>& getMaterials() const;

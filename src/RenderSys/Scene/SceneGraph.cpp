@@ -18,9 +18,9 @@ entt::entity SceneGraph::TreeNode::GetGameObject() const { return m_GameObject; 
 
 const std::string& SceneGraph::TreeNode::GetName() const { return m_Name; }
 
-uint32_t SceneGraph::TreeNode::Children() { return m_Children.size(); }
+uint32_t SceneGraph::TreeNode::Children() const { return m_Children.size(); }
 
-uint32_t SceneGraph::TreeNode::GetChild(uint32_t const childIndex) { return m_Children[childIndex]; }
+uint32_t SceneGraph::TreeNode::GetChild(uint32_t const childIndex) const { return m_Children[childIndex]; }
 
 uint32_t SceneGraph::TreeNode::AddChild(uint32_t const nodeIndex)
 {
@@ -50,10 +50,10 @@ uint32_t SceneGraph::CreateRootNode(entt::entity const gameObject, std::string c
     return nodeIndex;
 }
 
-void SceneGraph::TraverseLog(uint32_t nodeIndex, uint32_t indent)
+void SceneGraph::TraverseLog(uint32_t nodeIndex, uint32_t indent) const
 {
     std::string indentStr(indent, ' ');
-    TreeNode& treeNode = m_Nodes[nodeIndex];
+    const TreeNode& treeNode = m_Nodes[nodeIndex];
     // LOG_CORE_INFO("{0}game object `{1}`, name: `{2}`", indentStr, static_cast<uint32_t>(treeNode.GetGameObject()),
     //                 treeNode.GetName());
     std::cout << indentStr << "game object `" << static_cast<uint32_t>(treeNode.GetGameObject()) << "`, name: `" << treeNode.GetName() << "`" << std::endl;

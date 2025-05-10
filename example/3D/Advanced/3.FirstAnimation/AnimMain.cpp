@@ -315,23 +315,24 @@ public:
 private:
 	bool loadScene()
 	{
-		auto& model1 = m_models.emplace_back(RenderSys::Model(m_entityRegistry));
+		m_models.reserve(2);
+		auto& model1 = m_models.emplace_back(m_entityRegistry);
 		if (!model1.load(RESOURCE_DIR "/Models/Sponza/glTF/Sponza.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
 		}
 
-		auto& model2 = m_models.emplace_back(RenderSys::Model(m_entityRegistry));
+		auto& model2 = m_models.emplace_back(m_entityRegistry);
 		if (!model2.load(RESOURCE_DIR "/Models/Woman.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
 		}
 
-		for (auto &scene : m_models)
+		for (const auto &model : m_models)
 		{
-			scene.printNodeGraph();
+			model.printNodeGraph();
 		}
 
 		return true;

@@ -36,6 +36,10 @@ void Skeleton::Update()
 {
     // update the final global transform of all joints
     int16_t numberOfJoints = static_cast<int16_t>(m_Joints.size());
+    if (numberOfJoints == 0)
+    {
+        return;
+    }
 
     if (!m_IsAnimated) // used for debugging to check if the model renders w/o deformation
     {

@@ -19,10 +19,10 @@ public:
         ~TreeNode();
 
         const std::string& GetName() const;
-        uint32_t GetChild(uint32_t const childIndex);
+        uint32_t GetChild(uint32_t const childIndex) const;
         std::vector<uint32_t>& GetChildren() { return m_Children; }
 
-        uint32_t Children();
+        uint32_t Children() const;
         entt::entity GetGameObject() const;
 
     private:
@@ -48,7 +48,7 @@ public:
     TreeNode& GetRoot();
 
     uint32_t GetTreeNodeIndex(entt::entity const gameObject);
-    void TraverseLog(uint32_t nodeIndex, uint32_t indent = 0);
+    void TraverseLog(uint32_t nodeIndex, uint32_t indent = 0) const;
 
 private:
     std::mutex m_MutexSceneGraph;

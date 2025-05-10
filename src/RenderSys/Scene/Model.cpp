@@ -38,7 +38,7 @@ void Model::populate()
     m_model->loadjointMatrices();
 }
 
-void Model::printNodeGraph()
+void Model::printNodeGraph() const
 {
     std::cout << "---- Scene begin ----\n";
     m_model->printNodeGraph();

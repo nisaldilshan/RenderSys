@@ -237,7 +237,7 @@ public:
 			static std::vector<glm::mat4x4> instances;
 			instances.push_back(M1);
 			instances.push_back(M1);
-			instances[1] = glm::translate(instances[1], glm::vec3(0.0f, 0.0f, -2.0f));
+			instances[1] = glm::translate(instances[1], glm::vec3(0.0f, 0.0f, -200.0f));
 			if (firstTime)
 			{
 				firstTime = false;

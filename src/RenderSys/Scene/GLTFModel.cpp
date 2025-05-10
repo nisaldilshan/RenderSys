@@ -691,7 +691,7 @@ void GLTFModel::getNodeGraphs()
     std::cout << "model has " << nodeCount << " total nodes and " << rootNodeCount << " root nodes. [IndexCount=" << indexCount << "]" << std::endl;
 }
 
-void GLTFModel::printNodeGraph()
+void GLTFModel::printNodeGraph() const
 {
     m_sceneGraph.TraverseLog(m_modelRootNodeIndex);
 }
