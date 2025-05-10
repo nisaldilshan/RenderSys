@@ -12,6 +12,7 @@
 #include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
+#include <RenderSys/Components/TagAndIDComponents.h>
 #include <imgui.h>
 
 struct alignas(16) MyUniforms {
@@ -107,7 +108,7 @@ public:
 		materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, m_texture);
 		materials[0]->Init();
 
-		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
+		m_camera = std::make_unique<Camera::PerspectiveCamera>(60.0f, 0.01f, 100.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
@@ -154,6 +155,23 @@ public:
 			const auto vertexBufID = m_renderer->SetVertexBufferData(vertexBuffer, vertexBufferLayout);
 			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
+
+			glm::mat4x4 M1(1.0);
+			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
+			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
+			M1 = glm::scale(M1, glm::vec3(0.05f));
+			static std::vector<glm::mat4x4> instances;
+			instances.push_back(M1);
+			instances.push_back(M1);
+			instances[1] = glm::translate(instances[1], glm::vec3(0.0f, 0.0f, -200.0f));
+			RenderSys::InstanceTagComponent& instanceTag{m_entityRegistry.emplace<RenderSys::InstanceTagComponent>(entity)};
+			instanceTag.m_InstanceBuffer = std::make_shared<RenderSys::Buffer>(sizeof(glm::mat4x4) * 2, RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
+			instanceTag.m_InstanceBuffer->MapBuffer();
+			instanceTag.m_InstanceBuffer->WriteToBuffer(instances.data());
+
+			meshComponent.m_Mesh->subMeshes[0].m_Resource = std::make_shared<RenderSys::Resource>();
+			meshComponent.m_Mesh->subMeshes[0].m_Resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.m_InstanceBuffer);
+			meshComponent.m_Mesh->subMeshes[0].m_Resource->Init();
 		}
 	}
 
@@ -161,9 +179,7 @@ public:
 	{
 		m_model.reset();
 		m_texture.reset();
-		m_instanceBuffer.reset();
-		m_resource.reset();
-		
+
 		auto allEntities = m_entityRegistry.view<entt::entity>(); // Create a view of all entities
 		std::cout << "Destroying all entities." << std::endl;
 		for (auto entity : allEntities) {
@@ -228,29 +244,6 @@ public:
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
-			static bool firstTime = true;
-
-			glm::mat4x4 M1(1.0);
-			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
-			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
-			M1 = glm::scale(M1, glm::vec3(0.05f));
-			static std::vector<glm::mat4x4> instances;
-			instances.push_back(M1);
-			instances.push_back(M1);
-			instances[1] = glm::translate(instances[1], glm::vec3(0.0f, 0.0f, -200.0f));
-			if (firstTime)
-			{
-				firstTime = false;
-
-				m_instanceBuffer = std::make_shared<RenderSys::Buffer>(sizeof(glm::mat4x4) * 2, RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
-				m_instanceBuffer->MapBuffer();
-				m_instanceBuffer->WriteToBuffer(instances.data());
-
-				m_resource = std::make_shared<RenderSys::Resource>();
-				m_resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, m_instanceBuffer);
-				m_resource->Init();
-			}
-
 			auto view = m_entityRegistry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
 			for (auto entity : view)
 			{
@@ -260,7 +253,6 @@ public:
 				auto mesh = meshComponent.m_Mesh;
 				mesh->vertexBufferID = 1;
 				mesh->subMeshes[0].m_InstanceCount = 2;
-				mesh->subMeshes[0].m_Resource = m_resource;
 				m_renderer->RenderMesh(*mesh);
 			}
 
@@ -323,8 +315,6 @@ private:
 	LightingUniforms m_lightingUniformData;
 	std::shared_ptr<RenderSys::Texture> m_texture;
 	int m_instanceCount = 1;
-	std::shared_ptr<RenderSys::Buffer> m_instanceBuffer;
-	std::shared_ptr<RenderSys::Resource> m_resource;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 	entt::registry m_entityRegistry;
 	std::unique_ptr<RenderSys::Model> m_model;

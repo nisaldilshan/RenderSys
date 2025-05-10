@@ -2,6 +2,7 @@
 
 #include <string>
 #include <RenderSys/Scene/UUID.h>
+#include <RenderSys/Buffer.h>
 
 namespace RenderSys
 {
@@ -27,6 +28,12 @@ public:
     TagComponent(const TagComponent&) = default;
     TagComponent(const std::string& tag)
         : Tag(tag) {}
+};
+
+struct InstanceTagComponent
+{
+    std::vector<entt::entity> m_Instances;
+    std::shared_ptr<Buffer> m_InstanceBuffer;
 };
    
 } // namespace RenderSys
