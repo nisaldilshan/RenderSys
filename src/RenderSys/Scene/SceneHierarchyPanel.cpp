@@ -1,5 +1,6 @@
 #include "SceneHierarchyPanel.h"
 #include <RenderSys/Components/TransformComponent.h>
+#include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Components/TagAndIDComponents.h>
 
 #include <glm/gtc/type_ptr.hpp>
@@ -77,8 +78,17 @@ namespace RenderSys
 
     void SceneHierarchyPanel::DrawEntityNode(entt::entity entity)
     {
-        assert(m_Context->m_Registry.all_of<TagComponent>(entity));
-        auto& tag = m_Context->m_Registry.get<TagComponent>(entity).Tag;
+        if (!m_Context->m_Registry.all_of<TransformComponent, MeshComponent>(entity))
+        {
+            return;
+        }
+
+        std::string tag = "NULL";
+        if (m_Context->m_Registry.all_of<TagComponent>(entity))
+        {
+            tag = m_Context->m_Registry.get<TagComponent>(entity).Tag;
+        }
+
         ImGuiTreeNodeFlags flags = (m_SelectionContext == entity ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
         flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
         bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity, flags, "%s", tag.c_str());
@@ -229,9 +239,13 @@ namespace RenderSys
 
     void SceneHierarchyPanel::DrawComponents(entt::entity entity)
     {
-        if (m_Context->m_Registry.all_of<TagComponent>(entity))
+        //if (m_Context->m_Registry.all_of<TagComponent>(entity))
         {
-            auto& tag = m_Context->m_Registry.get<TagComponent>(entity).Tag;
+            std::string tag = "NULL";
+            if (m_Context->m_Registry.all_of<TagComponent>(entity))
+            {
+                tag = m_Context->m_Registry.get<TagComponent>(entity).Tag;
+            }
 
             char buffer[256];
             memset(buffer, 0, sizeof(buffer));

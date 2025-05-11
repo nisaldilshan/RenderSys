@@ -27,7 +27,7 @@ entt::entity Scene::CreateEntityWithUUID(UUID uuid, const std::string& name)
 {
 	entt::entity entity{m_Registry.create()};
 	m_Registry.emplace<IDComponent>(entity, uuid);
-	m_Registry.emplace<TransformComponent>(entity);
+	//m_Registry.emplace<TransformComponent>(entity);
 	auto& tag = m_Registry.emplace<TagComponent>(entity);
 	tag.Tag = name.empty() ? "Entity" : name;
 	return entity;
