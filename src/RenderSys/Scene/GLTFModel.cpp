@@ -684,7 +684,7 @@ void GLTFModel::getNodeGraphs()
     const int rootNodeCount = m_gltfModel->scenes.at(0).nodes.size(); // we are considering only one scene
     assert(rootNodeCount > 0);
     uint32_t indexCount = 0;
-    m_modelRootNodeIndex = m_sceneGraph.CreateRootNode(m_sceneRef.m_Registry.create(), "RootNode");
+    m_modelRootNodeIndex = m_sceneGraph.CreateRootNode(m_sceneRef.CreateEntity("RootNode"), "RootNode");
     for (const auto &rootNodeNum : m_gltfModel->scenes.at(0).nodes)
     {
         traverse(m_modelRootNodeIndex, rootNodeNum, indexCount);
@@ -700,7 +700,7 @@ void GLTFModel::printNodeGraph() const
 void GLTFModel::traverse(const uint32_t parent, uint32_t nodeIndex, uint32_t& indexCount)
 {
     const tinygltf::Node &node = m_gltfModel->nodes.at(nodeIndex);
-    auto nodeEntity = m_sceneRef.m_Registry.create();
+    auto nodeEntity = m_sceneRef.CreateEntity(node.name);
     auto sceneNode = m_sceneGraph.CreateNode(parent, nodeEntity, node.name + std::to_string(nodeIndex) + "_Node"); 
 
     if (node.mesh > -1)

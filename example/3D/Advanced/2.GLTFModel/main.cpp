@@ -157,19 +157,26 @@ public:
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 
 			RenderSys::InstanceTagComponent& instanceTag{m_scene->m_Registry.emplace<RenderSys::InstanceTagComponent>(entity)};
-			auto& instanceEntity1 = instanceTag.m_instances.emplace_back(m_scene->m_Registry.create());
-			RenderSys::TransformComponent& instanceTransform1{m_scene->m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity1)};
-			instanceTransform1.SetScale(glm::vec3(0.05f));
-			auto& instanceEntity2 = instanceTag.m_instances.emplace_back(m_scene->m_Registry.create());
-			RenderSys::TransformComponent& instanceTransform2{m_scene->m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity2)};
-			instanceTransform2.SetScale(glm::vec3(0.05f));
-			instanceTransform2.SetTranslation(glm::vec3(0.0f, 0.0f, -20.0f));
+
+			AddInstance("instance1", instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 0.0f));
+			AddInstance("instance2", instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 15.0f));
+			AddInstance("instance3", instanceTag, meshComponent, glm::vec3(10.0f, 0.0f, 7.5f));
+
 			instanceTag.ResetInstanceBuffer(m_scene->m_Registry);
 
 			meshComponent.m_Mesh->subMeshes[0].m_Resource = std::make_shared<RenderSys::Resource>();
 			meshComponent.m_Mesh->subMeshes[0].m_Resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.m_instanceBuffer);
 			meshComponent.m_Mesh->subMeshes[0].m_Resource->Init();
 		}
+	}
+
+	void AddInstance(const std::string& name, RenderSys::InstanceTagComponent& instanceTagComp, RenderSys::MeshComponent& meshComp, const glm::vec3& translation)
+	{
+		auto& instanceEntity = instanceTagComp.m_instances.emplace_back(m_scene->CreateEntity(name));
+		RenderSys::TransformComponent& instanceTransform{m_scene->m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity)};
+		instanceTransform.SetScale(glm::vec3(0.05f));
+		instanceTransform.SetTranslation(translation);
+		m_scene->m_Registry.emplace<RenderSys::MeshComponent>(instanceEntity, "", meshComp.m_Mesh);
 	}
 
 	virtual void OnDetach() override
@@ -236,15 +243,17 @@ public:
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
-			auto view = m_scene->m_Registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+			auto view = m_scene->m_Registry.view<RenderSys::MeshComponent, 
+												RenderSys::TransformComponent, 
+												RenderSys::InstanceTagComponent>();
 			for (auto entity : view)
 			{
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
-				auto& transformComponent = view.get<RenderSys::TransformComponent>(entity);
+				auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
 
 				auto mesh = meshComponent.m_Mesh;
 				mesh->vertexBufferID = 1;
-				mesh->subMeshes[0].m_InstanceCount = 2;
+				mesh->subMeshes[0].m_InstanceCount = instanceTagComponent.m_instances.size();
 				m_renderer->RenderMesh(*mesh);
 			}
 
