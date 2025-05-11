@@ -13,6 +13,8 @@
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Components/TagAndIDComponents.h>
+#include <RenderSys/Scene/Scene.h>
+#include <RenderSys/Scene/SceneHierarchyPanel.h>
 #include <imgui.h>
 
 struct alignas(16) MyUniforms {
@@ -143,7 +145,7 @@ public:
 		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-		auto view = m_entityRegistry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+		auto view = m_scene->m_Registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
 		for (auto entity : view)
 		{
 			auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
@@ -154,15 +156,15 @@ public:
 			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 
-			RenderSys::InstanceTagComponent& instanceTag{m_entityRegistry.emplace<RenderSys::InstanceTagComponent>(entity)};
-			auto& instanceEntity1 = instanceTag.m_instances.emplace_back(m_entityRegistry.create());
-			RenderSys::TransformComponent& instanceTransform1{m_entityRegistry.emplace<RenderSys::TransformComponent>(instanceEntity1)};
+			RenderSys::InstanceTagComponent& instanceTag{m_scene->m_Registry.emplace<RenderSys::InstanceTagComponent>(entity)};
+			auto& instanceEntity1 = instanceTag.m_instances.emplace_back(m_scene->m_Registry.create());
+			RenderSys::TransformComponent& instanceTransform1{m_scene->m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity1)};
 			instanceTransform1.SetScale(glm::vec3(0.05f));
-			auto& instanceEntity2 = instanceTag.m_instances.emplace_back(m_entityRegistry.create());
-			RenderSys::TransformComponent& instanceTransform2{m_entityRegistry.emplace<RenderSys::TransformComponent>(instanceEntity2)};
+			auto& instanceEntity2 = instanceTag.m_instances.emplace_back(m_scene->m_Registry.create());
+			RenderSys::TransformComponent& instanceTransform2{m_scene->m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity2)};
 			instanceTransform2.SetScale(glm::vec3(0.05f));
 			instanceTransform2.SetTranslation(glm::vec3(0.0f, 0.0f, -20.0f));
-			instanceTag.ResetInstanceBuffer(m_entityRegistry);
+			instanceTag.ResetInstanceBuffer(m_scene->m_Registry);
 
 			meshComponent.m_Mesh->subMeshes[0].m_Resource = std::make_shared<RenderSys::Resource>();
 			meshComponent.m_Mesh->subMeshes[0].m_Resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.m_instanceBuffer);
@@ -174,13 +176,8 @@ public:
 	{
 		m_model.reset();
 		m_texture.reset();
-
-		auto allEntities = m_entityRegistry.view<entt::entity>(); // Create a view of all entities
-		std::cout << "Destroying all entities." << std::endl;
-		for (auto entity : allEntities) {
-			//std::cout << "Destroying Entity [ID: " << int(entity) << "]" << std::endl;
-			m_entityRegistry.destroy(entity);
-		}
+		m_sceneHierarchyPanel.reset();
+		m_scene.reset();
 
 		m_renderer->Destroy();
 	}
@@ -239,7 +236,7 @@ public:
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
-			auto view = m_entityRegistry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+			auto view = m_scene->m_Registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
 			for (auto entity : view)
 			{
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
@@ -283,13 +280,14 @@ public:
 		ImGui::End();
         ImGui::PopStyleVar();
 
-		ImGui::ShowDemoWindow();
+		m_sceneHierarchyPanel->OnImGuiRender();
 	}
 
 private:
 	bool loadScene()
 	{
-		m_model = std::make_unique<RenderSys::Model>(m_entityRegistry);
+		m_scene = std::make_shared<RenderSys::Scene>();
+		m_model = std::make_unique<RenderSys::Model>(m_scene->m_Registry);
 		if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
@@ -297,6 +295,7 @@ private:
 		}
 
 		m_model->printNodeGraph();
+		m_sceneHierarchyPanel = std::make_unique<RenderSys::SceneHierarchyPanel>(m_scene);
 		return true;
 	}
 
@@ -311,8 +310,9 @@ private:
 	std::shared_ptr<RenderSys::Texture> m_texture;
 	int m_instanceCount = 1;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
-	entt::registry m_entityRegistry;
+	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::unique_ptr<RenderSys::Model> m_model;
+	std::unique_ptr<RenderSys::SceneHierarchyPanel> m_sceneHierarchyPanel;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
