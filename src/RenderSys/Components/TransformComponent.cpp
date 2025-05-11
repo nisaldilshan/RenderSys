@@ -1,6 +1,8 @@
 #include "TransformComponent.h"
-#include <glm/gtx/matrix_decompose.hpp>
+
 #include <iostream>
+#include <glm/gtx/matrix_decompose.hpp>
+#include <RenderSys/InstanceBuffer.h>
 
 namespace RenderSys
 {
@@ -28,14 +30,10 @@ void TransformComponent::SetMat4Local(const glm::mat4 &mat4)
 
 void TransformComponent::SetMat4Global(const glm::mat4 &parent)
 {
+    m_Mat4Global = parent * GetMat4Local();
     if (m_InstanceBuffer)
     {
-        // auto mat4Global = parent * GetMat4Local();
-        // m_InstanceBuffer->SetInstanceData(m_InstanceIndex, mat4Global);
-    }
-    else
-    {
-        m_Mat4Global = parent * GetMat4Local();
+        m_InstanceBuffer->SetInstanceData(m_InstanceIndex, m_Mat4Global);
     }
     m_Parent = parent;
 }

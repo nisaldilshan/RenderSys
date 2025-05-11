@@ -2,10 +2,11 @@
 
 #include <string>
 #include <memory>
-#include <RenderSys/Buffer.h>
+#include <glm/ext.hpp>
 
 namespace RenderSys
 {
+    class InstanceBuffer;
     class TransformComponent
     {
     public:
@@ -33,7 +34,7 @@ namespace RenderSys
         const glm::mat4 &GetMat4Global();
         void SetDirtyFlag();
         bool GetDirtyFlag() const;
-        void SetInstance(std::shared_ptr<RenderSys::Buffer> &instanceBuffer, uint32_t instanceIndex);
+        void SetInstance(std::shared_ptr<RenderSys::InstanceBuffer> &instanceBuffer, uint32_t instanceIndex);
 
     private:
         void RecalculateMatrices();
@@ -51,7 +52,7 @@ namespace RenderSys
         glm::mat4 m_Mat4Global = glm::mat4(1.0f);
         glm::mat4 m_Parent = glm::mat4(1.0f);
 
-        std::shared_ptr<RenderSys::Buffer> m_InstanceBuffer;
+        std::shared_ptr<RenderSys::InstanceBuffer> m_InstanceBuffer;
         uint32_t m_InstanceIndex;
     };
 

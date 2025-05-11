@@ -6,8 +6,6 @@
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-#include "Material.h"
-
 namespace RenderSys
 {
 

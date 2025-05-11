@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 #include <RenderSys/Buffer.h>
+#include <RenderSys/Material.h>
 
 namespace RenderSys
 {
