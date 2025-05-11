@@ -147,30 +147,25 @@ public:
 		for (auto entity : view)
 		{
 			auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
-			auto& transformComponent = view.get<RenderSys::TransformComponent>(entity);
-
 			auto vertexBuffer = meshComponent.m_Mesh->m_meshData->getVertexBufferForRenderer();
-			m_model->applyVertexSkinning(vertexBuffer);
 			assert(vertexBuffer.size() > 0);
+			m_model->applyVertexSkinning(vertexBuffer);
 			const auto vertexBufID = m_renderer->SetVertexBufferData(vertexBuffer, vertexBufferLayout);
 			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 
-			glm::mat4x4 M1(1.0);
-			M1 = glm::rotate(M1, 0.0f, glm::vec3(0.0, 0.0, 1.0));
-			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
-			M1 = glm::scale(M1, glm::vec3(0.05f));
-			static std::vector<glm::mat4x4> instances;
-			instances.push_back(M1);
-			instances.push_back(M1);
-			instances[1] = glm::translate(instances[1], glm::vec3(0.0f, 0.0f, -200.0f));
 			RenderSys::InstanceTagComponent& instanceTag{m_entityRegistry.emplace<RenderSys::InstanceTagComponent>(entity)};
-			instanceTag.m_InstanceBuffer = std::make_shared<RenderSys::Buffer>(sizeof(glm::mat4x4) * 2, RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
-			instanceTag.m_InstanceBuffer->MapBuffer();
-			instanceTag.m_InstanceBuffer->WriteToBuffer(instances.data());
+			auto& instanceEntity1 = instanceTag.m_instances.emplace_back(m_entityRegistry.create());
+			RenderSys::TransformComponent& instanceTransform1{m_entityRegistry.emplace<RenderSys::TransformComponent>(instanceEntity1)};
+			instanceTransform1.SetScale(glm::vec3(0.05f));
+			auto& instanceEntity2 = instanceTag.m_instances.emplace_back(m_entityRegistry.create());
+			RenderSys::TransformComponent& instanceTransform2{m_entityRegistry.emplace<RenderSys::TransformComponent>(instanceEntity2)};
+			instanceTransform2.SetScale(glm::vec3(0.05f));
+			instanceTransform2.SetTranslation(glm::vec3(0.0f, 0.0f, -20.0f));
+			instanceTag.ResetInstanceBuffer(m_entityRegistry);
 
 			meshComponent.m_Mesh->subMeshes[0].m_Resource = std::make_shared<RenderSys::Resource>();
-			meshComponent.m_Mesh->subMeshes[0].m_Resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.m_InstanceBuffer);
+			meshComponent.m_Mesh->subMeshes[0].m_Resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.m_instanceBuffer);
 			meshComponent.m_Mesh->subMeshes[0].m_Resource->Init();
 		}
 	}
