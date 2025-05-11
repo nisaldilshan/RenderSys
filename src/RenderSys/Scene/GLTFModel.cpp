@@ -8,14 +8,15 @@
 
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
+#include <RenderSys/Scene/Scene.h>
 #include "Skeleton.h"
 #include "Animation.h"
 
 namespace RenderSys
 {
 
-GLTFModel::GLTFModel(entt::registry& registry)
-    : m_registryRef(registry)
+GLTFModel::GLTFModel(Scene& scene)
+    : m_sceneRef(scene)
     , m_gltfModel(std::make_unique<tinygltf::Model>())
 {
 }
@@ -203,7 +204,7 @@ RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive
 
 void GLTFModel::loadMesh(const tinygltf::Mesh& gltfMesh, entt::entity& nodeEntity, uint32_t& indexCount)
 {
-    MeshComponent& meshComponent{m_registryRef.emplace<MeshComponent>(nodeEntity, "", std::make_shared<Mesh>(std::make_shared<MeshData>()))};
+    MeshComponent& meshComponent{m_sceneRef.m_Registry.emplace<MeshComponent>(nodeEntity, "", std::make_shared<Mesh>(std::make_shared<MeshData>()))};
     for (const auto &gltfPrimitive : gltfMesh.primitives)
     {
         meshComponent.m_Mesh->subMeshes.push_back(loadPrimitive(gltfPrimitive, meshComponent.m_Mesh->m_meshData, indexCount));
@@ -577,7 +578,7 @@ RenderSys::TextureSampler::FilterMode getFilterMode(int32_t filterMode)
 
 void GLTFModel::loadTransform(entt::entity& nodeEntity, const tinygltf::Node &gltfNode, const uint32_t parent)
 {
-    TransformComponent& transform{m_registryRef.emplace<TransformComponent>(nodeEntity)};
+    TransformComponent& transform{m_sceneRef.m_Registry.emplace<TransformComponent>(nodeEntity)};
     if (gltfNode.matrix.size() == 16)
     {
         transform.SetMat4Local(glm::make_mat4x4(gltfNode.matrix.data()));
@@ -604,14 +605,14 @@ void GLTFModel::loadTransform(entt::entity& nodeEntity, const tinygltf::Node &gl
     }
 
     auto parentEntity = m_sceneGraph.GetNode(parent).GetGameObject();
-    if (!m_registryRef.all_of<TransformComponent>(parentEntity))
+    if (!m_sceneRef.m_Registry.all_of<TransformComponent>(parentEntity))
     {
         auto parentNodeMatrix = glm::mat4(1.0f);
         transform.SetMat4Global(parentNodeMatrix);
     }
     else
     {
-        auto& parentTransform = m_registryRef.get<RenderSys::TransformComponent>(parentEntity);
+        auto& parentTransform = m_sceneRef.m_Registry.get<RenderSys::TransformComponent>(parentEntity);
         transform.SetMat4Global(parentTransform.GetMat4Global());
     }
 }
@@ -683,7 +684,7 @@ void GLTFModel::getNodeGraphs()
     const int rootNodeCount = m_gltfModel->scenes.at(0).nodes.size(); // we are considering only one scene
     assert(rootNodeCount > 0);
     uint32_t indexCount = 0;
-    m_modelRootNodeIndex = m_sceneGraph.CreateRootNode(m_registryRef.create(), "RootNode");
+    m_modelRootNodeIndex = m_sceneGraph.CreateRootNode(m_sceneRef.m_Registry.create(), "RootNode");
     for (const auto &rootNodeNum : m_gltfModel->scenes.at(0).nodes)
     {
         traverse(m_modelRootNodeIndex, rootNodeNum, indexCount);
@@ -699,7 +700,7 @@ void GLTFModel::printNodeGraph() const
 void GLTFModel::traverse(const uint32_t parent, uint32_t nodeIndex, uint32_t& indexCount)
 {
     const tinygltf::Node &node = m_gltfModel->nodes.at(nodeIndex);
-    auto nodeEntity = m_registryRef.create();
+    auto nodeEntity = m_sceneRef.m_Registry.create();
     auto sceneNode = m_sceneGraph.CreateNode(parent, nodeEntity, node.name + std::to_string(nodeIndex) + "_Node"); 
 
     if (node.mesh > -1)

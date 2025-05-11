@@ -5,8 +5,8 @@
 namespace RenderSys
 {
 
-Model::Model(entt::registry& registry)
-    : m_model(new GLTFModel(registry))
+Model::Model(Scene& scene)
+    : m_model(new GLTFModel(scene))
 {}
 
 Model::~Model()

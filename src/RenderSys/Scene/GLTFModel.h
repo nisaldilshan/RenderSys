@@ -21,10 +21,11 @@ class Primitive;
 namespace RenderSys
 {
 class MeshData;
+class Scene;
 class GLTFModel
 {
 public:
-    GLTFModel(entt::registry& registry);
+    GLTFModel(Scene& scene);
     ~GLTFModel();
     GLTFModel(const GLTFModel&) = delete;
     GLTFModel &operator=(const GLTFModel&) = delete;
@@ -70,7 +71,7 @@ private:
         return accessor.componentType;
     }
 
-    entt::registry& m_registryRef;
+    Scene& m_sceneRef;
     std::unique_ptr<tinygltf::Model> m_gltfModel;
     std::filesystem::path m_sceneFilePath;
 

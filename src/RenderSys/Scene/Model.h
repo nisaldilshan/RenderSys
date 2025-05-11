@@ -1,17 +1,16 @@
 #pragma once
 #include <filesystem>
-#include <entt/entt.hpp>
 #include <RenderSys/Buffer.h>
 
 namespace RenderSys
 {
-    
+class Scene;
 class GLTFModel;
 class Model
 {
 public:
     Model() = delete;
-    Model(entt::registry& registry);
+    Model(Scene& scene);
     ~Model();
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;

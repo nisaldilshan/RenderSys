@@ -12,6 +12,8 @@
 #include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
+#include <RenderSys/Components/TagAndIDComponents.h>
+#include <RenderSys/Scene/Scene.h>
 #include <imgui.h>
 
 struct alignas(16) MyUniforms {
@@ -137,7 +139,7 @@ public:
 		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-		auto view = m_entityRegistry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+		auto view = m_scene->m_Registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
 		for (auto entity : view)
 		{
 			auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
@@ -157,15 +159,9 @@ public:
 	{
 		m_womanTexture.reset();
 		m_models.clear();
+		m_scene.reset();
 		m_instanceBuffers.clear();
 		m_resources.clear();
-		
-		auto allEntities = m_entityRegistry.view<entt::entity>(); // Create a view of all entities
-		std::cout << "Destroying all entities." << std::endl;
-		for (auto entity : allEntities) {
-			//std::cout << "Destroying Entity [ID: " << int(entity) << "]" << std::endl;
-			m_entityRegistry.destroy(entity);
-		}
 
 		m_renderer->Destroy();
 	}
@@ -257,7 +253,7 @@ public:
 				m_resources[1]->Init();
 			}
 
-			auto view = m_entityRegistry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
+			auto view = m_scene->m_Registry.view<RenderSys::MeshComponent, RenderSys::TransformComponent>();
 			int counter = 1;
 			for (auto entity : view)
 			{
@@ -315,15 +311,16 @@ public:
 private:
 	bool loadScene()
 	{
+		m_scene = std::make_shared<RenderSys::Scene>();
 		m_models.reserve(2);
-		auto& model1 = m_models.emplace_back(m_entityRegistry);
+		auto& model1 = m_models.emplace_back(*m_scene);
 		if (!model1.load(RESOURCE_DIR "/Models/Sponza/glTF/Sponza.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
 		}
 
-		auto& model2 = m_models.emplace_back(m_entityRegistry);
+		auto& model2 = m_models.emplace_back(*m_scene);
 		if (!model2.load(RESOURCE_DIR "/Models/Woman.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
@@ -348,7 +345,7 @@ private:
 	LightingUniforms m_lightingUniformData;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 	std::shared_ptr<RenderSys::Texture> m_womanTexture;
-	entt::registry m_entityRegistry;
+	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;
 	std::vector<std::shared_ptr<RenderSys::Buffer>> m_instanceBuffers{2};
 	std::vector<std::shared_ptr<RenderSys::Resource>> m_resources{2};
