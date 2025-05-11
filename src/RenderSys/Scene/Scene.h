@@ -16,7 +16,6 @@ public:
 	entt::entity CreateEntityWithUUID(UUID uuid, const std::string& name = std::string());
 	void DestroyEntity(entt::entity entity);
 
-private:
 	entt::registry m_Registry;
 };
 

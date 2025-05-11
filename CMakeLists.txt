@@ -25,6 +25,7 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Scene/Model.cpp
                 src/RenderSys/Scene/Scene.cpp
                 src/RenderSys/Scene/SceneGraph.cpp
+                src/RenderSys/Scene/SceneHierarchyPanel.cpp
                 src/RenderSys/Scene/Skeleton.cpp
                 src/RenderSys/Scene/Animation.cpp
                 src/RenderSys/Scene/UUID.cpp
