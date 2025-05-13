@@ -3,6 +3,13 @@
 
 namespace RenderSys
 {
+
+constexpr size_t MAX_INSTANCES = 32;
+struct InstanceData
+{
+    glm::mat4 m_ModelMatrix;
+    //glm::mat4 m_NormalMatrix;
+};
     
 class InstanceBuffer
 {
@@ -20,6 +27,8 @@ public:
     
 private:
     std::shared_ptr<Buffer> m_buffer;
+    bool m_Dirty;
+    std::vector<InstanceData> m_DataInstances;
 };
 
 } // namespace RenderSys

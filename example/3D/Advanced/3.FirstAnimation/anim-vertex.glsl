@@ -1,6 +1,6 @@
 #version 460
 
-#include "shaderresource.glsl"
+#include "ShaderResource.h"
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 projectionMatrix;
