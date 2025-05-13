@@ -1,10 +1,8 @@
 #pragma once
 #include <RenderSys/Buffer.h>
-
 namespace RenderSys
 {
 
-constexpr size_t MAX_INSTANCES = 32;
 struct InstanceData
 {
     glm::mat4 m_ModelMatrix;
@@ -22,7 +20,8 @@ public:
     InstanceBuffer(InstanceBuffer &&) = delete;
     InstanceBuffer &operator=(InstanceBuffer &&) = delete;
 
-    void SetInstanceData(uint32_t index, glm::mat4 const& mat4Global);
+    void SetInstanceData(uint32_t index, glm::mat4 const& modelMatrix);
+    void Update();
     std::shared_ptr<Buffer> GetBuffer() const { return m_buffer; }
     
 private:
