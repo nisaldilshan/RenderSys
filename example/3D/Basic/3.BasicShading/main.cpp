@@ -301,8 +301,9 @@ public:
         ImGui::Begin("Viewport");
 		m_viewportWidth = ImGui::GetContentRegionAvail().x;
         m_viewportHeight = ImGui::GetContentRegionAvail().y;
-        if (m_renderer)
-            ImGui::Image(m_renderer->GetDescriptorSet(), {(float)m_renderer->GetWidth(),(float)m_renderer->GetWidth()});
+        const float imageWidth = m_renderer->GetWidth();
+		const float imageHeight = m_renderer->GetHeight();
+        ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
         ImGui::PopStyleVar();
 
