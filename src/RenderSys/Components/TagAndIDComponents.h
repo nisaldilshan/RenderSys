@@ -1,8 +1,9 @@
 #pragma once
 
 #include <string>
+#include <entt/entt.hpp>
 #include <RenderSys/Scene/UUID.h>
-#include <RenderSys/Buffer.h>
+#include <RenderSys/InstanceBuffer.h>
 #include <RenderSys/Components/TransformComponent.h>
 
 namespace RenderSys
@@ -34,26 +35,18 @@ public:
 class InstanceTagComponent
 {
 public:
-    InstanceTagComponent() = default;
+    InstanceTagComponent()
+        : m_instances() 
+        , m_instanceBuffer(std::make_shared<InstanceBuffer>())
+    {}
 
-    void ResetInstanceBuffer(entt::registry& registry)
-    {
-        m_instanceBuffer = std::make_shared<Buffer>(sizeof(glm::mat4x4) * m_instances.size(), RenderSys::BufferUsage::STORAGE_BUFFER_VISIBLE_TO_CPU);
-        m_instanceBuffer->MapBuffer();
+    void AddInstance(entt::entity instanceEntity);
+    uint32_t GetInstanceCount() const;
+    std::shared_ptr<InstanceBuffer> GetInstanceBuffer() const;
 
-        std::vector<glm::mat4x4> instanceData;
-        for (const auto & instanceEntity : m_instances)
-        {
-            assert(registry.all_of<TransformComponent>(instanceEntity));
-            auto& transform = registry.get<TransformComponent>(instanceEntity);
-            instanceData.push_back(transform.GetMat4Local());
-        }
-        
-        m_instanceBuffer->WriteToBuffer(instanceData.data());
-    }
-
+private:
     std::vector<entt::entity> m_instances;
-    std::shared_ptr<Buffer> m_instanceBuffer;
+    std::shared_ptr<InstanceBuffer> m_instanceBuffer;
 };
    
 } // namespace RenderSys

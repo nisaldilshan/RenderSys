@@ -31,7 +31,8 @@ namespace RenderSys
         void SetMat4Global();
 
         const glm::mat4 &GetMat4Local();
-        const glm::mat4 &GetMat4Global();
+        const glm::mat4 &GetMat4Global() const;
+        const glm::mat4 &GetParent() const;
         void SetDirtyFlag();
         bool GetDirtyFlag() const;
         void SetInstance(std::shared_ptr<RenderSys::InstanceBuffer> &instanceBuffer, uint32_t instanceIndex);

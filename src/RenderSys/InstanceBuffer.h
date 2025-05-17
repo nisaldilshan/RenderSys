@@ -22,6 +22,7 @@ public:
 
     void SetInstanceData(uint32_t index, glm::mat4 const& modelMatrix);
     void Update();
+    const glm::mat4& GetModelMatrix(uint32_t index) const;
     std::shared_ptr<Buffer> GetBuffer() const { return m_buffer; }
     
 private:

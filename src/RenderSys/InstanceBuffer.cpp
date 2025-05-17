@@ -40,4 +40,9 @@ void InstanceBuffer::Update()
     }
 }
 
+const glm::mat4& InstanceBuffer::GetModelMatrix(uint32_t index) const
+{
+    return m_DataInstances[index].m_ModelMatrix;
+}
+
 }

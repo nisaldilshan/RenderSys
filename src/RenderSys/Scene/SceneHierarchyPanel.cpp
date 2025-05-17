@@ -322,6 +322,8 @@ namespace RenderSys
                 auto scale = component.GetScale();
 			    DrawVec3Control("Scale", scale, 1.0f, 100.0f);
                 component.SetScale(scale);
+                
+                component.SetMat4Global();
 		    });
 
 		// DrawComponent<CameraComponent>(

@@ -162,21 +162,26 @@ public:
 			AddInstance("instance2", instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 15.0f));
 			AddInstance("instance3", instanceTag, meshComponent, glm::vec3(10.0f, 0.0f, 7.5f));
 
-			instanceTag.ResetInstanceBuffer(m_scene->m_Registry);
-
 			meshComponent.m_Mesh->subMeshes[0].m_Resource = std::make_shared<RenderSys::Resource>();
-			meshComponent.m_Mesh->subMeshes[0].m_Resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.m_instanceBuffer);
+			meshComponent.m_Mesh->subMeshes[0].m_Resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
 			meshComponent.m_Mesh->subMeshes[0].m_Resource->Init();
 		}
 	}
 
 	void AddInstance(const std::string& name, RenderSys::InstanceTagComponent& instanceTagComp, RenderSys::MeshComponent& meshComp, const glm::vec3& translation)
 	{
-		auto& instanceEntity = instanceTagComp.m_instances.emplace_back(m_scene->CreateEntity(name));
+		auto instanceEntity = m_scene->CreateEntity(name);
 		RenderSys::TransformComponent& instanceTransform{m_scene->m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity)};
+		static uint32_t instanceIndex = 0;
+		assert(instanceTagComp.GetInstanceBuffer() != nullptr);
+		instanceTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), instanceIndex);
 		instanceTransform.SetScale(glm::vec3(0.05f));
 		instanceTransform.SetTranslation(translation);
+		instanceTransform.SetMat4Global();
+		instanceTagComp.AddInstance(instanceEntity);
+		instanceIndex++;
 		m_scene->m_Registry.emplace<RenderSys::MeshComponent>(instanceEntity, "", meshComp.m_Mesh);
+		instanceTagComp.GetInstanceBuffer()->Update();
 	}
 
 	virtual void OnDetach() override
@@ -250,10 +255,10 @@ public:
 			{
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
 				auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
-
+				instanceTagComponent.GetInstanceBuffer()->Update();
 				auto mesh = meshComponent.m_Mesh;
 				mesh->vertexBufferID = 1;
-				mesh->subMeshes[0].m_InstanceCount = instanceTagComponent.m_instances.size();
+				mesh->subMeshes[0].m_InstanceCount = instanceTagComponent.GetInstanceCount();
 				m_renderer->RenderMesh(*mesh);
 			}
 

@@ -31,7 +31,8 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Scene/Animation.cpp
                 src/RenderSys/Scene/UUID.cpp
                 src/RenderSys/Components/TransformComponent.cpp
-                src/RenderSys/Components/MeshComponent.cpp)
+                src/RenderSys/Components/MeshComponent.cpp
+                src/RenderSys/Components/TagAndIDComponents.cpp)
 
 add_library (ComputeSys STATIC
                 src/RenderSys/Compute.cpp
