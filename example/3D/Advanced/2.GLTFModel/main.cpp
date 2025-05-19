@@ -103,11 +103,11 @@ public:
 			assert(false);
 		}
 
-		m_texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
-		m_texture->SetDefaultSampler();
+		auto womanTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
+		womanTexture->SetDefaultSampler();
 		const auto& materials = m_model->getMaterials();
 		assert(materials.size() == 1);
-		materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, m_texture);
+		materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, womanTexture);
 		materials[0]->Init();
 
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(60.0f, 0.01f, 100.0f);
@@ -153,6 +153,7 @@ public:
 			assert(vertexBuffer.size() > 0);
 			m_model->applyVertexSkinning(vertexBuffer);
 			const auto vertexBufID = m_renderer->SetVertexBufferData(vertexBuffer, vertexBufferLayout);
+			meshComponent.m_Mesh->vertexBufferID = vertexBufID;
 			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 
@@ -187,7 +188,6 @@ public:
 	virtual void OnDetach() override
 	{
 		m_model.reset();
-		m_texture.reset();
 		m_sceneHierarchyPanel.reset();
 		m_scene.reset();
 
@@ -257,7 +257,6 @@ public:
 				auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
 				instanceTagComponent.GetInstanceBuffer()->Update();
 				auto mesh = meshComponent.m_Mesh;
-				mesh->vertexBufferID = 1;
 				mesh->subMeshes[0].m_InstanceCount = instanceTagComponent.GetInstanceCount();
 				m_renderer->RenderMesh(*mesh);
 			}
@@ -322,7 +321,6 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
-	std::shared_ptr<RenderSys::Texture> m_texture;
 	int m_instanceCount = 1;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
 	std::shared_ptr<RenderSys::Scene> m_scene;
