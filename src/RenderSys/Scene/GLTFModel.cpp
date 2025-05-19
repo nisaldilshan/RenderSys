@@ -204,7 +204,8 @@ RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive
 
 void GLTFModel::loadMesh(const tinygltf::Mesh& gltfMesh, entt::entity& nodeEntity, uint32_t& indexCount)
 {
-    MeshComponent& meshComponent{m_sceneRef.m_Registry.emplace<MeshComponent>(nodeEntity, "", std::make_shared<Mesh>(std::make_shared<MeshData>()))};
+    const std::string meshName = gltfMesh.name.empty() ? "Mesh" : gltfMesh.name;
+    MeshComponent& meshComponent{m_sceneRef.m_Registry.emplace<MeshComponent>(nodeEntity, meshName, std::make_shared<Mesh>(std::make_shared<MeshData>()))};
     for (const auto &gltfPrimitive : gltfMesh.primitives)
     {
         meshComponent.m_Mesh->subMeshes.push_back(loadPrimitive(gltfPrimitive, meshComponent.m_Mesh->m_meshData, indexCount));

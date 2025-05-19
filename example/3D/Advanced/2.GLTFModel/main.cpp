@@ -159,9 +159,9 @@ public:
 
 			RenderSys::InstanceTagComponent& instanceTag{m_scene->m_Registry.emplace<RenderSys::InstanceTagComponent>(entity)};
 
-			AddInstance("instance1", instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 0.0f));
-			AddInstance("instance2", instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 15.0f));
-			AddInstance("instance3", instanceTag, meshComponent, glm::vec3(10.0f, 0.0f, 7.5f));
+			AddInstance(0, instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 0.0f));
+			AddInstance(1, instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 15.0f));
+			AddInstance(2, instanceTag, meshComponent, glm::vec3(10.0f, 0.0f, 7.5f));
 
 			meshComponent.m_Mesh->subMeshes[0].m_Resource = std::make_shared<RenderSys::Resource>();
 			meshComponent.m_Mesh->subMeshes[0].m_Resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
@@ -169,18 +169,16 @@ public:
 		}
 	}
 
-	void AddInstance(const std::string& name, RenderSys::InstanceTagComponent& instanceTagComp, RenderSys::MeshComponent& meshComp, const glm::vec3& translation)
+	void AddInstance(const uint32_t instanceIndex, RenderSys::InstanceTagComponent& instanceTagComp, RenderSys::MeshComponent& meshComp, const glm::vec3& translation)
 	{
-		auto instanceEntity = m_scene->CreateEntity(name);
+		auto instanceEntity = m_scene->CreateEntity(meshComp.m_Name + "_instance" + std::to_string(instanceIndex + 1));
 		RenderSys::TransformComponent& instanceTransform{m_scene->m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity)};
-		static uint32_t instanceIndex = 0;
 		assert(instanceTagComp.GetInstanceBuffer() != nullptr);
 		instanceTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), instanceIndex);
 		instanceTransform.SetScale(glm::vec3(0.05f));
 		instanceTransform.SetTranslation(translation);
 		instanceTransform.SetMat4Global();
 		instanceTagComp.AddInstance(instanceEntity);
-		instanceIndex++;
 		m_scene->m_Registry.emplace<RenderSys::MeshComponent>(instanceEntity, "", meshComp.m_Mesh);
 		instanceTagComp.GetInstanceBuffer()->Update();
 	}
