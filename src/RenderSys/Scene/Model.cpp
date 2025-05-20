@@ -45,7 +45,7 @@ void Model::printNodeGraph() const
     std::cout << " -- Scene end --" << std::endl;
 }
 
-void Model::applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer)
+void Model::applyVertexSkinningOnCPU(RenderSys::VertexBuffer& vertexBuffer)
 {
     m_model->applyVertexSkinning(vertexBuffer);
 }

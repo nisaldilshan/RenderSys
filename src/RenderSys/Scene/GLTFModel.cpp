@@ -482,30 +482,24 @@ void GLTFModel::loadAnimations()
 
 void GLTFModel::applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer)
 {
-    if (m_jointVec.size() == 0)
+    if (m_jointVec.size() == 0 || m_weightVec.size() == 0)
     {
         return;
     }
-    if (m_weightVec.size() == 0)
-    {
-        return;
-    }
-    // if (m_jointMatrices.size() == 0)
-    // {
-    //     return;
-    // }
 
     for (int jointIndex = 0; jointIndex < m_jointVec.size(); ++jointIndex) 
     {
         auto jointMatrix = g_Skeleton->m_ShaderData.m_FinalJointsMatrices[m_jointVec[jointIndex].x];
-        //glm::ivec4 jointIndex = glm::make_vec4(m_jointVec.at(i));
         glm::vec4 weightIndex = glm::make_vec4(m_weightVec.at(jointIndex));
         glm::mat4 skinMat =
             weightIndex.x * jointMatrix +
             weightIndex.y * jointMatrix +
             weightIndex.z * jointMatrix +
             weightIndex.w * jointMatrix;
+        // Apply the skinning matrix to the vertex position
         vertexBuffer.vertices.at(jointIndex).position = jointMatrix * glm::vec4(vertexBuffer.vertices.at(jointIndex).position, 1.0f);
+        // Apply the skinning matrix to the vertex normal
+        vertexBuffer.vertices.at(jointIndex).normal = jointMatrix * glm::vec4(vertexBuffer.vertices.at(jointIndex).normal, 0.0f);
     }
 }
 

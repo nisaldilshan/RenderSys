@@ -151,7 +151,7 @@ public:
 			auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
 			auto vertexBuffer = meshComponent.m_Mesh->m_meshData->getVertexBufferForRenderer();
 			assert(vertexBuffer.size() > 0);
-			m_model->applyVertexSkinning(vertexBuffer);
+			m_model->applyVertexSkinningOnCPU(vertexBuffer);
 			const auto vertexBufID = m_renderer->SetVertexBufferData(vertexBuffer, vertexBufferLayout);
 			meshComponent.m_Mesh->vertexBufferID = vertexBufID;
 			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);

@@ -151,7 +151,7 @@ public:
 			auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
 			auto vertexBuffer = meshComponent.m_Mesh->m_meshData->getVertexBufferForRenderer();
 			if (vertexBuffer.size() == 5718) // woman model
-				m_models[1].applyVertexSkinning(vertexBuffer);
+				m_models[1].applyVertexSkinningOnCPU(vertexBuffer);
 			assert(vertexBuffer.size() > 0);
 			const auto vertexBufID = m_renderer->SetVertexBufferData(vertexBuffer, vertexBufferLayout);
 			meshComponent.m_Mesh->vertexBufferID = vertexBufID;
