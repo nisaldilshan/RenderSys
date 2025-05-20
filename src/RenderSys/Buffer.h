@@ -59,7 +59,7 @@ enum class BufferType
 
 enum class BufferUsage
 {
-    UNIFORM_BUFFER_VISIBLE_TO_CPU,
+    UNIFORM_BUFFER_VISIBLE_TO_CPU = 0,
     STORAGE_BUFFER_VISIBLE_TO_CPU,
     TRANSFER_SRC_VISIBLE_TO_GPU
 };
