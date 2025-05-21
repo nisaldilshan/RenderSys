@@ -67,7 +67,7 @@ enum class BufferUsage
 class Buffer
 {
 public:
-    Buffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage);
+    Buffer(size_t byteSize, RenderSys::BufferUsage bufferUsage);
     ~Buffer();
 
     Buffer(const Buffer &) = delete;

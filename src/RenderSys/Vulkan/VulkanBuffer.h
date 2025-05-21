@@ -9,7 +9,7 @@ namespace RenderSys
 class VulkanBuffer
 {
 public:
-    VulkanBuffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage);
+    VulkanBuffer(size_t byteSize, RenderSys::BufferUsage bufferUsage);
     ~VulkanBuffer();
 
     void MapBuffer();

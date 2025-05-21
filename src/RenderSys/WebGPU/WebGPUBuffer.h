@@ -7,7 +7,7 @@ namespace RenderSys
 class WebGPUBuffer
 {
 public:
-    WebGPUBuffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage);
+    WebGPUBuffer(size_t byteSize, RenderSys::BufferUsage bufferUsage);
     ~WebGPUBuffer();
 
     void MapBuffer();

@@ -13,7 +13,7 @@ static_assert(false);
 namespace RenderSys
 {
 
-Buffer::Buffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage)
+Buffer::Buffer(size_t byteSize, RenderSys::BufferUsage bufferUsage)
     : m_platformBuffer(std::make_shared<BufferType>(byteSize, bufferUsage))
 {
 
