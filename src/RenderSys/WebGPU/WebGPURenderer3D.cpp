@@ -106,7 +106,7 @@ void WebGPURenderer3D::CreatePipeline()
     assert(m_vertexIndexBufferInfoMap.size() == 1);
     for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
     {
-        if (vertexIndexBufferInfo.second.m_vertexCount > 0)
+        if (vertexIndexBufferInfo.second->m_vertexCount > 0)
         {
             pipelineDesc.vertex.bufferCount = 1;
             pipelineDesc.vertex.buffers = &m_vertexBufferLayout;
@@ -209,21 +209,23 @@ void WebGPURenderer3D::CreateFrameBuffer()
 uint32_t WebGPURenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
 {
     std::cout << "Creating vertex buffer..." << std::endl;
-    WebGPUVertexIndexBufferInfo vertexIndexBufferInfo;
+    auto vertexIndexBufferInfo = std::make_shared<WebGPUVertexIndexBufferInfo>();
     const auto vertexBufferSize = bufferData.vertices.size() * sizeof(RenderSys::Vertex);
-    vertexIndexBufferInfo.m_vertexCount = vertexBufferSize / bufferLayout.arrayStride;
+    vertexIndexBufferInfo->m_vertexCount = vertexBufferSize / bufferLayout.arrayStride;
     m_vertexBufferLayout = GetWebGPUVertexBufferLayout(bufferLayout);
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = vertexBufferSize;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
     bufferDesc.label = "Vertex Buffer";
-    vertexIndexBufferInfo.m_vertexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    vertexIndexBufferInfo->m_vertexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload vertex data to the buffer
-    WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo.m_vertexBuffer, 0, bufferData.vertices.data(), bufferDesc.size);
-    std::cout << "Vertex buffer: " << vertexIndexBufferInfo.m_vertexBuffer << std::endl;
-    return m_vertexIndexBufferInfoMap.insert({m_vertexIndexBufferInfoMap.size() + 1, vertexIndexBufferInfo}).first->first;
+    WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo->m_vertexBuffer, 0, bufferData.vertices.data(), bufferDesc.size);
+    std::cout << "Vertex buffer: " << vertexIndexBufferInfo->m_vertexBuffer << std::endl;
+    const uint32_t key = m_vertexIndexBufferInfoMap.size() + 1;
+    auto res2 = m_vertexIndexBufferInfoMap.insert({key, vertexIndexBufferInfo});
+    return res2.first->first;
 }
 
 void WebGPURenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vector<uint32_t> &bufferData)
@@ -237,18 +239,18 @@ void WebGPURenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vec
         assert(false);
         return;
     }
-    WebGPUVertexIndexBufferInfo& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
-    vertexIndexBufferInfo.m_indexCount = bufferData.size();
+    auto vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
+    vertexIndexBufferInfo->m_indexCount = bufferData.size();
 
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = bufferData.size() * sizeof(uint32_t);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
     bufferDesc.label = "Index Buffer";
-    vertexIndexBufferInfo.m_indexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    vertexIndexBufferInfo->m_indexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload index data to the buffer
-    WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo.m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
-    std::cout << "Index buffer: " << vertexIndexBufferInfo.m_indexBuffer << std::endl;
+    WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo->m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
+    std::cout << "Index buffer: " << vertexIndexBufferInfo->m_indexBuffer << std::endl;
 }
 
 
@@ -419,15 +421,15 @@ void WebGPURenderer3D::Render()
     assert(m_vertexIndexBufferInfoMap.size() > 0);
     for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
     {
-        m_renderPass.setVertexBuffer(0, vertexIndexBufferInfo.second.m_vertexBuffer, 0, vertexIndexBufferInfo.second.m_vertexCount * sizeof(RenderSys::Vertex));
-        if (vertexIndexBufferInfo.second.m_indexCount > 0)
+        m_renderPass.setVertexBuffer(0, vertexIndexBufferInfo.second->m_vertexBuffer, 0, vertexIndexBufferInfo.second->m_vertexCount * sizeof(RenderSys::Vertex));
+        if (vertexIndexBufferInfo.second->m_indexCount > 0)
         {
-            m_renderPass.setIndexBuffer(vertexIndexBufferInfo.second.m_indexBuffer, wgpu::IndexFormat::Uint16, 0, vertexIndexBufferInfo.second.m_indexCount * sizeof(uint16_t));
-            m_renderPass.drawIndexed(vertexIndexBufferInfo.second.m_indexCount, 1, 0, 0, 0);
+            m_renderPass.setIndexBuffer(vertexIndexBufferInfo.second->m_indexBuffer, wgpu::IndexFormat::Uint16, 0, vertexIndexBufferInfo.second->m_indexCount * sizeof(uint16_t));
+            m_renderPass.drawIndexed(vertexIndexBufferInfo.second->m_indexCount, 1, 0, 0, 0);
         }
         else
         {
-            m_renderPass.draw(vertexIndexBufferInfo.second.m_vertexCount, 1, 0, 0);
+            m_renderPass.draw(vertexIndexBufferInfo.second->m_vertexCount, 1, 0, 0);
         }
 
         break; // Only one vertex buffer is supported for now
@@ -442,9 +444,9 @@ void WebGPURenderer3D::RenderIndexed()
     assert(m_vertexIndexBufferInfoMap.size() > 0);
     for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
     {
-        m_renderPass.setVertexBuffer(0, vertexIndexBufferInfo.second.m_vertexBuffer, 0, vertexIndexBufferInfo.second.m_vertexCount * sizeof(RenderSys::Vertex));
-        m_renderPass.setIndexBuffer(vertexIndexBufferInfo.second.m_indexBuffer, wgpu::IndexFormat::Uint32, 0, vertexIndexBufferInfo.second.m_indexCount * sizeof(uint32_t));
-        m_renderPass.drawIndexed(vertexIndexBufferInfo.second.m_indexCount, 1, 0, 0, 0);
+        m_renderPass.setVertexBuffer(0, vertexIndexBufferInfo.second->m_vertexBuffer, 0, vertexIndexBufferInfo.second->m_vertexCount * sizeof(RenderSys::Vertex));
+        m_renderPass.setIndexBuffer(vertexIndexBufferInfo.second->m_indexBuffer, wgpu::IndexFormat::Uint32, 0, vertexIndexBufferInfo.second->m_indexCount * sizeof(uint32_t));
+        m_renderPass.drawIndexed(vertexIndexBufferInfo.second->m_indexCount, 1, 0, 0, 0);
 
         break; // Only one vertex buffer is supported for now
     }
@@ -524,13 +526,13 @@ void WebGPURenderer3D::Destroy()
 {
     for (auto &&vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
     {
-        assert(vertexIndexBufferInfo.second.m_vertexBuffer != nullptr);
-        vertexIndexBufferInfo.second.m_vertexBuffer.destroy();
-        vertexIndexBufferInfo.second.m_vertexBuffer.release();
-        if (vertexIndexBufferInfo.second.m_indexBuffer != nullptr)
+        assert(vertexIndexBufferInfo.second->m_vertexBuffer != nullptr);
+        vertexIndexBufferInfo.second->m_vertexBuffer.destroy();
+        vertexIndexBufferInfo.second->m_vertexBuffer.release();
+        if (vertexIndexBufferInfo.second->m_indexBuffer != nullptr)
         {
-            vertexIndexBufferInfo.second.m_indexBuffer.destroy();
-            vertexIndexBufferInfo.second.m_indexBuffer.release();
+            vertexIndexBufferInfo.second->m_indexBuffer.destroy();
+            vertexIndexBufferInfo.second->m_indexBuffer.release();
         }
     }
     

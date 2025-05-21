@@ -8,7 +8,7 @@
 #include "RenderUtil.h"
 #include "Shader.h"
 #include "Texture.h"
-#include "Scene/SceneNode.h"
+#include <RenderSys/Scene/Mesh.h>
 
 namespace GraphicsAPI
 {

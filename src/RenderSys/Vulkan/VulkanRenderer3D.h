@@ -12,12 +12,18 @@
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
 #include <RenderSys/Material.h>
-#include <RenderSys/Scene/SceneNode.h>
+#include <RenderSys/Scene/Mesh.h>
 
 namespace GraphicsAPI
 {
     struct VulkanVertexIndexBufferInfo
     {
+        VulkanVertexIndexBufferInfo() = default;
+        ~VulkanVertexIndexBufferInfo() = default;
+        VulkanVertexIndexBufferInfo(const VulkanVertexIndexBufferInfo&) = delete;
+        VulkanVertexIndexBufferInfo& operator=(const VulkanVertexIndexBufferInfo&) = delete;
+        VulkanVertexIndexBufferInfo(VulkanVertexIndexBufferInfo&&) = delete;
+        VulkanVertexIndexBufferInfo& operator=(VulkanVertexIndexBufferInfo&&) = delete;
         VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
         VmaAllocation m_vertexBufferMemory = VK_NULL_HANDLE;
         uint32_t m_vertexCount = 0;
@@ -101,7 +107,7 @@ namespace GraphicsAPI
         VkRenderPass m_renderpass = VK_NULL_HANDLE;
         VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 
-        std::unordered_map<uint32_t, VulkanVertexIndexBufferInfo> m_vertexIndexBufferInfoMap;
+        std::unordered_map<uint32_t, std::shared_ptr<VulkanVertexIndexBufferInfo>> m_vertexIndexBufferInfoMap;
 
         VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;

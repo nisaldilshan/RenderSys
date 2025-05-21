@@ -1,15 +1,15 @@
 #include "TransformComponent.h"
-#include <glm/gtx/matrix_decompose.hpp>
+
 #include <iostream>
+#include <glm/gtx/matrix_decompose.hpp>
+#include <RenderSys/InstanceBuffer.h>
 
 namespace RenderSys
 {
 
 TransformComponent::TransformComponent()
     : m_Scale(glm::vec3(1.0)), m_Rotation(glm::vec3(0.0)), m_Translation(glm::vec3(0.0)), m_Dirty(true)
-{
-    //std::cout << "  # TransformComponent Created: " << this << std::endl;
-}
+{}
 
 void TransformComponent::SetMat4Local(const glm::mat4 &mat4)
 {
@@ -30,14 +30,27 @@ void TransformComponent::SetMat4Global(const glm::mat4 &parent)
 {
     if (m_InstanceBuffer)
     {
-        // auto mat4Global = parent * GetMat4Local();
-        // m_InstanceBuffer->SetInstanceData(m_InstanceIndex, mat4Global);
+        const auto mat4Global = parent * GetMat4Local();
+        m_InstanceBuffer->SetInstanceData(m_InstanceIndex, mat4Global);
     }
     else
     {
         m_Mat4Global = parent * GetMat4Local();
     }
     m_Parent = parent;
+}
+
+void TransformComponent::SetMat4Global()
+{
+    if (m_InstanceBuffer)
+    {
+        auto mat4Global = GetMat4Local();
+        m_InstanceBuffer->SetInstanceData(m_InstanceIndex, mat4Global);
+    }
+    else
+    {
+        m_Mat4Global = GetMat4Local();
+    }
 }
 
 const glm::mat4 &TransformComponent::GetMat4Local()
@@ -49,16 +62,22 @@ const glm::mat4 &TransformComponent::GetMat4Local()
     return m_Mat4Local;
 }
 
-const glm::mat4 &TransformComponent::GetMat4Global()
+const glm::mat4 &TransformComponent::GetMat4Global() const
 {
-    // if (m_InstanceBuffer)
-    // {
-    //     return m_InstanceBuffer->GetModelMatrix(m_InstanceIndex);
-    // }
-    // else
+    if (m_InstanceBuffer)
+    {
+        return m_InstanceBuffer->GetModelMatrix(m_InstanceIndex);
+    }
+    else
     {
         return m_Mat4Global;
     }
+}
+
+void TransformComponent::SetInstance(std::shared_ptr<RenderSys::InstanceBuffer> &instanceBuffer, uint32_t instanceIndex)
+{
+    m_InstanceBuffer = instanceBuffer;
+    m_InstanceIndex = instanceIndex;
 }
 
 void TransformComponent::RecalculateMatrices()
@@ -96,5 +115,7 @@ void TransformComponent::SetTranslation(const glm::vec3 &translation)
     m_Translation = translation;
     m_Dirty = true;
 }
+
+const glm::mat4& TransformComponent::GetParent() const { return m_Parent; }
 
 } // namespace RenderSys

@@ -21,12 +21,18 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Texture.cpp
                 src/RenderSys/Material.cpp
                 src/RenderSys/Resource.cpp
-                src/RenderSys/Scene/GLTFScene.cpp
+                src/RenderSys/InstanceBuffer.cpp
+                src/RenderSys/Scene/GLTFModel.cpp
+                src/RenderSys/Scene/Model.cpp
                 src/RenderSys/Scene/Scene.cpp
-                src/RenderSys/Scene/SceneNode.cpp
+                src/RenderSys/Scene/SceneGraph.cpp
+                src/RenderSys/Scene/SceneHierarchyPanel.cpp
+                src/RenderSys/Scene/Skeleton.cpp
+                src/RenderSys/Scene/Animation.cpp
+                src/RenderSys/Scene/UUID.cpp
                 src/RenderSys/Components/TransformComponent.cpp
                 src/RenderSys/Components/MeshComponent.cpp
-                src/RenderSys/Components/EntityRegistry.cpp)
+                src/RenderSys/Components/TagAndIDComponents.cpp)
 
 add_library (ComputeSys STATIC
                 src/RenderSys/Compute.cpp
@@ -222,7 +228,16 @@ target_sources(RenderSys3D
                         src/RenderSys/Texture.h 
                         src/RenderSys/Camera.h
                         src/RenderSys/Material.h
-                        src/RenderSys/Resource.h)
+                        src/RenderSys/Resource.h
+                        src/RenderSys/Scene/Model.h
+                        src/RenderSys/Scene/Scene.h
+                        src/RenderSys/Scene/SceneHierarchyPanel.h
+                        src/RenderSys/Scene/Skeleton.h
+                        src/RenderSys/Scene/Animation.h
+                        src/RenderSys/Scene/UUID.h
+                        src/RenderSys/Components/TransformComponent.h
+                        src/RenderSys/Components/MeshComponent.h
+                        src/RenderSys/Components/TagAndIDComponents.h)
 target_sources(ComputeSys 
                 PUBLIC FILE_SET renderSysFileSet 
                 TYPE HEADERS 

@@ -10,12 +10,19 @@
 #include <RenderSys/Shader.h>
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
-#include <RenderSys/Scene/SceneNode.h>
+#include <RenderSys/Scene/Mesh.h>
 
 namespace GraphicsAPI
 {
     struct WebGPUVertexIndexBufferInfo
     {
+        WebGPUVertexIndexBufferInfo() = default;
+        ~WebGPUVertexIndexBufferInfo() = default;
+        WebGPUVertexIndexBufferInfo(const WebGPUVertexIndexBufferInfo&) = delete;
+        WebGPUVertexIndexBufferInfo& operator=(const WebGPUVertexIndexBufferInfo&) = delete;
+        WebGPUVertexIndexBufferInfo(WebGPUVertexIndexBufferInfo&&) = delete;
+        WebGPUVertexIndexBufferInfo& operator=(WebGPUVertexIndexBufferInfo&&) = delete;
+
         wgpu::Buffer m_vertexBuffer = nullptr;
         uint32_t m_vertexCount = 0;
         wgpu::Buffer m_indexBuffer = nullptr;
@@ -67,7 +74,7 @@ namespace GraphicsAPI
         wgpu::TextureView m_textureToRenderInto = nullptr;
 
         wgpu::VertexBufferLayout m_vertexBufferLayout;
-        std::unordered_map<uint32_t, WebGPUVertexIndexBufferInfo> m_vertexIndexBufferInfoMap;
+        std::unordered_map<uint32_t, std::shared_ptr<WebGPUVertexIndexBufferInfo>> m_vertexIndexBufferInfoMap;
 
         wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
         std::vector<wgpu::BindGroupLayoutEntry> m_mainBindGroupBindings;

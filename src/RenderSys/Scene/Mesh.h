@@ -1,10 +1,8 @@
 #pragma once
-#include <vector>
-#include <memory>
-#include <string>
 #include <glm/ext.hpp>
 #include <entt/entt.hpp>
 #include <RenderSys/Buffer.h>
+#include <RenderSys/Material.h>
 
 namespace RenderSys
 {
@@ -20,14 +18,14 @@ struct ModelVertex {
     glm::vec3 tangent;
 };
 
-struct ModelData 
+struct MeshData 
 {
-    ModelData() = default;
-    ~ModelData() = default;
-    ModelData(const ModelData&) = delete;
-    ModelData &operator=(const ModelData&) = delete;
-    ModelData(ModelData&&) = delete;
-    ModelData &operator=(ModelData&&) = delete;
+    MeshData() = default;
+    ~MeshData() = default;
+    MeshData(const MeshData&) = delete;
+    MeshData &operator=(const MeshData&) = delete;
+    MeshData(MeshData&&) = delete;
+    MeshData &operator=(MeshData&&) = delete;
 
     const RenderSys::VertexBuffer getVertexBufferForRenderer() const
     {
@@ -46,7 +44,7 @@ struct ModelData
     std::vector<ModelVertex> vertices;
     std::vector<uint32_t> indices;
 };
-
+    
 class Resource;
 struct SubMesh
 {
@@ -61,9 +59,9 @@ struct SubMesh
 
 struct Mesh
 {
-    Mesh(std::shared_ptr<ModelData> modelData)
+    Mesh(std::shared_ptr<MeshData> modelData)
         : vertexBufferID(0)
-        , m_modelData(modelData)
+        , m_meshData(modelData)
     {}
 
     ~Mesh() = default;
@@ -73,40 +71,8 @@ struct Mesh
     Mesh &operator=(Mesh&&) = delete;
 
     uint32_t vertexBufferID = 0;
-    std::shared_ptr<ModelData> m_modelData;
+    std::shared_ptr<MeshData> m_meshData;
     std::vector<SubMesh> subMeshes;
-};
-
-
-
-class ModelNode 
-{
-  public:
-    ModelNode() = delete; 
-    ModelNode(int nodeNum);
-    ~ModelNode() = default;
-
-	ModelNode(const ModelNode&) = delete;
-	ModelNode &operator=(const ModelNode&) = delete;
-	ModelNode(ModelNode&&) = delete;
-	ModelNode &operator=(ModelNode&&) = delete;
-
-    int getNodeNum();
-    void setNodeName(std::string name);
-    entt::entity& getEntity();
-
-    void calculateJointMatrices(const std::vector<glm::mat4>& inverseBindMatrices, const std::vector<int>& nodeToJoint, std::vector<glm::mat4>& jointMatrices);
-    glm::mat4 getNodeMatrix();
-    void printHierarchy(int indent);
-
-    std::vector<std::shared_ptr<ModelNode>> m_childNodes{};
-    std::shared_ptr<ModelData> m_data;
-
-  private:
-    int m_nodeNum = 0;
-    std::string m_nodeName;
-    int m_materialIndex = 0;
-    entt::entity m_entity;
 };
 
 } // namespace RenderSys

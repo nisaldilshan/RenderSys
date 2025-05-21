@@ -6,8 +6,6 @@
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-#include "Material.h"
-
 namespace RenderSys
 {
 
@@ -61,7 +59,7 @@ enum class BufferType
 
 enum class BufferUsage
 {
-    UNIFORM_BUFFER_VISIBLE_TO_CPU,
+    UNIFORM_BUFFER_VISIBLE_TO_CPU = 0,
     STORAGE_BUFFER_VISIBLE_TO_CPU,
     TRANSFER_SRC_VISIBLE_TO_GPU
 };
@@ -69,7 +67,7 @@ enum class BufferUsage
 class Buffer
 {
 public:
-    Buffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage);
+    Buffer(size_t byteSize, RenderSys::BufferUsage bufferUsage);
     ~Buffer();
 
     Buffer(const Buffer &) = delete;

@@ -3,7 +3,7 @@
 namespace RenderSys
 {
 
-VulkanBuffer::VulkanBuffer(uint32_t byteSize, RenderSys::BufferUsage bufferUsage)
+VulkanBuffer::VulkanBuffer(size_t byteSize, RenderSys::BufferUsage bufferUsage)
     : m_bufferSize(byteSize)
 {
     VkBufferCreateInfo bufferInfo{};
