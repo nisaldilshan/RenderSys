@@ -13210,11 +13210,35 @@
             ]
         }
     ],
+    "samplers": [
+        {
+            "magFilter": 9729,
+            "minFilter": 9987,
+            "wrapS": 10497,
+            "wrapT": 10497
+        }
+    ],
+    "textures": [
+        {
+            "source": 0,
+            "sampler": 0
+        }
+    ],
+    "images": [
+        {
+            "mimeType": "image/png",
+            "uri": "Woman.png"
+        }
+    ],
     "materials" : [
         {
             "doubleSided" : true,
             "name" : "Texture",
-            "pbrMetallicRoughness" : {}
+            "pbrMetallicRoughness" : {
+                "baseColorTexture": {
+                    "index": 0
+                }
+            }
         }
     ],
     "meshes" : [

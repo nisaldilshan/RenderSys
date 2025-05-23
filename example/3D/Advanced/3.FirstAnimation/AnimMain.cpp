@@ -103,13 +103,6 @@ public:
 			assert(false);
 		}
 
-		auto womanTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
-		womanTexture->SetDefaultSampler();
-		const auto& materials = m_models[1].getMaterials();
-		assert(materials.size() == 1);
-		materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, womanTexture);
-		materials[0]->Init();
-
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 500.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);

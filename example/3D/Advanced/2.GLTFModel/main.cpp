@@ -103,13 +103,6 @@ public:
 			assert(false);
 		}
 
-		auto womanTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
-		womanTexture->SetDefaultSampler();
-		const auto& materials = m_model->getMaterials();
-		assert(materials.size() == 1);
-		materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, womanTexture);
-		materials[0]->Init();
-
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(60.0f, 0.01f, 100.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
@@ -160,8 +153,8 @@ public:
 			RenderSys::InstanceTagComponent& instanceTag{m_scene->m_Registry.emplace<RenderSys::InstanceTagComponent>(entity)};
 
 			AddInstance(0, instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 0.0f));
-			AddInstance(1, instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 15.0f));
-			AddInstance(2, instanceTag, meshComponent, glm::vec3(10.0f, 0.0f, 7.5f));
+			// AddInstance(1, instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 15.0f));
+			// AddInstance(2, instanceTag, meshComponent, glm::vec3(10.0f, 0.0f, 7.5f));
 
 			meshComponent.m_Mesh->subMeshes[0].m_Resource = std::make_shared<RenderSys::Resource>();
 			meshComponent.m_Mesh->subMeshes[0].m_Resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
@@ -300,6 +293,7 @@ private:
 	{
 		m_scene = std::make_shared<RenderSys::Scene>();
 		m_model = std::make_unique<RenderSys::Model>(*m_scene);
+		//if (!m_model->load(RESOURCE_DIR "/Models/testModel/newme.gltf"))
 		if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
