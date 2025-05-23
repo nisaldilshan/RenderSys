@@ -14,12 +14,14 @@ class RenderSysConan(ConanFile):
     options = {
         'rendering_backend': ["OpenGL", "Vulkan", "WebGPU"],
         'build_examples': [True, False],
-        'fPIC': [True, False]
+        'fPIC': [True, False],
+        'branch': 'ANY',
     }
     default_options = {
         'rendering_backend': "WebGPU",
         'build_examples': True,
-        'fPIC': True
+        'fPIC': True,
+        'branch': 'main',
     }
     
     def requirements(self):
@@ -40,6 +42,11 @@ class RenderSysConan(ConanFile):
 
     def config_options(self):
         self.options['walnut'].rendering_backend = self.options.rendering_backend
+
+    def source(self):
+        self.run('git clone --depth=1 '
+                 'git@github.com:nisaldilshan/RenderSys.git '
+                 f'--branch {self.options.branch} . ')
 
     def generate(self):
         tc = CMakeToolchain(self)

@@ -35,7 +35,7 @@ namespace RenderSys
         const glm::mat4 &GetParent() const;
         void SetDirtyFlag();
         bool GetDirtyFlag() const;
-        void SetInstance(std::shared_ptr<RenderSys::InstanceBuffer> &instanceBuffer, uint32_t instanceIndex);
+        void SetInstance(std::shared_ptr<RenderSys::InstanceBuffer> instanceBuffer, uint32_t instanceIndex);
 
     private:
         void RecalculateMatrices();

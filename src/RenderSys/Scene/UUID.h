@@ -1,6 +1,8 @@
 #pragma once
 
-#include <xhash>
+#include <cstddef>
+#include <cstdint>
+//#include <xhash>
 
 namespace RenderSys
 {
@@ -21,16 +23,16 @@ private:
 
 } // namespace RenderSys
 
-namespace std 
-{
+// namespace std 
+// {
 
-template<>
-struct hash<RenderSys::UUID>
-{
-    std::size_t operator()(const RenderSys::UUID& uuid) const
-    {
-        return hash<uint64_t>()((uint64_t)uuid);
-    }
-};
+// template<>
+// struct hash<RenderSys::UUID>
+// {
+//     std::size_t operator()(const RenderSys::UUID& uuid) const
+//     {
+//         return hash<uint64_t>()((uint64_t)uuid);
+//     }
+// };
     
-}
+// }

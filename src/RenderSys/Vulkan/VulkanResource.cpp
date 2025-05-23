@@ -91,8 +91,8 @@ VulkanResourceDescriptor::VulkanResourceDescriptor()
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = GetResourceBindGroupPool();
     allocInfo.descriptorSetCount = 1;
-    auto materialBindGroupLayout = GetResourceBindGroupLayout();
-    allocInfo.pSetLayouts = &materialBindGroupLayout;
+    auto resourceBindGroupLayout = GetResourceBindGroupLayout();
+    allocInfo.pSetLayouts = &resourceBindGroupLayout;
 
     if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");

@@ -165,9 +165,9 @@ void VulkanTexture::SetSampler(RenderSys::TextureSampler sampler)
     }
 }
 
-VkDescriptorImageInfo VulkanTexture::GetDescriptorImageInfo() const
+const VkDescriptorImageInfo* VulkanTexture::GetDescriptorImageInfoAddr() const
 {
-    return m_descriptorImageInfo;
+    return &m_descriptorImageInfo;
 }
 
 } // namespace RenderSys

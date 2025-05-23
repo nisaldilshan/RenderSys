@@ -38,6 +38,10 @@ add_library (ComputeSys STATIC
                 src/RenderSys/Compute.cpp
                 src/RenderSys/Shader.cpp)
 
+target_include_directories(RenderSys2D PRIVATE src)
+target_include_directories(RenderSys3D PRIVATE src example)
+target_include_directories(ComputeSys PRIVATE src)
+
 message(STATUS "RENDERER: " ${RENDERER})
 if(RENDERER STREQUAL "Vulkan")
     find_package(vulkan-memory-allocator REQUIRED)
@@ -243,11 +247,6 @@ target_sources(ComputeSys
                 TYPE HEADERS 
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
                 FILES src/RenderSys/Compute.h src/RenderSys/Buffer.h)
-
-
-target_include_directories(RenderSys2D PRIVATE src)
-target_include_directories(RenderSys3D PRIVATE src)
-target_include_directories(ComputeSys PRIVATE src)
 
 target_link_libraries(RenderSys2D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc)
 target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc TinyGLTF::TinyGLTF)
