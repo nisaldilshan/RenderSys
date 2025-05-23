@@ -19,7 +19,7 @@ typedef WebGPUMaterialDescriptor MaterialDescriptorType;
 static_assert(false);
 #endif
 
-#include <Resources/Shaders/shadermaterial.glsl>
+#include <Resources/Shaders/ShaderMaterial.h>
 
 enum MaterialFeatures // bitset
 {
