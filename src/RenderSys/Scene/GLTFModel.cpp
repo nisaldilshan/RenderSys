@@ -643,10 +643,8 @@ void GLTFModel::loadMaterials()
         // std::cout << "Material Name: " << mat.name 
         //             << ", metallicFactor=" << material.metallicFactor 
         //             << ", roughnessFactor=" << material.roughnessFactor << std::endl;
-        
 
         auto& material = m_materials.emplace_back(std::make_shared<RenderSys::Material>());
-        material->SetMaterialProperties(materialProp);
 
         if (mat.pbrMetallicRoughness.baseColorTexture.index != -1)
         {
@@ -666,6 +664,8 @@ void GLTFModel::loadMaterials()
             auto metallicRoughnessTexture = m_textures[mat.pbrMetallicRoughness.metallicRoughnessTexture.index];
             material->SetMaterialTexture(RenderSys::TextureIndices::ROUGHNESS_METALLIC_MAP_INDEX, metallicRoughnessTexture);
         }
+
+        material->SetMaterialProperties(materialProp);
         
     }
     //std::cout << "Materials loading completed!" << std::endl;
