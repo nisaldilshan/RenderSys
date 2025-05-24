@@ -118,7 +118,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     }
 
     //assert(textures[0] != nullptr);
-    const auto baseColorTexture = textures[RenderSys::TextureIndices::DIFFUSE_MAP_INDEX];
+    auto baseColorTexture = textures[RenderSys::TextureIndices::DIFFUSE_MAP_INDEX];
     if (baseColorTexture)
     {
         auto platformTex = baseColorTexture->GetPlatformTexture();
@@ -132,7 +132,10 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     else
     {
         std::cerr << "Base color texture is null!" << std::endl;
-        return;
+        baseColorTexture = Texture::createDummy(128, 128);
+        auto platformTex = baseColorTexture->GetPlatformTexture();
+        auto* baseColorImageInfo = platformTex->GetDescriptorImageInfoAddr();
+        descriptorWrites[0].pImageInfo = baseColorImageInfo;
     }
 
     const auto normalTexture = textures[RenderSys::TextureIndices::NORMAL_MAP_INDEX];

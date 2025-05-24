@@ -202,15 +202,15 @@ RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive
     return prim;
 }
 
-void GLTFModel::loadMesh(const tinygltf::Mesh& gltfMesh, entt::entity& nodeEntity, uint32_t& indexCount)
+void GLTFModel::loadMesh(const tinygltf::Mesh& gltfMesh, entt::entity& nodeEntity)
 {
     const std::string meshName = gltfMesh.name.empty() ? "Mesh" : gltfMesh.name;
     MeshComponent& meshComponent{m_sceneRef.m_Registry.emplace<MeshComponent>(nodeEntity, meshName, std::make_shared<Mesh>(std::make_shared<MeshData>()))};
+    uint32_t localIndexCount = 0;
     for (const auto &gltfPrimitive : gltfMesh.primitives)
     {
-        meshComponent.m_Mesh->subMeshes.push_back(loadPrimitive(gltfPrimitive, meshComponent.m_Mesh->m_meshData, indexCount));
-    }    
-    indexCount += meshComponent.m_Mesh->m_meshData->indices.size();
+        meshComponent.m_Mesh->subMeshes.push_back(loadPrimitive(gltfPrimitive, meshComponent.m_Mesh->m_meshData, localIndexCount));
+    }
 }
 
 void GLTFModel::loadJointData()
@@ -678,13 +678,12 @@ void GLTFModel::getNodeGraphs()
     assert(nodeCount > 0);
     const int rootNodeCount = m_gltfModel->scenes.at(0).nodes.size(); // we are considering only one scene
     assert(rootNodeCount > 0);
-    uint32_t indexCount = 0;
     m_modelRootNodeIndex = m_sceneGraph.CreateRootNode(m_sceneRef.CreateEntity("RootNode"), "RootNode");
     for (const auto &rootNodeNum : m_gltfModel->scenes.at(0).nodes)
     {
-        traverse(m_modelRootNodeIndex, rootNodeNum, indexCount);
+        traverse(m_modelRootNodeIndex, rootNodeNum);
     }
-    std::cout << "model has " << nodeCount << " total nodes and " << rootNodeCount << " root nodes. [IndexCount=" << indexCount << "]" << std::endl;
+    std::cout << "model has " << nodeCount << " total nodes and " << rootNodeCount << " root nodes." << std::endl;
 }
 
 void GLTFModel::printNodeGraph() const
@@ -692,7 +691,7 @@ void GLTFModel::printNodeGraph() const
     m_sceneGraph.TraverseLog(m_modelRootNodeIndex);
 }
 
-void GLTFModel::traverse(const uint32_t parent, uint32_t nodeIndex, uint32_t& indexCount)
+void GLTFModel::traverse(const uint32_t parent, uint32_t nodeIndex)
 {
     const tinygltf::Node &node = m_gltfModel->nodes.at(nodeIndex);
     auto nodeEntity = m_sceneRef.CreateEntity(node.name);
@@ -702,7 +701,7 @@ void GLTFModel::traverse(const uint32_t parent, uint32_t nodeIndex, uint32_t& in
     {
         std::cout << node.name << " : Mesh= " << node.mesh << std::endl;
         const auto& gltfMesh = m_gltfModel->meshes.at(node.mesh);
-        loadMesh(gltfMesh, nodeEntity, indexCount);
+        loadMesh(gltfMesh, nodeEntity);
         
     }
 
@@ -712,7 +711,7 @@ void GLTFModel::traverse(const uint32_t parent, uint32_t nodeIndex, uint32_t& in
     for (size_t childNodeIndex = 0; childNodeIndex < childNodeCount; ++childNodeIndex)
     {
         int gltfChildNodeIndex = node.children[childNodeIndex];
-        traverse(sceneNode, gltfChildNodeIndex, indexCount);
+        traverse(sceneNode, gltfChildNodeIndex);
     }
 }
 

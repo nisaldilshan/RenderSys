@@ -69,4 +69,27 @@ std::shared_ptr<RenderSys::TextureType> Texture::GetPlatformTexture() const
     return m_platformTexture;
 }
 
+std::shared_ptr<Texture> Texture::createDummy(int texWidth, int texHeight)
+{
+    static std::shared_ptr<Texture> dummyTexture{nullptr};
+    if (dummyTexture)
+        return dummyTexture;
+    
+    std::vector<uint8_t> pixels(4 * texWidth * texHeight);
+
+    for (uint32_t i = 0; i < texWidth; ++i) {
+        for (uint32_t j = 0; j < texHeight; ++j) {
+            uint8_t *p = &pixels[4 * (j * texWidth + i)];
+            p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
+            p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
+            p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
+            p[3] = 255; // a
+        }
+    }
+
+    dummyTexture = std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 1);
+    dummyTexture->SetDefaultSampler();
+    return dummyTexture;
+}
+
 }

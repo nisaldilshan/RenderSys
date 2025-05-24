@@ -50,8 +50,8 @@ private:
     void loadTransform(entt::entity& nodeEntity, const tinygltf::Node &gltfNode, const uint32_t parent);
     std::vector<TextureSampler> loadTextureSamplers();
     RenderSys::SubMesh loadPrimitive(const tinygltf::Primitive &primitive, std::shared_ptr<MeshData> modelData, const uint32_t indexCount);
-    void loadMesh(const tinygltf::Mesh& gltfMesh, entt::entity& nodeEntity, uint32_t& indexCount);
-    void traverse(const uint32_t parent, uint32_t nodeIndex, uint32_t& indexCount);
+    void loadMesh(const tinygltf::Mesh& gltfMesh, entt::entity& nodeEntity);
+    void traverse(const uint32_t parent, uint32_t nodeIndex);
     std::shared_ptr<RenderSys::Material> createMaterial(int materialIndex);
 
     template <typename T>

@@ -34,6 +34,8 @@ public:
     void SetSampler(const TextureSampler& sampler);
     void SetDefaultSampler();
     std::shared_ptr<RenderSys::TextureType> GetPlatformTexture() const;
+
+    static std::shared_ptr<Texture> createDummy(int texWidth, int texHeight);
 private:
     int m_texWidth = 0;
 	int m_texHeight = 0; 
