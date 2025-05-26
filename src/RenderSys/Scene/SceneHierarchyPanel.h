@@ -18,7 +18,8 @@ public:
     entt::entity GetSelectedEntity() const { return m_SelectionContext; }
     void SetSelectedEntity(entt::entity entity);
 private:
-    void DrawEntityNode(entt::entity entity);
+    void DrawEntityNodes();
+    void DrawEntityNodeRecursive(SceneGraph::TreeNode& node);
     void DrawComponents(entt::entity entity);
     
     std::shared_ptr<Scene> m_Context;

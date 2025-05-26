@@ -26,6 +26,7 @@ public:
 	entt::registry m_Registry;
 	SceneGraph m_sceneGraph;
 	uint32_t m_rootNodeIndex = 0;
+	uint32_t m_instancedrootNodeIndex = 1;
 };
 
 } // namespace RenderSys

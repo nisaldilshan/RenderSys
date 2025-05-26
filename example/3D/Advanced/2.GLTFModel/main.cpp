@@ -164,7 +164,9 @@ public:
 
 	void AddInstance(const uint32_t instanceIndex, RenderSys::InstanceTagComponent& instanceTagComp, RenderSys::MeshComponent& meshComp, const glm::vec3& translation)
 	{
-		auto instanceEntity = m_scene->CreateEntity(meshComp.m_Name + "_instance" + std::to_string(instanceIndex + 1));
+		const auto name = meshComp.m_Name + "_instance" + std::to_string(instanceIndex + 1);
+		auto instanceEntity = m_scene->CreateEntity(name);
+		m_scene->m_sceneGraph.CreateNode(m_scene->m_instancedrootNodeIndex, instanceEntity, name);
 		RenderSys::TransformComponent& instanceTransform{m_scene->m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity)};
 		assert(instanceTagComp.GetInstanceBuffer() != nullptr);
 		instanceTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), instanceIndex);
@@ -293,8 +295,8 @@ private:
 	{
 		m_scene = std::make_shared<RenderSys::Scene>();
 		m_model = std::make_unique<RenderSys::Model>(*m_scene);
-		//if (!m_model->load(RESOURCE_DIR "/Models/testModel/newme.gltf"))
-		if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf"))
+		if (!m_model->load(RESOURCE_DIR "/Models/testModel/newme.gltf"))
+		//if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;

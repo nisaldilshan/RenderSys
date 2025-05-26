@@ -9,6 +9,7 @@ namespace RenderSys
 Scene::Scene() 
 {
 	m_rootNodeIndex = m_sceneGraph.CreateRootNode(CreateEntity("RootNode"), "RootNode");
+	m_instancedrootNodeIndex = m_sceneGraph.CreateRootNode(CreateEntity("InstancedRootNode"), "InstancedRootNode");
 }
 
 Scene::~Scene() 
