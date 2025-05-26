@@ -38,13 +38,6 @@ void Model::populate()
     m_model->loadjointMatrices();
 }
 
-void Model::printNodeGraph() const
-{
-    std::cout << "---- Scene begin ----\n";
-    m_model->printNodeGraph();
-    std::cout << " -- Scene end --" << std::endl;
-}
-
 void Model::applyVertexSkinningOnCPU(RenderSys::VertexBuffer& vertexBuffer)
 {
     m_model->applyVertexSkinning(vertexBuffer);

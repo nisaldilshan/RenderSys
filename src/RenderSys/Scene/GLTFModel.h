@@ -8,7 +8,6 @@
 #include <RenderSys/Texture.h>
 #include <RenderSys/Material.h>
 #include <RenderSys/Scene/Mesh.h>
-#include <RenderSys/Scene/SceneGraph.h>
 
 namespace tinygltf
 {
@@ -82,9 +81,6 @@ private:
     std::vector<glm::mat4> m_jointMatrices;
     std::vector<glm::tvec4<uint16_t>> m_jointVec;
     std::vector<glm::vec4> m_weightVec;
-
-    uint32_t m_modelRootNodeIndex = 0;
-    SceneGraph m_sceneGraph;
 };
 
 }

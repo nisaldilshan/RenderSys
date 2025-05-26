@@ -599,7 +599,7 @@ void GLTFModel::loadTransform(entt::entity& nodeEntity, const tinygltf::Node &gl
         }
     }
 
-    auto parentEntity = m_sceneGraph.GetNode(parent).GetGameObject();
+    auto parentEntity = m_sceneRef.GetSceneGraphTreeNode(parent).GetGameObject();
     if (!m_sceneRef.m_Registry.all_of<TransformComponent>(parentEntity))
     {
         auto parentNodeMatrix = glm::mat4(1.0f);
@@ -676,26 +676,22 @@ void GLTFModel::getNodeGraphs()
     assert(m_gltfModel);
     const int nodeCount = m_gltfModel->nodes.size();
     assert(nodeCount > 0);
+
+    assert(m_gltfModel->scenes.size() == 1);
     const int rootNodeCount = m_gltfModel->scenes.at(0).nodes.size(); // we are considering only one scene
     assert(rootNodeCount > 0);
-    m_modelRootNodeIndex = m_sceneGraph.CreateRootNode(m_sceneRef.CreateEntity("RootNode"), "RootNode");
     for (const auto &rootNodeNum : m_gltfModel->scenes.at(0).nodes)
     {
-        traverse(m_modelRootNodeIndex, rootNodeNum);
+        traverse(m_sceneRef.m_rootNodeIndex, rootNodeNum);
     }
     std::cout << "model has " << nodeCount << " total nodes and " << rootNodeCount << " root nodes." << std::endl;
-}
-
-void GLTFModel::printNodeGraph() const
-{
-    m_sceneGraph.TraverseLog(m_modelRootNodeIndex);
 }
 
 void GLTFModel::traverse(const uint32_t parent, uint32_t nodeIndex)
 {
     const tinygltf::Node &node = m_gltfModel->nodes.at(nodeIndex);
     auto nodeEntity = m_sceneRef.CreateEntity(node.name);
-    auto sceneNode = m_sceneGraph.CreateNode(parent, nodeEntity, node.name + std::to_string(nodeIndex) + "_Node"); 
+    auto sceneNode = m_sceneRef.m_sceneGraph.CreateNode(parent, nodeEntity, node.name + std::to_string(nodeIndex) + "_Node"); 
 
     if (node.mesh > -1)
     {

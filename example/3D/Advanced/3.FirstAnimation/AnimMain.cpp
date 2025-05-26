@@ -306,10 +306,7 @@ private:
 			return false;
 		}
 
-		for (const auto &model : m_models)
-		{
-			model.printNodeGraph();
-		}
+		m_scene->printNodeGraph();
 		m_sceneHierarchyPanel = std::make_unique<RenderSys::SceneHierarchyPanel>(m_scene);
 
 		return true;
