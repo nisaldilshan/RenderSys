@@ -6,8 +6,6 @@
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
-#include <RenderSys/Geometry.h>
-#include <RenderSys/Resource.h>
 #include <RenderSys/Camera.h>
 #include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/TransformComponent.h>
@@ -151,34 +149,8 @@ public:
 			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 
-			RenderSys::InstanceTagComponent& instanceTag{m_scene->m_Registry.emplace<RenderSys::InstanceTagComponent>(entity)};
-
-			AddInstance(0, instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 0.0f));
-
-			auto res = std::make_shared<RenderSys::Resource>();
-			res->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
-			res->Init();
-			for (auto &subMesh : meshComponent.m_Mesh->subMeshes)
-			{
-				subMesh.m_Resource = res;
-			}
+			m_scene->AddMeshInstanceOfEntity(0, entity, glm::vec3(0.0f, 0.0f, 0.0f));			
 		}
-	}
-
-	void AddInstance(const uint32_t instanceIndex, RenderSys::InstanceTagComponent& instanceTagComp, RenderSys::MeshComponent& meshComp, const glm::vec3& translation)
-	{
-		const auto name = meshComp.m_Name + "_instance" + std::to_string(instanceIndex + 1);
-		auto instanceEntity = m_scene->CreateEntity(name);
-		m_scene->m_sceneGraph.CreateNode(m_scene->m_instancedrootNodeIndex, instanceEntity, name);
-		RenderSys::TransformComponent& instanceTransform{m_scene->m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity)};
-		assert(instanceTagComp.GetInstanceBuffer() != nullptr);
-		instanceTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), instanceIndex);
-		instanceTransform.SetScale(glm::vec3(0.05f));
-		instanceTransform.SetTranslation(translation);
-		instanceTransform.SetMat4Global();
-		instanceTagComp.AddInstance(instanceEntity);
-		m_scene->m_Registry.emplace<RenderSys::MeshComponent>(instanceEntity, "", meshComp.m_Mesh);
-		instanceTagComp.GetInstanceBuffer()->Update();
 	}
 
 	virtual void OnDetach() override
@@ -323,7 +295,6 @@ private:
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
 	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
-	std::shared_ptr<RenderSys::Texture> m_womanTexture;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;
 	std::unique_ptr<RenderSys::SceneHierarchyPanel> m_sceneHierarchyPanel;

@@ -3,6 +3,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <iostream>
+
 #if (RENDERER_BACKEND == 1)
 static_assert(false);
 #elif (RENDERER_BACKEND == 2)
@@ -71,10 +73,6 @@ std::shared_ptr<RenderSys::TextureType> Texture::GetPlatformTexture() const
 
 std::shared_ptr<Texture> Texture::createDummy(int texWidth, int texHeight)
 {
-    static std::shared_ptr<Texture> dummyTexture{nullptr};
-    if (dummyTexture)
-        return dummyTexture;
-    
     std::vector<uint8_t> pixels(4 * texWidth * texHeight);
 
     for (uint32_t i = 0; i < texWidth; ++i) {
@@ -87,7 +85,7 @@ std::shared_ptr<Texture> Texture::createDummy(int texWidth, int texHeight)
         }
     }
 
-    dummyTexture = std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 1);
+    std::shared_ptr<Texture> dummyTexture = std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 1);
     dummyTexture->SetDefaultSampler();
     return dummyTexture;
 }

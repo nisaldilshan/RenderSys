@@ -36,7 +36,11 @@ enum TextureIndices
 {
     DIFFUSE_MAP_INDEX = 0,
     NORMAL_MAP_INDEX,
+    ROUGHNESS_MAP_INDEX,
+    METALLIC_MAP_INDEX,
     ROUGHNESS_METALLIC_MAP_INDEX,
+    EMISSIVE_MAP_INDEX,
+    DUMMY_MAP_INDEX, // used for default texture, when diffuse map is not provided.
     NUM_TEXTURES
 };
 

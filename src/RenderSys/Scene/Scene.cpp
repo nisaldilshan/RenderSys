@@ -1,5 +1,7 @@
 #include "Scene.h"
+#include <RenderSys/Resource.h>
 #include <RenderSys/Components/TagAndIDComponents.h>
+#include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <iostream>
 
@@ -77,6 +79,38 @@ void Scene::printNodeGraph() const
 	std::cout << "---- Scene begin ----\n";
     m_sceneGraph.TraverseLog(m_rootNodeIndex);
 	std::cout << " -- Scene end --" << std::endl;
+}
+
+void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation)
+{
+	auto& meshComponent = m_Registry.get<MeshComponent>(entity);
+	if (!m_Registry.all_of<InstanceTagComponent>(entity))
+    {
+        InstanceTagComponent& instanceTag{m_Registry.emplace<InstanceTagComponent>(entity)};
+
+		auto resource = std::make_shared<RenderSys::Resource>();
+		resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
+		resource->Init();
+		for (auto &subMesh : meshComponent.m_Mesh->subMeshes)
+		{
+			subMesh.m_Resource = resource;
+		}
+    }
+
+	auto& instanceTagComp = m_Registry.get<InstanceTagComponent>(entity);
+
+	const auto name = meshComponent.m_Name + "_instance" + std::to_string(instanceIndex + 1);
+	auto instanceEntity = CreateEntity(name);
+	m_sceneGraph.CreateNode(m_instancedrootNodeIndex, instanceEntity, name);
+	RenderSys::TransformComponent& instanceTransform{m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity)};
+	assert(instanceTagComp.GetInstanceBuffer() != nullptr);
+	instanceTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), instanceIndex);
+	instanceTransform.SetScale(glm::vec3(0.05f));
+	instanceTransform.SetTranslation(translation);
+	instanceTransform.SetMat4Global();
+	instanceTagComp.AddInstance(instanceEntity);
+	m_Registry.emplace<RenderSys::MeshComponent>(instanceEntity, "", meshComponent.m_Mesh);
+	instanceTagComp.GetInstanceBuffer()->Update();
 }
 
 } // namespace Hazel
