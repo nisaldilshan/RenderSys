@@ -36,11 +36,17 @@ public:
         friend SceneGraph;
     };
 
-public:
     static constexpr uint32_t ROOT_NODE = 0;
     static constexpr uint32_t NODE_INVALID = -1;
 
 public:
+    SceneGraph() = default;
+    ~SceneGraph() = default;
+    SceneGraph(SceneGraph const& other) = delete;
+    SceneGraph& operator=(SceneGraph const& other) = delete;
+    SceneGraph(SceneGraph&& other) = delete;
+    SceneGraph& operator=(SceneGraph&& other) = delete;
+
     uint32_t CreateNode(uint32_t parentNode, entt::entity const gameObject, std::string const& name);
     uint32_t CreateRootNode(entt::entity const gameObject, std::string const& name);
     TreeNode& GetNode(uint32_t const nodeIndex);

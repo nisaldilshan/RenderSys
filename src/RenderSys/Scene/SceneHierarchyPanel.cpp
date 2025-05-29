@@ -65,8 +65,6 @@ namespace RenderSys
         if (m_SelectionContext != entt::null)
         {
             DrawComponents(m_SelectionContext);
-
-
         }
 
         ImGui::End();
@@ -79,7 +77,7 @@ namespace RenderSys
 
     void SceneHierarchyPanel::DrawEntityNodes()
     {
-        DrawEntityNodeRecursive(m_Context->GetSceneGraphTreeNode(m_Context->m_instancedrootNodeIndex));
+        DrawEntityNodeRecursive(m_Context->GetSceneGraphTreeNode(m_Context->m_instancedRootNodeIndex));
     }
 
     void SceneHierarchyPanel::DrawEntityNodeRecursive(SceneGraph::TreeNode& node)
@@ -341,8 +339,6 @@ namespace RenderSys
                 auto scale = component.GetScale();
 			    DrawVec3Control("Scale", scale, 1.0f, 100.0f);
                 component.SetScale(scale);
-                
-                component.SetMat4Global();
 		    });
 
 		// DrawComponent<CameraComponent>(

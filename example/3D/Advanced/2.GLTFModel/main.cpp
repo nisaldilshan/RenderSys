@@ -202,7 +202,7 @@ public:
 		if (m_renderer)
 		{
 			m_camera->OnUpdate();
-
+			m_scene->Update();
 			m_renderer->BeginRenderPass();
 
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();

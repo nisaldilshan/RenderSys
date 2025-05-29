@@ -9,14 +9,24 @@ namespace RenderSys
 {
 
 Scene::Scene() 
+	: m_Registry()
+	, m_sceneGraph()
+	, m_rootNodeIndex(m_sceneGraph.CreateRootNode(CreateEntity("RootNode"), "RootNode"))
+	, m_instancedRootNodeIndex(m_sceneGraph.CreateRootNode(CreateEntity("InstancedRootNode"), "InstancedRootNode"))
 {
-	m_rootNodeIndex = m_sceneGraph.CreateRootNode(CreateEntity("RootNode"), "RootNode");
-	m_instancedrootNodeIndex = m_sceneGraph.CreateRootNode(CreateEntity("InstancedRootNode"), "InstancedRootNode");
+	std::cout << "Scene created with root node index: " << m_rootNodeIndex << std::endl;
+	std::cout << "Instanced root node index: " << m_instancedRootNodeIndex << std::endl;
+
+	auto instancedRootEntity = GetSceneGraphTreeNode(m_instancedRootNodeIndex).GetGameObject();
+	if (!m_Registry.all_of<TransformComponent>(instancedRootEntity))
+	{
+		m_Registry.emplace<TransformComponent>(instancedRootEntity);
+	}
 }
 
 Scene::~Scene() 
 {
-	
+	DestroyAllEntities();
 }
 
 entt::entity Scene::CreateEntity(const std::string& name)
@@ -47,6 +57,12 @@ void Scene::DestroyAllEntities()
 	for (auto entity : allEntities) {
 		DestroyEntity(entity);
 	}
+}
+
+void Scene::Update()
+{
+	// Update the transform cache for the root node
+	UpdateTransformCache(m_instancedRootNodeIndex, glm::mat4(1.0f), false);
 }
 
 void Scene::UpdateTransformCache(uint32_t const nodeIndex, glm::mat4 const &parentMat4, bool parentDirtyFlag)
@@ -101,7 +117,7 @@ void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& 
 
 	const auto name = meshComponent.m_Name + "_instance" + std::to_string(instanceIndex + 1);
 	auto instanceEntity = CreateEntity(name);
-	m_sceneGraph.CreateNode(m_instancedrootNodeIndex, instanceEntity, name);
+	m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceEntity, name);
 	RenderSys::TransformComponent& instanceTransform{m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity)};
 	assert(instanceTagComp.GetInstanceBuffer() != nullptr);
 	instanceTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), instanceIndex);
