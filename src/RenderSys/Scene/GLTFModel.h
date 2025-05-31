@@ -72,7 +72,7 @@ private:
 
     Scene& m_sceneRef;
     std::unique_ptr<tinygltf::Model> m_gltfModel;
-    std::filesystem::path m_sceneFilePath;
+    std::filesystem::path m_modelFilePath;
 
     std::vector<std::shared_ptr<RenderSys::Texture>> m_textures;
     std::vector<std::shared_ptr<RenderSys::Material>> m_materials;

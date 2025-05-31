@@ -77,7 +77,8 @@ SceneGraph::TreeNode& SceneGraph::GetNodeByGameObject(entt::entity const gameObj
 SceneGraph::TreeNode& SceneGraph::GetRoot()
 {
     std::lock_guard<std::mutex> guard(m_MutexSceneGraph);
-    //CORE_ASSERT(m_Nodes.size(), "SceneGraph::GetRoot(): scene graph is empty");
+    // Ensure that the root node exists
+    assert(m_Nodes.size() > 0);
     return m_Nodes[SceneGraph::ROOT_NODE];
 }
 

@@ -27,20 +27,20 @@ GLTFModel::~GLTFModel()
 
 bool GLTFModel::load(const std::filesystem::path &filePath)
 {
-    m_sceneFilePath = filePath;
+    m_modelFilePath = filePath;
 
     tinygltf::TinyGLTF gltfLoader;
     std::string loaderErrors;
     std::string loaderWarnings;
 
     bool result = false;
-    if (filePath.extension() == ".glb") 
+    if (m_modelFilePath.extension() == ".glb") 
     {
-        result = gltfLoader.LoadBinaryFromFile(m_gltfModel.get(), &loaderErrors, &loaderWarnings, filePath.string());
+        result = gltfLoader.LoadBinaryFromFile(m_gltfModel.get(), &loaderErrors, &loaderWarnings, m_modelFilePath.string());
     }
     else 
     {
-        result = gltfLoader.LoadASCIIFromFile(m_gltfModel.get(), &loaderErrors, &loaderWarnings, filePath.string());
+        result = gltfLoader.LoadASCIIFromFile(m_gltfModel.get(), &loaderErrors, &loaderWarnings, m_modelFilePath.string());
     }
 
     if (!loaderWarnings.empty()) {
@@ -52,7 +52,7 @@ bool GLTFModel::load(const std::filesystem::path &filePath)
     }
 
     if (!result) {
-        std::cout << "GLTFModel: failed to load glTF model from file: " << filePath.string() << std::endl;
+        std::cout << "GLTFModel: failed to load glTF model from file: " << m_modelFilePath.string() << std::endl;
     }
 
     return result;
@@ -573,7 +573,8 @@ RenderSys::TextureSampler::FilterMode getFilterMode(int32_t filterMode)
 
 void GLTFModel::loadTransform(entt::entity& nodeEntity, const tinygltf::Node &gltfNode, const uint32_t parent)
 {
-    TransformComponent& transform{m_sceneRef.m_Registry.emplace<TransformComponent>(nodeEntity)};
+    assert(m_sceneRef.m_Registry.all_of<TransformComponent>(nodeEntity));
+    TransformComponent& transform{m_sceneRef.m_Registry.get<TransformComponent>(nodeEntity)};
     if (gltfNode.matrix.size() == 16)
     {
         transform.SetMat4Local(glm::make_mat4x4(gltfNode.matrix.data()));
@@ -680,9 +681,19 @@ void GLTFModel::getNodeGraphs()
     assert(m_gltfModel->scenes.size() == 1);
     const int rootNodeCount = m_gltfModel->scenes.at(0).nodes.size(); // we are considering only one scene
     assert(rootNodeCount > 0);
+
+    auto modelRootNodeIndex = m_sceneRef.m_rootNodeIndex;
+    if (rootNodeCount > 1)
+    {
+        std::cout << "GLTFModel: Warning! Model has more than one root node." << std::endl;
+        const std::string modelTopNodeName = m_modelFilePath.string();
+        auto modelTopEntity = m_sceneRef.CreateEntity(modelTopNodeName);
+        modelRootNodeIndex = m_sceneRef.m_sceneGraph.CreateNode(m_sceneRef.m_rootNodeIndex, modelTopEntity, modelTopNodeName);
+    }
+
     for (const auto &rootNodeNum : m_gltfModel->scenes.at(0).nodes)
     {
-        traverse(m_sceneRef.m_rootNodeIndex, rootNodeNum);
+        traverse(modelRootNodeIndex, rootNodeNum);
     }
     std::cout << "model has " << nodeCount << " total nodes and " << rootNodeCount << " root nodes." << std::endl;
 }

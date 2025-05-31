@@ -16,12 +16,6 @@ Scene::Scene()
 {
 	std::cout << "Scene created with root node index: " << m_rootNodeIndex << std::endl;
 	std::cout << "Instanced root node index: " << m_instancedRootNodeIndex << std::endl;
-
-	auto instancedRootEntity = GetSceneGraphTreeNode(m_instancedRootNodeIndex).GetGameObject();
-	if (!m_Registry.all_of<TransformComponent>(instancedRootEntity))
-	{
-		m_Registry.emplace<TransformComponent>(instancedRootEntity);
-	}
 }
 
 Scene::~Scene() 
@@ -38,7 +32,7 @@ entt::entity Scene::CreateEntityWithUUID(UUID uuid, const std::string& name)
 {
 	entt::entity entity{m_Registry.create()};
 	m_Registry.emplace<IDComponent>(entity, uuid);
-	//m_Registry.emplace<TransformComponent>(entity);
+	m_Registry.emplace<TransformComponent>(entity);
 	auto& tag = m_Registry.emplace<TagComponent>(entity);
 	tag.Tag = name.empty() ? "Entity" : name;
 	return entity;
@@ -97,7 +91,7 @@ void Scene::printNodeGraph() const
 	std::cout << " -- Scene end --" << std::endl;
 }
 
-void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation)
+void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex)
 {
 	auto& meshComponent = m_Registry.get<MeshComponent>(entity);
 	if (!m_Registry.all_of<InstanceTagComponent>(entity))
@@ -117,8 +111,8 @@ void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& 
 
 	const auto name = meshComponent.m_Name + "_instance" + std::to_string(instanceIndex + 1);
 	auto instanceEntity = CreateEntity(name);
-	m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceEntity, name);
-	RenderSys::TransformComponent& instanceTransform{m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity)};
+	m_sceneGraph.CreateNode(parentNodeIndex, instanceEntity, name);
+	RenderSys::TransformComponent& instanceTransform{m_Registry.get<RenderSys::TransformComponent>(instanceEntity)};
 	assert(instanceTagComp.GetInstanceBuffer() != nullptr);
 	instanceTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), instanceIndex);
 	instanceTransform.SetScale(glm::vec3(0.05f));
