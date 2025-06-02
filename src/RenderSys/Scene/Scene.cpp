@@ -91,7 +91,7 @@ void Scene::printNodeGraph() const
 	std::cout << " -- Scene end --" << std::endl;
 }
 
-void Scene::AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex)
+void Scene::AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent)
 {
 	auto& childNode = m_sceneGraph.GetNode(subTreeNodeIndex);
 	std::vector<uint32_t> children = childNode.GetChildren();
@@ -99,13 +99,7 @@ void Scene::AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& 
 	{
 		return; // No children to process
 	}
-	uint32_t parentIndex = m_instancedRootNodeIndex;
-	if (subTreeNodeIndex != m_rootNodeIndex)
-	{
-		// need a proper entity copy mechanism here.
-		auto instanceModelTop = CreateEntity(childNode.GetName());
-		parentIndex = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceModelTop, childNode.GetName() + "_Instance");
-	}
+	
 	for (auto childNodeIndex : children)
 	{
 		auto& childNode = m_sceneGraph.GetNode(childNodeIndex);
@@ -113,11 +107,17 @@ void Scene::AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& 
 		assert(nodeEntity != entt::null);
 		if (m_Registry.all_of<RenderSys::MeshComponent>(nodeEntity))
 		{
-			AddMeshInstanceOfEntity(instanceIndex, nodeEntity, pos, parentIndex);
+			AddMeshInstanceOfEntity(instanceIndex, nodeEntity, pos, parent);
 		}
 		else
 		{
-			AddInstanceofSubTree(instanceIndex, pos, childNodeIndex);
+			if (subTreeNodeIndex == m_rootNodeIndex)
+			{
+				// need a proper entity copy mechanism here.
+				auto instanceModelTop = CreateEntity(childNode.GetName());
+				parent = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceModelTop, childNode.GetName() + "_Instance");
+			}
+			AddInstanceofSubTree(instanceIndex, pos, childNodeIndex, parent);
 		}
 	}
 }

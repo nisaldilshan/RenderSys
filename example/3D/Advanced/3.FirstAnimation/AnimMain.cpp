@@ -148,9 +148,9 @@ public:
 			meshComponent.m_Mesh->vertexBufferID = vertexBufID;
 			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
-
-			m_scene->AddMeshInstanceOfEntity(0, entity, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_instancedRootNodeIndex);			
 		}
+		
+		m_scene->AddInstanceofSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);		
 	}
 
 	virtual void OnDetach() override

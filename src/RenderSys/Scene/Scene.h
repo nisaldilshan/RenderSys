@@ -26,7 +26,7 @@ public:
 
 	SceneGraph::TreeNode& GetSceneGraphTreeNode(uint32_t nodeIndex);
 	void printNodeGraph() const;
-	void AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex);
+	void AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent);
 	void AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
 
 	entt::registry m_Registry;
