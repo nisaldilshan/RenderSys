@@ -91,6 +91,39 @@ void Scene::printNodeGraph() const
 	std::cout << " -- Scene end --" << std::endl;
 }
 
+void Scene::AddInstanceofEntireScene(const uint32_t instanceIndex, const glm::vec3& pos)
+{
+	auto& sceneRoot = m_sceneGraph.GetRoot();
+	std::vector<uint32_t>& children = sceneRoot.GetChildren();
+	for (auto childNodeIndex : children)
+	{
+		auto& childNode = m_sceneGraph.GetNode(childNodeIndex);
+		auto& childNodeChildren = childNode.GetChildren();
+		auto nodeEntity = childNode.GetGameObject();
+		assert(nodeEntity != entt::null);
+		if (m_Registry.all_of<RenderSys::MeshComponent>(nodeEntity))
+		{
+			AddMeshInstanceOfEntity(instanceIndex, nodeEntity, pos, m_instancedRootNodeIndex);
+		}
+		else
+		{
+			std::cerr << "Node " << childNode.GetName() << " does not have a MeshComponent." << std::endl;
+			// need a proper entity copy mechanism here.
+			auto instanceModelTop = CreateEntity(childNode.GetName());
+			const uint32_t instanceModelTopNodeIndex = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceModelTop, childNode.GetName() + "_Instance");
+
+			auto ch = m_sceneGraph.GetNode(childNodeIndex).GetChildren();
+			for (auto i : ch)
+			{
+				auto& childNode = m_sceneGraph.GetNode(i);
+				auto childEntity = childNode.GetGameObject();
+				assert(m_Registry.all_of<RenderSys::MeshComponent>(childEntity));
+				AddMeshInstanceOfEntity(instanceIndex, childEntity, pos, instanceModelTopNodeIndex);
+			}
+		}
+	}
+}
+
 void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex)
 {
 	auto& meshComponent = m_Registry.get<MeshComponent>(entity);

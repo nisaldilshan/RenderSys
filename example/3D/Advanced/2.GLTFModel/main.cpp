@@ -149,42 +149,9 @@ public:
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 
-		AddInstanceofEntireScene(0, glm::vec3(0.0f, 0.0f, 0.0f));
-		AddInstanceofEntireScene(1, glm::vec3(0.0f, 0.0f, 15.0f));
-		AddInstanceofEntireScene(2, glm::vec3(10.0f, 0.0f, 7.5f));
-	}
-
-	void AddInstanceofEntireScene(const uint32_t instanceIndex, const glm::vec3& pos)
-	{
-		auto& sceneRoot = m_scene->m_sceneGraph.GetRoot();
-		std::vector<uint32_t>& children = sceneRoot.GetChildren();
-		for (auto childNodeIndex : children)
-		{
-			auto& childNode = m_scene->m_sceneGraph.GetNode(childNodeIndex);
-			auto& childNodeChildren = childNode.GetChildren();
-			auto nodeEntity = childNode.GetGameObject();
-			assert(nodeEntity != entt::null);
-			if (m_scene->m_Registry.all_of<RenderSys::MeshComponent>(nodeEntity))
-			{
-				m_scene->AddMeshInstanceOfEntity(instanceIndex, nodeEntity, pos, m_scene->m_instancedRootNodeIndex);
-			}
-			else
-			{
-				std::cerr << "Node " << childNode.GetName() << " does not have a MeshComponent." << std::endl;
-				// need a proper entity copy mechanism here.
-				auto instanceModelTop = m_scene->CreateEntity(childNode.GetName());
-				const uint32_t instanceModelTopNodeIndex = m_scene->m_sceneGraph.CreateNode(m_scene->m_instancedRootNodeIndex, instanceModelTop, childNode.GetName() + "_Instance");
-
-				auto ch = m_scene->m_sceneGraph.GetNode(childNodeIndex).GetChildren();
-				for (auto i : ch)
-				{
-					auto& childNode = m_scene->m_sceneGraph.GetNode(i);
-					auto childEntity = childNode.GetGameObject();
-					assert(m_scene->m_Registry.all_of<RenderSys::MeshComponent>(childEntity));
-					m_scene->AddMeshInstanceOfEntity(instanceIndex, childEntity, pos, instanceModelTopNodeIndex);
-				}
-			}
-		}
+		m_scene->AddInstanceofEntireScene(0, glm::vec3(0.0f, 0.0f, 0.0f));
+		m_scene->AddInstanceofEntireScene(1, glm::vec3(0.0f, 0.0f, 15.0f));
+		m_scene->AddInstanceofEntireScene(2, glm::vec3(10.0f, 0.0f, 7.5f));
 	}
 
 	virtual void OnDetach() override
