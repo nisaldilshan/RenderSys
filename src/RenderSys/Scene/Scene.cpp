@@ -91,35 +91,33 @@ void Scene::printNodeGraph() const
 	std::cout << " -- Scene end --" << std::endl;
 }
 
-void Scene::AddInstanceofEntireScene(const uint32_t instanceIndex, const glm::vec3& pos)
+void Scene::AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex)
 {
-	auto& sceneRoot = m_sceneGraph.GetRoot();
-	std::vector<uint32_t>& children = sceneRoot.GetChildren();
+	auto& childNode = m_sceneGraph.GetNode(subTreeNodeIndex);
+	std::vector<uint32_t> children = childNode.GetChildren();
+	if (children.size() == 0) 
+	{
+		return; // No children to process
+	}
+	uint32_t parentIndex = m_instancedRootNodeIndex;
+	if (subTreeNodeIndex != m_rootNodeIndex)
+	{
+		// need a proper entity copy mechanism here.
+		auto instanceModelTop = CreateEntity(childNode.GetName());
+		parentIndex = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceModelTop, childNode.GetName() + "_Instance");
+	}
 	for (auto childNodeIndex : children)
 	{
 		auto& childNode = m_sceneGraph.GetNode(childNodeIndex);
-		auto& childNodeChildren = childNode.GetChildren();
 		auto nodeEntity = childNode.GetGameObject();
 		assert(nodeEntity != entt::null);
 		if (m_Registry.all_of<RenderSys::MeshComponent>(nodeEntity))
 		{
-			AddMeshInstanceOfEntity(instanceIndex, nodeEntity, pos, m_instancedRootNodeIndex);
+			AddMeshInstanceOfEntity(instanceIndex, nodeEntity, pos, parentIndex);
 		}
 		else
 		{
-			std::cerr << "Node " << childNode.GetName() << " does not have a MeshComponent." << std::endl;
-			// need a proper entity copy mechanism here.
-			auto instanceModelTop = CreateEntity(childNode.GetName());
-			const uint32_t instanceModelTopNodeIndex = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceModelTop, childNode.GetName() + "_Instance");
-
-			auto ch = m_sceneGraph.GetNode(childNodeIndex).GetChildren();
-			for (auto i : ch)
-			{
-				auto& childNode = m_sceneGraph.GetNode(i);
-				auto childEntity = childNode.GetGameObject();
-				assert(m_Registry.all_of<RenderSys::MeshComponent>(childEntity));
-				AddMeshInstanceOfEntity(instanceIndex, childEntity, pos, instanceModelTopNodeIndex);
-			}
+			AddInstanceofSubTree(instanceIndex, pos, childNodeIndex);
 		}
 	}
 }

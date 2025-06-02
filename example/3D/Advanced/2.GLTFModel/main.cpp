@@ -149,9 +149,9 @@ public:
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 
-		m_scene->AddInstanceofEntireScene(0, glm::vec3(0.0f, 0.0f, 0.0f));
-		m_scene->AddInstanceofEntireScene(1, glm::vec3(0.0f, 0.0f, 15.0f));
-		m_scene->AddInstanceofEntireScene(2, glm::vec3(10.0f, 0.0f, 7.5f));
+		m_scene->AddInstanceofSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex);
+		m_scene->AddInstanceofSubTree(1, glm::vec3(0.0f, 0.0f, 15.0f), m_scene->m_rootNodeIndex);
+		m_scene->AddInstanceofSubTree(2, glm::vec3(10.0f, 0.0f, 7.5f), m_scene->m_rootNodeIndex);
 	}
 
 	virtual void OnDetach() override
