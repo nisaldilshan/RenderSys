@@ -114,8 +114,9 @@ void Scene::AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& 
 			if (subTreeNodeIndex == m_rootNodeIndex)
 			{
 				// need a proper entity copy mechanism here.
-				auto instanceModelTop = CreateEntity(childNode.GetName());
-				parent = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceModelTop, childNode.GetName() + "_Instance");
+				const auto name = childNode.GetName() + "_instance" + std::to_string(instanceIndex + 1);
+				auto instanceModelTop = CreateEntity(name);
+				parent = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceModelTop, name);
 			}
 			AddInstanceofSubTree(instanceIndex, pos, childNodeIndex, parent);
 		}

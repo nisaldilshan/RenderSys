@@ -686,7 +686,7 @@ void GLTFModel::getNodeGraphs()
     if (rootNodeCount > 1)
     {
         std::cout << "GLTFModel: Warning! Model has more than one root node." << std::endl;
-        const std::string modelTopNodeName = m_modelFilePath.string();
+        const std::string modelTopNodeName = m_modelFilePath.filename().string();
         auto modelTopEntity = m_sceneRef.CreateEntity(modelTopNodeName);
         modelRootNodeIndex = m_sceneRef.m_sceneGraph.CreateNode(m_sceneRef.m_rootNodeIndex, modelTopEntity, modelTopNodeName);
     }
@@ -701,8 +701,11 @@ void GLTFModel::getNodeGraphs()
 void GLTFModel::traverse(const uint32_t parent, uint32_t nodeIndex)
 {
     const tinygltf::Node &node = m_gltfModel->nodes.at(nodeIndex);
-    auto nodeEntity = m_sceneRef.CreateEntity(node.name);
-    auto sceneNode = m_sceneRef.m_sceneGraph.CreateNode(parent, nodeEntity, node.name + std::to_string(nodeIndex) + "_Node"); 
+    const auto name = parent == m_sceneRef.m_rootNodeIndex ? 
+                                    m_modelFilePath.filename().string() + "_" + node.name + "_" + std::to_string(nodeIndex) : 
+                                    node.name + "_" + std::to_string(nodeIndex);
+    auto nodeEntity = m_sceneRef.CreateEntity(name);
+    auto sceneNode = m_sceneRef.m_sceneGraph.CreateNode(parent, nodeEntity, name); 
 
     if (node.mesh > -1)
     {
