@@ -11,7 +11,9 @@ std::vector<VkDescriptorSetLayoutBinding> GetMaterialBindGroupBindings()
     {
         VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // baseColor texture
         VkDescriptorSetLayoutBinding{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // normal texture
-        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
+        VkDescriptorSetLayoutBinding{2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // metallic texture
+        VkDescriptorSetLayoutBinding{3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}, // roughness texture
+        VkDescriptorSetLayoutBinding{4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}  // metallic-roughness texture
     };
 
     return materialBindGroupBindings;
@@ -99,6 +101,14 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
+    if (!textures[RenderSys::TextureIndices::DUMMY_MAP_INDEX])
+    {
+        //std::cerr << "Base color texture is null!" << std::endl;
+        textures[RenderSys::TextureIndices::DUMMY_MAP_INDEX] = Texture::createDummy(128, 128);
+    }
+
+    const auto dummyTexture = textures[RenderSys::TextureIndices::DUMMY_MAP_INDEX];
+
     std::vector<VkWriteDescriptorSet> descriptorWrites;
     VkDescriptorImageInfo imageInfo{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED};
     for (const auto &materialBindGroupBinding : GetMaterialBindGroupBindings())
@@ -111,16 +121,10 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
         textureWrite.descriptorType = materialBindGroupBinding.descriptorType;
         textureWrite.descriptorCount = 1;
         textureWrite.pBufferInfo = nullptr;
-        textureWrite.pImageInfo = &imageInfo;
+        textureWrite.pImageInfo = dummyTexture->GetPlatformTexture()->GetDescriptorImageInfoAddr();
         textureWrite.pTexelBufferView = nullptr;
 
         descriptorWrites.push_back(textureWrite);
-    }
-
-    if (!textures[RenderSys::TextureIndices::DUMMY_MAP_INDEX])
-    {
-        //std::cerr << "Base color texture is null!" << std::endl;
-        textures[RenderSys::TextureIndices::DUMMY_MAP_INDEX] = Texture::createDummy(128, 128);
     }
     
     auto baseColorTexture = textures[RenderSys::TextureIndices::DIFFUSE_MAP_INDEX];
@@ -134,12 +138,6 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
         }
         descriptorWrites[0].pImageInfo = baseColorImageInfo;
     }
-    else
-    {
-        baseColorTexture = textures[RenderSys::TextureIndices::DUMMY_MAP_INDEX];
-        auto platformTex = baseColorTexture->GetPlatformTexture();
-        descriptorWrites[0].pImageInfo = platformTex->GetDescriptorImageInfoAddr();
-    }
 
     const auto normalTexture = textures[RenderSys::TextureIndices::NORMAL_MAP_INDEX];
     if (normalTexture)
@@ -152,10 +150,29 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
         }
         descriptorWrites[1].pImageInfo = normalTextureImageInfo;
     }
-    else
+
+    const auto metallicTexture = textures[RenderSys::TextureIndices::METALLIC_MAP_INDEX];
+    if (metallicTexture)
     {
-        auto platformTex = baseColorTexture->GetPlatformTexture();
-        descriptorWrites[1].pImageInfo = platformTex->GetDescriptorImageInfoAddr();
+        auto platformTex = metallicTexture->GetPlatformTexture();
+        auto* metallicTextureImageInfo = platformTex->GetDescriptorImageInfoAddr();
+        if (metallicTextureImageInfo->sampler == VK_NULL_HANDLE)
+        {
+            //metallicTextureImageInfo.sampler = m_defaultTextureSampler;
+        }
+        descriptorWrites[2].pImageInfo = metallicTextureImageInfo;
+    }
+
+    const auto roughnessTexture = textures[RenderSys::TextureIndices::ROUGHNESS_MAP_INDEX];
+    if (roughnessTexture)
+    {
+        auto platformTex = roughnessTexture->GetPlatformTexture();
+        auto* roughnessTextureImageInfo = platformTex->GetDescriptorImageInfoAddr();
+        if (roughnessTextureImageInfo->sampler == VK_NULL_HANDLE)
+        {
+            //metallicTextureImageInfo.sampler = m_defaultTextureSampler;
+        }
+        descriptorWrites[3].pImageInfo = roughnessTextureImageInfo;
     }
 
     const auto metallicRoughnessTexture = textures[RenderSys::TextureIndices::ROUGHNESS_METALLIC_MAP_INDEX];
@@ -167,12 +184,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
         {
             //metallicRoughnessTextureImageInfo.sampler = m_defaultTextureSampler;
         }
-        descriptorWrites[2].pImageInfo = metallicRoughnessTextureImageInfo;
-    }
-    else
-    {
-        auto platformTex = baseColorTexture->GetPlatformTexture();
-        descriptorWrites[2].pImageInfo = platformTex->GetDescriptorImageInfoAddr();
+        descriptorWrites[4].pImageInfo = metallicRoughnessTextureImageInfo;
     }
 
     vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
