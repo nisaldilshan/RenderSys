@@ -74,7 +74,12 @@ const glm::mat4 &TransformComponent::GetMat4Global() const
     }
 }
 
-void TransformComponent::SetInstance(std::shared_ptr<RenderSys::InstanceBuffer> &instanceBuffer, uint32_t instanceIndex)
+bool TransformComponent::GetDirtyFlag() const
+{
+    return m_Dirty;
+}
+
+void TransformComponent::SetInstance(std::shared_ptr<RenderSys::InstanceBuffer> instanceBuffer, uint32_t instanceIndex)
 {
     m_InstanceBuffer = instanceBuffer;
     m_InstanceIndex = instanceIndex;

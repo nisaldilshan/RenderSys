@@ -6,8 +6,6 @@
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
-#include <RenderSys/Geometry.h>
-#include <RenderSys/Resource.h>
 #include <RenderSys/Camera.h>
 #include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/TransformComponent.h>
@@ -103,13 +101,6 @@ public:
 			assert(false);
 		}
 
-		auto womanTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/Woman.png");
-		womanTexture->SetDefaultSampler();
-		const auto& materials = m_model->getMaterials();
-		assert(materials.size() == 1);
-		materials[0]->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, womanTexture);
-		materials[0]->Init();
-
 		m_camera = std::make_unique<Camera::PerspectiveCamera>(60.0f, 0.01f, 100.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
@@ -156,31 +147,11 @@ public:
 			meshComponent.m_Mesh->vertexBufferID = vertexBufID;
 			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
-
-			RenderSys::InstanceTagComponent& instanceTag{m_scene->m_Registry.emplace<RenderSys::InstanceTagComponent>(entity)};
-
-			AddInstance(0, instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 0.0f));
-			AddInstance(1, instanceTag, meshComponent, glm::vec3(0.0f, 0.0f, 15.0f));
-			AddInstance(2, instanceTag, meshComponent, glm::vec3(10.0f, 0.0f, 7.5f));
-
-			meshComponent.m_Mesh->subMeshes[0].m_Resource = std::make_shared<RenderSys::Resource>();
-			meshComponent.m_Mesh->subMeshes[0].m_Resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
-			meshComponent.m_Mesh->subMeshes[0].m_Resource->Init();
 		}
-	}
 
-	void AddInstance(const uint32_t instanceIndex, RenderSys::InstanceTagComponent& instanceTagComp, RenderSys::MeshComponent& meshComp, const glm::vec3& translation)
-	{
-		auto instanceEntity = m_scene->CreateEntity(meshComp.m_Name + "_instance" + std::to_string(instanceIndex + 1));
-		RenderSys::TransformComponent& instanceTransform{m_scene->m_Registry.emplace<RenderSys::TransformComponent>(instanceEntity)};
-		assert(instanceTagComp.GetInstanceBuffer() != nullptr);
-		instanceTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), instanceIndex);
-		instanceTransform.SetScale(glm::vec3(0.05f));
-		instanceTransform.SetTranslation(translation);
-		instanceTransform.SetMat4Global();
-		instanceTagComp.AddInstance(instanceEntity);
-		m_scene->m_Registry.emplace<RenderSys::MeshComponent>(instanceEntity, "", meshComp.m_Mesh);
-		instanceTagComp.GetInstanceBuffer()->Update();
+		m_scene->AddInstanceofSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
+		m_scene->AddInstanceofSubTree(1, glm::vec3(0.0f, 0.0f, 15.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
+		m_scene->AddInstanceofSubTree(2, glm::vec3(10.0f, 0.0f, 7.5f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
 	}
 
 	virtual void OnDetach() override
@@ -231,7 +202,7 @@ public:
 		if (m_renderer)
 		{
 			m_camera->OnUpdate();
-
+			m_scene->Update();
 			m_renderer->BeginRenderPass();
 
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
@@ -300,13 +271,14 @@ private:
 	{
 		m_scene = std::make_shared<RenderSys::Scene>();
 		m_model = std::make_unique<RenderSys::Model>(*m_scene);
-		if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf"))
+		if (!m_model->load(RESOURCE_DIR "/Models/testModel/newme.gltf"))
+		//if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;
 		}
 
-		m_model->printNodeGraph();
+		m_scene->printNodeGraph();
 		m_sceneHierarchyPanel = std::make_unique<RenderSys::SceneHierarchyPanel>(m_scene);
 		return true;
 	}

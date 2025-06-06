@@ -54,8 +54,6 @@ void SceneGraph::TraverseLog(uint32_t nodeIndex, uint32_t indent) const
 {
     std::string indentStr(indent, ' ');
     const TreeNode& treeNode = m_Nodes[nodeIndex];
-    // LOG_CORE_INFO("{0}game object `{1}`, name: `{2}`", indentStr, static_cast<uint32_t>(treeNode.GetGameObject()),
-    //                 treeNode.GetName());
     std::cout << indentStr << "game object `" << static_cast<uint32_t>(treeNode.GetGameObject()) << "`, name: `" << treeNode.GetName() << "`" << std::endl;
     for (uint32_t childIndex = 0; childIndex < treeNode.Children(); ++childIndex)
     {
@@ -79,7 +77,8 @@ SceneGraph::TreeNode& SceneGraph::GetNodeByGameObject(entt::entity const gameObj
 SceneGraph::TreeNode& SceneGraph::GetRoot()
 {
     std::lock_guard<std::mutex> guard(m_MutexSceneGraph);
-    //CORE_ASSERT(m_Nodes.size(), "SceneGraph::GetRoot(): scene graph is empty");
+    // Ensure that the root node exists
+    assert(m_Nodes.size() > 0);
     return m_Nodes[SceneGraph::ROOT_NODE];
 }
 

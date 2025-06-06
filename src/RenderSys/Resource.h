@@ -20,7 +20,7 @@ typedef WebGPUResourceDescriptor ResourceDescriptorType;
 static_assert(false);
 #endif
 
-#include <..\example\Resources\Shaders\ShaderResource.h>
+#include <Resources/Shaders/ShaderResource.h>
 
 class ResourceDescriptor
 {

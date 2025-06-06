@@ -1,6 +1,6 @@
 #version 460
 
-#include "shadermaterial.glsl"
+#include "ShaderMaterial.h"
 #include "metallic-roughness.glsl"
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
@@ -34,13 +34,24 @@ void main()
 {
     vec3 N = normalize(in_normal);
     vec3 V = normalize(in_viewDirection);
-    vec3 texColor = texture(baseColorTexture, in_uv).rgb; 
-    vec3 texNormal = texture(normalTexture, in_uv).xyz * 2.0 - 1.0;
-    N = (bool(pushConstants.m_materialProperties.m_Features & GLSL_HAS_NORMAL_MAP)) ? getNormalFromNormalMaps(texNormal, in_normal, in_tangent) : N;
-    vec3 albedo = texColor * pushConstants.m_materialProperties.m_BaseColor.rgb;
 
-    float metallic = pushConstants.m_materialProperties.m_Metallic;
-    float roughness = pushConstants.m_materialProperties.m_Roughness;
+    // color
+    vec4 col;
+    if (bool(pushConstants.m_materialProperties.m_features & GLSL_HAS_DIFFUSE_MAP))
+    {
+        col = texture(baseColorTexture, in_uv) * pushConstants.m_materialProperties.m_baseColor;
+    }
+    else
+    {
+        col = pushConstants.m_materialProperties.m_baseColor;
+    }
+
+    vec3 texNormal = texture(normalTexture, in_uv).xyz * 2.0 - 1.0;
+    N = (bool(pushConstants.m_materialProperties.m_features & GLSL_HAS_NORMAL_MAP)) ? getNormalFromNormalMaps(texNormal, in_normal, in_tangent) : N;
+    vec3 albedo = col.rgb;
+
+    float metallic = pushConstants.m_materialProperties.m_metallic;
+    float roughness = pushConstants.m_materialProperties.m_roughness;
 
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);

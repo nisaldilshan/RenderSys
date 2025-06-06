@@ -39,9 +39,10 @@ namespace RenderSys
 		if (m_Context)
 		{
             // Directly iterate through all entities in the registry
-            for (auto entity : m_Context->m_Registry.view<entt::entity>()) {
-                DrawEntityNode(entity);
-            }
+            // for (auto entity : m_Context->m_Registry.view<entt::entity>()) {
+            //     DrawEntityNode(entity);
+            // }
+            DrawEntityNodes();
 
 			if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
 				m_SelectionContext = {};
@@ -64,8 +65,6 @@ namespace RenderSys
         if (m_SelectionContext != entt::null)
         {
             DrawComponents(m_SelectionContext);
-
-
         }
 
         ImGui::End();
@@ -76,9 +75,15 @@ namespace RenderSys
         m_SelectionContext = entity;
     }
 
-    void SceneHierarchyPanel::DrawEntityNode(entt::entity entity)
+    void SceneHierarchyPanel::DrawEntityNodes()
     {
-        if (!m_Context->m_Registry.all_of<TransformComponent, MeshComponent>(entity))
+        DrawEntityNodeRecursive(m_Context->GetSceneGraphTreeNode(m_Context->m_instancedRootNodeIndex));
+    }
+
+    void SceneHierarchyPanel::DrawEntityNodeRecursive(SceneGraph::TreeNode& node)
+    {
+        entt::entity entity = node.GetGameObject();
+        if (m_Context->m_Registry.all_of<InstanceTagComponent>(entity))
         {
             return;
         }
@@ -91,6 +96,17 @@ namespace RenderSys
 
         ImGuiTreeNodeFlags flags = (m_SelectionContext == entity ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
         flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
+
+        // Check if entity has children
+        bool hasChildren = false;
+        if (node.GetChildren().size() > 0)
+        {
+            hasChildren = true;
+        }
+
+        if (!hasChildren)
+            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
         bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity, flags, "%s", tag.c_str());
 
         if (ImGui::IsItemClicked())
@@ -107,12 +123,13 @@ namespace RenderSys
             ImGui::EndPopup();
         }
 
-        if (opened)
+        if (opened && hasChildren)
         {
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-            bool opened = ImGui::TreeNodeEx((void*)9817239, flags, "%s", tag.c_str());
-            if (opened)
-                ImGui::TreePop();
+            auto& children = node.GetChildren();
+            for (auto child : children)
+            {
+                DrawEntityNodeRecursive(m_Context->GetSceneGraphTreeNode(child));
+            }
             ImGui::TreePop();
         }
 
@@ -322,8 +339,6 @@ namespace RenderSys
                 auto scale = component.GetScale();
 			    DrawVec3Control("Scale", scale, 1.0f, 100.0f);
                 component.SetScale(scale);
-                
-                component.SetMat4Global();
 		    });
 
 		// DrawComponent<CameraComponent>(
