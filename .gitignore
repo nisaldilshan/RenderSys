@@ -39,3 +39,4 @@ graph_info.json
 .vs
 CMakeSettings.json
 example/Resources/Models/testModel
+.idea

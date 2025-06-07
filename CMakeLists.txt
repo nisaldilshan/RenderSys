@@ -47,7 +47,8 @@ if(RENDERER STREQUAL "Vulkan")
     find_package(vulkan-memory-allocator REQUIRED)
     target_sources(RenderSys2D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
-                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp
+    )
     target_sources(RenderSys3D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
@@ -55,10 +56,13 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanBuffer.cpp
                     src/RenderSys/Vulkan/VulkanTexture.cpp
                     src/RenderSys/Vulkan/VulkanMaterial.cpp
-                    src/RenderSys/Vulkan/VulkanResource.cpp)
+                    src/RenderSys/Vulkan/VulkanResource.cpp
+                    src/RenderSys/Vulkan/VulkanShadowMap.cpp
+    )
     target_sources(ComputeSys PRIVATE
                     src/RenderSys/Vulkan/VulkanCompute.cpp
-                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp
+    )
 
     target_link_libraries(RenderSys2D PRIVATE 
                             vulkan-memory-allocator::vulkan-memory-allocator)

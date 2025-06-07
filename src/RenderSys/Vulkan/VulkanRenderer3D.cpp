@@ -12,6 +12,14 @@
 namespace GraphicsAPI
 {
 
+VulkanRenderer3D::VulkanRenderer3D()
+{
+}
+
+VulkanRenderer3D::~VulkanRenderer3D()
+{
+}
+
 bool VulkanRenderer3D::Init()
 {
     CreateRenderPass();
@@ -984,6 +992,10 @@ void VulkanRenderer3D::EndRenderPass()
 
 void VulkanRenderer3D::BeginShadowMapPass()
 {
+    if (!m_shadowMap)
+    {
+        m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(10);
+    }
 }
 
 void VulkanRenderer3D::EndShadowMapPass()

@@ -8,8 +8,18 @@ namespace Vulkan
 
 class ShadowMap
 {
-
 public:
+    enum class SubPassesShadow
+    {
+        SUBPASS_SHADOW = 0,
+        NUMBER_OF_SUBPASSES
+    };
+    enum class ShadowRenderTargets
+    {
+        ATTACHMENT_DEPTH = 0,
+        NUMBER_OF_ATTACHMENTS
+    };
+
     ShadowMap(int width);
     ~ShadowMap();
 

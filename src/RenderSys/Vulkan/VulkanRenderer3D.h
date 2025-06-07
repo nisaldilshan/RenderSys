@@ -11,8 +11,15 @@
 #include <RenderSys/Shader.h>
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
-#include <RenderSys/Material.h>
 #include <RenderSys/Scene/Mesh.h>
+
+namespace RenderSys
+{
+namespace Vulkan
+{
+    class ShadowMap;
+}
+}
 
 namespace GraphicsAPI
 {
@@ -44,8 +51,8 @@ namespace GraphicsAPI
     class VulkanRenderer3D
     {
     public:
-        VulkanRenderer3D() = default;
-        ~VulkanRenderer3D() = default;
+        VulkanRenderer3D();
+        ~VulkanRenderer3D();
 
         bool Init();
         void CreateImageToRender(uint32_t width, uint32_t height);
@@ -119,5 +126,7 @@ namespace GraphicsAPI
         // map bindingNumber to tuple -> <VkDescriptorBufferInfo, uniformBufferMemory, mappedBuffer>
         std::unordered_map<uint32_t, std::tuple<VkDescriptorBufferInfo, VmaAllocation, void*>> m_uniformBuffers;
         VkClearColorValue m_clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+        std::shared_ptr<RenderSys::Vulkan::ShadowMap> m_shadowMap;
     };
 }
