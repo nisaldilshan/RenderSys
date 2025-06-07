@@ -4,93 +4,13 @@
 #include "VulkanTexture.h"
 #include "VulkanMaterial.h"
 #include "VulkanResource.h"
+#include "VulkanShadowMap.h"
 
 #include <array>
 #include <iostream>
 
 namespace GraphicsAPI
 {
-
-enum class ShapeType {
-    Plane = 0,
-    Cube,
-    Pyramid,
-    Sphere
-    // ... other shapes
-};
-
-std::unordered_map<ShapeType, std::shared_ptr<VulkanVertexIndexBufferInfo>> g_shapeInfoMap;
-
-void InitShapes()
-{
-    // Create plane
-    {
-        std::vector<RenderSys::Vertex> vertices = {
-            {glm::vec3(-1.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-            {glm::vec3(1.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-            {glm::vec3(1.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-            {glm::vec3(-1.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)}
-        };
-        std::vector<uint32_t> indices = {
-            0, 1, 2,
-            2, 3, 0
-        };
-
-        constexpr uint32_t binding = 0;
-        auto planeInfo = std::make_shared<VulkanVertexIndexBufferInfo>();
-        planeInfo->m_vertexCount = vertices.size();
-        planeInfo->m_indexCount = indices.size();
-        planeInfo->m_vertextBindingDescs = {
-            binding, sizeof(RenderSys::Vertex), VK_VERTEX_INPUT_RATE_VERTEX
-        };
-        planeInfo->m_vertextAttribDescs = {
-            {0, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, position)},
-            {1, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, normal)},
-            {2, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x2), offsetof(RenderSys::Vertex, texcoord0)},
-            {3, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, color)},
-            {4, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, tangent)}
-        };
-        g_shapeInfoMap.insert({ShapeType::Plane, planeInfo});
-    }
-    // Create cube
-    {
-        std::vector<RenderSys::Vertex> vertices = {
-            {glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-            {glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-            {glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-            {glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-            {glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-            {glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-            {glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-            {glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)}
-        };
-
-        std::vector<uint32_t> indices = {
-            0, 1, 2, 2, 3, 0,
-            4, 5, 6, 6, 7, 4,
-            0, 4, 7, 7, 3, 0,
-            1, 5, 6, 6, 2, 1,
-            3, 2, 6, 6, 7, 3,
-            0, 1, 5, 5, 4, 0
-        };
-
-        constexpr uint32_t binding = 0;
-        auto cubeInfo = std::make_shared<VulkanVertexIndexBufferInfo>();
-        cubeInfo->m_vertexCount = vertices.size();
-        cubeInfo->m_indexCount = indices.size();
-        cubeInfo->m_vertextBindingDescs = {
-            binding, sizeof(RenderSys::Vertex), VK_VERTEX_INPUT_RATE_VERTEX
-        };
-        cubeInfo->m_vertextAttribDescs = {
-            {0, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, position)},
-            {1, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, normal)},
-            {2, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x2), offsetof(RenderSys::Vertex, texcoord0)},
-            {3, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, color)},
-            {4, binding, RenderSys::Vulkan::RenderSysFormatToVulkanFormat(RenderSys::VertexFormat::Float32x3), offsetof(RenderSys::Vertex, tangent)}
-        };
-        g_shapeInfoMap.insert({ShapeType::Cube, cubeInfo});
-    }
-}
 
 bool VulkanRenderer3D::Init()
 {
@@ -132,7 +52,7 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
     }
 
     m_imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+    m_finalImageDescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
 }
 
 void VulkanRenderer3D::CreateDepthImage()
@@ -221,11 +141,11 @@ void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
 
 void VulkanRenderer3D::DestroyImages()
 {
-    if (m_descriptorSet)
+    if (m_finalImageDescriptorSet)
     {
         vkQueueWaitIdle(Vulkan::GetDeviceQueue());
-        ImGui_ImplVulkan_RemoveTexture(m_descriptorSet);
-        m_descriptorSet = VK_NULL_HANDLE;
+        ImGui_ImplVulkan_RemoveTexture(m_finalImageDescriptorSet);
+        m_finalImageDescriptorSet = VK_NULL_HANDLE;
     }
 
     if (m_frameBuffer)
@@ -631,7 +551,14 @@ void VulkanRenderer3D::CreatePipeline()
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.blendEnable = VK_TRUE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Use the new alpha directly
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Discard the old alpha
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
     VkPipelineColorBlendStateCreateInfo colorBlendingInfo{};
     colorBlendingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -1018,7 +945,7 @@ void VulkanRenderer3D::DrawCube()
 
 ImTextureID VulkanRenderer3D::GetDescriptorSet()
 {
-    return m_descriptorSet;
+    return m_finalImageDescriptorSet;
 }
 
 void VulkanRenderer3D::BeginRenderPass()
@@ -1053,6 +980,14 @@ void VulkanRenderer3D::EndRenderPass()
 {
     vkCmdEndRenderPass(m_commandBuffer);
     SubmitCommandBuffer();
+}
+
+void VulkanRenderer3D::BeginShadowMapPass()
+{
+}
+
+void VulkanRenderer3D::EndShadowMapPass()
+{
 }
 
 void VulkanRenderer3D::DestroyTextures()

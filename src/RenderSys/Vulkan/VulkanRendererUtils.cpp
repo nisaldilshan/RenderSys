@@ -244,37 +244,6 @@ void TransitionImageLayout(VkImage image, VkFormat format,
     EndSingleTimeCommands(commandBuffer, commandPool);
 }
 
-std::pair<VkBuffer, VmaAllocation> CreateBuffer(const VmaAllocator& vma, const VkDeviceSize bufferSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage) 
-{
-    VkBufferCreateInfo bufferInfo{};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = bufferSize;
-    bufferInfo.usage = usage;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VmaAllocationCreateInfo allocInfo = {};
-    allocInfo.usage = memoryUsage;
-    
-    VkBuffer buffer;
-    VmaAllocation bufferAllocation;
-    if (vmaCreateBuffer(vma, &bufferInfo, &allocInfo, &buffer, &bufferAllocation, nullptr) != VK_SUCCESS) 
-    {
-        assert(false);
-        return std::make_pair(VK_NULL_HANDLE, VK_NULL_HANDLE);
-    }
-
-    return std::make_pair(buffer, bufferAllocation);
-}
-
-void SetBufferData(const VmaAllocator &vma, VmaAllocation &bufferAllocation, const void *bufferData, VkDeviceSize bufferSize)
-{
-    assert(bufferData != nullptr);
-    void* data;
-    vmaMapMemory(vma, bufferAllocation, &data);
-    memcpy(data, bufferData, static_cast<size_t>(bufferSize));
-    vmaUnmapMemory(vma, bufferAllocation);
-}
-
 uint32_t GetUniformStride(const uint32_t sizeOfUniform)
 {
     static VkDeviceSize minUniformBufferOffsetAlignment = 0;

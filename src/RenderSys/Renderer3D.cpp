@@ -123,3 +123,9 @@ void Renderer3D::EndRenderPass()
 {
     m_rendererBackend->EndRenderPass();
 }
+
+void RenderSys::Renderer3D::ShadowPass()
+{
+    m_rendererBackend->BeginShadowMapPass();
+    m_rendererBackend->EndShadowMapPass();
+}

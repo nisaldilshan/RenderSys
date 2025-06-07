@@ -522,6 +522,16 @@ void WebGPURenderer3D::EndRenderPass()
     SubmitCommandBuffer();
 }
 
+void WebGPURenderer3D::BeginShadowMapPass()
+{
+
+}
+
+void WebGPURenderer3D::EndShadowMapPass()
+{
+
+}
+
 void WebGPURenderer3D::Destroy()
 {
     for (auto &&vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)

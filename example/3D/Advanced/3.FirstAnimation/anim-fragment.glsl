@@ -17,6 +17,9 @@ layout(set = 0, binding = 1) uniform LightingUniforms {
 
 layout(set = 1, binding = 0) uniform sampler2D baseColorTexture;
 layout(set = 1, binding = 1) uniform sampler2D normalTexture;
+layout(set = 1, binding = 2) uniform sampler2D metallicTexture;
+layout(set = 1, binding = 3) uniform sampler2D roughnessTexture;
+layout(set = 1, binding = 4) uniform sampler2D metallicRoughnessTexture;
 
 layout (push_constant, std430) uniform PushFragment
 {
@@ -37,13 +40,16 @@ void main()
 
     // color
     vec4 col;
+    float alpha = 1.0; // Default to opaque
     if (bool(pushConstants.m_materialProperties.m_features & GLSL_HAS_DIFFUSE_MAP))
     {
         col = texture(baseColorTexture, in_uv) * pushConstants.m_materialProperties.m_baseColor;
+        alpha = col.a; // <-- Store the alpha here
     }
     else
     {
         col = pushConstants.m_materialProperties.m_baseColor;
+        alpha = col.a; // <-- Store the alpha here
     }
 
     vec3 texNormal = texture(normalTexture, in_uv).xyz * 2.0 - 1.0;
@@ -52,6 +58,24 @@ void main()
 
     float metallic = pushConstants.m_materialProperties.m_metallic;
     float roughness = pushConstants.m_materialProperties.m_roughness;
+
+    if (bool(pushConstants.m_materialProperties.m_features & GLSL_HAS_ROUGHNESS_METALLIC_MAP))
+    {
+        vec2 mr = texture(metallicRoughnessTexture, in_uv).bg;
+        metallic = mr.x;
+        roughness = mr.y;
+    }
+    else
+    {
+        if (bool(pushConstants.m_materialProperties.m_features & GLSL_HAS_METALLIC_MAP))
+        {
+            metallic = texture(metallicTexture, in_uv).r;
+        }
+        if (bool(pushConstants.m_materialProperties.m_features & GLSL_HAS_ROUGHNESS_MAP))
+        {
+            roughness = texture(roughnessTexture, in_uv).r;
+        }
+    }
 
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);
@@ -88,6 +112,6 @@ void main()
 
     vec3 color = (total_diffuse + total_specular + ambient); // No kD here
 
-    out_color = vec4(color, 1.0);
+    out_color = vec4(color, alpha);
     out_color = pow(out_color, vec4(1.0/2.2));
 }
