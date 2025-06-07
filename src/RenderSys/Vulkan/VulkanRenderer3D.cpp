@@ -981,6 +981,14 @@ void VulkanRenderer3D::EndRenderPass()
     SubmitCommandBuffer();
 }
 
+void VulkanRenderer3D::BeginShadowMapPass()
+{
+}
+
+void VulkanRenderer3D::EndShadowMapPass()
+{
+}
+
 void VulkanRenderer3D::DestroyTextures()
 {
     m_textures.clear();

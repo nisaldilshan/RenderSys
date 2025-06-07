@@ -23,6 +23,7 @@ add_subdirectory(Compute/2.Noise)
 if(RENDERER STREQUAL "Vulkan")
     add_subdirectory(3D/Advanced/2.GLTFModel)
     add_subdirectory(3D/Advanced/3.FirstAnimation)
+    add_subdirectory(3D/Advanced/4.ShadowMapping)
 endif()
 
 if(RENDERER STREQUAL "WebGPU")

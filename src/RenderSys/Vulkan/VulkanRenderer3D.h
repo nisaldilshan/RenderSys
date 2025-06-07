@@ -70,6 +70,8 @@ namespace GraphicsAPI
         ImTextureID GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();
+        void BeginShadowMapPass();
+        void EndShadowMapPass();
         void DestroyImages();
         void DestroyPipeline();
         void DestroyBindGroup();
