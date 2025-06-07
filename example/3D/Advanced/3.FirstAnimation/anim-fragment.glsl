@@ -40,13 +40,16 @@ void main()
 
     // color
     vec4 col;
+    float alpha = 1.0; // Default to opaque
     if (bool(pushConstants.m_materialProperties.m_features & GLSL_HAS_DIFFUSE_MAP))
     {
         col = texture(baseColorTexture, in_uv) * pushConstants.m_materialProperties.m_baseColor;
+        alpha = col.a; // <-- Store the alpha here
     }
     else
     {
         col = pushConstants.m_materialProperties.m_baseColor;
+        alpha = col.a; // <-- Store the alpha here
     }
 
     vec3 texNormal = texture(normalTexture, in_uv).xyz * 2.0 - 1.0;
@@ -109,6 +112,6 @@ void main()
 
     vec3 color = (total_diffuse + total_specular + ambient); // No kD here
 
-    out_color = vec4(color, 1.0);
+    out_color = vec4(color, alpha);
     out_color = pow(out_color, vec4(1.0/2.2));
 }

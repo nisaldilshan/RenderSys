@@ -132,7 +132,7 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
     }
 
     m_imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+    m_finalImageDescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
 }
 
 void VulkanRenderer3D::CreateDepthImage()
@@ -221,11 +221,11 @@ void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
 
 void VulkanRenderer3D::DestroyImages()
 {
-    if (m_descriptorSet)
+    if (m_finalImageDescriptorSet)
     {
         vkQueueWaitIdle(Vulkan::GetDeviceQueue());
-        ImGui_ImplVulkan_RemoveTexture(m_descriptorSet);
-        m_descriptorSet = VK_NULL_HANDLE;
+        ImGui_ImplVulkan_RemoveTexture(m_finalImageDescriptorSet);
+        m_finalImageDescriptorSet = VK_NULL_HANDLE;
     }
 
     if (m_frameBuffer)
@@ -631,7 +631,14 @@ void VulkanRenderer3D::CreatePipeline()
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.blendEnable = VK_TRUE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Use the new alpha directly
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Discard the old alpha
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
     VkPipelineColorBlendStateCreateInfo colorBlendingInfo{};
     colorBlendingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -1018,7 +1025,7 @@ void VulkanRenderer3D::DrawCube()
 
 ImTextureID VulkanRenderer3D::GetDescriptorSet()
 {
-    return m_descriptorSet;
+    return m_finalImageDescriptorSet;
 }
 
 void VulkanRenderer3D::BeginRenderPass()
