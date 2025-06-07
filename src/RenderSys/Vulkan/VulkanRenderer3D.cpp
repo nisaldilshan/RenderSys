@@ -4,6 +4,7 @@
 #include "VulkanTexture.h"
 #include "VulkanMaterial.h"
 #include "VulkanResource.h"
+#include "VulkanShadowMap.h"
 
 #include <array>
 #include <iostream>

@@ -2,6 +2,7 @@
 
 #include "VulkanMemAlloc.h"
 #include "VulkanRendererUtils.h"
+#include "VulkanBuffer.h"
 #include <iostream>
 
 namespace RenderSys
@@ -103,11 +104,9 @@ void VulkanTexture::SetData(unsigned char *textureData)
             }
         }
 
-        VkBuffer stagingBuffer;
-        VmaAllocation stagingBufferAllocation;
-        std::tie(stagingBuffer, stagingBufferAllocation) = RenderSys::Vulkan::CreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), static_cast<VkDeviceSize>(pixels.size()),
-                                                                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-        RenderSys::Vulkan::SetBufferData(RenderSys::Vulkan::GetMemoryAllocator(), stagingBufferAllocation, pixels.data(), static_cast<VkDeviceSize>(pixels.size()));
+        auto stagingBuf = std::make_shared<VulkanBuffer>(pixels.size(), BufferUsage::TRANSFER_SRC_VISIBLE_TO_GPU);
+        stagingBuf->MapBuffer();
+        stagingBuf->WriteToBuffer(pixels.data());
 
         auto currentCommandBuffer = RenderSys::Vulkan::BeginSingleTimeCommands(RenderSys::Vulkan::GetCommandPool());
 
@@ -121,12 +120,9 @@ void VulkanTexture::SetData(unsigned char *textureData)
         region.imageSubresource.layerCount = 1;
         region.imageOffset = {0, 0, 0};
         region.imageExtent = {mipLevelWidth, mipLevelHeight, 1};
-
-        vkCmdCopyBufferToImage(currentCommandBuffer, stagingBuffer, m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        vkCmdCopyBufferToImage(currentCommandBuffer, stagingBuf->GetBufferInfo().buffer, m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
         RenderSys::Vulkan::EndSingleTimeCommands(currentCommandBuffer, RenderSys::Vulkan::GetCommandPool());
-
-        vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), stagingBuffer, stagingBufferAllocation);
 
         previousLevelPixels = std::move(pixels);
         previousMipLevelWidth = mipLevelWidth;

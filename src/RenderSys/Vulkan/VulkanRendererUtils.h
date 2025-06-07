@@ -23,9 +23,6 @@ void EndSingleTimeCommands(VkCommandBuffer commandBuffer, VkCommandPool commandP
 void TransitionImageLayout(VkImage image, VkFormat format, 
                             VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipMapLevelCount, VkCommandPool commandPool);
 
-std::pair<VkBuffer, VmaAllocation> CreateBuffer(const VmaAllocator& vma, const VkDeviceSize bufferSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage);
-void SetBufferData(const VmaAllocator& vma, VmaAllocation& bufferAllocation, const void* bufferData, VkDeviceSize bufferSize);
-
 uint32_t GetUniformStride(const uint32_t sizeOfUniform);
 
 } // namespace Vulkan
