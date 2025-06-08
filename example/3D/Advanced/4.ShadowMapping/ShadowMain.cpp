@@ -49,7 +49,7 @@ public:
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
 			{
-				std::ifstream file(shaderDir + "/anim-vertex.glsl", std::ios::binary);
+				std::ifstream file(shaderDir + "/shadow-vertex.glsl", std::ios::binary);
 				std::vector<char> content((std::istreambuf_iterator<char>(file)),
 											std::istreambuf_iterator<char>());
 
@@ -65,7 +65,7 @@ public:
 			}
 
 			{
-				std::ifstream file(shaderDir + "/anim-fragment.glsl", std::ios::binary);
+				std::ifstream file(shaderDir + "/shadow-fragment.glsl", std::ios::binary);
 				std::vector<char> content((std::istreambuf_iterator<char>(file)),
 											std::istreambuf_iterator<char>());
 
@@ -202,6 +202,8 @@ public:
 		{
 			m_camera->OnUpdate();
 			m_scene->Update();
+
+			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
@@ -229,6 +231,7 @@ public:
 			}
 
 			m_renderer->EndRenderPass();
+			m_renderer->EndFrame();
 		}
 
         m_lastRenderTime = timer.ElapsedMillis();

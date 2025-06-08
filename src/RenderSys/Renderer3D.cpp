@@ -109,6 +109,16 @@ void Renderer3D::RenderIndexed(uint32_t uniformIndex)
     m_rendererBackend->RenderIndexed();
 }
 
+void RenderSys::Renderer3D::BeginFrame()
+{
+    m_rendererBackend->ResetCommandBuffer();
+}
+
+void RenderSys::Renderer3D::EndFrame()
+{
+    m_rendererBackend->SubmitCommandBuffer();
+}
+
 void Renderer3D::RenderMesh(const RenderSys::Mesh& mesh)
 {
     m_rendererBackend->RenderMesh(mesh);

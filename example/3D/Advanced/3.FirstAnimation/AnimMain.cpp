@@ -202,6 +202,8 @@ public:
 		{
 			m_camera->OnUpdate();
 			m_scene->Update();
+
+			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
@@ -229,6 +231,7 @@ public:
 			}
 
 			m_renderer->EndRenderPass();
+			m_renderer->EndFrame();
 		}
 
         m_lastRenderTime = timer.ElapsedMillis();

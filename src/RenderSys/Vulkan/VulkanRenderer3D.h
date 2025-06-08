@@ -80,6 +80,8 @@ public:
     void DestroyPipeline();
     void DestroyBindGroup();
     void Destroy();
+    void ResetCommandBuffer();
+    void SubmitCommandBuffer();
 
 private:
     void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh);
@@ -91,7 +93,7 @@ private:
     void DestroyBuffers();
     void DestroyShaders();
     void DestroyTextures();
-    void SubmitCommandBuffer();
+    
 
     uint32_t m_width = 0;
     uint32_t m_height = 0;

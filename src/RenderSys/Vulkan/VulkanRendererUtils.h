@@ -7,6 +7,10 @@ namespace RenderSys
 {
 namespace Vulkan 
 {
+inline VkFormat GetDepthFormat()
+{
+    return VK_FORMAT_D32_SFLOAT;
+}
 
 void CreateCommandPool();
 VkCommandPool GetCommandPool();

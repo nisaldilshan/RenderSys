@@ -1,4 +1,5 @@
 #include "VulkanRenderer3D.h"
+
 #include "VulkanRendererUtils.h"
 #include "VulkanMemAlloc.h"
 #include "VulkanTexture.h"
@@ -68,7 +69,7 @@ void VulkanRenderer3D::CreateDepthImage()
     VkImageCreateInfo depthImageInfo{};
     depthImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     depthImageInfo.imageType = VK_IMAGE_TYPE_2D;
-    depthImageInfo.format = VK_FORMAT_D32_SFLOAT;
+    depthImageInfo.format = Vulkan::GetDepthFormat();
     depthImageInfo.extent = VkExtent3D{m_width, m_height, 1};
     depthImageInfo.mipLevels = 1;
     depthImageInfo.arrayLayers = 1;
@@ -87,7 +88,7 @@ void VulkanRenderer3D::CreateDepthImage()
         assert(false);
     }
 
-    m_depthimageView = RenderSys::Vulkan::CreateImageView(m_depthimage, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
+    m_depthimageView = RenderSys::Vulkan::CreateImageView(m_depthimage, Vulkan::GetDepthFormat(), VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
@@ -417,7 +418,7 @@ void VulkanRenderer3D::CreateRenderPass()
 
     VkAttachmentDescription depthAtt{};
     depthAtt.flags = 0;
-    depthAtt.format = VK_FORMAT_D32_SFLOAT;
+    depthAtt.format = Vulkan::GetDepthFormat();
     depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
     depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -962,15 +963,6 @@ void VulkanRenderer3D::BeginRenderPass()
     clearValues[0].color = m_clearColor;
     clearValues[1].depthStencil = {1.0f, 0};
 
-    auto err = vkResetCommandBuffer(m_commandBuffer, 0);
-    GraphicsAPI::Vulkan::check_vk_result(err);
-
-    VkCommandBufferBeginInfo begin_info{};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
-    GraphicsAPI::Vulkan::check_vk_result(err);
-
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -987,7 +979,6 @@ void VulkanRenderer3D::BeginRenderPass()
 void VulkanRenderer3D::EndRenderPass()
 {
     vkCmdEndRenderPass(m_commandBuffer);
-    SubmitCommandBuffer();
 }
 
 void VulkanRenderer3D::BeginShadowMapPass()
@@ -996,10 +987,43 @@ void VulkanRenderer3D::BeginShadowMapPass()
     {
         m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(10);
     }
+
+    if (!m_commandBuffer)
+        return;
+
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = m_shadowMap->GetShadowRenderPass();
+    renderPassInfo.framebuffer = m_shadowMap->GetShadowFrameBuffer();
+
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = m_shadowMap->GetShadowMapExtent();
+
+    std::array<VkClearValue, static_cast<uint32_t>(Vulkan::ShadowMap::ShadowRenderTargets::NUMBER_OF_ATTACHMENTS)> clearValues{};
+    clearValues[0].depthStencil = {1.0f, 0};
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(m_commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_shadowMap->GetShadowMapExtent().width);
+    viewport.height = static_cast<float>(m_shadowMap->GetShadowMapExtent().height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    VkRect2D scissor{{0, 0}, m_shadowMap->GetShadowMapExtent()};
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 }
 
 void VulkanRenderer3D::EndShadowMapPass()
 {
+    if (!m_commandBuffer)
+        return;
+
+    vkCmdEndRenderPass(m_commandBuffer);
 }
 
 void VulkanRenderer3D::DestroyTextures()
@@ -1031,6 +1055,18 @@ void VulkanRenderer3D::Destroy()
     DestroyRenderPass();
 
     RenderSys::Vulkan::DestroyMemoryAllocator();
+}
+
+void VulkanRenderer3D::ResetCommandBuffer()
+{
+    auto err = vkResetCommandBuffer(m_commandBuffer, 0);
+    GraphicsAPI::Vulkan::check_vk_result(err);
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
+    GraphicsAPI::Vulkan::check_vk_result(err);
 }
 
 void VulkanRenderer3D::SubmitCommandBuffer()

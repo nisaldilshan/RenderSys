@@ -225,6 +225,17 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "ShadowMapping",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Advanced/4.ShadowMapping/Debug/ShadowMapping",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Advanced/4.ShadowMapping/Debug",
+            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "RayMarching",
             "type": "cppvsdbg",
             "request": "launch",

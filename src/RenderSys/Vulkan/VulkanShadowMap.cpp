@@ -1,5 +1,8 @@
 #include "VulkanShadowMap.h"
 
+#include "VulkanRendererUtils.h"
+#include "VulkanMemAlloc.h"
+
 #include <array>
 #include <iostream>
 
@@ -12,7 +15,7 @@ ShadowMap::ShadowMap(int width)
 {
     m_ShadowMapExtent.width = width;
     m_ShadowMapExtent.height = width;
-    //m_DepthFormat = m_Device->FindDepthFormat();
+    m_DepthFormat = Vulkan::GetDepthFormat();
 
     CreateShadowRenderPass();
     CreateShadowDepthResources();
@@ -22,8 +25,10 @@ ShadowMap::ShadowMap(int width)
 ShadowMap::~ShadowMap()
 {
     vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthImageView, nullptr);
-    vkDestroyImage(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthImage, nullptr);
-    vkFreeMemory(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthImageMemory, nullptr);
+    // vkDestroyImage(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthImage, nullptr);
+    // vkFreeMemory(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthImageMemory, nullptr);
+    vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), m_ShadowDepthImage, m_ShadowDepthImageMemory);
+
     vkDestroySampler(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthSampler, nullptr);
     vkDestroyRenderPass(GraphicsAPI::Vulkan::GetDevice(), m_ShadowRenderPass, nullptr);
     vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_ShadowFramebuffer, nullptr);
@@ -50,6 +55,15 @@ void ShadowMap::CreateShadowDepthResources()
 
     // m_Device->CreateImageWithInfo(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_ShadowDepthImage,
     //                               m_ShadowDepthImageMemory);
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    if (vmaCreateImage(RenderSys::Vulkan::GetMemoryAllocator(), &imageInfo, &allocInfo, &m_ShadowDepthImage, &m_ShadowDepthImageMemory, nullptr) != VK_SUCCESS)
+    {
+        assert(false);
+    }
 
     // image view
     VkImageViewCreateInfo viewInfo{};

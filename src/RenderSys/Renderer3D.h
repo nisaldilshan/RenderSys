@@ -52,6 +52,8 @@ public:
     void BindResources();
     void Render(uint32_t uniformIndex);
     void RenderIndexed(uint32_t uniformIndex);
+    void BeginFrame();
+    void EndFrame();
     void RenderMesh(const RenderSys::Mesh& mesh);
     void BeginRenderPass();
     void EndRenderPass();

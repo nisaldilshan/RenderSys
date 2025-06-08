@@ -1,5 +1,6 @@
 #pragma once
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
+#include <vk_mem_alloc.h>
 
 namespace RenderSys
 {
@@ -44,7 +45,7 @@ private:
     VkImage m_ShadowDepthImage{nullptr};
     VkImageLayout m_ImageLayout{};
     VkImageView m_ShadowDepthImageView{nullptr};
-    VkDeviceMemory m_ShadowDepthImageMemory{nullptr};
+    VmaAllocation m_ShadowDepthImageMemory{nullptr};
     VkSampler m_ShadowDepthSampler{nullptr};
 
     VkDescriptorImageInfo m_DescriptorImageInfo{};
