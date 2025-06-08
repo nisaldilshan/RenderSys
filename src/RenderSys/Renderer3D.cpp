@@ -15,7 +15,7 @@ using namespace RenderSys;
 Renderer3D::Renderer3D()
     : m_Width(0)
     , m_Height(0)
-    , m_rendererBackend(std::make_unique<GraphicsAPI::RendererType>())
+    , m_rendererBackend(std::make_unique<RenderSys::RendererType>())
 {}
 
 Renderer3D::~Renderer3D()
