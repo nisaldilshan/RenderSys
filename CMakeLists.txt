@@ -32,7 +32,8 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Scene/UUID.cpp
                 src/RenderSys/Components/TransformComponent.cpp
                 src/RenderSys/Components/MeshComponent.cpp
-                src/RenderSys/Components/TagAndIDComponents.cpp)
+                src/RenderSys/Components/TagAndIDComponents.cpp
+            )
 
 add_library (ComputeSys STATIC
                 src/RenderSys/Compute.cpp
@@ -58,6 +59,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanMaterial.cpp
                     src/RenderSys/Vulkan/VulkanResource.cpp
                     src/RenderSys/Vulkan/VulkanShadowMap.cpp
+                    src/RenderSys/Vulkan/VulkanPbrRenderPipeline.cpp
     )
     target_sources(ComputeSys PRIVATE
                     src/RenderSys/Vulkan/VulkanCompute.cpp

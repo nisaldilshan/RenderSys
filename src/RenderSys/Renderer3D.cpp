@@ -109,12 +109,12 @@ void Renderer3D::RenderIndexed(uint32_t uniformIndex)
     m_rendererBackend->RenderIndexed();
 }
 
-void RenderSys::Renderer3D::BeginFrame()
+void Renderer3D::BeginFrame()
 {
     m_rendererBackend->ResetCommandBuffer();
 }
 
-void RenderSys::Renderer3D::EndFrame()
+void Renderer3D::EndFrame()
 {
     m_rendererBackend->SubmitCommandBuffer();
 }
@@ -134,7 +134,7 @@ void Renderer3D::EndRenderPass()
     m_rendererBackend->EndRenderPass();
 }
 
-void RenderSys::Renderer3D::ShadowPass()
+void Renderer3D::ShadowPass()
 {
     m_rendererBackend->BeginShadowMapPass();
     m_rendererBackend->EndShadowMapPass();

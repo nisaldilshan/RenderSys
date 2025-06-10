@@ -204,6 +204,9 @@ public:
 			m_scene->Update();
 
 			m_renderer->BeginFrame();
+
+			m_renderer->ShadowPass();
+
 			m_renderer->BeginRenderPass();
 
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();

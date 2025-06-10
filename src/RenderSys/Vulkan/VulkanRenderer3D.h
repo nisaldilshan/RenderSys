@@ -18,6 +18,7 @@ namespace RenderSys
 namespace Vulkan
 {
     class ShadowMap;
+    class PbrRenderPipeline;
 }
 
 struct VulkanVertexIndexBufferInfo
@@ -111,6 +112,8 @@ private:
 
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
     VkPipeline m_pipeline = VK_NULL_HANDLE;
+    std::unique_ptr<Vulkan::PbrRenderPipeline> m_pbrRenderPipeline;
+
     VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;
     VkRenderPass m_renderpass = VK_NULL_HANDLE;
     VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
