@@ -373,21 +373,13 @@ void VulkanRenderer3D::CreatePipelineLayout()
 {
     if (!m_pipelineLayout)
     {
-        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-        pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, 
                                                     RenderSys::GetMaterialBindGroupLayout(),
                                                     RenderSys::GetResourceBindGroupLayout()};
-        if (!m_bindGroupLayout)
-        {
-            pipelineLayoutCreateInfo.setLayoutCount = 0;
-            pipelineLayoutCreateInfo.pSetLayouts = nullptr;
-        }
-        else
-        {
-            pipelineLayoutCreateInfo.setLayoutCount = layouts.size();
-            pipelineLayoutCreateInfo.pSetLayouts = layouts.data();
-        }
+        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+        pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineLayoutCreateInfo.setLayoutCount = layouts.size();
+        pipelineLayoutCreateInfo.pSetLayouts = layouts.data();
         
         VkPushConstantRange pushConstantRange{};
 		pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;

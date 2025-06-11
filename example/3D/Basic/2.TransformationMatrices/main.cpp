@@ -214,6 +214,7 @@ public:
 
 		if (m_renderer)
 		{
+			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
 			float time = static_cast<float>(glfwGetTime());
@@ -250,6 +251,7 @@ public:
 			m_renderer->BindResources();
 			m_renderer->RenderIndexed(0);
 			m_renderer->EndRenderPass();
+			m_renderer->EndFrame();
 		}
        		
 

@@ -233,6 +233,7 @@ public:
 
 		if (m_renderer)
 		{
+			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
 			m_uniformData.time = static_cast<float>(glfwGetTime()) * 0.95f; // glfwGetTime returns a double
@@ -243,6 +244,7 @@ public:
 			
 			m_renderer->RenderIndexed(0);
 			m_renderer->EndRenderPass();
+			m_renderer->EndFrame();
 		}
        		
 
