@@ -495,15 +495,11 @@ void VulkanRenderer3D::CreatePipeline()
 
     std::vector<VkVertexInputBindingDescription> vertexBindingDescs;
     std::vector<VkVertexInputAttributeDescription> vertextAttribDescs;
-    assert(m_vertexIndexBufferInfoMap.size() > 0);
-    for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
+    assert(m_vertexInputLayout.m_vertextAttribDescs.size() > 0);
+    vertexBindingDescs.push_back(m_vertexInputLayout.m_vertextBindingDescs);
+    for (const auto &vertextAttribDesc : m_vertexInputLayout.m_vertextAttribDescs)
     {
-        vertexBindingDescs.push_back(vertexIndexBufferInfo.second->m_vertextBindingDescs);
-        for (const auto &vertextAttribDesc : vertexIndexBufferInfo.second->m_vertextAttribDescs)
-        {
-            vertextAttribDescs.push_back(vertextAttribDesc);
-        }
-        break;
+        vertextAttribDescs.push_back(vertextAttribDesc);
     }
 
     vertexInputInfo.vertexBindingDescriptionCount = vertexBindingDescs.size();
@@ -649,22 +645,25 @@ uint32_t VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& buf
     const uint64_t vertexCount = bufferLength/bufferLayout.arrayStride;
     assert(vertexCount > 0);
 
+    if (m_vertexInputLayout.m_vertextAttribDescs.size() == 0)
+    {
+        m_vertexInputLayout.m_vertextBindingDescs.binding = 0;
+        m_vertexInputLayout.m_vertextBindingDescs.stride = bufferLayout.arrayStride;
+        m_vertexInputLayout.m_vertextBindingDescs.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        for (size_t i = 0; i < bufferLayout.attributeCount; i++)
+        {
+            RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
+            VkVertexInputAttributeDescription vkAttribute{};
+            vkAttribute.binding = 0;
+            vkAttribute.location = attrib.location;
+            vkAttribute.format = RenderSys::Vulkan::RenderSysFormatToVulkanFormat(attrib.format);
+            vkAttribute.offset = attrib.offset;
+            m_vertexInputLayout.m_vertextAttribDescs.push_back(vkAttribute);
+        }
+    }
+    
     auto vertexIndexBufferInfo = std::make_shared<VulkanVertexIndexBufferInfo>();
     vertexIndexBufferInfo->m_vertexCount = vertexCount;
-    vertexIndexBufferInfo->m_vertextBindingDescs.binding = 0;
-    vertexIndexBufferInfo->m_vertextBindingDescs.stride = bufferLayout.arrayStride;
-    vertexIndexBufferInfo->m_vertextBindingDescs.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    for (size_t i = 0; i < bufferLayout.attributeCount; i++)
-    {
-        RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
-        VkVertexInputAttributeDescription vkAttribute{};
-        vkAttribute.binding = 0;
-        vkAttribute.location = attrib.location;
-        vkAttribute.format = RenderSys::Vulkan::RenderSysFormatToVulkanFormat(attrib.format);
-        vkAttribute.offset = attrib.offset;
-        vertexIndexBufferInfo->m_vertextAttribDescs.push_back(vkAttribute);
-    }
-
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = bufferLength;

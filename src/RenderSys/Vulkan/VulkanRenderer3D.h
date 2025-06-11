@@ -17,9 +17,17 @@ namespace RenderSys
 {
 namespace Vulkan
 {
-    class ShadowMap;
-    class PbrRenderPipeline;
-}
+
+class ShadowMap;
+class PbrRenderPipeline;
+
+struct VertexInputLayout
+{
+    VkVertexInputBindingDescription m_vertextBindingDescs;
+    std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
+};
+
+} // namespace Vulkan
 
 struct VulkanVertexIndexBufferInfo
 {
@@ -35,8 +43,6 @@ struct VulkanVertexIndexBufferInfo
     VkBuffer m_indexBuffer = VK_NULL_HANDLE;
     VmaAllocation m_indexBufferMemory = VK_NULL_HANDLE;
     uint32_t m_indexCount = 0;
-    VkVertexInputBindingDescription m_vertextBindingDescs;
-    std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
 };
 
 struct VulkanUniformBufferInfo
@@ -118,6 +124,7 @@ private:
     VkRenderPass m_renderpass = VK_NULL_HANDLE;
     VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 
+    Vulkan::VertexInputLayout m_vertexInputLayout;
     std::unordered_map<uint32_t, std::shared_ptr<VulkanVertexIndexBufferInfo>> m_vertexIndexBufferInfoMap;
 
     VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;

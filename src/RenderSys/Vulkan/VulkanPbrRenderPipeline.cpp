@@ -52,9 +52,12 @@ void PbrRenderPipeline::CreatePipelineLayout(std::vector<VkDescriptorSetLayout> 
     }
 }
 
-void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass) {
+void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass) 
+{
+    assert(m_PipelineLayout != VK_NULL_HANDLE);
+    
 }
 
-}
+} // namespace Vulkan
 
-}
+} // namespace RenderSys
