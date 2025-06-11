@@ -1,5 +1,6 @@
 #pragma once
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
+#include <RenderSys/Vulkan/VulkanVertex.h>
 
 namespace RenderSys
 {
@@ -10,7 +11,10 @@ class PbrRenderPipeline
 {
 
 public:
-    PbrRenderPipeline(VkRenderPass renderPass, std::vector<VkDescriptorSetLayout>& descriptorSetLayouts);
+    PbrRenderPipeline(VkRenderPass renderPass, 
+                        std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
+                        const Vulkan::VertexInputLayout& vertexInputLayout, 
+                        const std::vector<VkPipelineShaderStageCreateInfo>& m_shaderStageInfos);
     ~PbrRenderPipeline();
 
     PbrRenderPipeline(const PbrRenderPipeline&) = delete;

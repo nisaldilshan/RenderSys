@@ -9,7 +9,9 @@ namespace RenderSys {
 namespace Vulkan {
 
 PbrRenderPipeline::PbrRenderPipeline(VkRenderPass renderPass,
-    std::vector<VkDescriptorSetLayout> &descriptorSetLayouts) 
+    std::vector<VkDescriptorSetLayout> &descriptorSetLayouts,
+    const Vulkan::VertexInputLayout& vertexInputLayout, 
+    const std::vector<VkPipelineShaderStageCreateInfo>& m_shaderStageInfos) 
 {
     CreatePipelineLayout(descriptorSetLayouts);
     CreatePipeline(renderPass);
@@ -55,7 +57,7 @@ void PbrRenderPipeline::CreatePipelineLayout(std::vector<VkDescriptorSetLayout> 
 void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass) 
 {
     assert(m_PipelineLayout != VK_NULL_HANDLE);
-    
+
 }
 
 } // namespace Vulkan

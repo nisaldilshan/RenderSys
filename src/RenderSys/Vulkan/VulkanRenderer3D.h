@@ -12,6 +12,7 @@
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
 #include <RenderSys/Scene/Mesh.h>
+#include <RenderSys/Vulkan/VulkanVertex.h>
 
 namespace RenderSys
 {
@@ -21,29 +22,7 @@ namespace Vulkan
 class ShadowMap;
 class PbrRenderPipeline;
 
-struct VertexInputLayout
-{
-    VkVertexInputBindingDescription m_vertextBindingDescs;
-    std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
-};
-
 } // namespace Vulkan
-
-struct VulkanVertexIndexBufferInfo
-{
-    VulkanVertexIndexBufferInfo() = default;
-    ~VulkanVertexIndexBufferInfo() = default;
-    VulkanVertexIndexBufferInfo(const VulkanVertexIndexBufferInfo&) = delete;
-    VulkanVertexIndexBufferInfo& operator=(const VulkanVertexIndexBufferInfo&) = delete;
-    VulkanVertexIndexBufferInfo(VulkanVertexIndexBufferInfo&&) = delete;
-    VulkanVertexIndexBufferInfo& operator=(VulkanVertexIndexBufferInfo&&) = delete;
-    VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
-    VmaAllocation m_vertexBufferMemory = VK_NULL_HANDLE;
-    uint32_t m_vertexCount = 0;
-    VkBuffer m_indexBuffer = VK_NULL_HANDLE;
-    VmaAllocation m_indexBufferMemory = VK_NULL_HANDLE;
-    uint32_t m_indexCount = 0;
-};
 
 struct VulkanUniformBufferInfo
 {
@@ -125,7 +104,7 @@ private:
     VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 
     Vulkan::VertexInputLayout m_vertexInputLayout;
-    std::unordered_map<uint32_t, std::shared_ptr<VulkanVertexIndexBufferInfo>> m_vertexIndexBufferInfoMap;
+    std::unordered_map<uint32_t, std::shared_ptr<Vulkan::VertexIndexBufferInfo>> m_vertexIndexBufferInfoMap;
 
     VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
     VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;

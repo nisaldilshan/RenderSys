@@ -662,7 +662,7 @@ uint32_t VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& buf
         }
     }
     
-    auto vertexIndexBufferInfo = std::make_shared<VulkanVertexIndexBufferInfo>();
+    auto vertexIndexBufferInfo = std::make_shared<Vulkan::VertexIndexBufferInfo>();
     vertexIndexBufferInfo->m_vertexCount = vertexCount;
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
