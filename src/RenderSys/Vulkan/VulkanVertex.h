@@ -8,8 +8,8 @@ namespace Vulkan
 
 struct VertexInputLayout
 {
-    VkVertexInputBindingDescription m_vertextBindingDescs;
-    std::vector<VkVertexInputAttributeDescription> m_vertextAttribDescs;
+    VkVertexInputBindingDescription m_vertexBindingDescs;
+    std::vector<VkVertexInputAttributeDescription> m_vertexAttribDescs;
 };
 
 struct VertexIndexBufferInfo

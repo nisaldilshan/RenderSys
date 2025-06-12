@@ -494,42 +494,30 @@ void VulkanRenderer3D::CreatePipeline()
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
     std::vector<VkVertexInputBindingDescription> vertexBindingDescs;
-    std::vector<VkVertexInputAttributeDescription> vertextAttribDescs;
-    assert(m_vertexInputLayout.m_vertextAttribDescs.size() > 0);
-    vertexBindingDescs.push_back(m_vertexInputLayout.m_vertextBindingDescs);
-    for (const auto &vertextAttribDesc : m_vertexInputLayout.m_vertextAttribDescs)
+    std::vector<VkVertexInputAttributeDescription> vertexAttribDescs;
+    assert(m_vertexInputLayout.m_vertexAttribDescs.size() > 0);
+    vertexBindingDescs.push_back(m_vertexInputLayout.m_vertexBindingDescs);
+    for (const auto &vertexAttribDesc : m_vertexInputLayout.m_vertexAttribDescs)
     {
-        vertextAttribDescs.push_back(vertextAttribDesc);
+        vertexAttribDescs.push_back(vertexAttribDesc);
     }
 
     vertexInputInfo.vertexBindingDescriptionCount = vertexBindingDescs.size();
     vertexInputInfo.pVertexBindingDescriptions = vertexBindingDescs.data();
-    vertexInputInfo.vertexAttributeDescriptionCount = vertextAttribDescs.size();
-    vertexInputInfo.pVertexAttributeDescriptions = vertextAttribDescs.data();
+    vertexInputInfo.vertexAttributeDescriptionCount = vertexAttribDescs.size();
+    vertexInputInfo.pVertexAttributeDescriptions = vertexAttribDescs.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
     inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(m_width);
-    viewport.height = static_cast<float>(m_height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-
-    VkRect2D scissor{};
-    scissor.offset = { 0, 0 };
-    scissor.extent = {m_width, m_height};
-
     VkPipelineViewportStateCreateInfo viewportStateInfo{};
     viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewportStateInfo.viewportCount = 1;
-    viewportStateInfo.pViewports = &viewport;
+    viewportStateInfo.pViewports = nullptr;
     viewportStateInfo.scissorCount = 1;
-    viewportStateInfo.pScissors = &scissor;
+    viewportStateInfo.pScissors = nullptr;
 
     VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
     rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -645,11 +633,11 @@ uint32_t VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& buf
     const uint64_t vertexCount = bufferLength/bufferLayout.arrayStride;
     assert(vertexCount > 0);
 
-    if (m_vertexInputLayout.m_vertextAttribDescs.size() == 0)
+    if (m_vertexInputLayout.m_vertexAttribDescs.size() == 0)
     {
-        m_vertexInputLayout.m_vertextBindingDescs.binding = 0;
-        m_vertexInputLayout.m_vertextBindingDescs.stride = bufferLayout.arrayStride;
-        m_vertexInputLayout.m_vertextBindingDescs.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        m_vertexInputLayout.m_vertexBindingDescs.binding = 0;
+        m_vertexInputLayout.m_vertexBindingDescs.stride = bufferLayout.arrayStride;
+        m_vertexInputLayout.m_vertexBindingDescs.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         for (size_t i = 0; i < bufferLayout.attributeCount; i++)
         {
             RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
@@ -658,7 +646,7 @@ uint32_t VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& buf
             vkAttribute.location = attrib.location;
             vkAttribute.format = RenderSys::Vulkan::RenderSysFormatToVulkanFormat(attrib.format);
             vkAttribute.offset = attrib.offset;
-            m_vertexInputLayout.m_vertextAttribDescs.push_back(vkAttribute);
+            m_vertexInputLayout.m_vertexAttribDescs.push_back(vkAttribute);
         }
     }
     
