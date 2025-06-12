@@ -23,14 +23,15 @@ public:
     PbrRenderPipeline& operator=(PbrRenderPipeline&&) = delete;
 
     VkPipeline GetPipeline() const { return m_Pipeline; }
+    VkPipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
 
 private:
     void CreatePipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts);
     void CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
                         const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos);
 
-    VkPipelineLayout m_PipelineLayout;
-    VkPipeline m_Pipeline;
+    VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
+    VkPipeline m_Pipeline = VK_NULL_HANDLE;
 };
 
 

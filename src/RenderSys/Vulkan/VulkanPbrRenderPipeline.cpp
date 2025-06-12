@@ -20,7 +20,17 @@ PbrRenderPipeline::PbrRenderPipeline(VkRenderPass renderPass,
 
 PbrRenderPipeline::~PbrRenderPipeline() 
 {
-    vkDestroyPipelineLayout(GraphicsAPI::Vulkan::GetDevice(), m_PipelineLayout, nullptr);
+    if (m_Pipeline)
+    {
+        vkDestroyPipeline(GraphicsAPI::Vulkan::GetDevice(), m_Pipeline, nullptr);
+        m_Pipeline = VK_NULL_HANDLE;
+    }
+
+    if (m_PipelineLayout)
+    {
+        vkDestroyPipelineLayout(GraphicsAPI::Vulkan::GetDevice(), m_PipelineLayout, nullptr);
+        m_PipelineLayout = VK_NULL_HANDLE;
+    }
 }
 
 void PbrRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSetLayout> &descriptorSetLayouts)

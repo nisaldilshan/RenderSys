@@ -63,7 +63,6 @@ public:
     void BeginShadowMapPass();
     void EndShadowMapPass();
     void DestroyImages();
-    void DestroyPipeline();
     void DestroyBindGroup();
     void Destroy();
     void ResetCommandBuffer();
@@ -72,7 +71,6 @@ public:
 private:
     void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh);
     void CreateDefaultTextureSampler();
-    void CreatePipelineLayout();
     void CreateRenderPass();
     void CreateCommandBuffers();
     void DestroyRenderPass();
@@ -95,8 +93,6 @@ private:
     std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
     std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
 
-    VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
-    VkPipeline m_pipeline = VK_NULL_HANDLE;
     std::unique_ptr<Vulkan::PbrRenderPipeline> m_pbrRenderPipeline;
 
     VkFramebuffer m_frameBuffer = VK_NULL_HANDLE;

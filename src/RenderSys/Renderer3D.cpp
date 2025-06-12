@@ -24,7 +24,6 @@ Renderer3D::~Renderer3D()
 void Renderer3D::OnResize(uint32_t width, uint32_t height)
 {
     m_rendererBackend->DestroyBindGroup();
-    m_rendererBackend->DestroyPipeline();
     m_rendererBackend->DestroyImages();
 
     m_Width = width;
