@@ -152,6 +152,29 @@ public:
 		m_scene->AddInstanceofSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
 		m_scene->AddInstanceofSubTree(1, glm::vec3(0.0f, 0.0f, 15.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
 		m_scene->AddInstanceofSubTree(2, glm::vec3(10.0f, 0.0f, 7.5f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
+
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
+		// The uniform buffer binding that we already had
+		RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
+		uniformBindingLayout.setDefault();
+		uniformBindingLayout.binding = 0;
+		uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
+		uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
+		uniformBindingLayout.buffer.hasDynamicOffset = false;
+		// Lighting Uniforms
+		RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
+		lightingUniformLayout.setDefault();
+		lightingUniformLayout.binding = 1;
+		lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
+		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+
+		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
+		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
+
+		m_renderer->CreateBindGroup(bindingLayoutEntries);
+		m_renderer->CreatePipeline();
 	}
 
 	virtual void OnDetach() override
@@ -173,29 +196,6 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
-			// The uniform buffer binding that we already had
-			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
-			uniformBindingLayout.setDefault();
-			uniformBindingLayout.binding = 0;
-			uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
-			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-			uniformBindingLayout.buffer.hasDynamicOffset = false;
-			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
-			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 1;
-			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
-			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
-
-			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
-			m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
-
-			m_renderer->CreateBindGroup(bindingLayoutEntries);
-			m_renderer->CreatePipeline();
 			m_camera->SetViewportSize((float)m_viewportWidth, (float)m_viewportHeight);
         }
 

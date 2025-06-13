@@ -63,7 +63,6 @@ public:
     void BeginShadowMapPass();
     void EndShadowMapPass();
     void DestroyImages();
-    void DestroyBindGroup();
     void Destroy();
     void ResetCommandBuffer();
     void SubmitCommandBuffer();
@@ -77,7 +76,7 @@ private:
     void DestroyBuffers();
     void DestroyShaders();
     void DestroyTextures();
-    
+    void DestroyBindGroup();
 
     uint32_t m_width = 0;
     uint32_t m_height = 0;
