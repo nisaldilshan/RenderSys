@@ -7,6 +7,7 @@
 #include "VulkanResource.h"
 #include "VulkanShadowMap.h"
 #include "VulkanPbrRenderPipeline.h"
+#include "VulkanShadowRenderPipeline.h"
 
 #include <array>
 #include <iostream>
@@ -666,18 +667,6 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData)
 void VulkanRenderer3D::BindResources()
 {
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pbrRenderPipeline->GetPipeline());
-
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(m_width);
-    viewport.height = static_cast<float>(m_height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
-
-    VkRect2D scissor{{ 0, 0 }, { m_width, m_height }};
-    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 }
 
 void VulkanRenderer3D::Render()
@@ -808,6 +797,18 @@ void VulkanRenderer3D::BeginRenderPass()
     rpInfo.pClearValues = clearValues.data();
 
     vkCmdBeginRenderPass(m_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{{ 0, 0 }, { m_width, m_height }};
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 }
 
 void VulkanRenderer3D::EndRenderPass()
@@ -850,6 +851,24 @@ void VulkanRenderer3D::BeginShadowMapPass()
     VkRect2D scissor{{0, 0}, m_shadowMap->GetShadowMapExtent()};
     vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
+}
+
+void VulkanRenderer3D::RenderShadowMap()
+{
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pbrRenderPipeline->GetPipeline());
+
+    // auto meshView = registry.Get().view<MeshComponent, TransformComponent, InstanceTag>(
+    //     entt::exclude<SkeletalAnimationTag, GrassTag, Grass2Tag>);
+    // for (auto entity : meshView)
+    // {
+    //     auto& mesh = meshView.get<MeshComponent>(entity);
+    //     if (mesh.m_Enabled)
+    //     {
+    //         static_cast<VK_Model*>(mesh.m_Model.get())->Bind(frameInfo.m_CommandBuffer);
+    //         static_cast<VK_Model*>(mesh.m_Model.get())
+    //             ->DrawShadowInstanced(frameInfo, m_PipelineLayout, shadowDescriptorSet);
+    //     }
+    // }
 }
 
 void VulkanRenderer3D::EndShadowMapPass()

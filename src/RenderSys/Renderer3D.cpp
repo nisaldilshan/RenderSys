@@ -135,5 +135,6 @@ void Renderer3D::EndRenderPass()
 void Renderer3D::ShadowPass()
 {
     m_rendererBackend->BeginShadowMapPass();
+    m_rendererBackend->RenderShadowMap();
     m_rendererBackend->EndShadowMapPass();
 }

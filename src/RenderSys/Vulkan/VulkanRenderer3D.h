@@ -21,6 +21,7 @@ namespace Vulkan
 
 class ShadowMap;
 class PbrRenderPipeline;
+class ShadowRenderPipeline;
 
 } // namespace Vulkan
 
@@ -60,8 +61,11 @@ public:
     ImTextureID GetDescriptorSet();
     void BeginRenderPass();
     void EndRenderPass();
+
     void BeginShadowMapPass();
+    void RenderShadowMap();
     void EndShadowMapPass();
+
     void DestroyImages();
     void Destroy();
     void ResetCommandBuffer();
@@ -111,6 +115,7 @@ private:
     VkClearColorValue m_clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 
     std::shared_ptr<RenderSys::Vulkan::ShadowMap> m_shadowMap;
+    std::unique_ptr<Vulkan::ShadowRenderPipeline> m_shadowRenderPipeline;
 };
 
 }
