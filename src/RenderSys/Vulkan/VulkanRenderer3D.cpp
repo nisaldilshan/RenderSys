@@ -6,8 +6,8 @@
 #include "VulkanMaterial.h"
 #include "VulkanResource.h"
 #include "VulkanShadowMap.h"
-#include "VulkanPbrRenderPipeline.h"
-#include "VulkanShadowRenderPipeline.h"
+#include "Pipeline/VulkanPbrRenderPipeline.h"
+#include "Pipeline/VulkanShadowRenderPipeline.h"
 
 #include <array>
 #include <iostream>

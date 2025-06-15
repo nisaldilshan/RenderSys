@@ -1,6 +1,7 @@
 #include "VulkanPbrRenderPipeline.h"
 
 #include <RenderSys/Material.h>
+#include <RenderSys/Vulkan/Pipeline/VulkanPipeline.h>
 
 #include <vector>
 #include <iostream>
@@ -100,16 +101,6 @@ void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::Ve
     viewportStateInfo.scissorCount = 1;
     viewportStateInfo.pScissors = nullptr;
 
-    VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
-    rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizerInfo.depthClampEnable = VK_FALSE;
-    rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;
-    rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizerInfo.lineWidth = 1.0f;
-    rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rasterizerInfo.depthBiasEnable = VK_FALSE;
-
     VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
     multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisamplingInfo.sampleShadingEnable = VK_FALSE;
@@ -163,6 +154,7 @@ void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::Ve
     pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
     pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
     pipelineCreateInfo.pViewportState = &viewportStateInfo;
+    VkPipelineRasterizationStateCreateInfo rasterizerInfo = Vulkan::Pipeline::getRasterizerInfo();
     pipelineCreateInfo.pRasterizationState = &rasterizerInfo;
     pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
     pipelineCreateInfo.pColorBlendState = &colorBlendingInfo;
@@ -181,7 +173,6 @@ void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::Ve
     // currently not possible, as pipeline get recreated every window get resized
     assert(m_Pipeline != VK_NULL_HANDLE);
     std::cout << "Render pipeline: " << m_Pipeline << std::endl;
-
 }
 
 } // namespace Vulkan

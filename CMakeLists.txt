@@ -59,8 +59,9 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanMaterial.cpp
                     src/RenderSys/Vulkan/VulkanResource.cpp
                     src/RenderSys/Vulkan/VulkanShadowMap.cpp
-                    src/RenderSys/Vulkan/VulkanPbrRenderPipeline.cpp
-                    src/RenderSys/Vulkan/VulkanShadowRenderPipeline.cpp
+                    src/RenderSys/Vulkan/Pipeline/VulkanPipeline.cpp
+                    src/RenderSys/Vulkan/Pipeline/VulkanPbrRenderPipeline.cpp
+                    src/RenderSys/Vulkan/Pipeline/VulkanShadowRenderPipeline.cpp
     )
     target_sources(ComputeSys PRIVATE
                     src/RenderSys/Vulkan/VulkanCompute.cpp
