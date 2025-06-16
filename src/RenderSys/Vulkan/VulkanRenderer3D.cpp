@@ -93,7 +93,7 @@ void VulkanRenderer3D::CreateDepthImage()
     m_depthimageView = RenderSys::Vulkan::CreateImageView(m_depthimage, Vulkan::GetDepthFormat(), VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
+void VulkanRenderer3D::CreateShader(RenderSys::Shader& shader)
 {
     assert(shader.type == RenderSys::ShaderType::SPIRV);
     std::vector<uint32_t> compiledShader;
@@ -115,39 +115,48 @@ void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
     shaderCreateInfo.codeSize = sizeof(uint32_t) * compiledShader.size();
     shaderCreateInfo.pCode = compiledShader.data();
 
-    VkShaderModule shaderModule = 0;
-    if (vkCreateShaderModule(GraphicsAPI::Vulkan::GetDevice(), &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-        std::cout << "could not load vertex shader" << std::endl;
-        return;
-    }
-
-    if (shaderModule == VK_NULL_HANDLE) {
-        std::cout << "error: could not load shaders" << std::endl;
-        return;
-    }
-
-    std::cout << "Created Shader module, Name:" << shader.GetName() << ", Ptr:" << shaderModule << std::endl;
-
-    VkShaderStageFlagBits shaderStageBits;
-    if (shader.stage == RenderSys::ShaderStage::Vertex)
+    auto stageInfo = CreateShaderModule(shaderCreateInfo, shader.stage);
+    if (stageInfo)
     {
-        shaderStageBits = VK_SHADER_STAGE_VERTEX_BIT;
-    }
-    else if (shader.stage == RenderSys::ShaderStage::Fragment)
-    {
-        shaderStageBits = VK_SHADER_STAGE_FRAGMENT_BIT;
+        std::cout << "Created Shader module, Name:" << shader.GetName() << ", Ptr:" << stageInfo->module << std::endl;
+        m_shaderStageInfos.push_back(*stageInfo);
     }
     else
     {
         assert(false);
     }
-    VkPipelineShaderStageCreateInfo stageInfo{};
-    stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stageInfo.stage = shaderStageBits;
-    stageInfo.module = shaderModule;
-    stageInfo.pName = "main"; // entrypoint
+}
 
-    m_shaderStageInfos.push_back(stageInfo);
+std::shared_ptr<VkPipelineShaderStageCreateInfo> VulkanRenderer3D::CreateShaderModule(const VkShaderModuleCreateInfo& shaderModuleCreateInfo, const RenderSys::ShaderStage& stage)
+{
+    VkShaderModule shaderModule = VK_NULL_HANDLE;
+    if (vkCreateShaderModule(GraphicsAPI::Vulkan::GetDevice(), &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+        std::cout << "could not load vertex shader" << std::endl;
+        return nullptr;
+    }
+
+    if (shaderModule == VK_NULL_HANDLE) {
+        std::cout << "error: could not load shaders" << std::endl;
+        return nullptr;
+    }
+
+    VkShaderStageFlagBits shaderStageBits;
+    if (stage == RenderSys::ShaderStage::Vertex) {
+        shaderStageBits = VK_SHADER_STAGE_VERTEX_BIT;
+    }
+    else if (stage == RenderSys::ShaderStage::Fragment) {
+        shaderStageBits = VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    else {
+        return nullptr;
+    }
+    auto stageInfo = std::make_shared<VkPipelineShaderStageCreateInfo>();
+    stageInfo->sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stageInfo->stage = shaderStageBits;
+    stageInfo->module = shaderModule;
+    stageInfo->pName = "main"; // entrypoint
+
+    return stageInfo;
 }
 
 void VulkanRenderer3D::DestroyImages()

@@ -41,7 +41,7 @@ public:
     bool Init();
     void CreateImageToRender(uint32_t width, uint32_t height);
     void CreateDepthImage();
-    void CreateShaders(RenderSys::Shader& shader);
+    void CreateShader(RenderSys::Shader& shader);
     void CreatePipeline();
     void CreateFrameBuffer();
     uint32_t CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
@@ -76,6 +76,7 @@ private:
     void CreateDefaultTextureSampler();
     void CreateRenderPass();
     void CreateCommandBuffers();
+    std::shared_ptr<VkPipelineShaderStageCreateInfo> CreateShaderModule(const VkShaderModuleCreateInfo& shaderModuleCreateInfo, const RenderSys::ShaderStage& stage);
     void DestroyRenderPass();
     void DestroyBuffers();
     void DestroyShaders();

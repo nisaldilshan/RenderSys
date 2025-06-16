@@ -39,7 +39,7 @@ void Renderer3D::Init()
 
 void Renderer3D::SetShader(RenderSys::Shader& shader)
 {
-    m_rendererBackend->CreateShaders(shader);
+    m_rendererBackend->CreateShader(shader);
 }
 
 uint32_t Renderer3D::SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
