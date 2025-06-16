@@ -47,7 +47,7 @@ void ShadowRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSe
 void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
                                        const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos)
 {
-        assert(m_PipelineLayout != VK_NULL_HANDLE);
+    assert(m_PipelineLayout != VK_NULL_HANDLE);
 
     std::cout << "Creating render pipeline..." << std::endl;
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -96,16 +96,7 @@ void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan:
     colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Discard the old alpha
     colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-    VkPipelineColorBlendStateCreateInfo colorBlendingInfo{};
-    colorBlendingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendingInfo.logicOpEnable = VK_FALSE;
-    colorBlendingInfo.logicOp = VK_LOGIC_OP_COPY;
-    colorBlendingInfo.attachmentCount = 1;
-    colorBlendingInfo.pAttachments = &colorBlendAttachment;
-    colorBlendingInfo.blendConstants[0] = 0.0f;
-    colorBlendingInfo.blendConstants[1] = 0.0f;
-    colorBlendingInfo.blendConstants[2] = 0.0f;
-    colorBlendingInfo.blendConstants[3] = 0.0f;
+    VkPipelineColorBlendStateCreateInfo colorBlendingInfo = Pipeline::CreateColorBlendState(colorBlendAttachment);
 
     VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
     depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -133,6 +124,7 @@ void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan:
     pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
     pipelineCreateInfo.pViewportState = &viewportStateInfo;
     VkPipelineRasterizationStateCreateInfo rasterizerInfo = Vulkan::Pipeline::getRasterizerInfo();
+    rasterizerInfo.depthBiasEnable = VK_TRUE;
     pipelineCreateInfo.pRasterizationState = &rasterizerInfo;
     pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
     pipelineCreateInfo.pColorBlendState = &colorBlendingInfo;

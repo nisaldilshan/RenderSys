@@ -9,7 +9,7 @@ namespace Vulkan
 class Pipeline
 {
 public:
-
+    static VkPipelineColorBlendStateCreateInfo CreateColorBlendState(VkPipelineColorBlendAttachmentState &colorBlendAttachment);
     static VkPipelineRasterizationStateCreateInfo getRasterizerInfo();
 };
 

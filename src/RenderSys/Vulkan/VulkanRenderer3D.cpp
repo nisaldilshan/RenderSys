@@ -818,9 +818,16 @@ void VulkanRenderer3D::EndRenderPass()
 
 void VulkanRenderer3D::BeginShadowMapPass()
 {
-    if (!m_shadowMap)
+    if (!m_shadowMap && !m_shadowRenderPipeline)
     {
-        m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(10);
+        constexpr int shadowMapResolution = 2048;
+        m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(shadowMapResolution);
+
+        std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, 
+                                                    RenderSys::GetMaterialBindGroupLayout(),
+                                                    RenderSys::GetResourceBindGroupLayout()};
+        m_shadowRenderPipeline = std::make_unique<Vulkan::ShadowRenderPipeline>(
+            m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, m_shaderStageInfos);
     }
 
     if (!m_commandBuffer)
@@ -855,7 +862,7 @@ void VulkanRenderer3D::BeginShadowMapPass()
 
 void VulkanRenderer3D::RenderShadowMap()
 {
-    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pbrRenderPipeline->GetPipeline());
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowRenderPipeline->GetPipeline());
 
     // auto meshView = registry.Get().view<MeshComponent, TransformComponent, InstanceTag>(
     //     entt::exclude<SkeletalAnimationTag, GrassTag, Grass2Tag>);

@@ -4,7 +4,22 @@ namespace RenderSys
 {
 namespace Vulkan 
 {
-
+    VkPipelineColorBlendStateCreateInfo Pipeline::CreateColorBlendState(VkPipelineColorBlendAttachmentState &colorBlendAttachment)
+    {
+        VkPipelineColorBlendStateCreateInfo colorBlendingInfo;
+        colorBlendingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlendingInfo.pNext = nullptr;
+        colorBlendingInfo.flags = 0;
+        colorBlendingInfo.logicOpEnable = VK_FALSE;
+        colorBlendingInfo.logicOp = VK_LOGIC_OP_COPY;
+        colorBlendingInfo.attachmentCount = 1;
+        colorBlendingInfo.pAttachments = &colorBlendAttachment;
+        colorBlendingInfo.blendConstants[0] = 0.0f;
+        colorBlendingInfo.blendConstants[1] = 0.0f;
+        colorBlendingInfo.blendConstants[2] = 0.0f;
+        colorBlendingInfo.blendConstants[3] = 0.0f;
+        return colorBlendingInfo;
+    }
 
 VkPipelineRasterizationStateCreateInfo Pipeline::getRasterizerInfo()
 {
