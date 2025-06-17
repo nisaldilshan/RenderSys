@@ -835,8 +835,27 @@ void VulkanRenderer3D::BeginShadowMapPass()
         std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, 
                                                     RenderSys::GetMaterialBindGroupLayout(),
                                                     RenderSys::GetResourceBindGroupLayout()};
+
+        RenderSys::Shader vertexShader("shadow-vert.glsl");
+		vertexShader.type = RenderSys::ShaderType::SPIRV;
+		vertexShader.stage = RenderSys::ShaderStage::Vertex;
+        auto res = vertexShader.Compile();
+        assert(res);
+        auto compiledShader = vertexShader.GetCompiledShader();
+
+        VkShaderModuleCreateInfo shaderCreateInfo{};
+        shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        shaderCreateInfo.codeSize = sizeof(uint32_t) * compiledShader.size();
+        shaderCreateInfo.pCode = compiledShader.data();
+
+        std::vector<VkPipelineShaderStageCreateInfo> shadowShaderStageInfos;
+        auto shadowShaderStageInfo = CreateShaderModule(shaderCreateInfo, vertexShader.stage);
+        if (shadowShaderStageInfo)
+        {
+            shadowShaderStageInfos.push_back(*shadowShaderStageInfo);
+        }
         m_shadowRenderPipeline = std::make_unique<Vulkan::ShadowRenderPipeline>(
-            m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, m_shaderStageInfos);
+            m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, shadowShaderStageInfos);
     }
 
     if (!m_commandBuffer)
@@ -919,6 +938,10 @@ void VulkanRenderer3D::Destroy()
     DestroyImages();
     DestroyTextures();
     DestroyRenderPass();
+
+    m_pbrRenderPipeline.reset();
+    m_shadowRenderPipeline.reset();
+    m_shadowMap.reset();
 
     RenderSys::Vulkan::DestroyMemoryAllocator();
 }

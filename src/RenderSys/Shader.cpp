@@ -141,6 +141,27 @@ Shader::Shader(const std::string &name, const std::string &shaderSrc)
     : m_name(name), m_shaderSrc(shaderSrc)
 {}
 
+#define SHADER_DIR "C:/develop/cpp/RenderSys/example/3D/Advanced/4.ShadowMapping"
+Shader::Shader(const std::string &fileName)
+{
+    const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
+    assert(!shaderDir.empty());
+
+    const auto filePath = shaderDir + "/" + fileName;
+    std::ifstream file(filePath, std::ios::binary);
+    std::vector<char> content((std::istreambuf_iterator<char>(file)),
+                                std::istreambuf_iterator<char>());
+
+    if (!file.is_open()) {
+        std::cerr << "Unable to open file - " << filePath << std::endl;
+        assert(false);
+    }
+
+    m_name = fileName;
+    m_shaderSrc = std::string(content.data(), content.size());
+    SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
+}
+
 bool Shader::Compile(bool optimize)
 {
     m_compiledShader = ShaderUtils::compile_file(m_name, *this, optimize);

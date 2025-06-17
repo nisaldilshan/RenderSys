@@ -20,6 +20,7 @@ class Shader
 public:
     Shader() = delete;
     Shader(const std::string& name, const std::string& shaderSrc);
+    Shader(const std::string& fileName);
     Shader(const Shader&) = delete;
     Shader(Shader&&) = delete;
     Shader& operator=(const Shader&) = delete;
@@ -36,8 +37,8 @@ public:
     ShaderType type;
     ShaderStage stage;
 private:
-    const std::string m_name;
-    const std::string m_shaderSrc;
+    std::string m_name;
+    std::string m_shaderSrc;
     std::vector<uint32_t> m_compiledShader;
     std::string m_includeDir;
 };

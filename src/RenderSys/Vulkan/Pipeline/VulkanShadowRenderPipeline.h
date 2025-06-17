@@ -27,9 +27,9 @@ public:
 
 private:
     void CreatePipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts);
-    void CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
-                        const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos);
+    void CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout);
 
+    std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
     VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
     VkPipeline m_Pipeline = VK_NULL_HANDLE;
 };
