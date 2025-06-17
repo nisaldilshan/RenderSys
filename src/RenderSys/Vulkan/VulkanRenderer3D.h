@@ -55,7 +55,7 @@ public:
     void BindResources();
     void Render();
     void RenderIndexed();
-    void RenderMesh(const RenderSys::Mesh& mesh);
+    void RenderMesh(const RenderSys::Mesh& mesh, const bool shadowPass = false);
     void DrawPlane();
     void DrawCube();
     ImTextureID GetDescriptorSet();
@@ -63,7 +63,7 @@ public:
     void EndRenderPass();
 
     void BeginShadowMapPass();
-    void RenderShadowMap();
+    void RenderShadowMap(entt::registry& entityRegistry);
     void EndShadowMapPass();
 
     void DestroyImages();
@@ -72,7 +72,7 @@ public:
     void SubmitCommandBuffer();
 
 private:
-    void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh);
+    void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, VkPipelineLayout pipelineLayout);
     void CreateDefaultTextureSampler();
     void CreateRenderPass();
     void CreateCommandBuffers();

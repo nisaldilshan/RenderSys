@@ -57,7 +57,7 @@ public:
     void RenderMesh(const RenderSys::Mesh& mesh);
     void BeginRenderPass();
     void EndRenderPass();
-    void ShadowPass();
+    void ShadowPass(entt::registry& entityRegistry);
     void* GetDescriptorSet() const;
     void Destroy();
 private:

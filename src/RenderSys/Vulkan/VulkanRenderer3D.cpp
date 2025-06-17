@@ -9,6 +9,10 @@
 #include "Pipeline/VulkanPbrRenderPipeline.h"
 #include "Pipeline/VulkanShadowRenderPipeline.h"
 
+#include <RenderSys/Components/MeshComponent.h>
+#include <RenderSys/Components/TransformComponent.h>
+#include <RenderSys/Components/TagAndIDComponents.h>
+
 #include <array>
 #include <iostream>
 
@@ -712,7 +716,7 @@ void VulkanRenderer3D::RenderIndexed()
     }
 }
 
-void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
+void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh, const bool shadowPass)
 {
     auto vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(mesh.vertexBufferID);
     assert(vertexIndexBufferInfoIter != m_vertexIndexBufferInfoMap.end());
@@ -729,11 +733,14 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
     for (const auto &subMesh : mesh.subMeshes)
     {
         assert(subMesh.m_Material);
-        RenderSubMesh(mesh.vertexBufferID, subMesh);
+        if (shadowPass)
+            RenderSubMesh(mesh.vertexBufferID, subMesh, m_shadowRenderPipeline->GetPipelineLayout());
+        else
+            RenderSubMesh(mesh.vertexBufferID, subMesh, m_pbrRenderPipeline->GetPipelineLayout());
     }
 }
 
-void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh)
+void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, VkPipelineLayout pipelineLayout)
 {
     auto materialBindGroup = subMesh.m_Material->GetDescriptor()->GetPlatformDescriptor()->m_bindGroup;
     assert(materialBindGroup != VK_NULL_HANDLE);
@@ -741,12 +748,14 @@ void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const Render
     assert(resourceBindGroup != VK_NULL_HANDLE);
     std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, materialBindGroup, resourceBindGroup};
 
-    vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pbrRenderPipeline->GetPipelineLayout(), 0
+    vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0
                                 , descriptorsets.size(), descriptorsets.data()
                                 , 0, nullptr);
-
-    vkCmdPushConstants(m_commandBuffer, m_pbrRenderPipeline->GetPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 
-                    sizeof(RenderSys::MaterialProperties), &subMesh.m_Material->GetMaterialProperties());
+    if (pipelineLayout == m_pbrRenderPipeline->GetPipelineLayout())
+    {
+        vkCmdPushConstants(m_commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 
+                        sizeof(RenderSys::MaterialProperties), &subMesh.m_Material->GetMaterialProperties());
+    }
 
     assert(vertexBufferID >= 1);
     const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
@@ -836,24 +845,41 @@ void VulkanRenderer3D::BeginShadowMapPass()
                                                     RenderSys::GetMaterialBindGroupLayout(),
                                                     RenderSys::GetResourceBindGroupLayout()};
 
-        RenderSys::Shader vertexShader("shadow-vert.glsl");
-		vertexShader.type = RenderSys::ShaderType::SPIRV;
-		vertexShader.stage = RenderSys::ShaderStage::Vertex;
-        auto res = vertexShader.Compile();
-        assert(res);
-        auto compiledShader = vertexShader.GetCompiledShader();
-
-        VkShaderModuleCreateInfo shaderCreateInfo{};
-        shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        shaderCreateInfo.codeSize = sizeof(uint32_t) * compiledShader.size();
-        shaderCreateInfo.pCode = compiledShader.data();
-
         std::vector<VkPipelineShaderStageCreateInfo> shadowShaderStageInfos;
-        auto shadowShaderStageInfo = CreateShaderModule(shaderCreateInfo, vertexShader.stage);
-        if (shadowShaderStageInfo)
         {
-            shadowShaderStageInfos.push_back(*shadowShaderStageInfo);
+            RenderSys::Shader vertexShader("shadow-vert.glsl");
+            vertexShader.type = RenderSys::ShaderType::SPIRV;
+            vertexShader.stage = RenderSys::ShaderStage::Vertex;
+            assert(vertexShader.Compile());
+            auto compiledShaderVert = vertexShader.GetCompiledShader();
+
+            VkShaderModuleCreateInfo shaderCreateInfo{};
+            shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            shaderCreateInfo.codeSize = sizeof(uint32_t) * compiledShaderVert.size();
+            shaderCreateInfo.pCode = compiledShaderVert.data();
+            auto shadowShaderStageInfo = CreateShaderModule(shaderCreateInfo, vertexShader.stage);
+            if (shadowShaderStageInfo)
+            {
+                shadowShaderStageInfos.push_back(*shadowShaderStageInfo);
+            }
+
+            RenderSys::Shader fragmentShader("shadow-frag.glsl");
+            fragmentShader.type = RenderSys::ShaderType::SPIRV;
+            fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+            assert(fragmentShader.Compile());
+            auto compiledShaderFrag = fragmentShader.GetCompiledShader();
+
+            VkShaderModuleCreateInfo shaderCreateInfoFrag{};
+            shaderCreateInfoFrag.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            shaderCreateInfoFrag.codeSize = sizeof(uint32_t) * compiledShaderFrag.size();
+            shaderCreateInfoFrag.pCode = compiledShaderFrag.data();
+            auto shadowShaderStageInfoFrag = CreateShaderModule(shaderCreateInfoFrag, fragmentShader.stage);
+            if (shadowShaderStageInfoFrag)
+            {
+                shadowShaderStageInfos.push_back(*shadowShaderStageInfoFrag);
+            }
         }
+
         m_shadowRenderPipeline = std::make_unique<Vulkan::ShadowRenderPipeline>(
             m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, shadowShaderStageInfos);
     }
@@ -888,22 +914,21 @@ void VulkanRenderer3D::BeginShadowMapPass()
     vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 }
 
-void VulkanRenderer3D::RenderShadowMap()
+void VulkanRenderer3D::RenderShadowMap(entt::registry& entityRegistry)
 {
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowRenderPipeline->GetPipeline());
 
-    // auto meshView = registry.Get().view<MeshComponent, TransformComponent, InstanceTag>(
-    //     entt::exclude<SkeletalAnimationTag, GrassTag, Grass2Tag>);
-    // for (auto entity : meshView)
-    // {
-    //     auto& mesh = meshView.get<MeshComponent>(entity);
-    //     if (mesh.m_Enabled)
-    //     {
-    //         static_cast<VK_Model*>(mesh.m_Model.get())->Bind(frameInfo.m_CommandBuffer);
-    //         static_cast<VK_Model*>(mesh.m_Model.get())
-    //             ->DrawShadowInstanced(frameInfo, m_PipelineLayout, shadowDescriptorSet);
-    //     }
-    // }
+    auto view = entityRegistry.view<RenderSys::MeshComponent,
+                                                RenderSys::TransformComponent,
+                                                RenderSys::InstanceTagComponent>();
+    for (auto entity : view)
+    {
+        auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
+        auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
+        instanceTagComponent.GetInstanceBuffer()->Update();
+        auto mesh = meshComponent.m_Mesh;
+        RenderMesh(*mesh, true);
+    }
 }
 
 void VulkanRenderer3D::EndShadowMapPass()

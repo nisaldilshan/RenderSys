@@ -132,9 +132,9 @@ void Renderer3D::EndRenderPass()
     m_rendererBackend->EndRenderPass();
 }
 
-void Renderer3D::ShadowPass()
+void Renderer3D::ShadowPass(entt::registry& entityRegistry)
 {
     m_rendererBackend->BeginShadowMapPass();
-    m_rendererBackend->RenderShadowMap();
+    m_rendererBackend->RenderShadowMap(entityRegistry);
     m_rendererBackend->EndShadowMapPass();
 }

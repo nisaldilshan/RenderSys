@@ -203,12 +203,6 @@ public:
 			m_camera->OnUpdate();
 			m_scene->Update();
 
-			m_renderer->BeginFrame();
-
-			m_renderer->ShadowPass();
-
-			m_renderer->BeginRenderPass();
-
 			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
 			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
 			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
@@ -219,8 +213,13 @@ public:
 			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
 			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
-			m_renderer->BindResources();
 
+			m_renderer->BeginFrame();
+
+			m_renderer->ShadowPass(m_scene->m_Registry);
+
+			m_renderer->BeginRenderPass();
+			m_renderer->BindResources();
 			auto view = m_scene->m_Registry.view<RenderSys::MeshComponent, 
 												RenderSys::TransformComponent, 
 												RenderSys::InstanceTagComponent>();
@@ -232,8 +231,8 @@ public:
 				auto mesh = meshComponent.m_Mesh;
 				m_renderer->RenderMesh(*mesh);
 			}
-
 			m_renderer->EndRenderPass();
+			
 			m_renderer->EndFrame();
 		}
 
