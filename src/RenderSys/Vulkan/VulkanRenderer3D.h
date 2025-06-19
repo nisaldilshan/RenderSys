@@ -71,6 +71,8 @@ public:
     void ResetCommandBuffer();
     void SubmitCommandBuffer();
 
+    void OnImGuiRender();
+
 private:
     void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, VkPipelineLayout pipelineLayout);
     void CreateDefaultTextureSampler();

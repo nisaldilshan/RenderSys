@@ -60,6 +60,8 @@ public:
     void ShadowPass(entt::registry& entityRegistry);
     void* GetDescriptorSet() const;
     void Destroy();
+    void OnImGuiRender();
+
 private:
     uint32_t m_Width = 0, m_Height = 0;
     std::unique_ptr<RendererType> m_rendererBackend;

@@ -138,3 +138,8 @@ void Renderer3D::ShadowPass(entt::registry& entityRegistry)
     m_rendererBackend->RenderShadowMap(entityRegistry);
     m_rendererBackend->EndShadowMapPass();
 }
+
+void Renderer3D::OnImGuiRender()
+{
+    m_rendererBackend->OnImGuiRender();
+}

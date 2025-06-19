@@ -261,6 +261,8 @@ public:
 		const float imageHeight = m_renderer->GetHeight();
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
+
+		m_renderer->OnImGuiRender();
         ImGui::PopStyleVar();
 
 		m_sceneHierarchyPanel->OnImGuiRender();

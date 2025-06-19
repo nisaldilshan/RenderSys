@@ -25,19 +25,10 @@ layout (location = 2) in vec2 in_uv;
 layout (location = 3) in vec3 in_color;
 layout (location = 4) in vec3 in_tangent;
 
-layout (location = 0) out vec3 out_viewDirection;
-layout (location = 1) out vec2 out_uv;
-layout (location = 2) out vec3 out_normal;
-layout (location = 3) out vec3 out_tangent;
-
 void main()
 {
     mat4 modelMatrix = uboInstanced.m_InstanceData[gl_InstanceIndex].m_ModelMatrix;
 
     vec4 worldPosition = modelMatrix * vec4(aPos, 1.0);
     gl_Position = ubo.projectionMatrix * ubo.viewMatrix * worldPosition;
-    out_viewDirection = ubo.cameraWorldPosition - worldPosition.xyz;
-    out_uv = in_uv;
-	out_normal = (modelMatrix * vec4(in_normal, 0.0)).xyz;
-    out_tangent = (modelMatrix * vec4(in_tangent, 0.0)).xyz;
 }

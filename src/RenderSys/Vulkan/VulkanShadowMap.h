@@ -31,6 +31,7 @@ public:
     VkRenderPass GetShadowRenderPass() { return m_ShadowRenderPass; }
     VkExtent2D GetShadowMapExtent() { return m_ShadowMapExtent; }
     const VkDescriptorImageInfo& GetDescriptorImageInfo() const { return m_DescriptorImageInfo; }
+    const VkImage GetShadowDepthImage() const { return m_ShadowDepthImage; }
 
 private:
     void CreateShadowDepthResources();

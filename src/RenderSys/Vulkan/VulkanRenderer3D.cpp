@@ -995,6 +995,63 @@ void VulkanRenderer3D::SubmitCommandBuffer()
     GraphicsAPI::Vulkan::QueueSubmit(end_info);
 }
 
+VkImageView createImguiImageView(const std::shared_ptr<RenderSys::Vulkan::ShadowMap>& shadowMap)
+{
+    // NOW, CREATE A NEW VIEW FOR IMGUI
+    VkImageView m_imguiView = VK_NULL_HANDLE;
+
+    VkImageViewCreateInfo viewInfo = {};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = shadowMap->GetShadowDepthImage();
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = Vulkan::GetDepthFormat();
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT; // Use DEPTH aspect
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    // THIS IS THE IMPORTANT PART
+    // It tells the sampler how to map the image channels to the shader's input
+    // We are telling it to use the 'R' (depth) channel for R, G, and B.
+    VkComponentMapping componentMapping = {
+        VK_COMPONENT_SWIZZLE_R,     // Red channel takes data from the image's Red (depth) channel
+        VK_COMPONENT_SWIZZLE_R,     // Green channel also takes data from the image's Red (depth) channel
+        VK_COMPONENT_SWIZZLE_R,     // Blue channel also takes data from the image's Red (depth) channel
+        VK_COMPONENT_SWIZZLE_ONE    // Alpha channel is forced to 1.0
+    };
+    viewInfo.components = componentMapping;
+
+    if (vkCreateImageView(GraphicsAPI::Vulkan::GetDevice(), &viewInfo, nullptr, &m_imguiView) != VK_SUCCESS) {
+        assert(false);
+    }
+
+    return m_imguiView;
+}
+
+VkDescriptorSet g_shadowDescSet = VK_NULL_HANDLE;
+void VulkanRenderer3D::OnImGuiRender()
+{
+    // ImGui::Begin("Vulkan Renderer 3D");
+
+    // if (m_shadowMap)
+    // {
+    //     if (!g_shadowDescSet)
+    //     {
+    //         auto imguiImageView = createImguiImageView(m_shadowMap);
+    //         g_shadowDescSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(
+    //                                                     m_defaultTextureSampler, 
+    //                                                     imguiImageView, 
+    //                                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+    //     }
+    //     const float imageWidth = m_width;
+    //     const float imageHeight = m_height;
+    //     ImGui::Image(g_shadowDescSet, {imageWidth, imageHeight});
+    // }
+
+    // ImGui::End();
+}
+
 void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
 {
     const auto& [textureIter, inserted] = m_textures.insert(
