@@ -16,6 +16,7 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Renderer3D.cpp
                 src/RenderSys/Shader.cpp
                 src/RenderSys/Camera/PerspectiveCamera.cpp
+                src/RenderSys/Camera/EditorCameraController.cpp
                 src/RenderSys/Geometry.cpp
                 src/RenderSys/Buffer.cpp
                 src/RenderSys/Texture.cpp
