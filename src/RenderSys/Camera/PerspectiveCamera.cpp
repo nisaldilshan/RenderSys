@@ -1,7 +1,7 @@
-#include "Camera.h"
+#include "PerspectiveCamera.h"
 #include <Walnut/Input/Input.h>
 
-namespace Camera
+namespace RenderSys
 {
 
 PerspectiveCamera::PerspectiveCamera(float fov, float nearClip, float farClip)
@@ -10,10 +10,9 @@ PerspectiveCamera::PerspectiveCamera(float fov, float nearClip, float farClip)
     , m_farClip(farClip)
 {}
 
-void PerspectiveCamera::SetViewportSize(float width, float height) 
-{ 
-    m_viewportWidth = width; 
-    m_viewportHeight = height; 
+void PerspectiveCamera::SetAspectRatio(float aspectRatio)
+{
+    m_AspectRatio = aspectRatio;
     UpdateProjection(); 
 }
 
@@ -54,7 +53,7 @@ glm::mat4x4 PerspectiveCamera::GetProjectionMatrix() const
 
 void PerspectiveCamera::UpdateProjection()
 {
-    m_projection = glm::perspective(glm::radians(m_FOV), m_viewportWidth / m_viewportHeight, m_nearClip, m_farClip);
+    m_projection = glm::perspective(glm::radians(m_FOV), m_AspectRatio, m_nearClip, m_farClip);
 }
 
 glm::quat PerspectiveCamera::GetOrientation() const

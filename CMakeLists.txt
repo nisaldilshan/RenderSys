@@ -15,7 +15,7 @@ add_library (RenderSys2D STATIC
 add_library (RenderSys3D STATIC
                 src/RenderSys/Renderer3D.cpp
                 src/RenderSys/Shader.cpp
-                src/RenderSys/Camera.cpp
+                src/RenderSys/Camera/PerspectiveCamera.cpp
                 src/RenderSys/Geometry.cpp
                 src/RenderSys/Buffer.cpp
                 src/RenderSys/Texture.cpp
@@ -238,7 +238,7 @@ target_sources(RenderSys3D
                 FILES   src/RenderSys/Renderer3D.h 
                         src/RenderSys/RenderUtil.h 
                         src/RenderSys/Texture.h 
-                        src/RenderSys/Camera.h
+                        src/RenderSys/Camera/PerspectiveCamera.h
                         src/RenderSys/Material.h
                         src/RenderSys/Resource.h
                         src/RenderSys/Scene/Model.h

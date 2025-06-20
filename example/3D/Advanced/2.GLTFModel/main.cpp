@@ -6,7 +6,7 @@
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
-#include <RenderSys/Camera.h>
+#include <RenderSys/Camera/PerspectiveCamera.h>
 #include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
@@ -101,7 +101,7 @@ public:
 			assert(false);
 		}
 
-		m_camera = std::make_unique<Camera::PerspectiveCamera>(60.0f, 0.01f, 100.0f);
+		m_camera = std::make_unique<RenderSys::PerspectiveCamera>(60.0f, 0.01f, 100.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
@@ -196,7 +196,7 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-			m_camera->SetViewportSize((float)m_viewportWidth, (float)m_viewportHeight);
+			m_camera->SetAspectRatio((float)m_viewportWidth/ (float)m_viewportHeight);
         }
 
 		if (m_renderer)
@@ -295,7 +295,7 @@ private:
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
 	int m_instanceCount = 1;
-	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
+	std::unique_ptr<RenderSys::PerspectiveCamera> m_camera;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::unique_ptr<RenderSys::Model> m_model;
 	std::unique_ptr<RenderSys::SceneHierarchyPanel> m_sceneHierarchyPanel;

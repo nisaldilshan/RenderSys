@@ -1,9 +1,11 @@
 #pragma once
+#include <RenderSys/Components/CameraComponents.h>
+
 #define GLM_FORCE_LEFT_HANDED
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-namespace Camera
+namespace RenderSys
 {
     
 
@@ -13,7 +15,7 @@ public:
     PerspectiveCamera(float fov, float nearClip, float farClip);
     ~PerspectiveCamera() = default;
 
-    void SetViewportSize(float width, float height);
+    void SetAspectRatio(float aspectRatio);
     void OnUpdate();
     glm::vec3 GetPosition() const;
     glm::mat4x4 GetViewMatrix();
@@ -50,8 +52,7 @@ private:
     float m_Pitch = 0.0f; // this was -2.0
     float m_Yaw = 0.0f;
 
-    float m_viewportWidth = 0;
-    float m_viewportHeight = 0;
+    float m_AspectRatio = 1.0f;
 };
 
 
