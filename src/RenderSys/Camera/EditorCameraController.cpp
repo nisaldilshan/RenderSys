@@ -5,8 +5,8 @@
 namespace RenderSys
 {
 
-EditorCameraController::EditorCameraController()
-    : m_Camera(std::make_shared<PerspectiveCamera>(30.0f, 0.01f, 500.0f))
+EditorCameraController::EditorCameraController(float fov, float nearClip, float farClip)
+    : m_Camera(std::make_shared<PerspectiveCamera>(fov, nearClip, farClip))
 {
     m_Camera->SetAspectRatio(1.0f); // Default aspect ratio, can be updated later
 }
@@ -26,10 +26,10 @@ void EditorCameraController::OnUpdate()
             MouseRotate(delta);
         else if (Walnut::Input::IsMouseButtonDown(Walnut::MouseButton::Right))
             MouseZoom(delta.y);
-
-        m_Camera->SetOrientation(glm::vec3(m_Pitch, m_Yaw, 0.0f));
-        m_Camera->SetPosition(m_FocalPoint - m_Camera->GetForwardDirection() * m_Distance);
     }
+
+    m_Camera->SetOrientation(glm::vec3(m_Pitch, m_Yaw, 0.0f));
+    m_Camera->SetPosition(m_FocalPoint - m_Camera->GetForwardDirection() * m_Distance);
 }
 
 void EditorCameraController::MousePan(const glm::vec2 &delta)
@@ -57,7 +57,7 @@ float EditorCameraController::RotationSpeed() const
 
 float EditorCameraController::ZoomSpeed() const
 {
-    return 2.0f;
+    return 5.0f;
 }
 
 float EditorCameraController::PanSpeed() const

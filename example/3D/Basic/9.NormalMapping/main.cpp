@@ -7,7 +7,7 @@
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
 #include <RenderSys/Texture.h>
-#include <RenderSys/Camera.h>
+#include <RenderSys/Camera/EditorCameraController.h>
 #include <imgui.h>
 
 struct MyUniforms {
@@ -280,7 +280,7 @@ public:
 		m_renderer->CreateTexture(1, baseColorTexture);
 		m_renderer->CreateTexture(2, normalTexture);
 
-		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 100.0f);
+		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 100.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
@@ -317,6 +317,47 @@ public:
 
 		assert(m_vertexBuffer.size() > 0);
 		m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
+
+		// Create binding layouts
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(4);
+		// The uniform buffer binding that we already had
+		RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
+		uniformBindingLayout.setDefault();
+		uniformBindingLayout.binding = 0;
+		uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
+		uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
+		uniformBindingLayout.buffer.hasDynamicOffset = false;
+
+		// The texture binding
+		RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
+		textureBindingLayout.setDefault();
+		textureBindingLayout.binding = 1;
+		textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+		textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
+		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
+
+		// The normal map binding
+		RenderSys::BindGroupLayoutEntry& normalTextureBindingLayout = bindingLayoutEntries[2];
+		normalTextureBindingLayout.setDefault();
+		normalTextureBindingLayout.binding = 2;
+		normalTextureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+		normalTextureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
+		normalTextureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
+
+		// Lighting Uniforms
+		RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[3];
+		lightingUniformLayout.setDefault();
+		lightingUniformLayout.binding = 3;
+		lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
+		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+
+		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
+		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
+
+		m_renderer->CreateBindGroup(bindingLayoutEntries);
+		m_renderer->CreatePipeline();
 	}
 
 	virtual void OnDetach() override
@@ -330,64 +371,23 @@ public:
 		if (m_viewportWidth == 0 || m_viewportHeight == 0)
 			return;
 
-        if (!m_renderer ||
-            m_viewportWidth != m_renderer->GetWidth() ||
+        if (m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			// Create binding layouts
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(4);
-			// The uniform buffer binding that we already had
-			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
-			uniformBindingLayout.setDefault();
-			uniformBindingLayout.binding = 0;
-			uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
-			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-			uniformBindingLayout.buffer.hasDynamicOffset = false;
-
-			// The texture binding
-			RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
-			textureBindingLayout.setDefault();
-			textureBindingLayout.binding = 1;
-			textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
-			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
-
-			// The normal map binding
-			RenderSys::BindGroupLayoutEntry& normalTextureBindingLayout = bindingLayoutEntries[2];
-			normalTextureBindingLayout.setDefault();
-			normalTextureBindingLayout.binding = 2;
-			normalTextureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			normalTextureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
-			normalTextureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
-
-			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[3];
-			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 3;
-			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
-			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
-
-			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
-			m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
-
-			m_renderer->CreateBindGroup(bindingLayoutEntries);
-			m_renderer->CreatePipeline();
-			m_camera->SetViewportSize((float)m_viewportWidth, (float)m_viewportHeight);
+			m_cameraController->GetCamera()->SetAspectRatio((float)m_viewportWidth/ (float)m_viewportHeight);
         }
 
 		if (m_renderer)
 		{
-			m_camera->OnUpdate();
+			m_cameraController->OnUpdate();
 
 			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
-			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
-			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
+			auto camera = m_cameraController->GetCamera();
+			m_myUniformData.viewMatrix = camera->GetViewMatrix();
+			m_myUniformData.projectionMatrix = camera->GetProjectionMatrix();
 
 			const float time = static_cast<float>(glfwGetTime());
 			glm::mat4x4 M1(1.0);
@@ -398,7 +398,7 @@ public:
 			m_myUniformData.modelMatrix = M1;
 
 			m_myUniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
-			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
+			m_myUniformData.cameraWorldPosition = camera->GetPosition();
 			m_myUniformData.time = time;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
 
@@ -436,7 +436,7 @@ public:
         ImGui::Begin("Viewport");
 		m_viewportWidth = ImGui::GetContentRegionAvail().x;
         m_viewportHeight = ImGui::GetContentRegionAvail().y;
-        const float imageWidth = m_renderer->GetWidth();
+		const float imageWidth = m_renderer->GetWidth();
 		const float imageHeight = m_renderer->GetHeight();
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
@@ -455,7 +455,7 @@ private:
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
 	RenderSys::VertexBuffer m_vertexBuffer;
-	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
+	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

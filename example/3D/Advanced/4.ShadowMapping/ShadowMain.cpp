@@ -102,7 +102,7 @@ public:
 			assert(false);
 		}
 
-		m_cameraController = std::make_unique<RenderSys::EditorCameraController>();
+		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 

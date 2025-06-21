@@ -8,7 +8,8 @@ namespace RenderSys
 class EditorCameraController
 {
 public:
-    EditorCameraController();
+    EditorCameraController() = delete;
+    EditorCameraController(float fov, float nearClip, float farClip);
     ~EditorCameraController() = default;
 
     void OnUpdate();
