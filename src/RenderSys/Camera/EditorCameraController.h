@@ -19,9 +19,9 @@ public:
 
     std::shared_ptr<RenderSys::PerspectiveCamera> GetCamera() { return m_Camera; }
 private:
-    void MousePan(const glm::vec2& delta);
+    void MousePan(const glm::vec2 &delta, glm::vec3 &position);
     void MouseRotate(const glm::vec2 &delta, float& yaw, float& pitch);
-    void MouseZoom(float delta);
+    void MouseZoom(float delta, glm::vec3 &position);
 
     float RotationSpeed() const;
     float ZoomSpeed() const;
@@ -29,8 +29,6 @@ private:
 
     std::shared_ptr<RenderSys::PerspectiveCamera> m_Camera;
     glm::vec2 m_prevMousePosition = { 0.0f, 0.0f };
-    glm::vec3 m_FocalPoint = { 0.0f, 0.0f, 0.0f };
-    float m_Distance = 2.0f;
 };
 
 } // namespace RenderSys

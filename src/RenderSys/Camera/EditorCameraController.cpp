@@ -31,9 +31,10 @@ void EditorCameraController::OnUpdate()
 
         float yaw = m_Camera->GetRotation().y;
         float pitch = m_Camera->GetRotation().x;
+        glm::vec3 pos = m_Camera->GetPosition();
         if (Walnut::Input::IsMouseButtonDown(Walnut::MouseButton::Middle))
         {
-            MousePan(delta);
+            MousePan(delta, pos);
         }
         else if (Walnut::Input::IsMouseButtonDown(Walnut::MouseButton::Left))
         {
@@ -41,11 +42,11 @@ void EditorCameraController::OnUpdate()
         }
         else if (Walnut::Input::IsMouseButtonDown(Walnut::MouseButton::Right))
         {
-            MouseZoom(delta.y);
+            MouseZoom(delta.y, pos);
         }
 
         m_Camera->SetOrientation(glm::vec3(pitch, yaw, 0.0f));
-        m_Camera->SetPosition(m_FocalPoint - m_Camera->GetForwardDirection() * m_Distance);
+        m_Camera->SetPosition(pos);
     }
     else
     {
@@ -60,15 +61,14 @@ void EditorCameraController::OnUpdate(TransformComponent &transformComponent)
     const glm::vec3 rightDir{forwardDir.z, 0.f, -forwardDir.x};
     const glm::vec3 upDir{0.f, -1.f, 0.f};
 
-
     m_Camera->SetPosition(transformComponent.GetTranslation());
     m_Camera->SetOrientation(transformComponent.GetRotation());
 }
 
-void EditorCameraController::MousePan(const glm::vec2 &delta)
+void EditorCameraController::MousePan(const glm::vec2 &delta, glm::vec3 &position)
 {
-    m_FocalPoint += -m_Camera->GetRightDirection() * delta.x * PanSpeed();
-    m_FocalPoint += m_Camera->GetUpDirection() * delta.y * PanSpeed();
+    position += -m_Camera->GetRightDirection() * delta.x * PanSpeed();
+    position += m_Camera->GetUpDirection() * delta.y * PanSpeed();
 }
 
 void EditorCameraController::MouseRotate(const glm::vec2 &delta, float& yaw, float& pitch)
@@ -78,9 +78,9 @@ void EditorCameraController::MouseRotate(const glm::vec2 &delta, float& yaw, flo
     pitch += delta.y * RotationSpeed();
 }
 
-void EditorCameraController::MouseZoom(float delta)
+void EditorCameraController::MouseZoom(float delta, glm::vec3 &position)
 {
-    m_Distance -= delta * ZoomSpeed();
+    position += m_Camera->GetForwardDirection() * delta * ZoomSpeed();
 }
 
 float EditorCameraController::RotationSpeed() const
@@ -95,7 +95,7 @@ float EditorCameraController::ZoomSpeed() const
 
 float EditorCameraController::PanSpeed() const
 {
-    return 0.5f * m_Distance; // Scale pan speed based on distance from focal point
+    return 10.0f;
 }
 
 } // namespace RenderSys
