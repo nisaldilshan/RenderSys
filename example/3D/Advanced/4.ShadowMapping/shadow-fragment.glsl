@@ -11,8 +11,9 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(set = 0, binding = 1) uniform LightingUniforms {
-    vec4 directions[2];
-    vec4 colors[2];
+    vec4 directions[1];
+    vec4 colors[1];
+    mat4 viewProjection[1];
 } lightingUbo;
 
 layout(set = 1, binding = 0) uniform sampler2D baseColorTexture;

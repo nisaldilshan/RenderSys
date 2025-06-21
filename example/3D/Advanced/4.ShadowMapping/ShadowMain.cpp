@@ -12,6 +12,7 @@
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Components/TagAndIDComponents.h>
+#include <RenderSys/Components/LightComponents.h>
 #include <RenderSys/Scene/Scene.h>
 #include <RenderSys/Scene/SceneHierarchyPanel.h>
 #include <imgui.h>
@@ -24,9 +25,10 @@ struct alignas(16) MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-struct alignas(16) LightingUniforms {
-    std::array<glm::vec4, 2> directions;
-    std::array<glm::vec4, 2> colors;
+struct LightingUniforms {
+    std::array<glm::vec4, 1> lightDirections;
+    std::array<glm::vec4, 1> lightColors;
+	std::array<glm::mat4x4, 1> lightViewProjections;
 };
 static_assert(sizeof(LightingUniforms) % 16 == 0);
 
@@ -151,7 +153,8 @@ public:
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 		
-		m_scene->AddInstanceofSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
+		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
+		createLights();
 
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
 		// The uniform buffer binding that we already had
@@ -210,10 +213,15 @@ public:
 			m_myUniformData.cameraWorldPosition = camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
-			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
-			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
-			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
-			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
+
+			auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent, 
+												RenderSys::TransformComponent>();
+			for (auto entity : lightView)
+			{
+				auto& lightComponent = lightView.get<RenderSys::DirectionalLightComponent>(entity);
+				m_lightingUniformData.lightDirections[0] = { lightComponent.m_Direction, 0.0f };
+				m_lightingUniformData.lightColors[0] = { lightComponent.m_Color, 1.0f };
+			}
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 
 			m_renderer->BeginFrame();
@@ -222,13 +230,13 @@ public:
 
 			m_renderer->BeginRenderPass();
 			m_renderer->BindResources();
-			auto view = m_scene->m_Registry.view<RenderSys::MeshComponent, 
+			auto meshView = m_scene->m_Registry.view<RenderSys::MeshComponent, 
 												RenderSys::TransformComponent, 
 												RenderSys::InstanceTagComponent>();
-			for (auto entity : view)
+			for (auto entity : meshView)
 			{
-				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
-				auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
+				auto& meshComponent = meshView.get<RenderSys::MeshComponent>(entity);
+				auto& instanceTagComponent = meshView.get<RenderSys::InstanceTagComponent>(entity);
 				instanceTagComponent.GetInstanceBuffer()->Update();
 				auto mesh = meshComponent.m_Mesh;
 				m_renderer->RenderMesh(*mesh);
@@ -271,6 +279,11 @@ public:
 	}
 
 private:
+	void createLights()
+	{
+		m_scene->AddDirectionalLight(glm::vec3( 0.5f, 0.5f, 0.5f), glm::vec3( 1.0f, 1.0f, 1.0f));
+	}
+
 	bool loadScene()
 	{
 		m_scene = std::make_shared<RenderSys::Scene>();
