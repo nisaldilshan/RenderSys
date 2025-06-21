@@ -2,6 +2,7 @@
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Components/TagAndIDComponents.h>
+#include <RenderSys/Components/LightComponents.h>
 
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
@@ -339,6 +340,13 @@ namespace RenderSys
                 auto scale = component.GetScale();
 			    DrawVec3Control("Scale", scale, 1.0f, 100.0f);
                 component.SetScale(scale);
+		    });
+
+        DrawComponent<DirectionalLightComponent>(m_Context->m_Registry, "Directional Light", entity,
+		    [](auto& component)
+		    {
+		        ImGui::ColorEdit3("Color", (float*)&component.m_Color);
+		    	DrawVec3Control("Direction", component.m_Direction, 1.0f, 100.0f);
 		    });
 
 		// DrawComponent<CameraComponent>(
