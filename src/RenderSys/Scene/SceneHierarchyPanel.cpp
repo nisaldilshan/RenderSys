@@ -3,6 +3,7 @@
 #include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Components/TagAndIDComponents.h>
 #include <RenderSys/Components/LightComponents.h>
+#include <RenderSys/Components/CameraComponents.h>
 
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
@@ -349,67 +350,44 @@ namespace RenderSys
 		    	DrawVec3Control("Direction", component.m_Direction, 1.0f, 100.0f);
 		    });
 
-		// DrawComponent<CameraComponent>(
-		//     "Camera", entity,
-		//     [](auto& component)
-		//     {
-		// 	    auto& camera = component.Camera;
-		// 	    ImGui::Checkbox("Primary", &component.Primary);
+		DrawComponent<PerspectiveCameraComponent>(m_Context->m_Registry, "Perspective Camera", entity,
+		    [](auto& component)
+		    {
+			    auto& camera = component.m_Camera;
+			    ImGui::Checkbox("Primary", &component.IsPrimary);
 
-		// 	    const char* projectionTypeStrings[] = {"Perspective", "Orthographic"};
-		// 	    const char* currentProjectionTypeString =
-		// 	        projectionTypeStrings[(int)camera.GetProjectionType()];
+			    //if (camera.GetProjectionType() == SceneCamera::ProjectionType::Perspective)
+			    {
+				    float perspectiveFov = camera->GetFOV();
+				    if (ImGui::DragFloat("Vertical FOV", &perspectiveFov))
+					    camera->SetFOV(perspectiveFov);
 
-		// 	    if (ImGui::BeginCombo("Projection", currentProjectionTypeString))
-		// 	    {
-		// 		    for (int i = 0; i < 2; i++)
-		// 		    {
-		// 			    bool isSelected = currentProjectionTypeString == projectionTypeStrings[i];
-		// 			    if (ImGui::Selectable(projectionTypeStrings[i], isSelected))
-		// 			    {
-		// 				    currentProjectionTypeString = projectionTypeStrings[i];
-		// 				    camera.SetProjectionType((SceneCamera::ProjectionType)i);
-		// 			    }
+				    float perspectiveNear = camera->GetNearClip();
+				    if (ImGui::DragFloat("Near", &perspectiveNear))
+					    camera->SetNearClip(perspectiveNear);
 
-		// 			    if (isSelected)
-		// 				    ImGui::SetItemDefaultFocus();
-		// 		    }
+				    float perspectiveFar = camera->GetFarClip();
+				    if (ImGui::DragFloat("Far", &perspectiveFar))
+					    camera->SetFarClip(perspectiveFar);
+			    }
 
-		// 		    ImGui::EndCombo();
-		// 	    }
+			    // if (camera.GetProjectionType() == SceneCamera::ProjectionType::Orthographic)
+			    // {
+				//     float orthoSize = camera.GetOrthographicSize();
+				//     if (ImGui::DragFloat("Size", &orthoSize))
+				// 	    camera.SetOrthographicSize(orthoSize);
 
-		// 	    if (camera.GetProjectionType() == SceneCamera::ProjectionType::Perspective)
-		// 	    {
-		// 		    float perspectiveFov = camera.GetPerspectiveVerticalFOV();
-		// 		    if (ImGui::DragFloat("Vertical FOV", &perspectiveFov))
-		// 			    camera.SetPerspectiveVerticalFOV(perspectiveFov);
+				//     float orthoNear = camera.GetOrthographicNearClip();
+				//     if (ImGui::DragFloat("Near", &orthoNear))
+				// 	    camera.SetOrthographicNearClip(orthoNear);
 
-		// 		    float perspectiveNear = camera.GetPerspectiveNearClip();
-		// 		    if (ImGui::DragFloat("Near", &perspectiveNear))
-		// 			    camera.SetPerspectiveNearClip(perspectiveNear);
+				//     float orthoFar = camera.GetOrthographicFarClip();
+				//     if (ImGui::DragFloat("Far", &orthoFar))
+				// 	    camera.SetOrthographicFarClip(orthoFar);
 
-		// 		    float perspectiveFar = camera.GetPerspectiveFarClip();
-		// 		    if (ImGui::DragFloat("Far", &perspectiveFar))
-		// 			    camera.SetPerspectiveFarClip(perspectiveFar);
-		// 	    }
-
-		// 	    if (camera.GetProjectionType() == SceneCamera::ProjectionType::Orthographic)
-		// 	    {
-		// 		    float orthoSize = camera.GetOrthographicSize();
-		// 		    if (ImGui::DragFloat("Size", &orthoSize))
-		// 			    camera.SetOrthographicSize(orthoSize);
-
-		// 		    float orthoNear = camera.GetOrthographicNearClip();
-		// 		    if (ImGui::DragFloat("Near", &orthoNear))
-		// 			    camera.SetOrthographicNearClip(orthoNear);
-
-		// 		    float orthoFar = camera.GetOrthographicFarClip();
-		// 		    if (ImGui::DragFloat("Far", &orthoFar))
-		// 			    camera.SetOrthographicFarClip(orthoFar);
-
-		// 		    ImGui::Checkbox("Fixed Aspect Ratio", &component.FixedAspectRatio);
-		// 	    }
-		//     });
+				//     ImGui::Checkbox("Fixed Aspect Ratio", &component.FixedAspectRatio);
+			    // }
+		    });
 
 		// DrawComponent<SpriteRendererComponent>(
 		//     "Sprite Renderer", entity,

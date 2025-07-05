@@ -1,4 +1,6 @@
 #pragma once
+#include <RenderSys/Camera/PerspectiveCamera.h>
+#include <memory>
 
 namespace RenderSys
 {
@@ -18,15 +20,15 @@ struct OrthographicCameraComponent
 
 struct PerspectiveCameraComponent
 {
-    PerspectiveCameraComponent(float aspectRatio, float yfov, float zfar, float znear)
-        : m_AspectRatio(aspectRatio), m_YFov(yfov), m_ZFar(zfar), m_ZNear(znear)
-    {
-    }
-    PerspectiveCameraComponent() = delete;
-    float m_AspectRatio;
-    float m_YFov;
-    float m_ZFar;
-    float m_ZNear;
+    PerspectiveCameraComponent() = default;
+    ~PerspectiveCameraComponent() = default;
+    PerspectiveCameraComponent(const PerspectiveCameraComponent&) = delete;
+    PerspectiveCameraComponent &operator=(const PerspectiveCameraComponent&) = delete;
+    PerspectiveCameraComponent(PerspectiveCameraComponent&&) = delete;
+    PerspectiveCameraComponent &operator=(PerspectiveCameraComponent&&) = delete;
+
+    std::shared_ptr<RenderSys::PerspectiveCamera> m_Camera;
+    bool IsPrimary = false; // Indicates if this camera is the primary camera for the scene
 };
 
 }

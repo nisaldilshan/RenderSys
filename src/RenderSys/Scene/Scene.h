@@ -8,6 +8,8 @@
 namespace RenderSys 
 {
 
+class ICamera;
+
 class Scene
 {
 public:
@@ -30,6 +32,7 @@ public:
 	void AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
 
 	void AddDirectionalLight(const glm::vec3& direction, const glm::vec3& color);
+	void AddCamera(std::shared_ptr<RenderSys::ICamera> camera);
 
 	entt::registry m_Registry;
 	SceneGraph m_sceneGraph;

@@ -4,6 +4,7 @@
 #include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/LightComponents.h>
+#include <RenderSys/Components/CameraComponents.h>
 #include <iostream>
 
 namespace RenderSys
@@ -168,4 +169,24 @@ void Scene::AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &col
 	dirLight.m_Direction = direction;
 	dirLight.m_Color = color;
 }
+
+void Scene::AddCamera(std::shared_ptr<RenderSys::ICamera> camera)
+{
+	static uint32_t cameraIndex = 0;
+	const auto name = "Camera" + std::to_string(cameraIndex++);
+	auto cameraEntity = CreateEntity(name);
+	m_Registry.emplace<PerspectiveCameraComponent>(cameraEntity);
+	m_sceneGraph.CreateNode(m_instancedRootNodeIndex, cameraEntity, name);
+
+	auto& cameraComp = m_Registry.get<PerspectiveCameraComponent>(cameraEntity);
+	auto perspect = std::dynamic_pointer_cast<PerspectiveCamera>(camera);
+	if (!perspect)
+	{
+		std::cerr << "Error: Camera is not a PerspectiveCamera!" << std::endl;
+		assert(false);
+		return;
+	}
+	cameraComp.m_Camera = perspect;
+}
+
 } // namespace Hazel
