@@ -7,6 +7,9 @@ namespace RenderSys
 
 EditorCameraController::EditorCameraController(float fov, float nearClip, float farClip)
     : m_Camera(std::make_shared<PerspectiveCamera>(fov, nearClip, farClip))
+    , m_prevMousePosition(0.0f, 0.0f)
+    , m_CameraEntity(entt::null)
+    , m_Registry(nullptr)
 {
     m_Camera->SetAspectRatio(1.0f); // Default aspect ratio, can be updated later
     m_Camera->SetOrientation(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -45,24 +48,22 @@ void EditorCameraController::OnUpdate()
             MouseZoom(delta.y, pos);
         }
 
-        m_Camera->SetOrientation(glm::vec3(pitch, yaw, 0.0f));
-        m_Camera->SetPosition(pos);
+        if (m_CameraEntity != entt::null)
+        {
+            TransformComponent& transform = m_Registry->get<TransformComponent>(m_CameraEntity);
+            transform.SetTranslation(pos);
+            transform.SetRotation(glm::vec3(pitch, yaw, 0.0f));
+        }
+        else
+        {
+            m_Camera->SetOrientation(glm::vec3(pitch, yaw, 0.0f));
+            m_Camera->SetPosition(pos);
+        }
     }
     else
     {
         m_prevMousePosition = { 0.0f, 0.0f };
     }
-}
-
-void EditorCameraController::OnUpdate(TransformComponent &transformComponent)
-{
-    float yaw = transformComponent.GetRotation().y;
-    const glm::vec3 forwardDir{std::sin(yaw), 0.f, std::cos(yaw)};
-    const glm::vec3 rightDir{forwardDir.z, 0.f, -forwardDir.x};
-    const glm::vec3 upDir{0.f, -1.f, 0.f};
-
-    m_Camera->SetPosition(transformComponent.GetTranslation());
-    m_Camera->SetOrientation(transformComponent.GetRotation());
 }
 
 void EditorCameraController::MousePan(const glm::vec2 &delta, glm::vec3 &position)

@@ -1,4 +1,5 @@
 #pragma once
+#include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Camera/PerspectiveCamera.h>
 #include <memory>
 
@@ -20,7 +21,13 @@ struct OrthographicCameraComponent
 
 struct PerspectiveCameraComponent
 {
-    PerspectiveCameraComponent() = default;
+    PerspectiveCameraComponent(TransformComponent& transform)
+        : m_Transform(transform)
+    {
+        m_Transform.SetChangeNotifyCallback([this](const glm::vec3& translation, const glm::vec3& rotation) {
+            OnTransformChange(translation, rotation);
+        });
+    }
     ~PerspectiveCameraComponent() = default;
     PerspectiveCameraComponent(const PerspectiveCameraComponent&) = delete;
     PerspectiveCameraComponent &operator=(const PerspectiveCameraComponent&) = delete;
@@ -28,7 +35,17 @@ struct PerspectiveCameraComponent
     PerspectiveCameraComponent &operator=(PerspectiveCameraComponent&&) = delete;
 
     std::shared_ptr<RenderSys::PerspectiveCamera> m_Camera;
+    TransformComponent& m_Transform; // Transform component for the camera
     bool IsPrimary = false; // Indicates if this camera is the primary camera for the scene
+private:
+    void OnTransformChange(const glm::vec3& translation, const glm::vec3& rotation)
+    {
+        if (m_Camera)
+        {
+            m_Camera->SetPosition(translation);
+            m_Camera->SetOrientation(rotation);
+        }
+    }
 };
 
 }

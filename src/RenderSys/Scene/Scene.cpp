@@ -170,12 +170,12 @@ void Scene::AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &col
 	dirLight.m_Color = color;
 }
 
-void Scene::AddCamera(std::shared_ptr<RenderSys::ICamera> camera)
+entt::entity Scene::AddCamera(std::shared_ptr<RenderSys::ICamera> camera)
 {
 	static uint32_t cameraIndex = 0;
 	const auto name = "Camera" + std::to_string(cameraIndex++);
 	auto cameraEntity = CreateEntity(name);
-	m_Registry.emplace<PerspectiveCameraComponent>(cameraEntity);
+	m_Registry.emplace<PerspectiveCameraComponent>(cameraEntity, m_Registry.get<TransformComponent>(cameraEntity));
 	m_sceneGraph.CreateNode(m_instancedRootNodeIndex, cameraEntity, name);
 
 	auto& cameraComp = m_Registry.get<PerspectiveCameraComponent>(cameraEntity);
@@ -184,9 +184,10 @@ void Scene::AddCamera(std::shared_ptr<RenderSys::ICamera> camera)
 	{
 		std::cerr << "Error: Camera is not a PerspectiveCamera!" << std::endl;
 		assert(false);
-		return;
+		return cameraEntity;
 	}
 	cameraComp.m_Camera = perspect;
+	return cameraEntity;
 }
 
 } // namespace Hazel

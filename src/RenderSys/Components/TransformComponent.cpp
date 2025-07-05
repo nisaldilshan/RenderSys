@@ -94,16 +94,29 @@ void TransformComponent::RecalculateMatrices()
     m_Mat4Local = translation * rotation * scale;
 
     m_Dirty = false;
+
+    if (m_changeNotifyCallback)
+    {
+        std::invoke(m_changeNotifyCallback, m_Translation, m_Rotation);
+    }
 }
 
 void TransformComponent::SetScale(const glm::vec3 &scale)
 {
+    if (m_Scale == scale)
+    {
+        return; // No change, no need to recalculate
+    }
     m_Scale = scale;
     m_Dirty = true;
 }
 
 void TransformComponent::SetRotation(const glm::vec3& rotation)
 {
+    if (m_Rotation == rotation)
+    {
+        return; // No change, no need to recalculate
+    }
     m_Rotation = rotation;
     m_Dirty = true;
 }
@@ -117,6 +130,10 @@ void TransformComponent::SetRotation(const glm::quat &quaternion)
 
 void TransformComponent::SetTranslation(const glm::vec3 &translation)
 {
+    if (m_Translation == translation)
+    {
+        return; // No change, no need to recalculate
+    }
     m_Translation = translation;
     m_Dirty = true;
 }

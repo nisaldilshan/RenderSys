@@ -353,23 +353,20 @@ namespace RenderSys
 		DrawComponent<PerspectiveCameraComponent>(m_Context->m_Registry, "Perspective Camera", entity,
 		    [](auto& component)
 		    {
-			    auto& camera = component.m_Camera;
+			    std::shared_ptr<RenderSys::PerspectiveCamera> camera = component.m_Camera;
 			    ImGui::Checkbox("Primary", &component.IsPrimary);
 
-			    //if (camera.GetProjectionType() == SceneCamera::ProjectionType::Perspective)
-			    {
-				    float perspectiveFov = camera->GetFOV();
-				    if (ImGui::DragFloat("Vertical FOV", &perspectiveFov))
-					    camera->SetFOV(perspectiveFov);
+                float perspectiveFov = camera->GetFOV();
+                if (ImGui::DragFloat("Vertical FOV", &perspectiveFov))
+                    camera->SetFOV(perspectiveFov);
 
-				    float perspectiveNear = camera->GetNearClip();
-				    if (ImGui::DragFloat("Near", &perspectiveNear))
-					    camera->SetNearClip(perspectiveNear);
+                float perspectiveNear = camera->GetNearClip();
+                if (ImGui::DragFloat("Near", &perspectiveNear))
+                    camera->SetNearClip(perspectiveNear);
 
-				    float perspectiveFar = camera->GetFarClip();
-				    if (ImGui::DragFloat("Far", &perspectiveFar))
-					    camera->SetFarClip(perspectiveFar);
-			    }
+                float perspectiveFar = camera->GetFarClip();
+                if (ImGui::DragFloat("Far", &perspectiveFar))
+                    camera->SetFarClip(perspectiveFar);
 
 			    // if (camera.GetProjectionType() == SceneCamera::ProjectionType::Orthographic)
 			    // {
