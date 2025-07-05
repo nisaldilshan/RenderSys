@@ -213,10 +213,10 @@ void VulkanRenderer3D::DestroyBindGroup()
         m_bindGroupPool = VK_NULL_HANDLE;
     }
 
-    if (m_bindGroupLayout)
+    if (m_mainBindGroupLayout)
     {
-        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), m_bindGroupLayout, nullptr);
-        m_bindGroupLayout = VK_NULL_HANDLE;
+        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), m_mainBindGroupLayout, nullptr);
+        m_mainBindGroupLayout = VK_NULL_HANDLE;
     }
 }
 
@@ -269,7 +269,7 @@ void VulkanRenderer3D::DestroyShaders()
 void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
     assert(bindGroupLayoutEntries.size() >= 1);
-    assert(!m_bindGroupLayout && !m_bindGroupPool && !m_mainBindGroup);
+    assert(!m_mainBindGroupLayout && !m_bindGroupPool && !m_mainBindGroup);
 
     std::unordered_map<VkDescriptorType, uint32_t> descriptorTypeCountMap;
     std::vector<VkDescriptorSetLayoutBinding> mainBindGroupBindings;
@@ -294,7 +294,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     layoutInfo.bindingCount = mainBindGroupBindings.size();
     layoutInfo.pBindings = mainBindGroupBindings.data();
 
-    if (vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &layoutInfo, nullptr, &m_mainBindGroupLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 
@@ -318,7 +318,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = m_bindGroupPool;
     allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &m_bindGroupLayout;
+    allocInfo.pSetLayouts = &m_mainBindGroupLayout;
 
     if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_mainBindGroup) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
@@ -461,7 +461,7 @@ void VulkanRenderer3D::DestroyRenderPass()
 
 void VulkanRenderer3D::CreatePipeline()
 {
-    std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, 
+    std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
                                                     RenderSys::GetMaterialBindGroupLayout(),
                                                     RenderSys::GetResourceBindGroupLayout()};
     m_pbrRenderPipeline = std::make_unique<RenderSys::Vulkan::PbrRenderPipeline>(m_renderpass, layouts, m_vertexInputLayout, m_shaderStageInfos);
@@ -841,7 +841,7 @@ void VulkanRenderer3D::BeginShadowMapPass()
         constexpr int shadowMapResolution = 2048;
         m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(shadowMapResolution);
 
-        std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, 
+        std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
                                                     RenderSys::GetMaterialBindGroupLayout(),
                                                     RenderSys::GetResourceBindGroupLayout()};
 

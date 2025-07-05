@@ -109,7 +109,7 @@ private:
     std::unordered_map<uint32_t, std::shared_ptr<Vulkan::VertexIndexBufferInfo>> m_vertexIndexBufferInfoMap;
 
     VkDescriptorPool m_bindGroupPool = VK_NULL_HANDLE;
-    VkDescriptorSetLayout m_bindGroupLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_mainBindGroupLayout = VK_NULL_HANDLE;
     VkDescriptorSet m_mainBindGroup = VK_NULL_HANDLE;
 
     std::unordered_map<uint32_t, std::shared_ptr<RenderSys::VulkanTexture>> m_textures;

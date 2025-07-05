@@ -52,7 +52,7 @@ public:
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
 			{
-				std::ifstream file(shaderDir + "/shadow-vertex.glsl", std::ios::binary);
+				std::ifstream file(shaderDir + "/ShadowMain-vert.glsl", std::ios::binary);
 				std::vector<char> content((std::istreambuf_iterator<char>(file)),
 											std::istreambuf_iterator<char>());
 
@@ -68,7 +68,7 @@ public:
 			}
 
 			{
-				std::ifstream file(shaderDir + "/shadow-fragment.glsl", std::ios::binary);
+				std::ifstream file(shaderDir + "/ShadowMain-frag.glsl", std::ios::binary);
 				std::vector<char> content((std::istreambuf_iterator<char>(file)),
 											std::istreambuf_iterator<char>());
 
