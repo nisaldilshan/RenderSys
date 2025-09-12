@@ -152,7 +152,7 @@ namespace RenderSys
 
         ImGui::Columns(2);
         ImGui::SetColumnWidth(0, columnWidth);
-        ImGui::Text(label.c_str());
+        ImGui::Text("%s", label.c_str());
         ImGui::NextColumn();
 
         ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
@@ -225,7 +225,7 @@ namespace RenderSys
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4,4 });
             float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
             ImGui::Separator();
-            bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), treeNodeFlags, name.c_str());
+            bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), treeNodeFlags, "%s", name.c_str());
             ImGui::PopStyleVar();
 
             ImGui::SameLine(contentRegionAvailable.x - lineHeight * 0.5f);

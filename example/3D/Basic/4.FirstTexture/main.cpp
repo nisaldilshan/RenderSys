@@ -29,7 +29,6 @@ public:
 		{
 			const char* vertexShaderSource = R"(
 				#version 460
-
 				layout(binding = 0) uniform UniformBufferObject {
 					mat4 projectionMatrix;
 					mat4 viewMatrix;
@@ -120,8 +119,6 @@ public:
 			};
 
 			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
-
-			// The texture binding
 			@group(0) @binding(1) var gradientTexture: texture_2d<f32>;
 
 			@vertex
@@ -195,6 +192,47 @@ public:
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 		m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
+
+		constexpr uint32_t texWidth = 256;
+		constexpr uint32_t texHeight = 256;
+		std::vector<uint8_t> pixels(4 * texWidth * texHeight);
+
+		for (uint32_t i = 0; i < texWidth; ++i) {
+			for (uint32_t j = 0; j < texHeight; ++j) {
+				uint8_t *p = &pixels[4 * (j * texWidth + i)];
+				p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
+				p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
+				p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
+				p[3] = 255; // a
+			}
+		}
+
+		auto texture = std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 1);
+		m_renderer->CreateTexture(1, texture);
+
+		// Since we now have 2 bindings, we use a vector to store them
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
+		// The uniform buffer binding that we already had
+		RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
+		uniformBindingLayout.setDefault();
+		uniformBindingLayout.binding = 0;
+		uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
+		uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
+		uniformBindingLayout.buffer.hasDynamicOffset = false;
+
+		// The texture binding
+		RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
+		textureBindingLayout.setDefault();
+		textureBindingLayout.binding = 1;
+		textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+		textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
+		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
+
+		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 2);
+
+		m_renderer->CreateBindGroup(bindingLayoutEntries);
+		m_renderer->CreatePipeline();
 	}
 
 	virtual void OnDetach() override
@@ -213,49 +251,11 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			// Since we now have 2 bindings, we use a vector to store them
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
-			// The uniform buffer binding that we already had
-			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
-			uniformBindingLayout.setDefault();
-			uniformBindingLayout.binding = 0;
-			uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
-			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-			uniformBindingLayout.buffer.hasDynamicOffset = false;
-
-			// The texture binding
-			RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
-			textureBindingLayout.setDefault();
-			textureBindingLayout.binding = 1;
-			textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
-			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
-
-			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 2);
-
-			constexpr uint32_t texWidth = 256;
-			constexpr uint32_t texHeight = 256;
-			std::vector<uint8_t> pixels(4 * texWidth * texHeight);
-
-			for (uint32_t i = 0; i < texWidth; ++i) {
-				for (uint32_t j = 0; j < texHeight; ++j) {
-					uint8_t *p = &pixels[4 * (j * texWidth + i)];
-					p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
-					p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
-					p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
-					p[3] = 255; // a
-				}
-			}
-			m_renderer->CreateTexture(textureBindingLayout.binding, std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 1));
-
-			m_renderer->CreateBindGroup(bindingLayoutEntries);
-			m_renderer->CreatePipeline();
         }
 
 		if (m_renderer)
 		{
+			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
 			const float time = static_cast<float>(glfwGetTime());
@@ -277,6 +277,7 @@ public:
 			m_renderer->BindResources();
 			m_renderer->Render(0);
 			m_renderer->EndRenderPass();
+			m_renderer->EndFrame();
 		}
 
         m_lastRenderTime = timer.ElapsedMillis();

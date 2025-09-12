@@ -276,8 +276,7 @@ private:
 	{
 		m_scene = std::make_shared<RenderSys::Scene>();
 		m_model = std::make_unique<RenderSys::Model>(*m_scene);
-		if (!m_model->load(RESOURCE_DIR "/Models/testModel/newme.gltf"))
-		//if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf"))
+		if (!m_model->load(RESOURCE_DIR "/Models/Woman.gltf"))
 		{
 			std::cout << "Error loading GLTF model!" << std::endl;
 			return false;

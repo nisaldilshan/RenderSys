@@ -28,8 +28,8 @@ public:
     ~GLTFModel();
     GLTFModel(const GLTFModel&) = delete;
     GLTFModel &operator=(const GLTFModel&) = delete;
-    GLTFModel(GLTFModel&&) = default;
-    GLTFModel &operator=(GLTFModel&&) = default;
+    GLTFModel(GLTFModel&&) = delete;
+    GLTFModel &operator=(GLTFModel&&) = delete;
     bool load(const std::filesystem::path &filePath);
     void computeProps();
     

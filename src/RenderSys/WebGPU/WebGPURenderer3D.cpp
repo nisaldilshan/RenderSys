@@ -2,7 +2,7 @@
 #include "WebGPURendererUtils.h"
 #include "WebGPUTexture.h"
 
-namespace GraphicsAPI
+namespace RenderSys
 {
 
 const wgpu::TextureFormat g_depthTextureFormat = wgpu::TextureFormat::Depth24Plus;
@@ -30,10 +30,10 @@ void WebGPURenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
     tex_desc.usage = WGPUTextureUsage_CopyDst | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_RenderAttachment;
     //##
     tex_desc.viewFormatCount = 1;
-    wgpu::TextureFormat tf = WebGPU::GetSwapChainFormat();
+    wgpu::TextureFormat tf = GraphicsAPI::WebGPU::GetSwapChainFormat();
 	tex_desc.viewFormats = (WGPUTextureFormat *)const_cast<wgpu::TextureFormat *>(&tf);
     //##
-    wgpu::Texture texture = WebGPU::GetDevice().createTexture(tex_desc);
+    wgpu::Texture texture = GraphicsAPI::WebGPU::GetDevice().createTexture(tex_desc);
 
     wgpu::TextureViewDescriptor tex_view_desc = {};
     tex_view_desc.format = WGPUTextureFormat_BGRA8Unorm;
@@ -58,8 +58,7 @@ void WebGPURenderer3D::CreateDepthImage()
 	depthTextureDesc.usage = wgpu::TextureUsage::RenderAttachment;
 	depthTextureDesc.viewFormatCount = 1;
 	depthTextureDesc.viewFormats = (WGPUTextureFormat*)&g_depthTextureFormat;
-	m_depthTexture = WebGPU::GetDevice().createTexture(depthTextureDesc);
-	std::cout << "Depth texture: " << m_depthTexture << std::endl;
+	m_depthTexture = GraphicsAPI::WebGPU::GetDevice().createTexture(depthTextureDesc);
 
 	// Create the view of the depth texture manipulated by the rasterizer
 	wgpu::TextureViewDescriptor depthTextureViewDesc;
@@ -71,10 +70,9 @@ void WebGPURenderer3D::CreateDepthImage()
 	depthTextureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
 	depthTextureViewDesc.format = g_depthTextureFormat;
 	m_depthTextureView = m_depthTexture.createView(depthTextureViewDesc);
-	std::cout << "Depth texture view: " << m_depthTextureView << std::endl;
 }
 
-void WebGPURenderer3D::CreateShaders(RenderSys::Shader& shader)
+void WebGPURenderer3D::CreateShader(RenderSys::Shader& shader)
 {
     std::cout << "Creating shader module..." << std::endl;
 
@@ -91,7 +89,7 @@ void WebGPURenderer3D::CreateShaders(RenderSys::Shader& shader)
     shaderCodeDesc.code = shader.GetShaderSrc().c_str();
     // Connect the chain
     shaderDesc.nextInChain = &shaderCodeDesc.chain;
-    m_shaderModule = WebGPU::GetDevice().createShaderModule(shaderDesc);
+    m_shaderModule = GraphicsAPI::WebGPU::GetDevice().createShaderModule(shaderDesc);
 
     std::cout << "Shader module: " << m_shaderModule << std::endl;
 }
@@ -161,7 +159,7 @@ void WebGPURenderer3D::CreatePipeline()
 	blendState.alpha.operation = wgpu::BlendOperation::Add;
 
     wgpu::ColorTargetState colorTarget;
-	colorTarget.format = WebGPU::GetSwapChainFormat();
+	colorTarget.format = GraphicsAPI::WebGPU::GetSwapChainFormat();
 	colorTarget.blend = &blendState;
 	colorTarget.writeMask = wgpu::ColorWriteMask::All; // We could write to only some of the color channels.
 
@@ -198,7 +196,7 @@ void WebGPURenderer3D::CreatePipeline()
     else
         pipelineDesc.layout = nullptr;
 
-    m_pipeline = WebGPU::GetDevice().createRenderPipeline(pipelineDesc);
+    m_pipeline = GraphicsAPI::WebGPU::GetDevice().createRenderPipeline(pipelineDesc);
     std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
@@ -212,16 +210,16 @@ uint32_t WebGPURenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& buf
     auto vertexIndexBufferInfo = std::make_shared<WebGPUVertexIndexBufferInfo>();
     const auto vertexBufferSize = bufferData.vertices.size() * sizeof(RenderSys::Vertex);
     vertexIndexBufferInfo->m_vertexCount = vertexBufferSize / bufferLayout.arrayStride;
-    m_vertexBufferLayout = GetWebGPUVertexBufferLayout(bufferLayout);
+    m_vertexBufferLayout = GraphicsAPI::GetWebGPUVertexBufferLayout(bufferLayout);
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = vertexBufferSize;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
     bufferDesc.label = "Vertex Buffer";
-    vertexIndexBufferInfo->m_vertexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    vertexIndexBufferInfo->m_vertexBuffer = GraphicsAPI::WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload vertex data to the buffer
-    WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo->m_vertexBuffer, 0, bufferData.vertices.data(), bufferDesc.size);
+    GraphicsAPI::WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo->m_vertexBuffer, 0, bufferData.vertices.data(), bufferDesc.size);
     std::cout << "Vertex buffer: " << vertexIndexBufferInfo->m_vertexBuffer << std::endl;
     const uint32_t key = m_vertexIndexBufferInfoMap.size() + 1;
     auto res2 = m_vertexIndexBufferInfoMap.insert({key, vertexIndexBufferInfo});
@@ -246,10 +244,10 @@ void WebGPURenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vec
     bufferDesc.size = bufferData.size() * sizeof(uint32_t);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
     bufferDesc.label = "Index Buffer";
-    vertexIndexBufferInfo->m_indexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    vertexIndexBufferInfo->m_indexBuffer = GraphicsAPI::WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload index data to the buffer
-    WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo->m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
+    GraphicsAPI::WebGPU::GetQueue().writeBuffer(vertexIndexBufferInfo->m_indexBuffer, 0, bufferData.data(), bufferDesc.size);
     std::cout << "Index buffer: " << vertexIndexBufferInfo->m_indexBuffer << std::endl;
 }
 
@@ -257,14 +255,14 @@ void WebGPURenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vec
 void WebGPURenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
     // Create a bind group layout using a vector of layout entries
-    m_mainBindGroupBindings = GetWebGPUBindGroupLayoutEntriesPtr(bindGroupLayoutEntries, true);
+    m_mainBindGroupBindings = GraphicsAPI::GetWebGPUBindGroupLayoutEntriesPtr(bindGroupLayoutEntries, true);
 
     auto bindGroupLayoutEntryCount = (uint32_t)m_mainBindGroupBindings.size();
 	wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
 	bindGroupLayoutDesc.entryCount = bindGroupLayoutEntryCount;
 	bindGroupLayoutDesc.entries = m_mainBindGroupBindings.data();
     bindGroupLayoutDesc.label = "MainBindGroupLayout";
-	m_bindGroupLayout = WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
+	m_bindGroupLayout = GraphicsAPI::WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
 
     if (m_bindGroupLayout)
     {
@@ -273,7 +271,7 @@ void WebGPURenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
         pipelineLayoutDesc.bindGroupLayoutCount = 1;
         pipelineLayoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*)&m_bindGroupLayout;
         pipelineLayoutDesc.label = "PipelineLayout";
-        m_pipelineLayout = WebGPU::GetDevice().createPipelineLayout(pipelineLayoutDesc);
+        m_pipelineLayout = GraphicsAPI::WebGPU::GetDevice().createPipelineLayout(pipelineLayoutDesc);
 
         assert(bindGroupLayoutEntryCount > 0);
         std::vector<wgpu::BindGroupEntry> bindings;
@@ -331,7 +329,7 @@ void WebGPURenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
         // There must be as many bindings as declared in the layout!
         bindGroupDesc.entryCount = (uint32_t)bindings.size();
         bindGroupDesc.entries = bindings.data();
-        m_bindGroup = WebGPU::GetDevice().createBindGroup(bindGroupDesc);
+        m_bindGroup = GraphicsAPI::WebGPU::GetDevice().createBindGroup(bindGroupDesc);
     }
 }
 
@@ -347,7 +345,7 @@ uint32_t WebGPURenderer3D::GetUniformStride(const uint32_t& uniformIndex, const 
 
     // Get device limits
     wgpu::SupportedLimits deviceSupportedLimits;
-    WebGPU::GetDevice().getLimits(&deviceSupportedLimits);
+    GraphicsAPI::WebGPU::GetDevice().getLimits(&deviceSupportedLimits);
     wgpu::Limits deviceLimits = deviceSupportedLimits.limits;
     
     /** Round 'value' up to the next multiplier of 'step' */
@@ -387,7 +385,7 @@ void WebGPURenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneU
     //     bufferDesc.label = "Lighting";
     // }
 
-    auto buffer = WebGPU::GetDevice().createBuffer(bufferDesc);
+    auto buffer = GraphicsAPI::WebGPU::GetDevice().createBuffer(bufferDesc);
     m_uniformBuffers.insert({binding, std::make_tuple(buffer, sizeOfOneUniform)});
 }
 
@@ -399,7 +397,7 @@ void WebGPURenderer3D::SetUniformData(uint32_t binding, const void* bufferData)
         const auto buffer = std::get<0>(uniformBuffer->second);
         const auto bufferSize = std::get<1>(uniformBuffer->second);
         assert(bufferSize > 0);
-        WebGPU::GetQueue().writeBuffer(buffer, 0, bufferData, bufferSize);
+        GraphicsAPI::WebGPU::GetQueue().writeBuffer(buffer, 0, bufferData, bufferSize);
     }
     else
     {
@@ -466,10 +464,6 @@ void WebGPURenderer3D::BeginRenderPass()
     if (!m_textureToRenderInto)
         std::cerr << "Cannot acquire texture to render into" << std::endl;
 
-    wgpu::CommandEncoderDescriptor commandEncoderDesc;
-    commandEncoderDesc.label = "Renderer Command Encoder";
-    m_currentCommandEncoder = WebGPU::GetDevice().createCommandEncoder(commandEncoderDesc);
-
     wgpu::RenderPassDescriptor renderPassDesc;
 
     wgpu::RenderPassColorAttachment renderPassColorAttachment;
@@ -519,7 +513,6 @@ void WebGPURenderer3D::BeginRenderPass()
 void WebGPURenderer3D::EndRenderPass()
 {
     m_renderPass.end();
-    SubmitCommandBuffer();
 }
 
 void WebGPURenderer3D::BeginShadowMapPass()
@@ -567,12 +560,19 @@ void WebGPURenderer3D::DestroyBindGroup()
 {
 }
 
+void WebGPURenderer3D::ResetCommandBuffer() 
+{
+    wgpu::CommandEncoderDescriptor commandEncoderDesc;
+    commandEncoderDesc.label = "Renderer Command Encoder";
+    m_currentCommandEncoder = GraphicsAPI::WebGPU::GetDevice().createCommandEncoder(commandEncoderDesc);
+}
+
 void WebGPURenderer3D::SubmitCommandBuffer()
 {
     wgpu::CommandBufferDescriptor cmdBufferDescriptor;
     cmdBufferDescriptor.label = "Command buffer";
     wgpu::CommandBuffer commands = m_currentCommandEncoder.finish(cmdBufferDescriptor);
-    WebGPU::GetQueue().submit(commands);
+    GraphicsAPI::WebGPU::GetQueue().submit(commands);
 }
 
 void WebGPURenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
@@ -612,7 +612,7 @@ void WebGPURenderer3D::CreateDefaultTextureSampler()
     samplerDesc.lodMaxClamp = 8.0f;
     samplerDesc.compare = wgpu::CompareFunction::Undefined;
     samplerDesc.maxAnisotropy = 1;
-    m_defaultTextureSampler = WebGPU::GetDevice().createSampler(samplerDesc);
+    m_defaultTextureSampler = GraphicsAPI::WebGPU::GetDevice().createSampler(samplerDesc);
 }
 
 } // namespace GraphicsAPI

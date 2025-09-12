@@ -35,6 +35,7 @@ void Renderer3D::OnResize(uint32_t width, uint32_t height)
 void Renderer3D::Init()
 {
     m_rendererBackend->Init();
+    OnResize(1, 1);
 }
 
 void Renderer3D::SetShader(RenderSys::Shader& shader)
