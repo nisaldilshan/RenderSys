@@ -15,7 +15,8 @@ add_library (RenderSys2D STATIC
 add_library (RenderSys3D STATIC
                 src/RenderSys/Renderer3D.cpp
                 src/RenderSys/Shader.cpp
-                src/RenderSys/Camera.cpp
+                src/RenderSys/Camera/PerspectiveCamera.cpp
+                src/RenderSys/Camera/EditorCameraController.cpp
                 src/RenderSys/Geometry.cpp
                 src/RenderSys/Buffer.cpp
                 src/RenderSys/Texture.cpp
@@ -32,7 +33,8 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Scene/UUID.cpp
                 src/RenderSys/Components/TransformComponent.cpp
                 src/RenderSys/Components/MeshComponent.cpp
-                src/RenderSys/Components/TagAndIDComponents.cpp)
+                src/RenderSys/Components/TagAndIDComponents.cpp
+            )
 
 add_library (ComputeSys STATIC
                 src/RenderSys/Compute.cpp
@@ -47,7 +49,8 @@ if(RENDERER STREQUAL "Vulkan")
     find_package(vulkan-memory-allocator REQUIRED)
     target_sources(RenderSys2D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
-                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp
+    )
     target_sources(RenderSys3D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
@@ -55,10 +58,16 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanBuffer.cpp
                     src/RenderSys/Vulkan/VulkanTexture.cpp
                     src/RenderSys/Vulkan/VulkanMaterial.cpp
-                    src/RenderSys/Vulkan/VulkanResource.cpp)
+                    src/RenderSys/Vulkan/VulkanResource.cpp
+                    src/RenderSys/Vulkan/VulkanShadowMap.cpp
+                    src/RenderSys/Vulkan/Pipeline/VulkanPipeline.cpp
+                    src/RenderSys/Vulkan/Pipeline/VulkanPbrRenderPipeline.cpp
+                    src/RenderSys/Vulkan/Pipeline/VulkanShadowRenderPipeline.cpp
+    )
     target_sources(ComputeSys PRIVATE
                     src/RenderSys/Vulkan/VulkanCompute.cpp
-                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp)
+                    src/RenderSys/Vulkan/VulkanRendererUtils.cpp
+    )
 
     target_link_libraries(RenderSys2D PRIVATE 
                             vulkan-memory-allocator::vulkan-memory-allocator)
@@ -208,7 +217,8 @@ else()
                     src/RenderSys/WebGPU/WebGPURenderer2D.cpp)
     target_sources(RenderSys3D PRIVATE
                     src/RenderSys/WebGPU/WebGPURenderer3D.cpp
-                    src/RenderSys/WebGPU/WebGPUTexture.cpp)
+                    src/RenderSys/WebGPU/WebGPUTexture.cpp
+                    src/RenderSys/WebGPU/WebGPUBuffer.cpp)
     target_sources(ComputeSys PRIVATE
                     src/RenderSys/WebGPU/WebGPUCompute.cpp)
     
@@ -230,7 +240,7 @@ target_sources(RenderSys3D
                 FILES   src/RenderSys/Renderer3D.h 
                         src/RenderSys/RenderUtil.h 
                         src/RenderSys/Texture.h 
-                        src/RenderSys/Camera.h
+                        src/RenderSys/Camera/PerspectiveCamera.h
                         src/RenderSys/Material.h
                         src/RenderSys/Resource.h
                         src/RenderSys/Scene/Model.h

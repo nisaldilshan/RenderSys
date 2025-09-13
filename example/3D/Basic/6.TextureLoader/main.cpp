@@ -194,6 +194,30 @@ public:
 
 		assert(m_vertexData.size() > 0);
 		m_renderer->SetVertexBufferData(m_vertexData, vertexBufferLayout);
+
+		// Since we now have 2 bindings, we use a vector to store them
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
+		// The uniform buffer binding that we already had
+		RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
+		uniformBindingLayout.setDefault();
+		uniformBindingLayout.binding = 0;
+		uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
+		uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
+		uniformBindingLayout.buffer.hasDynamicOffset = false;
+
+		// The texture binding
+		RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
+		textureBindingLayout.setDefault();
+		textureBindingLayout.binding = 1;
+		textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+		textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
+		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
+
+		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
+
+		m_renderer->CreateBindGroup(bindingLayoutEntries);
+		m_renderer->CreatePipeline();
 	}
 
 	virtual void OnDetach() override
@@ -212,34 +236,11 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			// Since we now have 2 bindings, we use a vector to store them
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
-			// The uniform buffer binding that we already had
-			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
-			uniformBindingLayout.setDefault();
-			uniformBindingLayout.binding = 0;
-			uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
-			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-			uniformBindingLayout.buffer.hasDynamicOffset = false;
-
-			// The texture binding
-			RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
-			textureBindingLayout.setDefault();
-			textureBindingLayout.binding = 1;
-			textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
-			textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
-			textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
-
-			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
-
-			m_renderer->CreateBindGroup(bindingLayoutEntries);
-			m_renderer->CreatePipeline();
         }
 
 		if (m_renderer)
 		{
+			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
 			const float time = static_cast<float>(glfwGetTime());
@@ -261,6 +262,7 @@ public:
 
 			m_renderer->Render(0);
 			m_renderer->EndRenderPass();
+			m_renderer->EndFrame();
 		}
        		
 

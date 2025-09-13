@@ -3,6 +3,8 @@
 #include <RenderSys/Components/TagAndIDComponents.h>
 #include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Components/TransformComponent.h>
+#include <RenderSys/Components/LightComponents.h>
+#include <RenderSys/Components/CameraComponents.h>
 #include <iostream>
 
 namespace RenderSys
@@ -91,7 +93,7 @@ void Scene::printNodeGraph() const
 	std::cout << " -- Scene end --" << std::endl;
 }
 
-void Scene::AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent)
+void Scene::AddInstanceOfSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent)
 {
 	auto& childNode = m_sceneGraph.GetNode(subTreeNodeIndex);
 	std::vector<uint32_t> children = childNode.GetChildren();
@@ -118,7 +120,7 @@ void Scene::AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& 
 				auto instanceModelTop = CreateEntity(name);
 				parent = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceModelTop, name);
 			}
-			AddInstanceofSubTree(instanceIndex, pos, childNodeIndex, parent);
+			AddInstanceOfSubTree(instanceIndex, pos, childNodeIndex, parent);
 		}
 	}
 }
@@ -153,6 +155,39 @@ void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& 
 	instanceTagComp.AddInstance(instanceEntity);
 	m_Registry.emplace<RenderSys::MeshComponent>(instanceEntity, "", meshComponent.m_Mesh);
 	instanceTagComp.GetInstanceBuffer()->Update();
+}
+
+void Scene::AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &color)
+{
+	static uint32_t lightIndex = 0;
+	const auto name = "DirectionalLight" + std::to_string(lightIndex++);
+	auto lightEntity = CreateEntity(name);
+	m_Registry.emplace<DirectionalLightComponent>(lightEntity);
+	m_sceneGraph.CreateNode(m_instancedRootNodeIndex, lightEntity, name);
+
+	auto& dirLight = m_Registry.get<DirectionalLightComponent>(lightEntity);
+	dirLight.m_Direction = direction;
+	dirLight.m_Color = color;
+}
+
+entt::entity Scene::AddCamera(std::shared_ptr<RenderSys::ICamera> camera)
+{
+	static uint32_t cameraIndex = 0;
+	const auto name = "Camera" + std::to_string(cameraIndex++);
+	auto cameraEntity = CreateEntity(name);
+	m_Registry.emplace<PerspectiveCameraComponent>(cameraEntity, m_Registry.get<TransformComponent>(cameraEntity));
+	m_sceneGraph.CreateNode(m_instancedRootNodeIndex, cameraEntity, name);
+
+	auto& cameraComp = m_Registry.get<PerspectiveCameraComponent>(cameraEntity);
+	auto perspect = std::dynamic_pointer_cast<PerspectiveCamera>(camera);
+	if (!perspect)
+	{
+		std::cerr << "Error: Camera is not a PerspectiveCamera!" << std::endl;
+		assert(false);
+		return cameraEntity;
+	}
+	cameraComp.m_Camera = perspect;
+	return cameraEntity;
 }
 
 } // namespace Hazel

@@ -1,8 +1,9 @@
 #pragma once
 
+#include <glm/ext.hpp>
 #include <string>
 #include <memory>
-#include <glm/ext.hpp>
+#include <functional> 
 
 namespace RenderSys
 {
@@ -36,6 +37,10 @@ namespace RenderSys
         void SetDirtyFlag();
         bool GetDirtyFlag() const;
         void SetInstance(std::shared_ptr<RenderSys::InstanceBuffer> instanceBuffer, uint32_t instanceIndex);
+        void SetChangeNotifyCallback(std::function<void(const glm::vec3&, const glm::vec3&)> callback)
+        {
+            m_changeNotifyCallback = std::move(callback);
+        }
 
     private:
         void RecalculateMatrices();
@@ -55,6 +60,8 @@ namespace RenderSys
 
         std::shared_ptr<RenderSys::InstanceBuffer> m_InstanceBuffer;
         uint32_t m_InstanceIndex;
+
+        std::function<void(const glm::vec3&, const glm::vec3&)> m_changeNotifyCallback;
     };
 
 

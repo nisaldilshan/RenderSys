@@ -1,16 +1,31 @@
 #include "VulkanRenderer3D.h"
+
 #include "VulkanRendererUtils.h"
 #include "VulkanMemAlloc.h"
 #include "VulkanTexture.h"
 #include "VulkanMaterial.h"
 #include "VulkanResource.h"
 #include "VulkanShadowMap.h"
+#include "Pipeline/VulkanPbrRenderPipeline.h"
+#include "Pipeline/VulkanShadowRenderPipeline.h"
+
+#include <RenderSys/Components/MeshComponent.h>
+#include <RenderSys/Components/TransformComponent.h>
+#include <RenderSys/Components/TagAndIDComponents.h>
 
 #include <array>
 #include <iostream>
 
-namespace GraphicsAPI
+namespace RenderSys
 {
+
+VulkanRenderer3D::VulkanRenderer3D()
+{
+}
+
+VulkanRenderer3D::~VulkanRenderer3D()
+{
+}
 
 bool VulkanRenderer3D::Init()
 {
@@ -60,7 +75,7 @@ void VulkanRenderer3D::CreateDepthImage()
     VkImageCreateInfo depthImageInfo{};
     depthImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     depthImageInfo.imageType = VK_IMAGE_TYPE_2D;
-    depthImageInfo.format = VK_FORMAT_D32_SFLOAT;
+    depthImageInfo.format = Vulkan::GetDepthFormat();
     depthImageInfo.extent = VkExtent3D{m_width, m_height, 1};
     depthImageInfo.mipLevels = 1;
     depthImageInfo.arrayLayers = 1;
@@ -79,10 +94,10 @@ void VulkanRenderer3D::CreateDepthImage()
         assert(false);
     }
 
-    m_depthimageView = RenderSys::Vulkan::CreateImageView(m_depthimage, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
+    m_depthimageView = RenderSys::Vulkan::CreateImageView(m_depthimage, Vulkan::GetDepthFormat(), VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
+void VulkanRenderer3D::CreateShader(RenderSys::Shader& shader)
 {
     assert(shader.type == RenderSys::ShaderType::SPIRV);
     std::vector<uint32_t> compiledShader;
@@ -104,60 +119,69 @@ void VulkanRenderer3D::CreateShaders(RenderSys::Shader& shader)
     shaderCreateInfo.codeSize = sizeof(uint32_t) * compiledShader.size();
     shaderCreateInfo.pCode = compiledShader.data();
 
-    VkShaderModule shaderModule = 0;
-    if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-        std::cout << "could not load vertex shader" << std::endl;
-        return;
-    }
-
-    if (shaderModule == VK_NULL_HANDLE) {
-        std::cout << "error: could not load shaders" << std::endl;
-        return;
-    }
-
-    std::cout << "Created Shader module, Name:" << shader.GetName() << ", Ptr:" << shaderModule << std::endl;
-
-    VkShaderStageFlagBits shaderStageBits;
-    if (shader.stage == RenderSys::ShaderStage::Vertex)
+    auto stageInfo = CreateShaderModule(shaderCreateInfo, shader.stage);
+    if (stageInfo)
     {
-        shaderStageBits = VK_SHADER_STAGE_VERTEX_BIT;
-    }
-    else if (shader.stage == RenderSys::ShaderStage::Fragment)
-    {
-        shaderStageBits = VK_SHADER_STAGE_FRAGMENT_BIT;
+        std::cout << "Created Shader module, Name:" << shader.GetName() << ", Ptr:" << stageInfo->module << std::endl;
+        m_shaderStageInfos.push_back(*stageInfo);
     }
     else
     {
         assert(false);
     }
-    VkPipelineShaderStageCreateInfo stageInfo{};
-    stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stageInfo.stage = shaderStageBits;
-    stageInfo.module = shaderModule;
-    stageInfo.pName = "main"; // entrypoint
+}
 
-    m_shaderStageInfos.push_back(stageInfo);
+std::shared_ptr<VkPipelineShaderStageCreateInfo> VulkanRenderer3D::CreateShaderModule(const VkShaderModuleCreateInfo& shaderModuleCreateInfo, const RenderSys::ShaderStage& stage)
+{
+    VkShaderModule shaderModule = VK_NULL_HANDLE;
+    if (vkCreateShaderModule(GraphicsAPI::Vulkan::GetDevice(), &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+        std::cout << "could not load vertex shader" << std::endl;
+        return nullptr;
+    }
+
+    if (shaderModule == VK_NULL_HANDLE) {
+        std::cout << "error: could not load shaders" << std::endl;
+        return nullptr;
+    }
+
+    VkShaderStageFlagBits shaderStageBits;
+    if (stage == RenderSys::ShaderStage::Vertex) {
+        shaderStageBits = VK_SHADER_STAGE_VERTEX_BIT;
+    }
+    else if (stage == RenderSys::ShaderStage::Fragment) {
+        shaderStageBits = VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    else {
+        return nullptr;
+    }
+    auto stageInfo = std::make_shared<VkPipelineShaderStageCreateInfo>();
+    stageInfo->sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stageInfo->stage = shaderStageBits;
+    stageInfo->module = shaderModule;
+    stageInfo->pName = "main"; // entrypoint
+
+    return stageInfo;
 }
 
 void VulkanRenderer3D::DestroyImages()
 {
     if (m_finalImageDescriptorSet)
     {
-        vkQueueWaitIdle(Vulkan::GetDeviceQueue());
+        vkQueueWaitIdle(GraphicsAPI::Vulkan::GetDeviceQueue());
         ImGui_ImplVulkan_RemoveTexture(m_finalImageDescriptorSet);
         m_finalImageDescriptorSet = VK_NULL_HANDLE;
     }
 
     if (m_frameBuffer)
     {
-        vkDeviceWaitIdle(Vulkan::GetDevice());
-        vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
+        vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
+        vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_frameBuffer, nullptr);
         m_frameBuffer = VK_NULL_HANDLE;
     }
     
     if (m_imageViewToRenderInto != VK_NULL_HANDLE)
     {
-        vkDestroyImageView(Vulkan::GetDevice(), m_imageViewToRenderInto, nullptr);
+        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_imageViewToRenderInto, nullptr);
         m_imageViewToRenderInto = VK_NULL_HANDLE;
     }
     if (m_ImageToRenderInto != VK_NULL_HANDLE)
@@ -168,7 +192,7 @@ void VulkanRenderer3D::DestroyImages()
 
     if (m_depthimageView != VK_NULL_HANDLE)
     {
-        vkDestroyImageView(Vulkan::GetDevice(), m_depthimageView, nullptr);
+        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_depthimageView, nullptr);
         m_depthimageView = VK_NULL_HANDLE;
     }
     if (m_depthimage != VK_NULL_HANDLE)
@@ -178,36 +202,21 @@ void VulkanRenderer3D::DestroyImages()
     }
 }
 
-void VulkanRenderer3D::DestroyPipeline()
-{
-    if (m_pipeline)
-    {
-        vkDestroyPipeline(Vulkan::GetDevice(), m_pipeline, nullptr);
-        m_pipeline = VK_NULL_HANDLE;
-    }
-
-    if (m_pipelineLayout)
-    {
-        vkDestroyPipelineLayout(Vulkan::GetDevice(), m_pipelineLayout, nullptr);
-        m_pipelineLayout = VK_NULL_HANDLE;
-    }
-}
-
 void VulkanRenderer3D::DestroyBindGroup()
 {
     if (m_mainBindGroup && m_bindGroupPool)
     {
-        vkDeviceWaitIdle(Vulkan::GetDevice());
+        vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
         // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
-        vkDestroyDescriptorPool(Vulkan::GetDevice(), m_bindGroupPool, nullptr);
+        vkDestroyDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), m_bindGroupPool, nullptr);
         m_mainBindGroup = VK_NULL_HANDLE;
         m_bindGroupPool = VK_NULL_HANDLE;
     }
 
-    if (m_bindGroupLayout)
+    if (m_mainBindGroupLayout)
     {
-        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_bindGroupLayout, nullptr);
-        m_bindGroupLayout = VK_NULL_HANDLE;
+        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), m_mainBindGroupLayout, nullptr);
+        m_mainBindGroupLayout = VK_NULL_HANDLE;
     }
 }
 
@@ -251,7 +260,7 @@ void VulkanRenderer3D::DestroyShaders()
 {
     for (auto& shaderStageInfo : m_shaderStageInfos)
     {
-        vkDestroyShaderModule(Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
+        vkDestroyShaderModule(GraphicsAPI::Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
     }
 
     m_shaderStageInfos.clear();
@@ -260,7 +269,7 @@ void VulkanRenderer3D::DestroyShaders()
 void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
 {
     assert(bindGroupLayoutEntries.size() >= 1);
-    assert(!m_bindGroupLayout && !m_bindGroupPool && !m_mainBindGroup);
+    assert(!m_mainBindGroupLayout && !m_bindGroupPool && !m_mainBindGroup);
 
     std::unordered_map<VkDescriptorType, uint32_t> descriptorTypeCountMap;
     std::vector<VkDescriptorSetLayoutBinding> mainBindGroupBindings;
@@ -285,7 +294,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     layoutInfo.bindingCount = mainBindGroupBindings.size();
     layoutInfo.pBindings = mainBindGroupBindings.data();
 
-    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &layoutInfo, nullptr, &m_mainBindGroupLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 
@@ -301,7 +310,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     poolInfo.pPoolSizes = poolSizes.data();
     poolInfo.maxSets = 1;
 
-    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
+    if (vkCreateDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
 
@@ -309,9 +318,9 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = m_bindGroupPool;
     allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &m_bindGroupLayout;
+    allocInfo.pSetLayouts = &m_mainBindGroupLayout;
 
-    if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_mainBindGroup) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_mainBindGroup) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
@@ -355,39 +364,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
             descriptorWrite.pImageInfo = &imageInfo;
         }
         
-        vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
-    }
-}
-
-void VulkanRenderer3D::CreatePipelineLayout()
-{
-    if (!m_pipelineLayout)
-    {
-        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-        pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout, 
-                                                    RenderSys::GetMaterialBindGroupLayout(),
-                                                    RenderSys::GetResourceBindGroupLayout()};
-        if (!m_bindGroupLayout)
-        {
-            pipelineLayoutCreateInfo.setLayoutCount = 0;
-            pipelineLayoutCreateInfo.pSetLayouts = nullptr;
-        }
-        else
-        {
-            pipelineLayoutCreateInfo.setLayoutCount = layouts.size();
-            pipelineLayoutCreateInfo.pSetLayouts = layouts.data();
-        }
-        
-        VkPushConstantRange pushConstantRange{};
-		pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pushConstantRange.size = sizeof(RenderSys::MaterialProperties);
-        pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-        pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
-
-        if (vkCreatePipelineLayout(Vulkan::GetDevice(), &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
-            std::cout << "error: could not create pipeline layout" << std::endl;
-        }        
+        vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
     }
 }
 
@@ -409,7 +386,7 @@ void VulkanRenderer3D::CreateRenderPass()
 
     VkAttachmentDescription depthAtt{};
     depthAtt.flags = 0;
-    depthAtt.format = VK_FORMAT_D32_SFLOAT;
+    depthAtt.format = Vulkan::GetDepthFormat();
     depthAtt.samples = VK_SAMPLE_COUNT_1_BIT;
     depthAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -456,7 +433,7 @@ void VulkanRenderer3D::CreateRenderPass()
     renderPassInfo.dependencyCount = 2;
     renderPassInfo.pDependencies = dependencies;
 
-    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
+    if (vkCreateRenderPass(GraphicsAPI::Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
     {
         std::cout << "error; could not create renderpass" << std::endl;
         assert(false);
@@ -472,150 +449,27 @@ void VulkanRenderer3D::CreateCommandBuffers()
     cmdBufAllocateInfo.commandPool = RenderSys::Vulkan::GetCommandPool();
     cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cmdBufAllocateInfo.commandBufferCount = 1;
-    auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
-    Vulkan::check_vk_result(err);
+    auto err = vkAllocateCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+    GraphicsAPI::Vulkan::check_vk_result(err);
 }
 
 void VulkanRenderer3D::DestroyRenderPass()
 {
-    vkDeviceWaitIdle(Vulkan::GetDevice());
-    vkDestroyRenderPass(Vulkan::GetDevice(), m_renderpass, nullptr);
+    vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
+    vkDestroyRenderPass(GraphicsAPI::Vulkan::GetDevice(), m_renderpass, nullptr);
 }
 
 void VulkanRenderer3D::CreatePipeline()
 {
-    if (m_pipeline)
+    std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
+                                                    RenderSys::GetMaterialBindGroupLayout(),
+                                                    RenderSys::GetResourceBindGroupLayout()};
+    m_pbrRenderPipeline = std::make_unique<RenderSys::Vulkan::PbrRenderPipeline>(m_renderpass, layouts, m_vertexInputLayout, m_shaderStageInfos);
+    if (m_pbrRenderPipeline->GetPipeline() == VK_NULL_HANDLE || m_pbrRenderPipeline->GetPipelineLayout() == VK_NULL_HANDLE){
+        std::cout << "error: could not create pipeline" << std::endl;
+        assert(false);
         return;
-
-    std::cout << "Creating render pipeline..." << std::endl;
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
-    std::vector<VkVertexInputBindingDescription> vertexBindingDescs;
-    std::vector<VkVertexInputAttributeDescription> vertextAttribDescs;
-    assert(m_vertexIndexBufferInfoMap.size() > 0);
-    for (const auto &vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
-    {
-        vertexBindingDescs.push_back(vertexIndexBufferInfo.second->m_vertextBindingDescs);
-        for (const auto &vertextAttribDesc : vertexIndexBufferInfo.second->m_vertextAttribDescs)
-        {
-            vertextAttribDescs.push_back(vertextAttribDesc);
-        }
-        break;
     }
-
-    vertexInputInfo.vertexBindingDescriptionCount = vertexBindingDescs.size();
-    vertexInputInfo.pVertexBindingDescriptions = vertexBindingDescs.data();
-    vertexInputInfo.vertexAttributeDescriptionCount = vertextAttribDescs.size();
-    vertexInputInfo.pVertexAttributeDescriptions = vertextAttribDescs.data();
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
-    inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
-
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(m_width);
-    viewport.height = static_cast<float>(m_height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-
-    VkRect2D scissor{};
-    scissor.offset = { 0, 0 };
-    scissor.extent = {m_width, m_height};
-
-    VkPipelineViewportStateCreateInfo viewportStateInfo{};
-    viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportStateInfo.viewportCount = 1;
-    viewportStateInfo.pViewports = &viewport;
-    viewportStateInfo.scissorCount = 1;
-    viewportStateInfo.pScissors = &scissor;
-
-    VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
-    rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizerInfo.depthClampEnable = VK_FALSE;
-    rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;
-    rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizerInfo.lineWidth = 1.0f;
-    rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rasterizerInfo.depthBiasEnable = VK_FALSE;
-
-    VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
-    multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisamplingInfo.sampleShadingEnable = VK_FALSE;
-    multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_TRUE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Use the new alpha directly
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Discard the old alpha
-    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
-    VkPipelineColorBlendStateCreateInfo colorBlendingInfo{};
-    colorBlendingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendingInfo.logicOpEnable = VK_FALSE;
-    colorBlendingInfo.logicOp = VK_LOGIC_OP_COPY;
-    colorBlendingInfo.attachmentCount = 1;
-    colorBlendingInfo.pAttachments = &colorBlendAttachment;
-    colorBlendingInfo.blendConstants[0] = 0.0f;
-    colorBlendingInfo.blendConstants[1] = 0.0f;
-    colorBlendingInfo.blendConstants[2] = 0.0f;
-    colorBlendingInfo.blendConstants[3] = 0.0f;
-
-    VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
-    depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencilInfo.depthTestEnable = VK_TRUE;
-    depthStencilInfo.depthWriteEnable = VK_TRUE;
-    depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-    depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
-    depthStencilInfo.minDepthBounds = 0.0f;
-    depthStencilInfo.maxDepthBounds = 1.0f;
-    depthStencilInfo.stencilTestEnable = VK_FALSE;
-
-    std::vector<VkDynamicState> dynStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-
-    VkPipelineDynamicStateCreateInfo dynStatesInfo{};
-    dynStatesInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynStatesInfo.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
-    dynStatesInfo.pDynamicStates = dynStates.data();
-
-    assert(m_shaderStageInfos.size() > 0);
-    VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
-    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stageCount = m_shaderStageInfos.size();
-    pipelineCreateInfo.pStages = m_shaderStageInfos.data();
-    pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
-    pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
-    pipelineCreateInfo.pViewportState = &viewportStateInfo;
-    pipelineCreateInfo.pRasterizationState = &rasterizerInfo;
-    pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
-    pipelineCreateInfo.pColorBlendState = &colorBlendingInfo;
-    pipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
-    pipelineCreateInfo.pDynamicState = &dynStatesInfo;
-
-    CreatePipelineLayout();
-    pipelineCreateInfo.layout = m_pipelineLayout;
-    pipelineCreateInfo.renderPass = m_renderpass;
-    pipelineCreateInfo.subpass = 0;
-    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-
-    if (vkCreateGraphicsPipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipeline) != VK_SUCCESS) {
-        std::cout << "error: could not create rendering pipeline" << std::endl;
-    }
-
-    // can save memory by calling DestroyShaders() after pipeline have been created
-    // currently not possible, as pipeline get recreated every window get resized
-    assert(m_pipeline != VK_NULL_HANDLE);
-    std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
 void VulkanRenderer3D::CreateFrameBuffer()
@@ -632,7 +486,7 @@ void VulkanRenderer3D::CreateFrameBuffer()
     FboInfo.height = m_height;
     FboInfo.layers = 1;
 
-    if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &m_frameBuffer) != VK_SUCCESS) {
+    if (vkCreateFramebuffer(GraphicsAPI::Vulkan::GetDevice(), &FboInfo, nullptr, &m_frameBuffer) != VK_SUCCESS) {
         std::cout << "error: failed to create framebuffer" << std::endl;
         return ;
     }
@@ -647,22 +501,25 @@ uint32_t VulkanRenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& buf
     const uint64_t vertexCount = bufferLength/bufferLayout.arrayStride;
     assert(vertexCount > 0);
 
-    auto vertexIndexBufferInfo = std::make_shared<VulkanVertexIndexBufferInfo>();
-    vertexIndexBufferInfo->m_vertexCount = vertexCount;
-    vertexIndexBufferInfo->m_vertextBindingDescs.binding = 0;
-    vertexIndexBufferInfo->m_vertextBindingDescs.stride = bufferLayout.arrayStride;
-    vertexIndexBufferInfo->m_vertextBindingDescs.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    for (size_t i = 0; i < bufferLayout.attributeCount; i++)
+    if (m_vertexInputLayout.m_vertexAttribDescs.size() == 0)
     {
-        RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
-        VkVertexInputAttributeDescription vkAttribute{};
-        vkAttribute.binding = 0;
-        vkAttribute.location = attrib.location;
-        vkAttribute.format = RenderSys::Vulkan::RenderSysFormatToVulkanFormat(attrib.format);
-        vkAttribute.offset = attrib.offset;
-        vertexIndexBufferInfo->m_vertextAttribDescs.push_back(vkAttribute);
+        m_vertexInputLayout.m_vertexBindingDescs.binding = 0;
+        m_vertexInputLayout.m_vertexBindingDescs.stride = bufferLayout.arrayStride;
+        m_vertexInputLayout.m_vertexBindingDescs.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        for (size_t i = 0; i < bufferLayout.attributeCount; i++)
+        {
+            RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
+            VkVertexInputAttributeDescription vkAttribute{};
+            vkAttribute.binding = 0;
+            vkAttribute.location = attrib.location;
+            vkAttribute.format = RenderSys::Vulkan::RenderSysFormatToVulkanFormat(attrib.format);
+            vkAttribute.offset = attrib.offset;
+            m_vertexInputLayout.m_vertexAttribDescs.push_back(vkAttribute);
+        }
     }
-
+    
+    auto vertexIndexBufferInfo = std::make_shared<Vulkan::VertexIndexBufferInfo>();
+    vertexIndexBufferInfo->m_vertexCount = vertexCount;
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = bufferLength;
@@ -817,24 +674,12 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData)
     descriptorWrite.pTexelBufferView = nullptr; // Optional
     
 
-    vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
+    vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanRenderer3D::BindResources()
 {
-    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(m_width);
-    viewport.height = static_cast<float>(m_height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
-
-    VkRect2D scissor{{ 0, 0 }, { m_width, m_height }};
-    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pbrRenderPipeline->GetPipeline());
 }
 
 void VulkanRenderer3D::Render()
@@ -846,7 +691,7 @@ void VulkanRenderer3D::RenderIndexed()
 {
     if (m_mainBindGroup)
     {
-        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
+        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pbrRenderPipeline->GetPipelineLayout(), 0
                                     , 1, &m_mainBindGroup, 0, nullptr);
     }
 
@@ -871,7 +716,7 @@ void VulkanRenderer3D::RenderIndexed()
     }
 }
 
-void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
+void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh, const bool shadowPass)
 {
     auto vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(mesh.vertexBufferID);
     assert(vertexIndexBufferInfoIter != m_vertexIndexBufferInfoMap.end());
@@ -888,11 +733,14 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh)
     for (const auto &subMesh : mesh.subMeshes)
     {
         assert(subMesh.m_Material);
-        RenderSubMesh(mesh.vertexBufferID, subMesh);
+        if (shadowPass)
+            RenderSubMesh(mesh.vertexBufferID, subMesh, m_shadowRenderPipeline->GetPipelineLayout());
+        else
+            RenderSubMesh(mesh.vertexBufferID, subMesh, m_pbrRenderPipeline->GetPipelineLayout());
     }
 }
 
-void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh)
+void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, VkPipelineLayout pipelineLayout)
 {
     auto materialBindGroup = subMesh.m_Material->GetDescriptor()->GetPlatformDescriptor()->m_bindGroup;
     assert(materialBindGroup != VK_NULL_HANDLE);
@@ -900,12 +748,14 @@ void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const Render
     assert(resourceBindGroup != VK_NULL_HANDLE);
     std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, materialBindGroup, resourceBindGroup};
 
-    vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0
+    vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0
                                 , descriptorsets.size(), descriptorsets.data()
                                 , 0, nullptr);
-
-    vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 
-                    sizeof(RenderSys::MaterialProperties), &subMesh.m_Material->GetMaterialProperties());
+    if (pipelineLayout == m_pbrRenderPipeline->GetPipelineLayout())
+    {
+        vkCmdPushConstants(m_commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 
+                        sizeof(RenderSys::MaterialProperties), &subMesh.m_Material->GetMaterialProperties());
+    }
 
     assert(vertexBufferID >= 1);
     const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);
@@ -954,15 +804,6 @@ void VulkanRenderer3D::BeginRenderPass()
     clearValues[0].color = m_clearColor;
     clearValues[1].depthStencil = {1.0f, 0};
 
-    auto err = vkResetCommandBuffer(m_commandBuffer, 0);
-    Vulkan::check_vk_result(err);
-
-    VkCommandBufferBeginInfo begin_info{};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
-    Vulkan::check_vk_result(err);
-
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -974,20 +815,128 @@ void VulkanRenderer3D::BeginRenderPass()
     rpInfo.pClearValues = clearValues.data();
 
     vkCmdBeginRenderPass(m_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_width);
+    viewport.height = static_cast<float>(m_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{{ 0, 0 }, { m_width, m_height }};
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 }
 
 void VulkanRenderer3D::EndRenderPass()
 {
     vkCmdEndRenderPass(m_commandBuffer);
-    SubmitCommandBuffer();
 }
 
 void VulkanRenderer3D::BeginShadowMapPass()
 {
+    if (!m_shadowMap && !m_shadowRenderPipeline)
+    {
+        constexpr int shadowMapResolution = 2048;
+        m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(shadowMapResolution);
+
+        std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
+                                                    RenderSys::GetMaterialBindGroupLayout(),
+                                                    RenderSys::GetResourceBindGroupLayout()};
+
+        std::vector<VkPipelineShaderStageCreateInfo> shadowShaderStageInfos;
+        {
+            RenderSys::Shader vertexShader("shadow-vert.glsl");
+            vertexShader.type = RenderSys::ShaderType::SPIRV;
+            vertexShader.stage = RenderSys::ShaderStage::Vertex;
+            assert(vertexShader.Compile());
+            auto compiledShaderVert = vertexShader.GetCompiledShader();
+
+            VkShaderModuleCreateInfo shaderCreateInfo{};
+            shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            shaderCreateInfo.codeSize = sizeof(uint32_t) * compiledShaderVert.size();
+            shaderCreateInfo.pCode = compiledShaderVert.data();
+            auto shadowShaderStageInfo = CreateShaderModule(shaderCreateInfo, vertexShader.stage);
+            if (shadowShaderStageInfo)
+            {
+                shadowShaderStageInfos.push_back(*shadowShaderStageInfo);
+            }
+
+            RenderSys::Shader fragmentShader("shadow-frag.glsl");
+            fragmentShader.type = RenderSys::ShaderType::SPIRV;
+            fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+            assert(fragmentShader.Compile());
+            auto compiledShaderFrag = fragmentShader.GetCompiledShader();
+
+            VkShaderModuleCreateInfo shaderCreateInfoFrag{};
+            shaderCreateInfoFrag.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            shaderCreateInfoFrag.codeSize = sizeof(uint32_t) * compiledShaderFrag.size();
+            shaderCreateInfoFrag.pCode = compiledShaderFrag.data();
+            auto shadowShaderStageInfoFrag = CreateShaderModule(shaderCreateInfoFrag, fragmentShader.stage);
+            if (shadowShaderStageInfoFrag)
+            {
+                shadowShaderStageInfos.push_back(*shadowShaderStageInfoFrag);
+            }
+        }
+
+        m_shadowRenderPipeline = std::make_unique<Vulkan::ShadowRenderPipeline>(
+            m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, shadowShaderStageInfos);
+    }
+
+    if (!m_commandBuffer)
+        return;
+
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = m_shadowMap->GetShadowRenderPass();
+    renderPassInfo.framebuffer = m_shadowMap->GetShadowFrameBuffer();
+
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = m_shadowMap->GetShadowMapExtent();
+
+    std::array<VkClearValue, static_cast<uint32_t>(Vulkan::ShadowMap::ShadowRenderTargets::NUMBER_OF_ATTACHMENTS)> clearValues{};
+    clearValues[0].depthStencil = {1.0f, 0};
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(m_commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(m_shadowMap->GetShadowMapExtent().width);
+    viewport.height = static_cast<float>(m_shadowMap->GetShadowMapExtent().height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    VkRect2D scissor{{0, 0}, m_shadowMap->GetShadowMapExtent()};
+    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
+}
+
+void VulkanRenderer3D::RenderShadowMap(entt::registry& entityRegistry)
+{
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowRenderPipeline->GetPipeline());
+
+    auto view = entityRegistry.view<RenderSys::MeshComponent,
+                                                RenderSys::TransformComponent,
+                                                RenderSys::InstanceTagComponent>();
+    for (auto entity : view)
+    {
+        auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
+        auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
+        instanceTagComponent.GetInstanceBuffer()->Update();
+        auto mesh = meshComponent.m_Mesh;
+        RenderMesh(*mesh, true);
+    }
 }
 
 void VulkanRenderer3D::EndShadowMapPass()
 {
+    if (!m_commandBuffer)
+        return;
+
+    vkCmdEndRenderPass(m_commandBuffer);
 }
 
 void VulkanRenderer3D::DestroyTextures()
@@ -996,7 +945,7 @@ void VulkanRenderer3D::DestroyTextures()
     
     if (m_defaultTextureSampler)
     {
-        vkDestroySampler(Vulkan::GetDevice(), m_defaultTextureSampler, nullptr);
+        vkDestroySampler(GraphicsAPI::Vulkan::GetDevice(), m_defaultTextureSampler, nullptr);
         m_defaultTextureSampler = VK_NULL_HANDLE;
     }
 }
@@ -1009,28 +958,98 @@ void VulkanRenderer3D::Destroy()
     RenderSys::DestroyMaterialBindGroupPool();
 
     DestroyShaders();
-
     DestroyBindGroup();
-    DestroyPipeline();
     DestroyBuffers();
     DestroyImages();
     DestroyTextures();
-
     DestroyRenderPass();
 
+    m_pbrRenderPipeline.reset();
+    m_shadowRenderPipeline.reset();
+    m_shadowMap.reset();
+
     RenderSys::Vulkan::DestroyMemoryAllocator();
+}
+
+void VulkanRenderer3D::ResetCommandBuffer()
+{
+    auto err = vkResetCommandBuffer(m_commandBuffer, 0);
+    GraphicsAPI::Vulkan::check_vk_result(err);
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
+    GraphicsAPI::Vulkan::check_vk_result(err);
 }
 
 void VulkanRenderer3D::SubmitCommandBuffer()
 {
     auto err = vkEndCommandBuffer(m_commandBuffer);
-    Vulkan::check_vk_result(err);
+    GraphicsAPI::Vulkan::check_vk_result(err);
 
     VkSubmitInfo end_info{};
     end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     end_info.commandBufferCount = 1;
     end_info.pCommandBuffers = &m_commandBuffer;
     GraphicsAPI::Vulkan::QueueSubmit(end_info);
+}
+
+VkImageView createImguiImageView(const std::shared_ptr<RenderSys::Vulkan::ShadowMap>& shadowMap)
+{
+    // NOW, CREATE A NEW VIEW FOR IMGUI
+    VkImageView m_imguiView = VK_NULL_HANDLE;
+
+    VkImageViewCreateInfo viewInfo = {};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = shadowMap->GetShadowDepthImage();
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = Vulkan::GetDepthFormat();
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT; // Use DEPTH aspect
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    // THIS IS THE IMPORTANT PART
+    // It tells the sampler how to map the image channels to the shader's input
+    // We are telling it to use the 'R' (depth) channel for R, G, and B.
+    VkComponentMapping componentMapping = {
+        VK_COMPONENT_SWIZZLE_R,     // Red channel takes data from the image's Red (depth) channel
+        VK_COMPONENT_SWIZZLE_R,     // Green channel also takes data from the image's Red (depth) channel
+        VK_COMPONENT_SWIZZLE_R,     // Blue channel also takes data from the image's Red (depth) channel
+        VK_COMPONENT_SWIZZLE_ONE    // Alpha channel is forced to 1.0
+    };
+    viewInfo.components = componentMapping;
+
+    if (vkCreateImageView(GraphicsAPI::Vulkan::GetDevice(), &viewInfo, nullptr, &m_imguiView) != VK_SUCCESS) {
+        assert(false);
+    }
+
+    return m_imguiView;
+}
+
+VkDescriptorSet g_shadowDescSet = VK_NULL_HANDLE;
+void VulkanRenderer3D::OnImGuiRender()
+{
+    // ImGui::Begin("Vulkan Renderer 3D");
+
+    // if (m_shadowMap)
+    // {
+    //     if (!g_shadowDescSet)
+    //     {
+    //         auto imguiImageView = createImguiImageView(m_shadowMap);
+    //         g_shadowDescSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(
+    //                                                     m_defaultTextureSampler, 
+    //                                                     imguiImageView, 
+    //                                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+    //     }
+    //     const float imageWidth = m_width;
+    //     const float imageHeight = m_height;
+    //     ImGui::Image(g_shadowDescSet, {imageWidth, imageHeight});
+    // }
+
+    // ImGui::End();
 }
 
 void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
@@ -1070,7 +1089,7 @@ void VulkanRenderer3D::CreateDefaultTextureSampler()
     texSamplerInfo.anisotropyEnable = VK_FALSE;
     texSamplerInfo.maxAnisotropy = 1.0f;
 
-    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_defaultTextureSampler) != VK_SUCCESS) {
+    if (vkCreateSampler(GraphicsAPI::Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_defaultTextureSampler) != VK_SUCCESS) {
         std::cout << "error: could not create sampler for texture" << std::endl;
     }
 }

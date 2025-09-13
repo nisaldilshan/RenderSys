@@ -8,6 +8,8 @@
 namespace RenderSys 
 {
 
+class ICamera;
+
 class Scene
 {
 public:
@@ -26,8 +28,11 @@ public:
 
 	SceneGraph::TreeNode& GetSceneGraphTreeNode(uint32_t nodeIndex);
 	void printNodeGraph() const;
-	void AddInstanceofSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent);
+	void AddInstanceOfSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent);
 	void AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
+
+	void AddDirectionalLight(const glm::vec3& direction, const glm::vec3& color);
+	entt::entity AddCamera(std::shared_ptr<RenderSys::ICamera> camera);
 
 	entt::registry m_Registry;
 	SceneGraph m_sceneGraph;

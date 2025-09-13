@@ -10,7 +10,7 @@
 #include "Texture.h"
 #include <RenderSys/Scene/Mesh.h>
 
-namespace GraphicsAPI
+namespace RenderSys
 {
 #if (RENDERER_BACKEND == 1)
 class OpenGLRenderer3D;
@@ -24,11 +24,7 @@ typedef WebGPURenderer3D RendererType;
 #else
 static_assert(false);
 #endif
-}
 
-namespace RenderSys
-{
-    
 class Renderer3D
 {
 public:
@@ -56,15 +52,19 @@ public:
     void BindResources();
     void Render(uint32_t uniformIndex);
     void RenderIndexed(uint32_t uniformIndex);
+    void BeginFrame();
+    void EndFrame();
     void RenderMesh(const RenderSys::Mesh& mesh);
     void BeginRenderPass();
     void EndRenderPass();
-    void ShadowPass();
+    void ShadowPass(entt::registry& entityRegistry);
     void* GetDescriptorSet() const;
     void Destroy();
+    void OnImGuiRender();
+
 private:
     uint32_t m_Width = 0, m_Height = 0;
-    std::unique_ptr<GraphicsAPI::RendererType> m_rendererBackend;
+    std::unique_ptr<RendererType> m_rendererBackend;
 };
 
 } // namespace RenderSys

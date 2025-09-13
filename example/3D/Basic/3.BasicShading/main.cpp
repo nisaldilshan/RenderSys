@@ -210,6 +210,23 @@ public:
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 		m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
+
+		// Create binding layout (don't forget to = Default)
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);
+		RenderSys::BindGroupLayoutEntry& bGLayoutEntry = bindingLayoutEntries[0];
+		bGLayoutEntry.setDefault();
+		// The binding index as used in the @binding attribute in the shader
+		bGLayoutEntry.binding = 0;
+		// The stage that needs to access this resource
+		bGLayoutEntry.visibility = RenderSys::ShaderStage::VertexAndFragment;
+		bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
+		bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
+		// Make this binding dynamic so we can offset it between draw calls
+		bGLayoutEntry.buffer.hasDynamicOffset = false;
+
+		m_renderer->CreateUniformBuffer(bGLayoutEntry.binding, sizeof(MyUniforms), 2);
+		m_renderer->CreateBindGroup(bindingLayoutEntries);
+		m_renderer->CreatePipeline();
 	}
 
 	virtual void OnDetach() override
@@ -228,27 +245,11 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			// Create binding layout (don't forget to = Default)
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);
-			RenderSys::BindGroupLayoutEntry& bGLayoutEntry = bindingLayoutEntries[0];
-			bGLayoutEntry.setDefault();
-			// The binding index as used in the @binding attribute in the shader
-			bGLayoutEntry.binding = 0;
-			// The stage that needs to access this resource
-			bGLayoutEntry.visibility = RenderSys::ShaderStage::VertexAndFragment;
-			bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
-			bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
-			// Make this binding dynamic so we can offset it between draw calls
-			bGLayoutEntry.buffer.hasDynamicOffset = false;
-
-			m_renderer->CreateUniformBuffer(bGLayoutEntry.binding, sizeof(MyUniforms), 2);
-			m_renderer->CreateBindGroup(bindingLayoutEntries);
-			m_renderer->CreatePipeline();
         }
 
 		if (m_renderer)
 		{
+			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 			
 			const float time = static_cast<float>(glfwGetTime());
@@ -285,6 +286,7 @@ public:
 			m_renderer->BindResources();
 			m_renderer->Render(0);
 			m_renderer->EndRenderPass();
+			m_renderer->EndFrame();
 		}
        		
 

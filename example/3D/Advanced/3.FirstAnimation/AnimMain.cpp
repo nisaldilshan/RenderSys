@@ -6,7 +6,8 @@
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
-#include <RenderSys/Camera.h>
+#include <RenderSys/Camera/PerspectiveCamera.h>
+#include <RenderSys/Camera/EditorCameraController.h>
 #include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
@@ -101,7 +102,7 @@ public:
 			assert(false);
 		}
 
-		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 500.0f);
+		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
@@ -150,7 +151,30 @@ public:
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 		
-		m_scene->AddInstanceofSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);		
+		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);		
+
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
+		// The uniform buffer binding that we already had
+		RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
+		uniformBindingLayout.setDefault();
+		uniformBindingLayout.binding = 0;
+		uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
+		uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
+		uniformBindingLayout.buffer.hasDynamicOffset = false;
+		// Lighting Uniforms
+		RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
+		lightingUniformLayout.setDefault();
+		lightingUniformLayout.binding = 1;
+		lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
+		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+
+		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
+		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
+
+		m_renderer->CreateBindGroup(bindingLayoutEntries);
+		m_renderer->CreatePipeline();
 	}
 
 	virtual void OnDetach() override
@@ -172,41 +196,21 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
-			// The uniform buffer binding that we already had
-			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
-			uniformBindingLayout.setDefault();
-			uniformBindingLayout.binding = 0;
-			uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
-			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-			uniformBindingLayout.buffer.hasDynamicOffset = false;
-			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
-			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 1;
-			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
-			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
-
-			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
-			m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
-
-			m_renderer->CreateBindGroup(bindingLayoutEntries);
-			m_renderer->CreatePipeline();
-			m_camera->SetViewportSize((float)m_viewportWidth, (float)m_viewportHeight);
+			m_cameraController->GetCamera()->SetAspectRatio((float)m_viewportWidth/ (float)m_viewportHeight);
         }
 
 		if (m_renderer)
 		{
-			m_camera->OnUpdate();
+			m_cameraController->OnUpdate();
 			m_scene->Update();
+
+			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
-			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
-			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
-			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
+			auto camera = m_cameraController->GetCamera();
+			m_myUniformData.viewMatrix = camera->GetViewMatrix();
+			m_myUniformData.projectionMatrix = camera->GetProjectionMatrix();
+			m_myUniformData.cameraWorldPosition = camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
 			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
@@ -229,6 +233,7 @@ public:
 			}
 
 			m_renderer->EndRenderPass();
+			m_renderer->EndFrame();
 		}
 
         m_lastRenderTime = timer.ElapsedMillis();
@@ -294,7 +299,7 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
-	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
+	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;
 	std::unique_ptr<RenderSys::SceneHierarchyPanel> m_sceneHierarchyPanel;

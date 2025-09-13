@@ -105,6 +105,7 @@
         "numeric": "cpp",
         "any": "cpp",
         "print": "cpp",
-        "queue": "cpp"
+        "queue": "cpp",
+        "typeindex": "cpp"
     }
 }

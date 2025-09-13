@@ -1,5 +1,6 @@
 #pragma once
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
+#include <vk_mem_alloc.h>
 
 namespace RenderSys
 {
@@ -8,8 +9,18 @@ namespace Vulkan
 
 class ShadowMap
 {
-
 public:
+    enum class SubPassesShadow
+    {
+        SUBPASS_SHADOW = 0,
+        NUMBER_OF_SUBPASSES
+    };
+    enum class ShadowRenderTargets
+    {
+        ATTACHMENT_DEPTH = 0,
+        NUMBER_OF_ATTACHMENTS
+    };
+
     ShadowMap(int width);
     ~ShadowMap();
 
@@ -20,6 +31,7 @@ public:
     VkRenderPass GetShadowRenderPass() { return m_ShadowRenderPass; }
     VkExtent2D GetShadowMapExtent() { return m_ShadowMapExtent; }
     const VkDescriptorImageInfo& GetDescriptorImageInfo() const { return m_DescriptorImageInfo; }
+    const VkImage GetShadowDepthImage() const { return m_ShadowDepthImage; }
 
 private:
     void CreateShadowDepthResources();
@@ -34,7 +46,7 @@ private:
     VkImage m_ShadowDepthImage{nullptr};
     VkImageLayout m_ImageLayout{};
     VkImageView m_ShadowDepthImageView{nullptr};
-    VkDeviceMemory m_ShadowDepthImageMemory{nullptr};
+    VmaAllocation m_ShadowDepthImageMemory{nullptr};
     VkSampler m_ShadowDepthSampler{nullptr};
 
     VkDescriptorImageInfo m_DescriptorImageInfo{};

@@ -15,7 +15,7 @@ using namespace RenderSys;
 Renderer3D::Renderer3D()
     : m_Width(0)
     , m_Height(0)
-    , m_rendererBackend(std::make_unique<GraphicsAPI::RendererType>())
+    , m_rendererBackend(std::make_unique<RenderSys::RendererType>())
 {}
 
 Renderer3D::~Renderer3D()
@@ -23,8 +23,6 @@ Renderer3D::~Renderer3D()
 
 void Renderer3D::OnResize(uint32_t width, uint32_t height)
 {
-    m_rendererBackend->DestroyBindGroup();
-    m_rendererBackend->DestroyPipeline();
     m_rendererBackend->DestroyImages();
 
     m_Width = width;
@@ -37,11 +35,12 @@ void Renderer3D::OnResize(uint32_t width, uint32_t height)
 void Renderer3D::Init()
 {
     m_rendererBackend->Init();
+    OnResize(1, 1);
 }
 
 void Renderer3D::SetShader(RenderSys::Shader& shader)
 {
-    m_rendererBackend->CreateShaders(shader);
+    m_rendererBackend->CreateShader(shader);
 }
 
 uint32_t Renderer3D::SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout)
@@ -109,6 +108,16 @@ void Renderer3D::RenderIndexed(uint32_t uniformIndex)
     m_rendererBackend->RenderIndexed();
 }
 
+void Renderer3D::BeginFrame()
+{
+    m_rendererBackend->ResetCommandBuffer();
+}
+
+void Renderer3D::EndFrame()
+{
+    m_rendererBackend->SubmitCommandBuffer();
+}
+
 void Renderer3D::RenderMesh(const RenderSys::Mesh& mesh)
 {
     m_rendererBackend->RenderMesh(mesh);
@@ -124,8 +133,14 @@ void Renderer3D::EndRenderPass()
     m_rendererBackend->EndRenderPass();
 }
 
-void RenderSys::Renderer3D::ShadowPass()
+void Renderer3D::ShadowPass(entt::registry& entityRegistry)
 {
     m_rendererBackend->BeginShadowMapPass();
+    m_rendererBackend->RenderShadowMap(entityRegistry);
     m_rendererBackend->EndShadowMapPass();
+}
+
+void Renderer3D::OnImGuiRender()
+{
+    m_rendererBackend->OnImGuiRender();
 }

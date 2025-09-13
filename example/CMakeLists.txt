@@ -30,6 +30,6 @@ if(RENDERER STREQUAL "WebGPU")
     add_subdirectory(Compute/3.Fluid2D)
     #add_subdirectory(Compute/4.Fluid3D)
 
-    add_subdirectory(3D/Advanced/1.RayMarching)
+    #add_subdirectory(3D/Advanced/1.RayMarching)
 endif()
 

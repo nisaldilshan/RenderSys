@@ -6,11 +6,13 @@
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
-#include <RenderSys/Camera.h>
+#include <RenderSys/Camera/PerspectiveCamera.h>
+#include <RenderSys/Camera/EditorCameraController.h>
 #include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Components/TagAndIDComponents.h>
+#include <RenderSys/Components/LightComponents.h>
 #include <RenderSys/Scene/Scene.h>
 #include <RenderSys/Scene/SceneHierarchyPanel.h>
 #include <imgui.h>
@@ -23,9 +25,10 @@ struct alignas(16) MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-struct alignas(16) LightingUniforms {
-    std::array<glm::vec4, 2> directions;
-    std::array<glm::vec4, 2> colors;
+struct LightingUniforms {
+    std::array<glm::vec4, 1> lightDirections;
+    std::array<glm::vec4, 1> lightColors;
+	std::array<glm::mat4x4, 1> lightViewProjections;
 };
 static_assert(sizeof(LightingUniforms) % 16 == 0);
 
@@ -49,7 +52,7 @@ public:
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
 			{
-				std::ifstream file(shaderDir + "/anim-vertex.glsl", std::ios::binary);
+				std::ifstream file(shaderDir + "/ShadowMain-vert.glsl", std::ios::binary);
 				std::vector<char> content((std::istreambuf_iterator<char>(file)),
 											std::istreambuf_iterator<char>());
 
@@ -65,7 +68,7 @@ public:
 			}
 
 			{
-				std::ifstream file(shaderDir + "/anim-fragment.glsl", std::ios::binary);
+				std::ifstream file(shaderDir + "/ShadowMain-frag.glsl", std::ios::binary);
 				std::vector<char> content((std::istreambuf_iterator<char>(file)),
 											std::istreambuf_iterator<char>());
 
@@ -101,7 +104,9 @@ public:
 			assert(false);
 		}
 
-		m_camera = std::make_unique<Camera::PerspectiveCamera>(30.0f, 0.01f, 500.0f);
+		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f);
+		auto cameraEntity = m_scene->AddCamera(m_cameraController->GetCamera());
+		m_cameraController->SetCameraEntity(cameraEntity, m_scene->m_Registry);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
@@ -150,7 +155,31 @@ public:
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 		
-		m_scene->AddInstanceofSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);		
+		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
+		createLights();
+
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
+		// The uniform buffer binding that we already had
+		RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
+		uniformBindingLayout.setDefault();
+		uniformBindingLayout.binding = 0;
+		uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
+		uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
+		uniformBindingLayout.buffer.hasDynamicOffset = false;
+		// Lighting Uniforms
+		RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
+		lightingUniformLayout.setDefault();
+		lightingUniformLayout.binding = 1;
+		lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
+		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+
+		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
+		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
+
+		m_renderer->CreateBindGroup(bindingLayoutEntries);
+		m_renderer->CreatePipeline();
 	}
 
 	virtual void OnDetach() override
@@ -172,63 +201,51 @@ public:
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
-			// The uniform buffer binding that we already had
-			RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
-			uniformBindingLayout.setDefault();
-			uniformBindingLayout.binding = 0;
-			uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
-			uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-			uniformBindingLayout.buffer.hasDynamicOffset = false;
-			// Lighting Uniforms
-			RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
-			lightingUniformLayout.setDefault();
-			lightingUniformLayout.binding = 1;
-			lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
-			lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-			lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
-
-			m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
-			m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
-
-			m_renderer->CreateBindGroup(bindingLayoutEntries);
-			m_renderer->CreatePipeline();
-			m_camera->SetViewportSize((float)m_viewportWidth, (float)m_viewportHeight);
+			m_cameraController->GetCamera()->SetAspectRatio(static_cast<float>(m_viewportWidth)/ static_cast<float>(m_viewportHeight));
         }
 
 		if (m_renderer)
 		{
-			m_camera->OnUpdate();
+			m_cameraController->OnUpdate();
 			m_scene->Update();
-			m_renderer->BeginRenderPass();
 
-			m_myUniformData.viewMatrix = m_camera->GetViewMatrix();
-			m_myUniformData.projectionMatrix = m_camera->GetProjectionMatrix();
-			m_myUniformData.cameraWorldPosition = m_camera->GetPosition();
+			auto camera = m_cameraController->GetCamera();
+			m_myUniformData.viewMatrix = camera->GetViewMatrix();
+			m_myUniformData.projectionMatrix = camera->GetProjectionMatrix();
+			m_myUniformData.cameraWorldPosition = camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
-			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
-			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
-			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
-			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
-			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
-			m_renderer->BindResources();
 
-			auto view = m_scene->m_Registry.view<RenderSys::MeshComponent, 
+			auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent, 
+												RenderSys::TransformComponent>();
+			for (auto entity : lightView)
+			{
+				auto& lightComponent = lightView.get<RenderSys::DirectionalLightComponent>(entity);
+				m_lightingUniformData.lightDirections[0] = { lightComponent.m_Direction, 0.0f };
+				m_lightingUniformData.lightColors[0] = { lightComponent.m_Color, 1.0f };
+			}
+			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
+
+			m_renderer->BeginFrame();
+
+			m_renderer->ShadowPass(m_scene->m_Registry);
+
+			m_renderer->BeginRenderPass();
+			m_renderer->BindResources();
+			auto meshView = m_scene->m_Registry.view<RenderSys::MeshComponent, 
 												RenderSys::TransformComponent, 
 												RenderSys::InstanceTagComponent>();
-			for (auto entity : view)
+			for (auto entity : meshView)
 			{
-				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
-				auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
+				auto& meshComponent = meshView.get<RenderSys::MeshComponent>(entity);
+				auto& instanceTagComponent = meshView.get<RenderSys::InstanceTagComponent>(entity);
 				instanceTagComponent.GetInstanceBuffer()->Update();
 				auto mesh = meshComponent.m_Mesh;
 				m_renderer->RenderMesh(*mesh);
 			}
-
 			m_renderer->EndRenderPass();
+			
+			m_renderer->EndFrame();
 		}
 
         m_lastRenderTime = timer.ElapsedMillis();
@@ -256,12 +273,19 @@ public:
 		const float imageHeight = m_renderer->GetHeight();
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
+
+		m_renderer->OnImGuiRender();
         ImGui::PopStyleVar();
 
 		m_sceneHierarchyPanel->OnImGuiRender();
 	}
 
 private:
+	void createLights()
+	{
+		m_scene->AddDirectionalLight(glm::vec3( 0.5f, 0.5f, 0.5f), glm::vec3( 1.0f, 1.0f, 1.0f));
+	}
+
 	bool loadScene()
 	{
 		m_scene = std::make_shared<RenderSys::Scene>();
@@ -294,7 +318,7 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
-	std::unique_ptr<Camera::PerspectiveCamera> m_camera;
+	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;
 	std::unique_ptr<RenderSys::SceneHierarchyPanel> m_sceneHierarchyPanel;
