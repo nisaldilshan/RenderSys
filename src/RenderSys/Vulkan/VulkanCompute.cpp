@@ -1,9 +1,7 @@
 #include "VulkanCompute.h"
 
 #include "VulkanRendererUtils.h"
-
-#define VMA_IMPLEMENTATION
-#include <vk_mem_alloc.h>
+#include "VulkanMemAlloc.h"
 
 namespace GraphicsAPI
 {

@@ -54,7 +54,6 @@ if(RENDERER STREQUAL "Vulkan")
     target_sources(RenderSys3D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
-                    src/RenderSys/Vulkan/VulkanMemAlloc.cpp
                     src/RenderSys/Vulkan/VulkanBuffer.cpp
                     src/RenderSys/Vulkan/VulkanTexture.cpp
                     src/RenderSys/Vulkan/VulkanMaterial.cpp
@@ -283,6 +282,8 @@ install(TARGETS ComputeSys
     COMPONENT Compute
     LIBRARY DESTINATION lib
     PRIVATE_HEADER DESTINATION include)
+
+add_subdirectory(src/RenderSys/Common)
 
 if(BUILD_EXAMPLES)
     add_subdirectory(example)

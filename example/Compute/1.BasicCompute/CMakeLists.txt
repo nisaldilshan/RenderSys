@@ -2,7 +2,7 @@ add_executable(BasicCompute
             main.cpp
 )
 
-target_link_libraries(BasicCompute PRIVATE ComputeSys walnut::walnut)
+target_link_libraries(BasicCompute PRIVATE ComputeSys RenderSysCommon walnut::walnut)
 
 target_compile_definitions(BasicCompute PRIVATE
     RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../Resources"
