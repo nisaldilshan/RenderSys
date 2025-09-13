@@ -7,8 +7,9 @@
 #include "Buffer.h"
 #include "RenderUtil.h"
 #include "Shader.h"
-#include "Texture.h"
+#include <RenderSys/Texture.h>
 #include <RenderSys/Scene/Mesh.h>
+#include <entt/entt.hpp>
 
 namespace RenderSys
 {

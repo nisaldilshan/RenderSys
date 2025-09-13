@@ -10,6 +10,8 @@ static_assert(false);
 static_assert(false);
 #endif
 
+#include <RenderSys/MaterialFeatures.h>
+
 namespace RenderSys
 {
 
@@ -31,7 +33,7 @@ void MaterialDescriptor::Destroy()
 }
 
 Material::Material()
-    : m_materialProperties()
+    : m_materialProperties(std::make_unique<MaterialProperties>())
     , m_MaterialDescriptor(std::make_shared<MaterialDescriptor>())
 {
 
@@ -52,9 +54,18 @@ void Material::Init()
     m_MaterialDescriptor->Init(m_materialTextures);
 }
 
-void Material::SetMaterialTexture(const TextureIndices textureIndex, std::shared_ptr<Texture> texture)
+void Material::SetMaterialProperties(std::unique_ptr<MaterialProperties> matProps) {
+  m_materialProperties = std::move(matProps);
+}
+
+void Material::SetMaterialTexture(const TextureIndices textureIndex,
+                                  std::shared_ptr<Texture> texture) {
+  m_materialTextures[textureIndex] = texture;
+}
+
+const MaterialProperties& Material::GetMaterialProperties() const
 {
-    m_materialTextures[textureIndex] = texture;
+  return *m_materialProperties;
 }
 
 } // namespace RenderSys

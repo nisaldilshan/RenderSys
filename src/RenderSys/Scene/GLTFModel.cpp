@@ -9,6 +9,7 @@
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Scene/Scene.h>
+#include <RenderSys/MaterialFeatures.h>
 #include "Skeleton.h"
 #include "Animation.h"
 
@@ -636,11 +637,11 @@ void GLTFModel::loadMaterials()
     std::cout << "Loading Materials - " << m_gltfModel->materials.size() << std::endl;
     for (const auto& mat : m_gltfModel->materials)
     {
-        MaterialProperties materialProp{};
+        auto materialProp = std::make_unique<MaterialProperties>();
         // materialProp.doubleSided = mat.doubleSided;
-        materialProp.m_baseColor = glm::make_vec4(mat.pbrMetallicRoughness.baseColorFactor.data());
-        materialProp.m_metallic = mat.pbrMetallicRoughness.metallicFactor;
-        materialProp.m_roughness = mat.pbrMetallicRoughness.roughnessFactor;
+        materialProp->m_baseColor = glm::make_vec4(mat.pbrMetallicRoughness.baseColorFactor.data());
+        materialProp->m_metallic = mat.pbrMetallicRoughness.metallicFactor;
+        materialProp->m_roughness = mat.pbrMetallicRoughness.roughnessFactor;
         // std::cout << "Material Name: " << mat.name 
         //             << ", metallicFactor=" << material.metallicFactor 
         //             << ", roughnessFactor=" << material.roughnessFactor << std::endl;
@@ -649,24 +650,24 @@ void GLTFModel::loadMaterials()
 
         if (mat.pbrMetallicRoughness.baseColorTexture.index != -1)
         {
-            materialProp.m_features |= RenderSys::MaterialFeatures::HAS_DIFFUSE_MAP;
+            materialProp->m_features |= RenderSys::MaterialFeatures::HAS_DIFFUSE_MAP;
             auto baseColorTexture = m_textures[mat.pbrMetallicRoughness.baseColorTexture.index];
             material->SetMaterialTexture(RenderSys::TextureIndices::DIFFUSE_MAP_INDEX, baseColorTexture);
         }
         if (mat.normalTexture.index != -1)
         {
-            materialProp.m_features |= RenderSys::MaterialFeatures::HAS_NORMAL_MAP;
+            materialProp->m_features |= RenderSys::MaterialFeatures::HAS_NORMAL_MAP;
             auto normalTexture = m_textures[mat.normalTexture.index];
             material->SetMaterialTexture(RenderSys::TextureIndices::NORMAL_MAP_INDEX, normalTexture);
         }
         if (mat.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
         {
-            materialProp.m_features |= RenderSys::MaterialFeatures::HAS_ROUGHNESS_METALLIC_MAP;
+            materialProp->m_features |= RenderSys::MaterialFeatures::HAS_ROUGHNESS_METALLIC_MAP;
             auto metallicRoughnessTexture = m_textures[mat.pbrMetallicRoughness.metallicRoughnessTexture.index];
             material->SetMaterialTexture(RenderSys::TextureIndices::ROUGHNESS_METALLIC_MAP_INDEX, metallicRoughnessTexture);
         }
 
-        material->SetMaterialProperties(materialProp);
+        material->SetMaterialProperties(std::move(materialProp));
         
     }
     //std::cout << "Materials loading completed!" << std::endl;

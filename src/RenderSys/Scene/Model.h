@@ -1,12 +1,14 @@
 #pragma once
 #include <filesystem>
 #include <RenderSys/Buffer.h>
-#include <RenderSys/Material.h>
 
 namespace RenderSys
 {
 class Scene;
 class GLTFModel;
+class Texture;
+class Material;
+
 class Model
 {
 public:

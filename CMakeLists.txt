@@ -240,9 +240,11 @@ target_sources(RenderSys3D
                 FILES   src/RenderSys/Renderer3D.h 
                         src/RenderSys/RenderUtil.h 
                         src/RenderSys/Texture.h 
+                        src/RenderSys/TextureSampler.h 
                         src/RenderSys/Camera/PerspectiveCamera.h
                         src/RenderSys/Material.h
                         src/RenderSys/Resource.h
+                        src/RenderSys/Scene/Mesh.h
                         src/RenderSys/Scene/Model.h
                         src/RenderSys/Scene/Scene.h
                         src/RenderSys/Scene/SceneHierarchyPanel.h
@@ -251,7 +253,8 @@ target_sources(RenderSys3D
                         src/RenderSys/Scene/UUID.h
                         src/RenderSys/Components/TransformComponent.h
                         src/RenderSys/Components/MeshComponent.h
-                        src/RenderSys/Components/TagAndIDComponents.h)
+                        src/RenderSys/Components/TagAndIDComponents.h
+                )
 target_sources(ComputeSys 
                 PUBLIC FILE_SET renderSysFileSet 
                 TYPE HEADERS 
