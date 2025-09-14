@@ -11,6 +11,7 @@
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
 #include <RenderSys/Scene/Mesh.h>
+#include <entt/entt.hpp>
 
 namespace RenderSys
 {

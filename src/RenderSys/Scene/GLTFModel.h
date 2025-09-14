@@ -8,6 +8,7 @@
 #include <RenderSys/Texture.h>
 #include <RenderSys/Material.h>
 #include <RenderSys/Scene/Mesh.h>
+#include <entt/entt.hpp>
 
 namespace tinygltf
 {

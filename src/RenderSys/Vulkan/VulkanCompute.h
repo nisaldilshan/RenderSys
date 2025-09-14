@@ -12,7 +12,7 @@ namespace GraphicsAPI
 {
     struct VulkanComputeBuffer
     {
-        VkDescriptorBufferInfo buffer{VK_NULL_HANDLE, 0, 0};
+        VkDescriptorBufferInfo bufferInfo{VK_NULL_HANDLE, 0, 0};
         VmaAllocation bufferMemory = VK_NULL_HANDLE;
         VkDescriptorType type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
     };

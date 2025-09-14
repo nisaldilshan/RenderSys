@@ -54,7 +54,6 @@ if(RENDERER STREQUAL "Vulkan")
     target_sources(RenderSys3D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
-                    src/RenderSys/Vulkan/VulkanMemAlloc.cpp
                     src/RenderSys/Vulkan/VulkanBuffer.cpp
                     src/RenderSys/Vulkan/VulkanTexture.cpp
                     src/RenderSys/Vulkan/VulkanMaterial.cpp
@@ -240,18 +239,24 @@ target_sources(RenderSys3D
                 FILES   src/RenderSys/Renderer3D.h 
                         src/RenderSys/RenderUtil.h 
                         src/RenderSys/Texture.h 
+                        src/RenderSys/TextureSampler.h 
+                        src/RenderSys/Camera/ICamera.h
                         src/RenderSys/Camera/PerspectiveCamera.h
+                        src/RenderSys/Camera/EditorCameraController.h
                         src/RenderSys/Material.h
                         src/RenderSys/Resource.h
+                        src/RenderSys/Scene/Mesh.h
                         src/RenderSys/Scene/Model.h
                         src/RenderSys/Scene/Scene.h
                         src/RenderSys/Scene/SceneHierarchyPanel.h
                         src/RenderSys/Scene/Skeleton.h
                         src/RenderSys/Scene/Animation.h
                         src/RenderSys/Scene/UUID.h
+                        src/RenderSys/Scene/SceneGraph.h
                         src/RenderSys/Components/TransformComponent.h
                         src/RenderSys/Components/MeshComponent.h
-                        src/RenderSys/Components/TagAndIDComponents.h)
+                        src/RenderSys/Components/TagAndIDComponents.h
+                )
 target_sources(ComputeSys 
                 PUBLIC FILE_SET renderSysFileSet 
                 TYPE HEADERS 
@@ -280,6 +285,8 @@ install(TARGETS ComputeSys
     COMPONENT Compute
     LIBRARY DESTINATION lib
     PRIVATE_HEADER DESTINATION include)
+
+add_subdirectory(src/RenderSys/Common)
 
 if(BUILD_EXAMPLES)
     add_subdirectory(example)

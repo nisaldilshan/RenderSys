@@ -12,6 +12,8 @@
 #include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/TagAndIDComponents.h>
+#include <RenderSys/Material.h>
+#include <RenderSys/MaterialFeatures.h>
 
 #include <array>
 #include <iostream>

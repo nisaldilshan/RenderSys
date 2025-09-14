@@ -89,6 +89,13 @@ class RenderSysConan(ConanFile):
         self.cpp_info.components['Compute'].set_property('pkg_config_name', 'Compute')
         self.cpp_info.components['Compute'].libs = ['ComputeSys']
 
+        self.cpp_info.components['Common'].set_property('cmake_file_name', 'Common')
+        self.cpp_info.components['Common'].set_property('pkg_config_name', 'Common')
+        self.cpp_info.components['Common'].set_property('cmake_target_name', 'RenderSys::Common')
+        self.cpp_info.components['Common'].set_property('cmake_target_aliases', ['Common'])
+        self.cpp_info.components['Common'].set_property('pkg_config_name', 'Common')
+        self.cpp_info.components['Common'].libs = ['RenderSysCommon']
+
     def package(self):
         cmake = CMake(self)
         cmake.install()

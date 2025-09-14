@@ -19,19 +19,6 @@ typedef WebGPUMaterialDescriptor MaterialDescriptorType;
 static_assert(false);
 #endif
 
-#include <Resources/Shaders/ShaderMaterial.h>
-
-enum MaterialFeatures // bitset
-{
-    HAS_DIFFUSE_MAP = GLSL_HAS_DIFFUSE_MAP,
-    HAS_NORMAL_MAP = GLSL_HAS_NORMAL_MAP,
-    HAS_ROUGHNESS_MAP = GLSL_HAS_ROUGHNESS_MAP,
-    HAS_METALLIC_MAP = GLSL_HAS_METALLIC_MAP,
-    HAS_ROUGHNESS_METALLIC_MAP = GLSL_HAS_ROUGHNESS_METALLIC_MAP,
-    HAS_EMISSIVE_COLOR = GLSL_HAS_EMISSIVE_COLOR,
-    HAS_EMISSIVE_MAP = GLSL_HAS_EMISSIVE_MAP
-};
-
 enum TextureIndices
 {
     DIFFUSE_MAP_INDEX = 0,
@@ -76,6 +63,7 @@ private:
     ShaderWorkflow m_shaderWorkflow{ShaderWorkflow::PBR_WORKFLOW_METALLIC_ROUGHNESS};
 };
 
+class MaterialProperties;
 
 class Material
 {
@@ -90,13 +78,13 @@ public:
 
     void Init();
     
-    void SetMaterialProperties(const MaterialProperties& matProps) { m_materialProperties = matProps; }
+    void SetMaterialProperties(std::unique_ptr<MaterialProperties> matProps);
     void SetMaterialTexture(const TextureIndices textureIndex, std::shared_ptr<Texture> texture);
 
     std::shared_ptr<MaterialDescriptor> GetDescriptor() const { return m_MaterialDescriptor; }
-    const MaterialProperties& GetMaterialProperties() const { return m_materialProperties; }
+    const MaterialProperties& GetMaterialProperties() const;
 private:
-    MaterialProperties m_materialProperties;
+    std::unique_ptr<MaterialProperties> m_materialProperties;
     MaterialTextures m_materialTextures;
     std::shared_ptr<MaterialDescriptor> m_MaterialDescriptor;
 };

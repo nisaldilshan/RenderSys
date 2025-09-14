@@ -1,6 +1,5 @@
 #pragma once
 #include <glm/ext.hpp>
-#include <entt/entt.hpp>
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Material.h>
 

@@ -1,6 +1,7 @@
 #include "VulkanPbrRenderPipeline.h"
 
 #include <RenderSys/Material.h>
+#include <RenderSys/MaterialFeatures.h>
 #include <RenderSys/Vulkan/Pipeline/VulkanPipeline.h>
 
 #include <vector>
