@@ -240,7 +240,9 @@ target_sources(RenderSys3D
                         src/RenderSys/RenderUtil.h 
                         src/RenderSys/Texture.h 
                         src/RenderSys/TextureSampler.h 
+                        src/RenderSys/Camera/ICamera.h
                         src/RenderSys/Camera/PerspectiveCamera.h
+                        src/RenderSys/Camera/EditorCameraController.h
                         src/RenderSys/Material.h
                         src/RenderSys/Resource.h
                         src/RenderSys/Scene/Mesh.h
@@ -250,6 +252,7 @@ target_sources(RenderSys3D
                         src/RenderSys/Scene/Skeleton.h
                         src/RenderSys/Scene/Animation.h
                         src/RenderSys/Scene/UUID.h
+                        src/RenderSys/Scene/SceneGraph.h
                         src/RenderSys/Components/TransformComponent.h
                         src/RenderSys/Components/MeshComponent.h
                         src/RenderSys/Components/TagAndIDComponents.h
