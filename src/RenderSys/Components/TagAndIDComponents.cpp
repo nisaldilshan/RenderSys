@@ -1,5 +1,5 @@
 #include "TagAndIDComponents.h"
-#include <../example/Resources/Shaders/ShaderResource.h>
+#include <resources/Shaders/ShaderResource.h>
 
 namespace RenderSys
 {

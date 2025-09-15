@@ -1,7 +1,7 @@
 #pragma once
 
 namespace RenderSys {
-#include <Resources/Shaders/ShaderMaterial.h>
+#include <resources/Shaders/ShaderMaterial.h>
 
 enum MaterialFeatures // bitset
 {

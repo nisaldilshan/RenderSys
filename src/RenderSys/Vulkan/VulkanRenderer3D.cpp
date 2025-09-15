@@ -849,7 +849,9 @@ void VulkanRenderer3D::BeginShadowMapPass()
 
         std::vector<VkPipelineShaderStageCreateInfo> shadowShaderStageInfos;
         {
-            RenderSys::Shader vertexShader("shadow-vert.glsl");
+// TODO : remove this macro usage 
+#define SHADOW_SHADER_DIR "C:/develop/cpp/RenderSys/example/3D/Advanced/4.ShadowMapping/"
+            RenderSys::Shader vertexShader(std::string(SHADOW_SHADER_DIR) + std::string("shadow-vert.glsl"));
             vertexShader.type = RenderSys::ShaderType::SPIRV;
             vertexShader.stage = RenderSys::ShaderStage::Vertex;
             assert(vertexShader.Compile());
@@ -865,7 +867,7 @@ void VulkanRenderer3D::BeginShadowMapPass()
                 shadowShaderStageInfos.push_back(*shadowShaderStageInfo);
             }
 
-            RenderSys::Shader fragmentShader("shadow-frag.glsl");
+            RenderSys::Shader fragmentShader(std::string(SHADOW_SHADER_DIR) + std::string("shadow-frag.glsl"));
             fragmentShader.type = RenderSys::ShaderType::SPIRV;
             fragmentShader.stage = RenderSys::ShaderStage::Fragment;
             assert(fragmentShader.Compile());

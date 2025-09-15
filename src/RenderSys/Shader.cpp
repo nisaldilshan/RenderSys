@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <fstream>
 #include <string>
-#include <filesystem>
 #include <shaderc/shaderc.hpp>
 
 #if (RENDERER_BACKEND == 1) // OpenGL
@@ -141,13 +140,9 @@ Shader::Shader(const std::string &name, const std::string &shaderSrc)
     : m_name(name), m_shaderSrc(shaderSrc)
 {}
 
-#define SHADER_DIR "C:/develop/cpp/RenderSys/example/3D/Advanced/4.ShadowMapping"
-Shader::Shader(const std::string &fileName)
+Shader::Shader(const std::filesystem::path &filePath)
 {
-    const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
-    assert(!shaderDir.empty());
-
-    const auto filePath = shaderDir + "/" + fileName;
+    assert(!std::filesystem::exists(filePath));
     std::ifstream file(filePath, std::ios::binary);
     std::vector<char> content((std::istreambuf_iterator<char>(file)),
                                 std::istreambuf_iterator<char>());
@@ -157,9 +152,9 @@ Shader::Shader(const std::string &fileName)
         assert(false);
     }
 
-    m_name = fileName;
+    m_name = filePath.filename().string();
     m_shaderSrc = std::string(content.data(), content.size());
-    SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
+    SetIncludeDirectory(filePath.parent_path().string());
 }
 
 bool Shader::Compile(bool optimize)
