@@ -1063,6 +1063,7 @@ std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
 {
     const VkDeviceSize imageSize = m_width * m_height * 4; // 4 bytes per pixel for R8G8B8A8_UNORM
     if (g_stagingBuffer == VK_NULL_HANDLE) {
+        g_imageData.resize(imageSize);
         //-------------------------------------------------
         // 1. Create the Staging Buffer
         //-------------------------------------------------
@@ -1082,6 +1083,7 @@ std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
             std::cout << "Failed to create staging buffer!" << std::endl;
             assert(false);
         }
+        std::cout << "Created staging buffer for cpu copy!" << std::endl;
     }
 
     auto currentCommandBuffer = RenderSys::Vulkan::BeginSingleTimeCommands(RenderSys::Vulkan::GetCommandPool());
