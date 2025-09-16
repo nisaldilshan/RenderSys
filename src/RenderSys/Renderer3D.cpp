@@ -144,3 +144,8 @@ void Renderer3D::OnImGuiRender()
 {
     m_rendererBackend->OnImGuiRender();
 }
+
+std::vector<uint8_t>& Renderer3D::GetRenderedImageData()
+{
+    return m_rendererBackend->GetRenderedImageDataToCPUSide();
+}

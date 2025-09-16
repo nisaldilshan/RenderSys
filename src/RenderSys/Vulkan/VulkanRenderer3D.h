@@ -74,6 +74,7 @@ public:
     void SubmitCommandBuffer();
 
     void OnImGuiRender();
+    std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 
 private:
     void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, VkPipelineLayout pipelineLayout);
