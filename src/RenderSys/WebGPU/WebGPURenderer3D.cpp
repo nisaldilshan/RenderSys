@@ -615,4 +615,15 @@ void WebGPURenderer3D::CreateDefaultTextureSampler()
     m_defaultTextureSampler = GraphicsAPI::WebGPU::GetDevice().createSampler(samplerDesc);
 }
 
+void WebGPURenderer3D::OnImGuiRender()
+{
+
+}
+
+std::vector<uint8_t>& WebGPURenderer3D::GetRenderedImageDataToCPUSide()
+{
+    static std::vector<uint8_t> dummyImageData;
+    return dummyImageData;
+}
+
 } // namespace GraphicsAPI
