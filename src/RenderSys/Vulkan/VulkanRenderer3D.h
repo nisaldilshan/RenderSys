@@ -27,11 +27,12 @@ class ShadowRenderPipeline;
 
 } // namespace Vulkan
 
-struct VulkanUniformBufferInfo
+struct VulkanCPUImageCopyData
 {
-    VkDescriptorBufferInfo m_bufferInfo = {VK_NULL_HANDLE, 0, 0};
-    VmaAllocation m_uniformBufferMemory = VK_NULL_HANDLE;
-    void* m_mappedBuffer = nullptr;
+    VkBuffer stagingBuffer = VK_NULL_HANDLE;
+    VmaAllocation stagingBufferMemory = VK_NULL_HANDLE;
+    std::vector<uint8_t> imageData;
+    VmaAllocationInfo stagingAllocInfo; // To get the mapped pointer
 };
 
 class VulkanRenderer3D
@@ -82,6 +83,7 @@ private:
     void CreateRenderPass();
     void CreateCommandBuffers();
     std::shared_ptr<VkPipelineShaderStageCreateInfo> CreateShaderModule(const VkShaderModuleCreateInfo& shaderModuleCreateInfo, const RenderSys::ShaderStage& stage);
+    void CreateImageCopyBuffers();
     void DestroyRenderPass();
     void DestroyBuffers();
     void DestroyShaders();
@@ -122,6 +124,7 @@ private:
 
     std::shared_ptr<RenderSys::Vulkan::ShadowMap> m_shadowMap;
     std::unique_ptr<Vulkan::ShadowRenderPipeline> m_shadowRenderPipeline;
+    std::unique_ptr<VulkanCPUImageCopyData> m_cpuImageData;
 };
 
 }

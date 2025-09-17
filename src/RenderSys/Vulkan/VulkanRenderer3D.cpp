@@ -70,6 +70,9 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
 
     m_imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
     m_finalImageDescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+
+    // create image copy staging buffer for cpu image copy
+    CreateImageCopyBuffers();
 }
 
 void VulkanRenderer3D::CreateDepthImage()
@@ -201,6 +204,12 @@ void VulkanRenderer3D::DestroyImages()
     {
         vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), m_depthimage, m_depthimageMemory);
         m_depthimage = VK_NULL_HANDLE;
+    }
+
+    if (m_cpuImageData) 
+    {
+        vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), m_cpuImageData->stagingBuffer, m_cpuImageData->stagingBufferMemory);
+        m_cpuImageData.reset();
     }
 }
 
@@ -1056,36 +1065,36 @@ void VulkanRenderer3D::OnImGuiRender()
     // ImGui::End();
 }
 
-VkBuffer g_stagingBuffer = VK_NULL_HANDLE;
-std::vector<uint8_t> g_imageData;
-VmaAllocationInfo g_stagingAllocInfo; // To get the mapped pointer
+void VulkanRenderer3D::CreateImageCopyBuffers() 
+{
+    assert(m_cpuImageData == nullptr);
+    m_cpuImageData = std::make_unique<VulkanCPUImageCopyData>();
+    const VkDeviceSize imageSize = m_width * m_height * 4; // 4 bytes per pixel for R8G8B8A8_UNORM
+    m_cpuImageData->imageData.resize(imageSize);
+
+    // Create the Staging Buffer
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = imageSize;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+    VmaAllocationCreateInfo allocInfo{};
+    // VMA_MEMORY_USAGE_GPU_TO_CPU is specifically for readback from GPU
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU; 
+    allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT; // Create it in mapped state for convenience
+
+    if (vmaCreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), 
+            &bufferInfo, &allocInfo, &m_cpuImageData->stagingBuffer, 
+            &m_cpuImageData->stagingBufferMemory, &m_cpuImageData->stagingAllocInfo) != VK_SUCCESS)
+    {
+        std::cout << "Failed to create staging buffer!" << std::endl;
+        assert(false);
+    }
+    std::cout << "Created staging buffer for cpu copy!" << std::endl;
+}
+
 std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
 {
-    const VkDeviceSize imageSize = m_width * m_height * 4; // 4 bytes per pixel for R8G8B8A8_UNORM
-    if (g_stagingBuffer == VK_NULL_HANDLE) {
-        g_imageData.resize(imageSize);
-        //-------------------------------------------------
-        // 1. Create the Staging Buffer
-        //-------------------------------------------------
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = imageSize;
-        bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-        VmaAllocationCreateInfo allocInfo{};
-        // VMA_MEMORY_USAGE_GPU_TO_CPU is specifically for readback from GPU
-        allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU; 
-        allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT; // Create it in mapped state for convenience
-
-        VmaAllocation stagingBufferAllocation;
-        if (vmaCreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), &bufferInfo, &allocInfo, &g_stagingBuffer, &stagingBufferAllocation, &g_stagingAllocInfo) != VK_SUCCESS)
-        {
-            std::cout << "Failed to create staging buffer!" << std::endl;
-            assert(false);
-        }
-        std::cout << "Created staging buffer for cpu copy!" << std::endl;
-    }
-
     auto currentCommandBuffer = RenderSys::Vulkan::BeginSingleTimeCommands(RenderSys::Vulkan::GetCommandPool());
 
     VkImageMemoryBarrier imageBarrier_toTransfer{};
@@ -1117,7 +1126,8 @@ std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
     region.imageOffset = {0, 0, 0};
     region.imageExtent = {m_width, m_height, 1};
 
-    vkCmdCopyImageToBuffer(currentCommandBuffer, m_ImageToRenderInto, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, g_stagingBuffer, 1, &region);
+    vkCmdCopyImageToBuffer(currentCommandBuffer, 
+        m_ImageToRenderInto, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, m_cpuImageData->stagingBuffer, 1, &region);
 
     // --- Transition image back to its original layout ---
     VkImageMemoryBarrier imageBarrier_toOriginal{};
@@ -1139,8 +1149,9 @@ std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
 
     RenderSys::Vulkan::EndSingleTimeCommands(currentCommandBuffer, RenderSys::Vulkan::GetCommandPool());
 
-    memcpy(g_imageData.data(), g_stagingAllocInfo.pMappedData, imageSize);
-    return g_imageData;
+    memcpy(m_cpuImageData->imageData.data(), 
+            m_cpuImageData->stagingAllocInfo.pMappedData, m_cpuImageData->imageData.size());
+    return m_cpuImageData->imageData;
 }
 
 void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
