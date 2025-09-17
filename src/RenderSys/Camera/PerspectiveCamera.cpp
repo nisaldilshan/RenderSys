@@ -1,4 +1,5 @@
 #include "PerspectiveCamera.h"
+#include <Walnut/RenderingBackend.h>
 
 namespace RenderSys
 {
@@ -18,6 +19,10 @@ void PerspectiveCamera::SetAspectRatio(float aspectRatio)
 void PerspectiveCamera::UpdateProjection()
 {
     m_ProjectionMatrix = glm::perspective(glm::radians(m_FOV), m_AspectRatio, m_nearClip, m_farClip);
+    if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+    {
+        m_ProjectionMatrix[1][1] *= -1;
+    }
 }
 
 void PerspectiveCamera::SetOrientation(const glm::vec3& orientation)
