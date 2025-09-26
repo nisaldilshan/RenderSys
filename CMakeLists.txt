@@ -256,6 +256,7 @@ target_sources(RenderSys3D
                         src/RenderSys/Components/TransformComponent.h
                         src/RenderSys/Components/MeshComponent.h
                         src/RenderSys/Components/TagAndIDComponents.h
+                        src/RenderSys/InstanceBuffer.h
                 )
 target_sources(ComputeSys 
                 PUBLIC FILE_SET renderSysFileSet 

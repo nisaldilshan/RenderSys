@@ -9,5 +9,5 @@ target_compile_definitions(FirstAnimation PRIVATE
 )
 
 target_compile_definitions(FirstAnimation PRIVATE
-    RESOURCE_DIR="${CMAKE_SOURCE_DIR}/example/Resources"
+    RESOURCE_DIR="${CMAKE_SOURCE_DIR}/src/resources"
 )

@@ -62,6 +62,7 @@ public:
     void* GetDescriptorSet() const;
     void Destroy();
     void OnImGuiRender();
+    std::vector<uint8_t>& GetRenderedImageData();
 
 private:
     uint32_t m_Width = 0, m_Height = 0;

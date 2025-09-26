@@ -42,6 +42,10 @@ namespace RenderSys
             m_changeNotifyCallback = std::move(callback);
         }
 
+        glm::vec3 GetForwardVector() const;
+        glm::vec3 GetRightVector() const;
+        glm::vec3 GetUpVector() const;
+
     private:
         void RecalculateMatrices();
 

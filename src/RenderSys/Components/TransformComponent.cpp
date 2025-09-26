@@ -85,6 +85,27 @@ void TransformComponent::SetInstance(std::shared_ptr<RenderSys::InstanceBuffer> 
     m_InstanceIndex = instanceIndex;
 }
 
+glm::vec3 TransformComponent::GetForwardVector() const
+{
+    constexpr glm::vec3 LOCAL_FORWARD = {0.0f, 0.0f, 1.0f};
+    const glm::quat currentRotation = glm::quat(m_Rotation);
+    return glm::normalize(currentRotation * LOCAL_FORWARD);
+}
+
+glm::vec3 TransformComponent::GetRightVector() const
+{
+    constexpr glm::vec3 LOCAL_RIGHT = {1.0f, 0.0f, 0.0f};
+    const glm::quat currentRotation = glm::quat(m_Rotation);
+    return glm::normalize(currentRotation * LOCAL_RIGHT);
+}
+
+glm::vec3 TransformComponent::GetUpVector() const
+{
+    constexpr glm::vec3 LOCAL_UP = {0.0f, 1.0f, 0.0f};
+    const glm::quat currentRotation = glm::quat(m_Rotation);
+    return glm::normalize(currentRotation * LOCAL_UP);
+}
+
 void TransformComponent::RecalculateMatrices()
 {
     auto scale = glm::scale(glm::mat4(1.0f), m_Scale);

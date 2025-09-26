@@ -70,6 +70,9 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
 
     m_imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
     m_finalImageDescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+
+    // create image copy staging buffer for cpu image copy
+    CreateImageCopyBuffers();
 }
 
 void VulkanRenderer3D::CreateDepthImage()
@@ -201,6 +204,12 @@ void VulkanRenderer3D::DestroyImages()
     {
         vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), m_depthimage, m_depthimageMemory);
         m_depthimage = VK_NULL_HANDLE;
+    }
+
+    if (m_cpuImageData) 
+    {
+        vmaDestroyBuffer(RenderSys::Vulkan::GetMemoryAllocator(), m_cpuImageData->stagingBuffer, m_cpuImageData->stagingBufferMemory);
+        m_cpuImageData.reset();
     }
 }
 
@@ -849,7 +858,9 @@ void VulkanRenderer3D::BeginShadowMapPass()
 
         std::vector<VkPipelineShaderStageCreateInfo> shadowShaderStageInfos;
         {
-            RenderSys::Shader vertexShader("shadow-vert.glsl");
+// TODO : remove this macro usage 
+#define SHADOW_SHADER_DIR "C:/develop/cpp/RenderSys/example/3D/Advanced/4.ShadowMapping/"
+            RenderSys::Shader vertexShader(std::string(SHADOW_SHADER_DIR) + std::string("shadow-vert.glsl"));
             vertexShader.type = RenderSys::ShaderType::SPIRV;
             vertexShader.stage = RenderSys::ShaderStage::Vertex;
             assert(vertexShader.Compile());
@@ -865,7 +876,7 @@ void VulkanRenderer3D::BeginShadowMapPass()
                 shadowShaderStageInfos.push_back(*shadowShaderStageInfo);
             }
 
-            RenderSys::Shader fragmentShader("shadow-frag.glsl");
+            RenderSys::Shader fragmentShader(std::string(SHADOW_SHADER_DIR) + std::string("shadow-frag.glsl"));
             fragmentShader.type = RenderSys::ShaderType::SPIRV;
             fragmentShader.stage = RenderSys::ShaderStage::Fragment;
             assert(fragmentShader.Compile());
@@ -1052,6 +1063,95 @@ void VulkanRenderer3D::OnImGuiRender()
     // }
 
     // ImGui::End();
+}
+
+void VulkanRenderer3D::CreateImageCopyBuffers() 
+{
+    assert(m_cpuImageData == nullptr);
+    m_cpuImageData = std::make_unique<VulkanCPUImageCopyData>();
+    const VkDeviceSize imageSize = m_width * m_height * 4; // 4 bytes per pixel for R8G8B8A8_UNORM
+    m_cpuImageData->imageData.resize(imageSize);
+
+    // Create the Staging Buffer
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = imageSize;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+    VmaAllocationCreateInfo allocInfo{};
+    // VMA_MEMORY_USAGE_GPU_TO_CPU is specifically for readback from GPU
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU; 
+    allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT; // Create it in mapped state for convenience
+
+    if (vmaCreateBuffer(RenderSys::Vulkan::GetMemoryAllocator(), 
+            &bufferInfo, &allocInfo, &m_cpuImageData->stagingBuffer, 
+            &m_cpuImageData->stagingBufferMemory, &m_cpuImageData->stagingAllocInfo) != VK_SUCCESS)
+    {
+        std::cout << "Failed to create staging buffer!" << std::endl;
+        assert(false);
+    }
+    std::cout << "Created staging buffer for cpu copy!" << std::endl;
+}
+
+std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
+{
+    auto currentCommandBuffer = RenderSys::Vulkan::BeginSingleTimeCommands(RenderSys::Vulkan::GetCommandPool());
+
+    VkImageMemoryBarrier imageBarrier_toTransfer{};
+    imageBarrier_toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageBarrier_toTransfer.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT; // Or whatever it was before
+    imageBarrier_toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    imageBarrier_toTransfer.oldLayout = VK_IMAGE_LAYOUT_GENERAL; // IMPORTANT: Use the layout the image is currently in
+    imageBarrier_toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    imageBarrier_toTransfer.image = m_ImageToRenderInto;
+    imageBarrier_toTransfer.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+    vkCmdPipelineBarrier(currentCommandBuffer,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, // Stage where previous operations occurred
+        VK_PIPELINE_STAGE_TRANSFER_BIT,    // Stage for the transfer operation
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &imageBarrier_toTransfer);
+
+    // --- Execute the copy ---
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;   // Tightly packed
+    region.bufferImageHeight = 0; // Tightly packed
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = {m_width, m_height, 1};
+
+    vkCmdCopyImageToBuffer(currentCommandBuffer, 
+        m_ImageToRenderInto, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, m_cpuImageData->stagingBuffer, 1, &region);
+
+    // --- Transition image back to its original layout ---
+    VkImageMemoryBarrier imageBarrier_toOriginal{};
+    imageBarrier_toOriginal.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageBarrier_toOriginal.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    imageBarrier_toOriginal.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    imageBarrier_toOriginal.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    imageBarrier_toOriginal.newLayout = VK_IMAGE_LAYOUT_GENERAL; // Transition back to what ImGui expects
+    imageBarrier_toOriginal.image = m_ImageToRenderInto;
+    imageBarrier_toOriginal.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+    vkCmdPipelineBarrier(currentCommandBuffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, // Stage for next operations
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &imageBarrier_toOriginal);
+
+    RenderSys::Vulkan::EndSingleTimeCommands(currentCommandBuffer, RenderSys::Vulkan::GetCommandPool());
+
+    memcpy(m_cpuImageData->imageData.data(), 
+            m_cpuImageData->stagingAllocInfo.pMappedData, m_cpuImageData->imageData.size());
+    return m_cpuImageData->imageData;
 }
 
 void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)

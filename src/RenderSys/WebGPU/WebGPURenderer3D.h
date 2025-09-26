@@ -70,7 +70,8 @@ public:
     void ResetCommandBuffer();
     void SubmitCommandBuffer();
 
-    void OnImGuiRender() {}
+    void OnImGuiRender();
+    std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 private:
     void CreateDefaultTextureSampler();
     uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);

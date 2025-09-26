@@ -1,6 +1,6 @@
 #include "InstanceBuffer.h"
 
-#include <../example/Resources/Shaders/ShaderResource.h>
+#include <resources/Shaders/ShaderResource.h>
 #include <iostream>
 
 namespace RenderSys

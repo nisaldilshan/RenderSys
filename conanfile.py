@@ -81,6 +81,7 @@ class RenderSysConan(ConanFile):
         self.cpp_info.components['Renderer3D'].set_property('cmake_target_aliases', ['Renderer3D'])
         self.cpp_info.components['Renderer3D'].set_property('pkg_config_name', 'Renderer3D')
         self.cpp_info.components['Renderer3D'].libs = ['RenderSys3D']
+        self.cpp_info.components['Renderer3D'].requires = ['Common']
 
         self.cpp_info.components['Compute'].set_property('cmake_file_name', 'Compute')
         self.cpp_info.components['Compute'].set_property('pkg_config_name', 'Compute')
@@ -88,6 +89,7 @@ class RenderSysConan(ConanFile):
         self.cpp_info.components['Compute'].set_property('cmake_target_aliases', ['Compute'])
         self.cpp_info.components['Compute'].set_property('pkg_config_name', 'Compute')
         self.cpp_info.components['Compute'].libs = ['ComputeSys']
+        self.cpp_info.components['Renderer3D'].requires = ['Common']
 
         self.cpp_info.components['Common'].set_property('cmake_file_name', 'Common')
         self.cpp_info.components['Common'].set_property('pkg_config_name', 'Common')
@@ -95,10 +97,13 @@ class RenderSysConan(ConanFile):
         self.cpp_info.components['Common'].set_property('cmake_target_aliases', ['Common'])
         self.cpp_info.components['Common'].set_property('pkg_config_name', 'Common')
         self.cpp_info.components['Common'].libs = ['RenderSysCommon']
+        self.cpp_info.components['Common'].resdirs = ['res']
 
     def package(self):
         cmake = CMake(self)
         cmake.install()
+
+        self.copy("*", dst="res", src="src/resources", keep_path=True)
 
     def layout(self):
         self.folders.source = "."

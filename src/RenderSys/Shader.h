@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include <iostream>
-
+#include <filesystem>
 #include "RenderUtil.h"
 
 // Code copied from - https://github.com/google/shaderc/blob/main/examples/online-compile/main.cc
@@ -20,7 +20,7 @@ class Shader
 public:
     Shader() = delete;
     Shader(const std::string& name, const std::string& shaderSrc);
-    Shader(const std::string& fileName);
+    Shader(const std::filesystem::path &filePath);
     Shader(const Shader&) = delete;
     Shader(Shader&&) = delete;
     Shader& operator=(const Shader&) = delete;
