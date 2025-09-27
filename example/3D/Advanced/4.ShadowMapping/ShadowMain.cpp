@@ -221,8 +221,9 @@ public:
 			for (auto entity : lightView)
 			{
 				auto& lightComponent = lightView.get<RenderSys::DirectionalLightComponent>(entity);
-				m_lightingUniformData.lightDirections[0] = { lightComponent.m_Direction, 0.0f };
 				m_lightingUniformData.lightColors[0] = { lightComponent.m_Color, 1.0f };
+				auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
+				m_lightingUniformData.lightDirections[0] = { transformComponent.GetRotation(), 0.0f };
 			}
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 
