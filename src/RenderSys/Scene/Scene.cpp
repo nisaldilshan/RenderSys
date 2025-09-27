@@ -165,9 +165,11 @@ void Scene::AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &col
 	m_Registry.emplace<DirectionalLightComponent>(lightEntity);
 	m_sceneGraph.CreateNode(m_instancedRootNodeIndex, lightEntity, name);
 
-	auto& dirLight = m_Registry.get<DirectionalLightComponent>(lightEntity);
-	dirLight.m_Direction = direction;
-	dirLight.m_Color = color;
+	auto& dirLightComp = m_Registry.get<DirectionalLightComponent>(lightEntity);
+	dirLightComp.m_Color = color;
+
+	auto& transformComp = m_Registry.get<TransformComponent>(lightEntity);
+	transformComp.SetRotation(direction);
 }
 
 entt::entity Scene::AddCamera(std::shared_ptr<RenderSys::ICamera> camera)

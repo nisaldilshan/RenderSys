@@ -16,8 +16,7 @@ struct DirectionalLightComponent
 {
     float m_LightIntensity{1.0f};
     glm::vec3 m_Color{1.0f, 1.0f, 1.0f};
-    glm::vec3 m_Direction{};
-    ICamera* m_LightView{nullptr};
+    ICamera* m_LightProjection{nullptr};
     int m_RenderPass{0};
 };
 
