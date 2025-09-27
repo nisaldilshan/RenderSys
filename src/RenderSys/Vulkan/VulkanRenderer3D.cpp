@@ -863,6 +863,7 @@ void VulkanRenderer3D::BeginShadowMapPass()
             RenderSys::Shader vertexShader(std::string(SHADOW_SHADER_DIR) + std::string("shadow-vert.glsl"));
             vertexShader.type = RenderSys::ShaderType::SPIRV;
             vertexShader.stage = RenderSys::ShaderStage::Vertex;
+            vertexShader.SetIncludeDirectory("C:/develop/cpp/RenderSys/src/resources/Shaders");
             assert(vertexShader.Compile());
             auto compiledShaderVert = vertexShader.GetCompiledShader();
 
@@ -879,6 +880,7 @@ void VulkanRenderer3D::BeginShadowMapPass()
             RenderSys::Shader fragmentShader(std::string(SHADOW_SHADER_DIR) + std::string("shadow-frag.glsl"));
             fragmentShader.type = RenderSys::ShaderType::SPIRV;
             fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+            fragmentShader.SetIncludeDirectory("C:/develop/cpp/RenderSys/src/resources/Shaders");
             assert(fragmentShader.Compile());
             auto compiledShaderFrag = fragmentShader.GetCompiledShader();
 
@@ -1090,7 +1092,6 @@ void VulkanRenderer3D::CreateImageCopyBuffers()
         std::cout << "Failed to create staging buffer!" << std::endl;
         assert(false);
     }
-    std::cout << "Created staging buffer for cpu copy!" << std::endl;
 }
 
 std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
