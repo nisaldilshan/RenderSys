@@ -245,6 +245,18 @@
             },
         },
         {
+            "name": "ShadowMapping",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/example/3D/Advanced/4.ShadowMapping/ShadowMapping",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Advanced/4.ShadowMapping",
+            "env": { 
+                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/example",
+            },
+        },
+        {
             "name": "RayMarching",
             "type": "lldb",
             "request": "launch",
