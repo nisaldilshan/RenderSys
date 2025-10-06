@@ -4,8 +4,8 @@ project (RenderSys)
 find_package(walnut REQUIRED)
 find_package(tinyobjloader REQUIRED)
 find_package(shaderc REQUIRED)
-find_package(tinygltf REQUIRED)
-find_package(entt REQUIRED)
+find_package(TinyGLTF REQUIRED)
+find_package(EnTT REQUIRED)
 
 add_library (RenderSys2D STATIC
                 src/RenderSys/Renderer2D.cpp
