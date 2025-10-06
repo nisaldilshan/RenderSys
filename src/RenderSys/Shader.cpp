@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <fstream>
 #include <string>
+#include <string.h> // for the usage of strlen in Linux
 #include <shaderc/shaderc.hpp>
 
 #if (RENDERER_BACKEND == 1) // OpenGL
