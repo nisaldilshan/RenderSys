@@ -25,9 +25,10 @@ struct alignas(16) MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-struct LightingUniforms {
+struct alignas(16) LightingUniforms {
     std::array<glm::vec4, 1> lightDirections;
     std::array<glm::vec4, 1> lightColors;
+	std::array<glm::mat4x4, 1> padding;
 	std::array<glm::mat4x4, 1> lightViewProjections;
 };
 static_assert(sizeof(LightingUniforms) % 16 == 0);
@@ -224,6 +225,13 @@ public:
 				m_lightingUniformData.lightColors[0] = { lightComponent.m_Color, 1.0f };
 				auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
 				m_lightingUniformData.lightDirections[0] = { transformComponent.GetRotation(), 0.0f };
+
+				glm::quat orientation = glm::quat(transformComponent.GetRotation());
+				auto viewMatrix = glm::translate(glm::mat4(1.0f), transformComponent.GetTranslation());
+				viewMatrix = viewMatrix * glm::toMat4(orientation);
+				viewMatrix = glm::inverse(viewMatrix);
+
+				m_lightingUniformData.lightViewProjections[0] = viewMatrix;
 			}
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 
