@@ -10,9 +10,10 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     float time;
 } ubo;
 
-layout(set = 0, binding = 1) uniform LightingUniforms {
+layout(std140, set = 0, binding = 1) uniform LightingUniforms {
     vec4 directions[1];
     vec4 colors[1];
+    mat4 padding[1];
     mat4 viewProjection[1];
 } lightingUbo;
 
