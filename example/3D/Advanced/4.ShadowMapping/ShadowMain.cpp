@@ -157,7 +157,7 @@ public:
 		}
 		
 		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
-		createLights();
+		m_scene->AddDirectionalLight(glm::vec3(1.5708f, 0.0f, 0.0f), glm::vec3(0.0f, 75.0f, 0.0f), glm::vec3( 1.0f, 1.0f, 1.0f)); // 1.5708f radians = 90 degrees
 
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
 		// The uniform buffer binding that we already had
@@ -172,7 +172,7 @@ public:
 		RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
 		lightingUniformLayout.setDefault();
 		lightingUniformLayout.binding = 1;
-		lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
+		lightingUniformLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
 		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
 
@@ -226,9 +226,8 @@ public:
 				auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
 				m_lightingUniformData.lightDirections[0] = { transformComponent.GetRotation(), 0.0f };
 
-				glm::quat orientation = glm::quat(transformComponent.GetRotation());
 				auto viewMatrix = glm::translate(glm::mat4(1.0f), transformComponent.GetTranslation());
-				viewMatrix = viewMatrix * glm::toMat4(orientation);
+				viewMatrix = viewMatrix * glm::toMat4(glm::quat(-transformComponent.GetRotation()));
 				viewMatrix = glm::inverse(viewMatrix);
 
 				m_lightingUniformData.lightViewProjections[0] = viewMatrix;
@@ -290,11 +289,6 @@ public:
 	}
 
 private:
-	void createLights()
-	{
-		m_scene->AddDirectionalLight(glm::vec3( 0.5f, 0.5f, 0.5f), glm::vec3( 1.0f, 1.0f, 1.0f));
-	}
-
 	bool loadScene()
 	{
 		m_scene = std::make_shared<RenderSys::Scene>();

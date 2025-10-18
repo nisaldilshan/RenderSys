@@ -136,6 +136,7 @@ void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan:
     pipelineCreateInfo.pViewportState = &viewportStateInfo;
     VkPipelineRasterizationStateCreateInfo rasterizerInfo = Vulkan::Pipeline::getRasterizerInfo();
     rasterizerInfo.depthBiasEnable = VK_TRUE;
+    rasterizerInfo.cullMode = VK_CULL_MODE_NONE;
     // rasterizerInfo.depthBiasConstantFactor = 8.0f; // Optional
     // rasterizerInfo.depthBiasClamp = 0.0f;          // Optional
     // rasterizerInfo.depthBiasSlopeFactor = 3.0f;    // Optional

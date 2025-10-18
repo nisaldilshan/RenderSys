@@ -57,7 +57,7 @@ void main()
     const float orthoBottom = -50.0;
     const float orthoTop    =  50.0;
     const float nearPlane   =   0.1;
-    const float farPlane    = 200.0;
+    const float farPlane    = 100.0;
 
     // 2. Create the orthographic projection matrix.
     mat4 lightProjectionMatrix = createOrthoMatrixVulkan_NoYFlip(orthoLeft, orthoRight, orthoBottom, orthoTop, nearPlane, farPlane);
