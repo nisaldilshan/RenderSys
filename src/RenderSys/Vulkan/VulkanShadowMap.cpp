@@ -1,6 +1,7 @@
 #include "VulkanShadowMap.h"
 
 #include "VulkanRendererUtils.h"
+#include "VulkanTexture.h"
 #include "VulkanMemAlloc.h"
 
 #include <array>
@@ -11,14 +12,15 @@ namespace RenderSys
 namespace Vulkan
 {
 
-ShadowMap::ShadowMap(int width)
+ShadowMap::ShadowMap(std::shared_ptr<RenderSys::VulkanTexture> shadowMapTexture)
 {
-    m_ShadowMapExtent.width = width;
-    m_ShadowMapExtent.height = width;
+    m_ShadowMapExtent.width = shadowMapTexture->GetWidth();
+    m_ShadowMapExtent.height = shadowMapTexture->GetHeight();
     m_DepthFormat = Vulkan::GetDepthFormat();
 
     CreateShadowRenderPass();
-    CreateShadowDepthResources();
+    //CreateShadowDepthResources();
+    SetShadowDepthResources(shadowMapTexture);
     CreateShadowFramebuffer();
 }
 
@@ -28,8 +30,8 @@ ShadowMap::~ShadowMap()
     // vkDestroyImage(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthImage, nullptr);
     // vkFreeMemory(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthImageMemory, nullptr);
     vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), m_ShadowDepthImage, m_ShadowDepthImageMemory);
-
     vkDestroySampler(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthSampler, nullptr);
+
     vkDestroyRenderPass(GraphicsAPI::Vulkan::GetDevice(), m_ShadowRenderPass, nullptr);
     vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_ShadowFramebuffer, nullptr);
 }
@@ -113,6 +115,15 @@ void ShadowMap::CreateShadowDepthResources()
     }
 
     m_DescriptorImageInfo.sampler = m_ShadowDepthSampler;
+    m_DescriptorImageInfo.imageView = m_ShadowDepthImageView;
+    m_DescriptorImageInfo.imageLayout = m_ImageLayout;
+}
+
+void ShadowMap::SetShadowDepthResources(std::shared_ptr<RenderSys::VulkanTexture> shadowMapTexture)
+{
+    m_ShadowDepthImage = shadowMapTexture->GetImage();
+    m_ShadowDepthImageView = shadowMapTexture->GetDescriptorImageInfoAddr()->imageView;
+    m_DescriptorImageInfo.sampler = shadowMapTexture->GetDescriptorImageInfoAddr()->sampler;
     m_DescriptorImageInfo.imageView = m_ShadowDepthImageView;
     m_DescriptorImageInfo.imageLayout = m_ImageLayout;
 }

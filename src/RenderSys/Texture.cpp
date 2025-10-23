@@ -24,12 +24,11 @@ inline uint32_t bit_width(uint32_t m) {
     else { uint32_t w = 0; while (m >>= 1) ++w; return w; }
 }
 
-Texture::Texture(unsigned char* textureData, int width, int height, uint32_t mipMapLevelCount)
+Texture::Texture(int width, int height, uint32_t mipMapLevelCount, TextureUsage usage)
     : m_texWidth(width)
     , m_texHeight(height)
 {
-    m_platformTexture = std::make_shared<RenderSys::TextureType>(m_texWidth, m_texHeight, mipMapLevelCount);
-    m_platformTexture->SetData(textureData);
+    m_platformTexture = std::make_shared<RenderSys::TextureType>(m_texWidth, m_texHeight, mipMapLevelCount, usage);
 }
 
 Texture::Texture(const std::filesystem::path &path)
@@ -42,9 +41,14 @@ Texture::Texture(const std::filesystem::path &path)
     }
 
     const uint32_t mipMapLevelCount = bit_width(std::max(m_texWidth, m_texHeight));
-    m_platformTexture = std::make_shared<RenderSys::TextureType>(m_texWidth, m_texHeight, mipMapLevelCount);
+    m_platformTexture = std::make_shared<RenderSys::TextureType>(m_texWidth, m_texHeight, mipMapLevelCount, TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED);
     m_platformTexture->SetData(pixelData);
     stbi_image_free(pixelData);
+}
+
+void Texture::SetData(unsigned char *textureData)
+{
+    m_platformTexture->SetData(textureData);
 }
 
 void Texture::SetSampler(const TextureSampler &sampler)
@@ -85,7 +89,17 @@ std::shared_ptr<Texture> Texture::createDummy(int texWidth, int texHeight)
         }
     }
 
-    std::shared_ptr<Texture> dummyTexture = std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 1);
+    auto dummyTexture = std::make_shared<RenderSys::Texture>(texWidth, texHeight, 1,
+                                                             TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED);
+    dummyTexture->SetData(pixels.data());
+    dummyTexture->SetDefaultSampler();
+    return dummyTexture;
+}
+
+std::shared_ptr<Texture> Texture::createDepthDummy(int texWidth, int texHeight)
+{
+    auto dummyTexture = std::make_shared<RenderSys::Texture>(texWidth, texHeight, 1,
+                                                             TextureUsage::SAMPLED_UNDEFINED_DEPTHSTENCIL);
     dummyTexture->SetDefaultSampler();
     return dummyTexture;
 }

@@ -17,6 +17,8 @@ layout(std140, set = 0, binding = 1) uniform LightingUniforms {
     mat4 viewProjection[1];
 } lightingUbo;
 
+layout(set = 0, binding = 2) uniform sampler2D shadowMap;
+
 layout(set = 1, binding = 0) uniform sampler2D baseColorTexture;
 layout(set = 1, binding = 1) uniform sampler2D normalTexture;
 layout(set = 1, binding = 2) uniform sampler2D metallicTexture;
