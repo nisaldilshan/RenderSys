@@ -847,10 +847,13 @@ void VulkanRenderer3D::EndRenderPass()
 
 void VulkanRenderer3D::BeginShadowMapPass()
 {
-    if (!m_shadowMap && !m_shadowRenderPipeline)
+    auto shadowMapTexIter = m_textures.find(2);
+    if (!m_shadowMap && !m_shadowRenderPipeline && shadowMapTexIter != m_textures.end())
     {
         constexpr int shadowMapResolution = 2048;
-        m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(shadowMapResolution);
+        assert(shadowMapTexIter->second->GetWidth() == shadowMapResolution);
+        assert(shadowMapTexIter->second->GetHeight() == shadowMapResolution);
+        m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(shadowMapTexIter->second);
 
         std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
                                                     RenderSys::GetMaterialBindGroupLayout(),
@@ -1157,6 +1160,7 @@ std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
 
 void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
 {
+    assert(texture);
     const auto& [textureIter, inserted] = m_textures.insert(
                                                     {
                                                         binding, 

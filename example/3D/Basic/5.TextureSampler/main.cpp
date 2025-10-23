@@ -206,7 +206,8 @@ public:
 			}
 		}
 
-		auto texture = std::make_shared<RenderSys::Texture>(pixels.data(), texWidth, texHeight, 8);
+		auto texture = std::make_shared<RenderSys::Texture>(texWidth, texHeight, 8, RenderSys::TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED);
+		texture->SetData(pixels.data());
 		m_renderer->CreateTexture(1, texture);
 
 		// Since we now have 2 bindings, we use a vector to store them

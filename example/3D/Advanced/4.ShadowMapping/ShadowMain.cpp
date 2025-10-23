@@ -159,7 +159,7 @@ public:
 		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
 		m_scene->AddDirectionalLight(glm::vec3(1.5708f, 0.0f, 0.0f), glm::vec3(0.0f, 75.0f, 0.0f), glm::vec3( 1.0f, 1.0f, 1.0f)); // 1.5708f radians = 90 degrees
 
-		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 		// The uniform buffer binding that we already had
 		RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 		uniformBindingLayout.setDefault();
@@ -175,10 +175,17 @@ public:
 		lightingUniformLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
 		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+		// ShadowMap binding
+		RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[2];
+		textureBindingLayout.setDefault();
+		textureBindingLayout.binding = 2;
+		textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+		textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
+		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
 		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
-
+		m_renderer->CreateTexture(textureBindingLayout.binding, RenderSys::Texture::createDepthDummy(2048, 2048));
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
 		m_renderer->CreatePipeline();
 	}
