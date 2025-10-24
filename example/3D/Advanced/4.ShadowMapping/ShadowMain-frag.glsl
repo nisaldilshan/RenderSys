@@ -38,6 +38,22 @@ layout (location = 4) in vec4 inShadowCoord;
 
 layout (location = 0) out vec4 out_color;
 
+#define ambientForShadow 0.1
+
+float textureProj(vec4 shadowCoord, vec2 off)
+{
+	float shadow = 1.0;
+	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
+	{
+		float dist = texture( shadowMap, shadowCoord.st + off ).r;
+		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
+		{
+			shadow = ambientForShadow;
+		}
+	}
+	return shadow;
+}
+
 void main()
 {
     vec3 N = normalize(in_normal);
@@ -117,6 +133,7 @@ void main()
 
     vec3 color = (total_diffuse + total_specular + ambient); // No kD here
 
-    out_color = vec4(color, alpha);
+    float shadow = textureProj(inShadowCoord / inShadowCoord.w, vec2(0.0));
+    out_color = vec4(color * shadow, alpha);
     out_color = pow(out_color, vec4(1.0/2.2));
 }
