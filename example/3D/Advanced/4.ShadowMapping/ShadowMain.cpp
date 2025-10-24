@@ -224,6 +224,33 @@ public:
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
 
+			// ========================================================================
+			// STEP 1: Get Camera Frustum Corners in World Space
+			// ========================================================================
+
+			// Get the inverse of the main camera's combined view-projection matrix
+			glm::mat4 invViewProj = glm::inverse(camera->GetProjectionMatrix() * camera->GetViewMatrix());
+
+			// Define the 8 corners of the NDC cube (Vulkan's depth is [0, 1])
+			glm::vec3 frustumCorners[8] = {
+				glm::vec3(-1.0f,  1.0f, 0.0f),
+				glm::vec3( 1.0f,  1.0f, 0.0f),
+				glm::vec3( 1.0f, -1.0f, 0.0f),
+				glm::vec3(-1.0f, -1.0f, 0.0f),
+				glm::vec3(-1.0f,  1.0f,  1.0f),
+				glm::vec3( 1.0f,  1.0f,  1.0f),
+				glm::vec3( 1.0f, -1.0f,  1.0f),
+				glm::vec3(-1.0f, -1.0f,  1.0f),
+			};
+
+			// Transform corners from NDC to World Space
+			for (int i = 0; i < 8; ++i) {
+				glm::vec4 invCorner = invViewProj * glm::vec4(frustumCorners[i], 1.0f);
+				frustumCorners[i] = invCorner / invCorner.w; // Perspective divide
+			}
+
+			// ========================================================================
+
 			auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent, 
 												RenderSys::TransformComponent>();
 			for (auto entity : lightView)
@@ -233,12 +260,29 @@ public:
 				auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
 				m_lightingUniformData.lightDirections[0] = { transformComponent.GetRotation(), 0.0f };
 
-				auto viewMatrix = glm::translate(glm::mat4(1.0f), transformComponent.GetTranslation());
-				viewMatrix = viewMatrix * glm::toMat4(glm::quat(-transformComponent.GetRotation()));
-				viewMatrix = glm::inverse(viewMatrix);
+				auto lightModelMatrix = glm::translate(glm::mat4(1.0f), transformComponent.GetTranslation());
+				lightModelMatrix = lightModelMatrix * glm::toMat4(glm::quat(-transformComponent.GetRotation()));
+				glm::mat4 lightViewMatrix = glm::inverse(lightModelMatrix);
 
-				glm::mat4 lightProjectionMatrix = glm::orthoRH_ZO(-50.0, 50.0, -50.0, 50.0, 0.1, 100.0);
-				m_lightingUniformData.lightViewProjections[0] = lightProjectionMatrix * viewMatrix;
+				// Get frustum center
+				glm::vec3 frustumCenter = glm::vec3(0.0f);
+				for (uint32_t j = 0; j < 8; j++) {
+					frustumCenter += frustumCorners[j];
+				}
+				frustumCenter /= 8.0f;
+
+				float radius = 0.0f;
+				for (uint32_t j = 0; j < 8; j++) {
+					float distance = glm::length(frustumCorners[j] - frustumCenter);
+					radius = glm::max(radius, distance);
+				}
+				radius = std::ceil(radius * 16.0f) / 16.0f;
+
+				glm::vec3 maxExtents = glm::vec3(radius);
+				glm::vec3 minExtents = -maxExtents;
+				glm::vec3 lightDir = normalize(-transformComponent.GetTranslation());
+				glm::mat4 lightOrthoMatrix = glm::orthoRH_ZO(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
+				m_lightingUniformData.lightViewProjections[0] = lightOrthoMatrix * lightViewMatrix;
 			}
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 
