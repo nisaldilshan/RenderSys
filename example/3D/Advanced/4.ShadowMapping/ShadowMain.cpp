@@ -237,7 +237,8 @@ public:
 				viewMatrix = viewMatrix * glm::toMat4(glm::quat(-transformComponent.GetRotation()));
 				viewMatrix = glm::inverse(viewMatrix);
 
-				m_lightingUniformData.lightViewProjections[0] = viewMatrix;
+				glm::mat4 lightProjectionMatrix = glm::orthoRH_ZO(-50.0, 50.0, -50.0, 50.0, 0.1, 100.0);
+				m_lightingUniformData.lightViewProjections[0] = lightProjectionMatrix * viewMatrix;
 			}
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 

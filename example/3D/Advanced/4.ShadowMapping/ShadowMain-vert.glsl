@@ -48,4 +48,6 @@ void main()
     out_uv = in_uv;
 	out_normal = (modelMatrix * vec4(in_normal, 0.0)).xyz;
     out_tangent = (modelMatrix * vec4(in_tangent, 0.0)).xyz;
+
+    outShadowCoord = (lightingUbo.viewProjection[0] * worldPosition );
 }
