@@ -927,8 +927,8 @@ void VulkanRenderer3D::BeginShadowMapPass()
     viewport.height = static_cast<float>(m_shadowMap->GetShadowMapExtent().height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    VkRect2D scissor{{0, 0}, m_shadowMap->GetShadowMapExtent()};
     vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
+    VkRect2D scissor{{0, 0}, m_shadowMap->GetShadowMapExtent()};
     vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 }
 

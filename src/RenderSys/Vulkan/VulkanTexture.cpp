@@ -44,7 +44,7 @@ VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLev
     m_descriptorImageInfo.sampler = VK_NULL_HANDLE;
     m_descriptorImageInfo.imageView = RenderSys::Vulkan::CreateImageView(
         m_image, m_imageCreateInfo.format, isDepthTexture ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT);
-    m_descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    m_descriptorImageInfo.imageLayout = isDepthTexture ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
 
 VulkanTexture::~VulkanTexture()
