@@ -38,6 +38,12 @@ layout (location = 2) out vec3 out_normal;
 layout (location = 3) out vec3 out_tangent;
 layout (location = 4) out vec4 outShadowCoord;
 
+const mat4 biasMat = mat4( 
+	0.5, 0.0, 0.0, 0.0,
+	0.0, 0.5, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.5, 0.5, 0.0, 1.0 );
+
 void main() 
 {
     mat4 modelMatrix = uboInstanced.m_InstanceData[gl_InstanceIndex].m_ModelMatrix;
@@ -49,5 +55,5 @@ void main()
 	out_normal = (modelMatrix * vec4(in_normal, 0.0)).xyz;
     out_tangent = (modelMatrix * vec4(in_tangent, 0.0)).xyz;
 
-    outShadowCoord = (lightingUbo.viewProjection[0] * worldPosition );
+    outShadowCoord = (biasMat * lightingUbo.viewProjection[0] * worldPosition );
 }
