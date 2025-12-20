@@ -54,6 +54,29 @@ float textureProj(vec4 shadowCoord, vec2 off)
 	return shadow;
 }
 
+float filterPCF(vec4 sc)
+{
+	ivec2 texDim = textureSize(shadowMap, 0);
+	float scale = 1.5;
+	float dx = scale * 1.0 / float(texDim.x);
+	float dy = scale * 1.0 / float(texDim.y);
+
+	float shadowFactor = 0.0;
+	int count = 0;
+	int range = 1;
+	
+	for (int x = -range; x <= range; x++)
+	{
+		for (int y = -range; y <= range; y++)
+		{
+			shadowFactor += textureProj(sc, vec2(dx*x, dy*y));
+			count++;
+		}
+	
+	}
+	return shadowFactor / count;
+}
+
 void main()
 {
     vec3 N = normalize(in_normal);
@@ -133,7 +156,7 @@ void main()
 
     vec3 color = (total_diffuse + total_specular + ambient); // No kD here
 
-    float shadow = textureProj(inShadowCoord / inShadowCoord.w, vec2(0.0));
+    float shadow = filterPCF(inShadowCoord / inShadowCoord.w);
     out_color = vec4(color * shadow, alpha);
     out_color = pow(out_color, vec4(1.0/2.2));
 }
