@@ -218,7 +218,8 @@ public:
 			m_scene->Update();
 
 			updateUniforms();
-			moveLight();
+			if (m_moveLightDirection)
+				moveLight();
 
 			m_renderer->BeginFrame();
 
@@ -257,6 +258,8 @@ public:
 			m_clearColor = newClearColor;
 			m_renderer->SetClearColor(m_clearColor);
 		}
+		ImGui::Checkbox("Texel Snapping ", &m_texelSnapping);
+		ImGui::Checkbox("Move Light Direction ", &m_moveLightDirection);
 		ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -338,10 +341,72 @@ private:
 			}
 			radius = std::ceil(radius * 16.0f) / 16.0f;
 
-			glm::vec3 maxExtents = glm::vec3(radius);
-			glm::vec3 minExtents = -maxExtents;
-			glm::vec3 lightDir = normalize(-transformComponent.GetTranslation());
-			glm::mat4 lightOrthoMatrix = glm::orthoRH_ZO(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
+			float minX = 0;
+			float maxX = 0;
+			float minY = 0;
+			float maxY = 0;
+			float minZ = 0;
+			float maxZ = 0;
+
+			if (m_texelSnapping) {
+				glm::vec3 centerLightSpace = lightViewMatrix * glm::vec4(frustumCenter, 1.0f);
+
+				// ========================================================================
+				// STEP 2: FIX SWIMMING (TEXEL SNAPPING)
+				// ========================================================================
+
+				// Define your shadow map's resolution
+				const float SHADOW_MAP_RESOLUTION = 2048.0f; // <-- Use your actual resolution!
+
+				// Calculate the size of a single texel in light-space units
+				// The total width of our projection is (radius * 2.0f)
+				float texelWorldSize = (radius * 2.0f) / SHADOW_MAP_RESOLUTION;
+
+				// Snap the light-space center to the texel grid.
+				// This ensures the projection's origin only moves in discrete steps.
+				centerLightSpace.x = glm::floor(centerLightSpace.x / texelWorldSize) * texelWorldSize;
+				centerLightSpace.y = glm::floor(centerLightSpace.y / texelWorldSize) * texelWorldSize;
+
+
+				// ========================================================================
+				// STEP 3: BUILD THE CORRECTED ORTHO MATRIX
+				// ========================================================================
+
+				// Now, create the X and Y bounds *centered on the snapped position*
+				minX = centerLightSpace.x - radius;
+				maxX = centerLightSpace.x + radius;
+				minY = centerLightSpace.y - radius;
+				maxY = centerLightSpace.y + radius;
+
+				// For Z (depth), we should find the *actual* min/max depth of the 
+				// frustum corners in light space. This is much more robust than using the radius.
+				minZ = std::numeric_limits<float>::max();
+				maxZ = std::numeric_limits<float>::lowest();
+				for (uint32_t j = 0; j < 8; j++) {
+					// We can re-use the frustumCorners array (which is in world-space)
+					glm::vec4 cornerLightSpace = lightViewMatrix * glm::vec4(frustumCorners[j], 1.0f);
+					minZ = glm::min(minZ, cornerLightSpace.z);
+					maxZ = glm::max(maxZ, cornerLightSpace.z);
+				}
+
+				// You can add a small buffer to min/max Z here if you see clipping
+				minZ -= 10.0f; // Example: pull the near plane back a bit
+				maxZ += 10.0f; // Example: push the far plane out a bit
+			}
+			else {
+				const auto temp = glm::vec3(radius);
+				maxX = temp.x;
+				minX = -maxX;
+				maxY = temp.y;
+				minY = -maxY;
+				maxZ = temp.z;
+				minZ = -maxZ;
+			}
+			
+			// Create the final, stable orthographic matrix
+			glm::mat4 lightOrthoMatrix = glm::orthoRH_ZO(minX, maxX, minY, maxY, 0.0f, maxZ - minZ);
+
+			// The final matrix is stable and correctly positioned
 			m_lightingUniformData.lightViewProjections[0] = lightOrthoMatrix * lightViewMatrix;
 		}
 		m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
@@ -412,6 +477,8 @@ private:
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;
 	std::unique_ptr<RenderSys::SceneHierarchyPanel> m_sceneHierarchyPanel;
+	bool m_texelSnapping = false;
+	bool m_moveLightDirection = false;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
