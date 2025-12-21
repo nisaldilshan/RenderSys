@@ -17,6 +17,8 @@
 #include <RenderSys/Scene/SceneHierarchyPanel.h>
 #include <imgui.h>
 
+#include "ShadowHelper.h"
+
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
@@ -292,32 +294,13 @@ private:
 		// ========================================================================
 
 		// Get the inverse of the main camera's combined view-projection matrix
-		glm::mat4 invViewProj = glm::inverse(camera->GetProjectionMatrix() * camera->GetViewMatrix());
+		glm::mat4 invView = glm::inverse(camera->GetViewMatrix());
 
 		// Define the 8 corners of the NDC cube (Vulkan's depth is [0, 1])
-		glm::vec3 frustumCorners[8] = {
-			glm::vec3(-1.0f,  1.0f, 0.0f),
-			glm::vec3( 1.0f,  1.0f, 0.0f),
-			glm::vec3( 1.0f, -1.0f, 0.0f),
-			glm::vec3(-1.0f, -1.0f, 0.0f),
-			glm::vec3(-1.0f,  1.0f,  1.0f),
-			glm::vec3( 1.0f,  1.0f,  1.0f),
-			glm::vec3( 1.0f, -1.0f,  1.0f),
-			glm::vec3(-1.0f, -1.0f,  1.0f),
-		};
-
-		// Transform corners from NDC to World Space
-		for (int i = 0; i < 8; ++i) {
-			glm::vec4 invCorner = invViewProj * glm::vec4(frustumCorners[i], 1.0f);
-			frustumCorners[i] = invCorner / invCorner.w; // Perspective divide
-		}
-
-		// Get frustum center
-		glm::vec3 frustumCenter = glm::vec3(0.0f);
-		for (uint32_t j = 0; j < 8; j++) {
-			frustumCenter += frustumCorners[j];
-		}
-		frustumCenter /= 8.0f;
+		Frustum frustum;
+    	frustum.CalcCorners(camera);
+		frustum.Transform(invView);
+		Frustum view_frustum_in_world_space = frustum;   // backup for later
 
 		// ========================================================================
 
@@ -334,77 +317,78 @@ private:
 			lightModelMatrix = lightModelMatrix * glm::toMat4(glm::quat(-transformComponent.GetRotation()));
 			glm::mat4 lightViewMatrix = glm::inverse(lightModelMatrix);
 
-			float radius = 0.0f;
-			for (uint32_t j = 0; j < 8; j++) {
-				float distance = glm::length(frustumCorners[j] - frustumCenter);
-				radius = glm::max(radius, distance);
-			}
-			radius = std::ceil(radius * 16.0f) / 16.0f;
-
-			float minX = 0;
-			float maxX = 0;
-			float minY = 0;
-			float maxY = 0;
-			float minZ = 0;
-			float maxZ = 0;
+			OrthoProjInfo ortho;
 
 			if (m_texelSnapping) {
-				glm::vec3 centerLightSpace = lightViewMatrix * glm::vec4(frustumCenter, 1.0f);
+				frustum.Transform(lightModelMatrix);
+				AABB aabb;
+    			frustum.CalcAABB(aabb);
 
-				// ========================================================================
-				// STEP 2: FIX SWIMMING (TEXEL SNAPPING)
-				// ========================================================================
+				//
+				// Step #5: Calculate the position of the light
+				//
+				glm::vec3 BottomLeft(aabb.MinX, aabb.MinY, aabb.MinZ);
+				glm::vec3 TopRight(aabb.MaxX, aabb.MaxY, aabb.MinZ);
+				glm::vec4 LightPosWorld4d = glm::vec4((BottomLeft + TopRight) / 2.0f, 1.0f);
 
-				// Define your shadow map's resolution
-				const float SHADOW_MAP_RESOLUTION = 2048.0f; // <-- Use your actual resolution!
+				//
+				// Step #6: transform the position of the light back to world space
+				//
+				LightPosWorld4d = lightViewMatrix * LightPosWorld4d;
+				auto LightPosWorld = glm::vec3(LightPosWorld4d.x, LightPosWorld4d.y, LightPosWorld4d.z);
 
-				// Calculate the size of a single texel in light-space units
-				// The total width of our projection is (radius * 2.0f)
-				float texelWorldSize = (radius * 2.0f) / SHADOW_MAP_RESOLUTION;
+				//
+				// Step #7: transform the view frustum to light space (2nd time)
+				//
+				//LightView.InitCameraTransform(LightPosWorld, transformComponent.GetRotation(), transformComponent.GetUpVector());
+				auto LightView = glm::lookAt(LightPosWorld, transformComponent.GetRotation(), transformComponent.GetUpVector());
+				view_frustum_in_world_space.Transform(LightView);
 
-				// Snap the light-space center to the texel grid.
-				// This ensures the projection's origin only moves in discrete steps.
-				centerLightSpace.x = glm::floor(centerLightSpace.x / texelWorldSize) * texelWorldSize;
-				centerLightSpace.y = glm::floor(centerLightSpace.y / texelWorldSize) * texelWorldSize;
-
-
-				// ========================================================================
-				// STEP 3: BUILD THE CORRECTED ORTHO MATRIX
-				// ========================================================================
-
-				// Now, create the X and Y bounds *centered on the snapped position*
-				minX = centerLightSpace.x - radius;
-				maxX = centerLightSpace.x + radius;
-				minY = centerLightSpace.y - radius;
-				maxY = centerLightSpace.y + radius;
-
-				// For Z (depth), we should find the *actual* min/max depth of the 
-				// frustum corners in light space. This is much more robust than using the radius.
-				minZ = std::numeric_limits<float>::max();
-				maxZ = std::numeric_limits<float>::lowest();
-				for (uint32_t j = 0; j < 8; j++) {
-					// We can re-use the frustumCorners array (which is in world-space)
-					glm::vec4 cornerLightSpace = lightViewMatrix * glm::vec4(frustumCorners[j], 1.0f);
-					minZ = glm::min(minZ, cornerLightSpace.z);
-					maxZ = glm::max(maxZ, cornerLightSpace.z);
-				}
-
-				// You can add a small buffer to min/max Z here if you see clipping
-				minZ -= 10.0f; // Example: pull the near plane back a bit
-				maxZ += 10.0f; // Example: push the far plane out a bit
+				//
+				// Step #8: with the light in its final position recalculate the aabb
+				//
+				AABB final_aabb;
+				view_frustum_in_world_space.CalcAABB(final_aabb);
+				final_aabb.UpdateOrthoInfo(ortho);
 			}
 			else {
+				// Get frustum center
+				glm::vec3 frustumCent = frustum.FarBottomLeft + frustum.FarBottomRight + frustum.FarTopLeft + frustum.FarTopRight
+										+ frustum.NearBottomLeft + frustum.NearBottomRight + frustum.NearTopLeft + frustum.NearTopRight;
+				frustumCent /= 8.0f;
+				glm::vec4 frustumCenter = glm::vec4(frustumCent, 1.0f);
+
+				float radius = 0.0f;
+				float distance = glm::length(frustum.FarBottomLeft - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.FarBottomRight - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.FarTopLeft - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.FarTopRight - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.NearBottomLeft - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.NearBottomRight - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.NearTopLeft - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.NearTopRight - frustumCenter);
+				radius = glm::max(radius, distance);
+
+				radius = std::ceil(radius * 16.0f) / 16.0f;
+
 				const auto temp = glm::vec3(radius);
-				maxX = temp.x;
-				minX = -maxX;
-				maxY = temp.y;
-				minY = -maxY;
-				maxZ = temp.z;
-				minZ = -maxZ;
+				ortho.r = temp.x;
+				ortho.l = -ortho.r;
+				ortho.t = temp.y;
+				ortho.b = -ortho.t;
+				ortho.f = temp.z;
+				ortho.n = -ortho.f;
 			}
 			
 			// Create the final, stable orthographic matrix
-			glm::mat4 lightOrthoMatrix = glm::orthoRH_ZO(minX, maxX, minY, maxY, 0.0f, maxZ - minZ);
+			glm::mat4 lightOrthoMatrix = glm::orthoRH_ZO(ortho.l, ortho.r, ortho.b, ortho.t, ortho.n, ortho.f);
 
 			// The final matrix is stable and correctly positioned
 			m_lightingUniformData.lightViewProjections[0] = lightOrthoMatrix * lightViewMatrix;
