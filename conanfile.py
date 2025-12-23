@@ -1,12 +1,13 @@
 from conans import ConanFile
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from conan.tools.scm import Git
 from conan.errors import ConanInvalidConfiguration
 
 class RenderSysConan(ConanFile):
     name = "RenderSys"
     version = "0.0.1"
     license = "MIT license"
-    url = "https://github.com/nisaldilshan/RenderSys.git"
+    url = "https://github.com/nisaldilshan/RenderSys"
     description = "A simple rendering system written in C++"
     author = "Nisal Dilshan"
     settings = "os", "compiler", "build_type", "arch"
@@ -44,9 +45,9 @@ class RenderSysConan(ConanFile):
         self.options['walnut'].rendering_backend = self.options.rendering_backend
 
     def source(self):
-        self.run('git clone --depth=1 '
-                 'git@github.com:nisaldilshan/RenderSys.git '
-                 f'--branch {self.options.branch} . ')
+        git = Git(self)
+        clone_args = ['--depth', '1', '--branch', str(self.options.branch)]
+        git.clone(url=self.url + ".git", target = ".", args=clone_args)
 
     def generate(self):
         tc = CMakeToolchain(self)
