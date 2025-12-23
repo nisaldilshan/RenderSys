@@ -41,8 +41,11 @@ class RenderSysConan(ConanFile):
     def build_requirements(self):
         self.tool_requires('cmake/3.25.3')
 
-    def config_options(self):
+    def configure(self):
         self.options['walnut'].rendering_backend = self.options.rendering_backend
+
+    def config_options(self):
+        pass
 
     def source(self):
         git = Git(self)
