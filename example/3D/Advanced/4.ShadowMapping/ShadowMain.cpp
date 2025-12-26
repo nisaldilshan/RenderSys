@@ -49,63 +49,7 @@ public:
 			return;
 		}
 
-		const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
-		assert(!shaderDir.empty());
-
-		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-		{
-			{
-				std::ifstream file(shaderDir + "/ShadowMain-vert.glsl", std::ios::binary);
-				std::vector<char> content((std::istreambuf_iterator<char>(file)),
-											std::istreambuf_iterator<char>());
-
-				if (!file.is_open()) {
-					std::cerr << "Unable to open file." << std::endl;
-					assert(false);
-				}
-				RenderSys::Shader vertexShader("Vertex", std::string(content.data(), content.size()));
-				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				vertexShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
-				m_renderer->SetShader(vertexShader);
-			}
-
-			{
-				std::ifstream file(shaderDir + "/ShadowMain-frag.glsl", std::ios::binary);
-				std::vector<char> content((std::istreambuf_iterator<char>(file)),
-											std::istreambuf_iterator<char>());
-
-				if (!file.is_open()) {
-					std::cerr << "Unable to open file." << std::endl;
-					assert(false);
-				}
-
-				RenderSys::Shader fragmentShader("Fragment", std::string(content.data(), content.size()));
-				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				fragmentShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
-				m_renderer->SetShader(fragmentShader);
-			}
-		}
-		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
-		{
-			std::ifstream file(shaderDir + "/combined.wgsl", std::ios::binary);
-			std::vector<char> content((std::istreambuf_iterator<char>(file)),
-										std::istreambuf_iterator<char>());
-
-			if (!file.is_open()) {
-				std::cerr << "Unable to open file." << std::endl;
-				assert(false);
-			}
-			RenderSys::Shader shader("Combined", std::string(content.data(), content.size()));
-			shader.type = RenderSys::ShaderType::WGSL;
-			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
-			m_renderer->SetShader(shader);
-		}
-		else
-		{
-			assert(false);
-		}
+		loadShaders();
 
 		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f);
 		auto cameraEntity = m_scene->AddCamera(m_cameraController->GetCamera());
@@ -187,9 +131,13 @@ public:
 
 		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
-		m_renderer->CreateTexture(textureBindingLayout.binding, RenderSys::Texture::createDepthDummy(2048, 2048));
+
+		m_renderer->CreateShadowMap(2048, 2048);
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
 		m_renderer->CreatePipeline();
+
+
+		m_renderer->CreateShadowPipeline();
 	}
 
 	virtual void OnDetach() override
@@ -262,6 +210,7 @@ public:
 		}
 		ImGui::Checkbox("Texel Snapping ", &m_texelSnapping);
 		ImGui::Checkbox("Move Light Direction ", &m_moveLightDirection);
+		ImGui::Checkbox("Debug View ", &m_debugView);
 		ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -273,7 +222,8 @@ public:
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
 
-		m_renderer->OnImGuiRender();
+		if (m_debugView)
+			m_renderer->OnDebugView();
         ImGui::PopStyleVar();
 
 		m_sceneHierarchyPanel->OnImGuiRender();
@@ -449,6 +399,52 @@ private:
 		return true;
 	}
 
+	void loadShaders()
+	{
+		const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
+		assert(!shaderDir.empty());
+
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			{
+				std::ifstream file(shaderDir + "/ShadowMain-vert.glsl", std::ios::binary);
+				std::vector<char> content((std::istreambuf_iterator<char>(file)),
+											std::istreambuf_iterator<char>());
+
+				if (!file.is_open()) {
+					std::cerr << "Unable to open file." << std::endl;
+					assert(false);
+				}
+				RenderSys::Shader vertexShader("Vertex", std::string(content.data(), content.size()));
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				vertexShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
+				m_renderer->SetShader(vertexShader);
+			}
+
+			{
+				std::ifstream file(shaderDir + "/ShadowMain-frag.glsl", std::ios::binary);
+				std::vector<char> content((std::istreambuf_iterator<char>(file)),
+											std::istreambuf_iterator<char>());
+
+				if (!file.is_open()) {
+					std::cerr << "Unable to open file." << std::endl;
+					assert(false);
+				}
+
+				RenderSys::Shader fragmentShader("Fragment", std::string(content.data(), content.size()));
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				fragmentShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
+				m_renderer->SetShader(fragmentShader);
+			}
+		}
+		else
+		{
+			assert(false);
+		}
+	}
+
     std::unique_ptr<RenderSys::Renderer3D> m_renderer;
     uint32_t m_viewportWidth = 0;
     uint32_t m_viewportHeight = 0;
@@ -463,6 +459,7 @@ private:
 	std::unique_ptr<RenderSys::SceneHierarchyPanel> m_sceneHierarchyPanel;
 	bool m_texelSnapping = false;
 	bool m_moveLightDirection = false;
+	bool m_debugView = false;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

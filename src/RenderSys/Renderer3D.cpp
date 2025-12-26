@@ -133,16 +133,26 @@ void Renderer3D::EndRenderPass()
     m_rendererBackend->EndRenderPass();
 }
 
-void Renderer3D::ShadowPass(entt::registry& entityRegistry)
+void Renderer3D::CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight)
+{
+    m_rendererBackend->CreateShadowMap(mapWidth, mapHeight);
+}
+
+void Renderer3D::CreateShadowPipeline()
+{
+    m_rendererBackend->CreateShadowPipeline();
+}
+
+void Renderer3D::ShadowPass(entt::registry &entityRegistry)
 {
     m_rendererBackend->BeginShadowMapPass();
     m_rendererBackend->RenderShadowMap(entityRegistry);
     m_rendererBackend->EndShadowMapPass();
 }
 
-void Renderer3D::OnImGuiRender()
+void Renderer3D::OnDebugView()
 {
-    m_rendererBackend->OnImGuiRender();
+    m_rendererBackend->OnDebugView();
 }
 
 std::vector<uint8_t>& Renderer3D::GetRenderedImageData()
