@@ -41,6 +41,12 @@ struct VulkanShaderData
     std::vector<uint32_t> compiledShader;
 };
 
+struct VulkanDebugView
+{
+    VkImageView view;
+    VkDescriptorSet descriptorSet;
+};
+
 class VulkanRenderer3D
 {
 public:
@@ -132,7 +138,7 @@ private:
     std::shared_ptr<RenderSys::Vulkan::ShadowMap> m_shadowMap;
     std::unique_ptr<Vulkan::ShadowRenderPipeline> m_shadowRenderPipeline;
     std::unique_ptr<VulkanCPUImageCopyData> m_cpuImageData;
-    std::vector<VkDescriptorSet> m_debugViewDescriptors;
+    std::vector<VulkanDebugView> m_debugViews;
 };
 
 }

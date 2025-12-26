@@ -171,11 +171,12 @@ void VulkanRenderer3D::DestroyImages()
 {
     vkQueueWaitIdle(GraphicsAPI::Vulkan::GetDeviceQueue());
 
-    for (auto &debugViewDescriptor : m_debugViewDescriptors)
+    for (auto &debugView : m_debugViews)
     {
-        ImGui_ImplVulkan_RemoveTexture(debugViewDescriptor);
+        ImGui_ImplVulkan_RemoveTexture(debugView.descriptorSet);
+        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), debugView.view, nullptr);
     }
-    m_debugViewDescriptors.clear();
+    m_debugViews.clear();
     
     if (m_finalImageDescriptorSet)
     {
@@ -1064,18 +1065,18 @@ void VulkanRenderer3D::OnDebugView()
 
     if (m_shadowMap)
     {
-        if (m_debugViewDescriptors.empty())
+        if (m_debugViews.empty())
         {
             auto imguiImageView = createImguiImageView(m_shadowMap);
             auto shadowDescSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(
                                                         m_defaultTextureSampler, 
                                                         imguiImageView, 
                                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-            m_debugViewDescriptors.push_back(shadowDescSet);
+            m_debugViews.push_back({imguiImageView, shadowDescSet});
         }
         const float imageWidth = m_width;
         const float imageHeight = m_height;
-        ImGui::Image(m_debugViewDescriptors.at(0), {imageWidth, imageHeight});
+        ImGui::Image(m_debugViews.at(0).descriptorSet, {imageWidth, imageHeight});
     }
 
     ImGui::End();

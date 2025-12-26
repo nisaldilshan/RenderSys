@@ -37,7 +37,6 @@ public:
     const VkImage GetShadowDepthImage() const { return m_ShadowDepthImage; }
 
 private:
-    void CreateShadowDepthResources(); // deprecated
     void SetShadowDepthResources(std::shared_ptr<RenderSys::VulkanTexture> shadowMapTexture);
     void CreateShadowRenderPass();
     void CreateShadowFramebuffer();
@@ -50,8 +49,6 @@ private:
     VkImage m_ShadowDepthImage{nullptr};
     VkImageLayout m_ImageLayout{};
     VkImageView m_ShadowDepthImageView{nullptr};
-    VmaAllocation m_ShadowDepthImageMemory{nullptr};
-    VkSampler m_ShadowDepthSampler{nullptr};
 
     VkDescriptorImageInfo m_DescriptorImageInfo{};
 };
