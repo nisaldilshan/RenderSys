@@ -883,51 +883,30 @@ void VulkanRenderer3D::CreateShadowPipeline()
     assert(m_shadowMap);
     if (!m_shadowRenderPipeline)
     {
+        auto vertexShaderIter = m_shaderMap.find("Shadow-Vertex");
+        if (vertexShaderIter == m_shaderMap.end()) {
+            std::cout << "error: could not find Vertex shader" << std::endl;
+            assert(false);
+            return;
+        }
+        auto fragmentShaderIter = m_shaderMap.find("Shadow-Fragment");
+        if (fragmentShaderIter == m_shaderMap.end()) {
+            std::cout << "error: could not find Fragment shader" << std::endl;
+            assert(false);
+            return;
+        }
+
+        std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos = {
+            vertexShaderIter->second.shaderStageInfo, 
+            fragmentShaderIter->second.shaderStageInfo
+        }; 
+
         std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
                                                     RenderSys::GetMaterialBindGroupLayout(),
                                                     RenderSys::GetResourceBindGroupLayout()};
 
-        std::vector<VkPipelineShaderStageCreateInfo> shadowShaderStageInfos;
-        {
-// TODO : remove this macro usage 
-#define SHADOW_SHADER_DIR "C:/develop/cpp/RenderSys/example/3D/Advanced/4.ShadowMapping/"
-            RenderSys::Shader vertexShader(std::string(SHADOW_SHADER_DIR) + std::string("shadow-vert.glsl"));
-            vertexShader.type = RenderSys::ShaderType::SPIRV;
-            vertexShader.stage = RenderSys::ShaderStage::Vertex;
-            vertexShader.SetIncludeDirectory("C:/develop/cpp/RenderSys/src/resources/Shaders");
-            assert(vertexShader.Compile());
-            auto compiledShaderVert = vertexShader.GetCompiledShader();
-
-            VkShaderModuleCreateInfo shaderCreateInfo{};
-            shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            shaderCreateInfo.codeSize = sizeof(uint32_t) * compiledShaderVert.size();
-            shaderCreateInfo.pCode = compiledShaderVert.data();
-            auto shadowShaderStageInfo = CreateShaderModule(shaderCreateInfo, vertexShader.stage);
-            if (shadowShaderStageInfo)
-            {
-                shadowShaderStageInfos.push_back(*shadowShaderStageInfo);
-            }
-
-            RenderSys::Shader fragmentShader(std::string(SHADOW_SHADER_DIR) + std::string("shadow-frag.glsl"));
-            fragmentShader.type = RenderSys::ShaderType::SPIRV;
-            fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-            fragmentShader.SetIncludeDirectory("C:/develop/cpp/RenderSys/src/resources/Shaders");
-            assert(fragmentShader.Compile());
-            auto compiledShaderFrag = fragmentShader.GetCompiledShader();
-
-            VkShaderModuleCreateInfo shaderCreateInfoFrag{};
-            shaderCreateInfoFrag.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            shaderCreateInfoFrag.codeSize = sizeof(uint32_t) * compiledShaderFrag.size();
-            shaderCreateInfoFrag.pCode = compiledShaderFrag.data();
-            auto shadowShaderStageInfoFrag = CreateShaderModule(shaderCreateInfoFrag, fragmentShader.stage);
-            if (shadowShaderStageInfoFrag)
-            {
-                shadowShaderStageInfos.push_back(*shadowShaderStageInfoFrag);
-            }
-        }
-
         m_shadowRenderPipeline = std::make_unique<Vulkan::ShadowRenderPipeline>(
-            m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, shadowShaderStageInfos);
+            m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, shaderStageInfos);
     }
 }
 
