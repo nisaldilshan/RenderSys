@@ -438,6 +438,39 @@ private:
 				fragmentShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
 				m_renderer->SetShader(fragmentShader);
 			}
+
+			{
+				std::ifstream file(shaderDir + "/shadow-vert.glsl", std::ios::binary);
+				std::vector<char> content((std::istreambuf_iterator<char>(file)),
+											std::istreambuf_iterator<char>());
+
+				if (!file.is_open()) {
+					std::cerr << "Unable to open file." << std::endl;
+					assert(false);
+				}
+				RenderSys::Shader vertexShader("Shadow-Vertex", std::string(content.data(), content.size()));
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				vertexShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
+				m_renderer->SetShader(vertexShader);
+			}
+
+			{
+				std::ifstream file(shaderDir + "/shadow-frag.glsl", std::ios::binary);
+				std::vector<char> content((std::istreambuf_iterator<char>(file)),
+											std::istreambuf_iterator<char>());
+
+				if (!file.is_open()) {
+					std::cerr << "Unable to open file." << std::endl;
+					assert(false);
+				}
+
+				RenderSys::Shader fragmentShader("Shadow-Fragment", std::string(content.data(), content.size()));
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				fragmentShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
+				m_renderer->SetShader(fragmentShader);
+			}
 		}
 		else
 		{
