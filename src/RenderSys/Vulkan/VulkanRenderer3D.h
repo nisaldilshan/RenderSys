@@ -35,6 +35,12 @@ struct VulkanCPUImageCopyData
     VmaAllocationInfo stagingAllocInfo; // To get the mapped pointer
 };
 
+struct VulkanShaderData 
+{
+    VkPipelineShaderStageCreateInfo shaderStageInfo;
+    std::vector<uint32_t> compiledShader;
+};
+
 class VulkanRenderer3D
 {
 public:
@@ -65,6 +71,8 @@ public:
     void BeginRenderPass();
     void EndRenderPass();
 
+    void CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight);
+    void CreateShadowPipeline();
     void BeginShadowMapPass();
     void RenderShadowMap(entt::registry& entityRegistry);
     void EndShadowMapPass();
@@ -74,7 +82,7 @@ public:
     void ResetCommandBuffer();
     void SubmitCommandBuffer();
 
-    void OnImGuiRender();
+    void OnDebugView();
     std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 
 private:
@@ -101,8 +109,7 @@ private:
 
     VkSampler m_defaultTextureSampler = VK_NULL_HANDLE;
     VkDescriptorSet m_finalImageDescriptorSet = VK_NULL_HANDLE;
-    std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
-    std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
+    std::unordered_map<std::string, VulkanShaderData> m_shaderMap;
 
     std::unique_ptr<Vulkan::PbrRenderPipeline> m_pbrRenderPipeline;
 
@@ -125,6 +132,7 @@ private:
     std::shared_ptr<RenderSys::Vulkan::ShadowMap> m_shadowMap;
     std::unique_ptr<Vulkan::ShadowRenderPipeline> m_shadowRenderPipeline;
     std::unique_ptr<VulkanCPUImageCopyData> m_cpuImageData;
+    std::vector<VkDescriptorSet> m_debugViewDescriptors;
 };
 
 }
