@@ -19,104 +19,14 @@ ShadowMap::ShadowMap(std::shared_ptr<RenderSys::VulkanTexture> shadowMapTexture)
     m_DepthFormat = Vulkan::GetDepthFormat();
 
     CreateShadowRenderPass();
-    //CreateShadowDepthResources();
     SetShadowDepthResources(shadowMapTexture);
     CreateShadowFramebuffer();
 }
 
 ShadowMap::~ShadowMap()
 {
-    vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthImageView, nullptr);
-    // vkDestroyImage(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthImage, nullptr);
-    // vkFreeMemory(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthImageMemory, nullptr);
-    vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), m_ShadowDepthImage, m_ShadowDepthImageMemory);
-    vkDestroySampler(GraphicsAPI::Vulkan::GetDevice(), m_ShadowDepthSampler, nullptr);
-
     vkDestroyRenderPass(GraphicsAPI::Vulkan::GetDevice(), m_ShadowRenderPass, nullptr);
     vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_ShadowFramebuffer, nullptr);
-}
-
-void ShadowMap::CreateShadowDepthResources()
-{
-    // image
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.extent.width = m_ShadowMapExtent.width;
-    imageInfo.extent.height = m_ShadowMapExtent.height;
-    imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = 1;
-    imageInfo.format = m_DepthFormat;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    imageInfo.flags = 0;
-
-    // m_Device->CreateImageWithInfo(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_ShadowDepthImage,
-    //                               m_ShadowDepthImageMemory);
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    allocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    if (vmaCreateImage(RenderSys::Vulkan::GetMemoryAllocator(), &imageInfo, &allocInfo, &m_ShadowDepthImage, &m_ShadowDepthImageMemory, nullptr) != VK_SUCCESS)
-    {
-        assert(false);
-    }
-
-    // image view
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = m_ShadowDepthImage;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = m_DepthFormat;
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
-
-    {
-        auto result = vkCreateImageView(GraphicsAPI::Vulkan::GetDevice(), &viewInfo, nullptr, &m_ShadowDepthImageView);
-        if (result != VK_SUCCESS)
-        {
-            std::cout << "error: failed to create texture image view!" << std::endl;
-            assert(false);
-        }
-    }
-
-    // sampler
-    VkSamplerCreateInfo samplerCreateInfo{};
-    samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
-    samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
-    samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerCreateInfo.compareEnable = VK_TRUE;
-    samplerCreateInfo.compareOp = VK_COMPARE_OP_LESS;
-    samplerCreateInfo.mipLodBias = 0.0f;
-    samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    samplerCreateInfo.minLod = 0.0f;
-    samplerCreateInfo.maxLod = 1;
-    samplerCreateInfo.maxAnisotropy = 1.0;
-    samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-
-    {
-        auto result = vkCreateSampler(GraphicsAPI::Vulkan::GetDevice(), &samplerCreateInfo, nullptr, &m_ShadowDepthSampler);
-        if (result != VK_SUCCESS)
-        {
-            std::cout << "error: failed to create sampler!" << std::endl;
-            assert(false);
-        }
-    }
-
-    m_DescriptorImageInfo.sampler = m_ShadowDepthSampler;
-    m_DescriptorImageInfo.imageView = m_ShadowDepthImageView;
-    m_DescriptorImageInfo.imageLayout = m_ImageLayout;
 }
 
 void ShadowMap::SetShadowDepthResources(std::shared_ptr<RenderSys::VulkanTexture> shadowMapTexture)
