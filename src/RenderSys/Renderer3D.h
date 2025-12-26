@@ -58,10 +58,13 @@ public:
     void RenderMesh(const RenderSys::Mesh& mesh);
     void BeginRenderPass();
     void EndRenderPass();
+
+    void CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight);
+    void CreateShadowPipeline();
     void ShadowPass(entt::registry& entityRegistry);
     void* GetDescriptorSet() const;
     void Destroy();
-    void OnImGuiRender();
+    void OnDebugView();
     std::vector<uint8_t>& GetRenderedImageData();
 
 private:

@@ -10,11 +10,14 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     float time;
 } ubo;
 
-layout(set = 0, binding = 1) uniform LightingUniforms {
+layout(std140, set = 0, binding = 1) uniform LightingUniforms {
     vec4 directions[1];
     vec4 colors[1];
+    mat4 padding[1];
     mat4 viewProjection[1];
 } lightingUbo;
+
+layout(set = 0, binding = 2) uniform sampler2D shadowMap;
 
 layout(set = 1, binding = 0) uniform sampler2D baseColorTexture;
 layout(set = 1, binding = 1) uniform sampler2D normalTexture;
@@ -31,8 +34,48 @@ layout (location = 0) in vec3 in_viewDirection;
 layout (location = 1) in vec2 in_uv;
 layout (location = 2) in vec3 in_normal;
 layout (location = 3) in vec3 in_tangent;
+layout (location = 4) in vec4 inShadowCoord;
 
 layout (location = 0) out vec4 out_color;
+
+#define ambientForShadow 0.1
+
+float textureProj(vec4 shadowCoord, vec2 off)
+{
+	float shadow = 1.0;
+	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
+	{
+		float dist = texture( shadowMap, shadowCoord.st + off ).r;
+		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z - 0.005 ) 
+		{
+			shadow = ambientForShadow;
+		}
+	}
+	return shadow;
+}
+
+float filterPCF(vec4 sc)
+{
+	ivec2 texDim = textureSize(shadowMap, 0);
+	float scale = 1.5;
+	float dx = scale * 1.0 / float(texDim.x);
+	float dy = scale * 1.0 / float(texDim.y);
+
+	float shadowFactor = 0.0;
+	int count = 0;
+	int range = 1;
+	
+	for (int x = -range; x <= range; x++)
+	{
+		for (int y = -range; y <= range; y++)
+		{
+			shadowFactor += textureProj(sc, vec2(dx*x, dy*y));
+			count++;
+		}
+	
+	}
+	return shadowFactor / count;
+}
 
 void main()
 {
@@ -113,6 +156,7 @@ void main()
 
     vec3 color = (total_diffuse + total_specular + ambient); // No kD here
 
-    out_color = vec4(color, alpha);
+    float shadow = filterPCF(inShadowCoord / inShadowCoord.w);
+    out_color = vec4(color * shadow, alpha);
     out_color = pow(out_color, vec4(1.0/2.2));
 }

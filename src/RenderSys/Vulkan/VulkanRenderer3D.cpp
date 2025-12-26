@@ -105,19 +105,18 @@ void VulkanRenderer3D::CreateDepthImage()
 void VulkanRenderer3D::CreateShader(RenderSys::Shader& shader)
 {
     assert(shader.type == RenderSys::ShaderType::SPIRV);
-    std::vector<uint32_t> compiledShader;
     auto shaderMapIter = m_shaderMap.find(shader.GetName());
-    if (shaderMapIter == m_shaderMap.end())
+    if (shaderMapIter != m_shaderMap.end())
     {
-        auto res = shader.Compile();
-        assert(res);
-        compiledShader = shader.GetCompiledShader();
-        m_shaderMap.emplace(shader.GetName(), compiledShader);
+        std::cout << "Shader exists!, Name:" << shader.GetName() << std::endl;
+        assert(false);
+        return;
     }
-    else
-    {
-        compiledShader = shaderMapIter->second;
-    }
+
+    auto res = shader.Compile();
+    assert(res);
+    std::vector<uint32_t> compiledShader = shader.GetCompiledShader();
+    
 
     VkShaderModuleCreateInfo shaderCreateInfo{};
     shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -128,7 +127,7 @@ void VulkanRenderer3D::CreateShader(RenderSys::Shader& shader)
     if (stageInfo)
     {
         std::cout << "Created Shader module, Name:" << shader.GetName() << ", Ptr:" << stageInfo->module << std::endl;
-        m_shaderStageInfos.push_back(*stageInfo);
+        m_shaderMap.emplace(shader.GetName(), VulkanShaderData{*stageInfo, compiledShader});
     }
     else
     {
@@ -170,9 +169,17 @@ std::shared_ptr<VkPipelineShaderStageCreateInfo> VulkanRenderer3D::CreateShaderM
 
 void VulkanRenderer3D::DestroyImages()
 {
+    vkQueueWaitIdle(GraphicsAPI::Vulkan::GetDeviceQueue());
+
+    for (auto &debugView : m_debugViews)
+    {
+        ImGui_ImplVulkan_RemoveTexture(debugView.descriptorSet);
+        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), debugView.view, nullptr);
+    }
+    m_debugViews.clear();
+    
     if (m_finalImageDescriptorSet)
     {
-        vkQueueWaitIdle(GraphicsAPI::Vulkan::GetDeviceQueue());
         ImGui_ImplVulkan_RemoveTexture(m_finalImageDescriptorSet);
         m_finalImageDescriptorSet = VK_NULL_HANDLE;
     }
@@ -269,12 +276,12 @@ void VulkanRenderer3D::DestroyBuffers()
 
 void VulkanRenderer3D::DestroyShaders()
 {
-    for (auto& shaderStageInfo : m_shaderStageInfos)
+    for (auto& [shaderName, shaderData] : m_shaderMap)
     {
-        vkDestroyShaderModule(GraphicsAPI::Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
+        vkDestroyShaderModule(GraphicsAPI::Vulkan::GetDevice(), shaderData.shaderStageInfo.module, nullptr);
     }
 
-    m_shaderStageInfos.clear();
+    m_shaderMap.clear();
 }
 
 void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)
@@ -472,10 +479,27 @@ void VulkanRenderer3D::DestroyRenderPass()
 
 void VulkanRenderer3D::CreatePipeline()
 {
+    auto vertexShaderIter = m_shaderMap.find("Vertex");
+    if (vertexShaderIter == m_shaderMap.end()) {
+        std::cout << "error: could not find Vertex shader" << std::endl;
+        assert(false);
+        return;
+    }
+    auto fragmentShaderIter = m_shaderMap.find("Fragment");
+    if (fragmentShaderIter == m_shaderMap.end()) {
+        std::cout << "error: could not find Fragment shader" << std::endl;
+        assert(false);
+        return;
+    }
+
+    std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos = {
+        vertexShaderIter->second.shaderStageInfo, 
+        fragmentShaderIter->second.shaderStageInfo
+    }; 
     std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
                                                     RenderSys::GetMaterialBindGroupLayout(),
                                                     RenderSys::GetResourceBindGroupLayout()};
-    m_pbrRenderPipeline = std::make_unique<RenderSys::Vulkan::PbrRenderPipeline>(m_renderpass, layouts, m_vertexInputLayout, m_shaderStageInfos);
+    m_pbrRenderPipeline = std::make_unique<RenderSys::Vulkan::PbrRenderPipeline>(m_renderpass, layouts, m_vertexInputLayout, shaderStageInfos);
     if (m_pbrRenderPipeline->GetPipeline() == VK_NULL_HANDLE || m_pbrRenderPipeline->GetPipelineLayout() == VK_NULL_HANDLE){
         std::cout << "error: could not create pipeline" << std::endl;
         assert(false);
@@ -845,58 +869,50 @@ void VulkanRenderer3D::EndRenderPass()
     vkCmdEndRenderPass(m_commandBuffer);
 }
 
-void VulkanRenderer3D::BeginShadowMapPass()
+void VulkanRenderer3D::CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight)
 {
-    if (!m_shadowMap && !m_shadowRenderPipeline)
+    CreateTexture(2, RenderSys::Texture::createDepthDummy(mapWidth, mapHeight));
+    auto shadowMapTexIter = m_textures.find(2);
+    constexpr int shadowMapResolution = 2048;
+    assert(shadowMapTexIter->second->GetWidth() == shadowMapResolution);
+    assert(shadowMapTexIter->second->GetHeight() == shadowMapResolution);
+    m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(shadowMapTexIter->second);
+}
+
+void VulkanRenderer3D::CreateShadowPipeline()
+{
+    assert(m_shadowMap);
+    if (!m_shadowRenderPipeline)
     {
-        constexpr int shadowMapResolution = 2048;
-        m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(shadowMapResolution);
+        auto vertexShaderIter = m_shaderMap.find("Shadow-Vertex");
+        if (vertexShaderIter == m_shaderMap.end()) {
+            std::cout << "error: could not find Vertex shader" << std::endl;
+            assert(false);
+            return;
+        }
+        auto fragmentShaderIter = m_shaderMap.find("Shadow-Fragment");
+        if (fragmentShaderIter == m_shaderMap.end()) {
+            std::cout << "error: could not find Fragment shader" << std::endl;
+            assert(false);
+            return;
+        }
+
+        std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos = {
+            vertexShaderIter->second.shaderStageInfo, 
+            fragmentShaderIter->second.shaderStageInfo
+        }; 
 
         std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
                                                     RenderSys::GetMaterialBindGroupLayout(),
                                                     RenderSys::GetResourceBindGroupLayout()};
 
-        std::vector<VkPipelineShaderStageCreateInfo> shadowShaderStageInfos;
-        {
-// TODO : remove this macro usage 
-#define SHADOW_SHADER_DIR "C:/develop/cpp/RenderSys/example/3D/Advanced/4.ShadowMapping/"
-            RenderSys::Shader vertexShader(std::string(SHADOW_SHADER_DIR) + std::string("shadow-vert.glsl"));
-            vertexShader.type = RenderSys::ShaderType::SPIRV;
-            vertexShader.stage = RenderSys::ShaderStage::Vertex;
-            assert(vertexShader.Compile());
-            auto compiledShaderVert = vertexShader.GetCompiledShader();
-
-            VkShaderModuleCreateInfo shaderCreateInfo{};
-            shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            shaderCreateInfo.codeSize = sizeof(uint32_t) * compiledShaderVert.size();
-            shaderCreateInfo.pCode = compiledShaderVert.data();
-            auto shadowShaderStageInfo = CreateShaderModule(shaderCreateInfo, vertexShader.stage);
-            if (shadowShaderStageInfo)
-            {
-                shadowShaderStageInfos.push_back(*shadowShaderStageInfo);
-            }
-
-            RenderSys::Shader fragmentShader(std::string(SHADOW_SHADER_DIR) + std::string("shadow-frag.glsl"));
-            fragmentShader.type = RenderSys::ShaderType::SPIRV;
-            fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-            assert(fragmentShader.Compile());
-            auto compiledShaderFrag = fragmentShader.GetCompiledShader();
-
-            VkShaderModuleCreateInfo shaderCreateInfoFrag{};
-            shaderCreateInfoFrag.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            shaderCreateInfoFrag.codeSize = sizeof(uint32_t) * compiledShaderFrag.size();
-            shaderCreateInfoFrag.pCode = compiledShaderFrag.data();
-            auto shadowShaderStageInfoFrag = CreateShaderModule(shaderCreateInfoFrag, fragmentShader.stage);
-            if (shadowShaderStageInfoFrag)
-            {
-                shadowShaderStageInfos.push_back(*shadowShaderStageInfoFrag);
-            }
-        }
-
         m_shadowRenderPipeline = std::make_unique<Vulkan::ShadowRenderPipeline>(
-            m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, shadowShaderStageInfos);
+            m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, shaderStageInfos);
     }
+}
 
+void VulkanRenderer3D::BeginShadowMapPass()
+{
     if (!m_commandBuffer)
         return;
 
@@ -922,13 +938,14 @@ void VulkanRenderer3D::BeginShadowMapPass()
     viewport.height = static_cast<float>(m_shadowMap->GetShadowMapExtent().height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    VkRect2D scissor{{0, 0}, m_shadowMap->GetShadowMapExtent()};
     vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
+    VkRect2D scissor{{0, 0}, m_shadowMap->GetShadowMapExtent()};
     vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 }
 
 void VulkanRenderer3D::RenderShadowMap(entt::registry& entityRegistry)
 {
+    assert(m_shadowRenderPipeline);
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowRenderPipeline->GetPipeline());
 
     auto view = entityRegistry.view<RenderSys::MeshComponent,
@@ -1042,27 +1059,27 @@ VkImageView createImguiImageView(const std::shared_ptr<RenderSys::Vulkan::Shadow
     return m_imguiView;
 }
 
-VkDescriptorSet g_shadowDescSet = VK_NULL_HANDLE;
-void VulkanRenderer3D::OnImGuiRender()
+void VulkanRenderer3D::OnDebugView()
 {
-    // ImGui::Begin("Vulkan Renderer 3D");
+    ImGui::Begin("VulkanRenderer3D DebugView");
 
-    // if (m_shadowMap)
-    // {
-    //     if (!g_shadowDescSet)
-    //     {
-    //         auto imguiImageView = createImguiImageView(m_shadowMap);
-    //         g_shadowDescSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(
-    //                                                     m_defaultTextureSampler, 
-    //                                                     imguiImageView, 
-    //                                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-    //     }
-    //     const float imageWidth = m_width;
-    //     const float imageHeight = m_height;
-    //     ImGui::Image(g_shadowDescSet, {imageWidth, imageHeight});
-    // }
+    if (m_shadowMap)
+    {
+        if (m_debugViews.empty())
+        {
+            auto imguiImageView = createImguiImageView(m_shadowMap);
+            auto shadowDescSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(
+                                                        m_defaultTextureSampler, 
+                                                        imguiImageView, 
+                                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+            m_debugViews.push_back({imguiImageView, shadowDescSet});
+        }
+        const float imageWidth = m_width;
+        const float imageHeight = m_height;
+        ImGui::Image(m_debugViews.at(0).descriptorSet, {imageWidth, imageHeight});
+    }
 
-    // ImGui::End();
+    ImGui::End();
 }
 
 void VulkanRenderer3D::CreateImageCopyBuffers() 
@@ -1090,7 +1107,6 @@ void VulkanRenderer3D::CreateImageCopyBuffers()
         std::cout << "Failed to create staging buffer!" << std::endl;
         assert(false);
     }
-    std::cout << "Created staging buffer for cpu copy!" << std::endl;
 }
 
 std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
@@ -1156,6 +1172,7 @@ std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
 
 void VulkanRenderer3D::CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture)
 {
+    assert(texture);
     const auto& [textureIter, inserted] = m_textures.insert(
                                                     {
                                                         binding, 

@@ -9,6 +9,13 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     float time;
 } ubo;
 
+layout(std140, set = 0, binding = 1) uniform LightingUniforms {
+    vec4 directions[1];
+    vec4 colors[1];
+    mat4 padding[1];
+    mat4 viewProjection[1];
+} lightingUbo;
+
 struct InstanceData
 {
     mat4 m_ModelMatrix;
@@ -30,5 +37,5 @@ void main()
     mat4 modelMatrix = uboInstanced.m_InstanceData[gl_InstanceIndex].m_ModelMatrix;
 
     vec4 worldPosition = modelMatrix * vec4(aPos, 1.0);
-    gl_Position = ubo.projectionMatrix * ubo.viewMatrix * worldPosition;
+    gl_Position = lightingUbo.viewProjection[0] * worldPosition;
 }

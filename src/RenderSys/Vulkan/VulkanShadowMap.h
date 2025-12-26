@@ -1,9 +1,12 @@
 #pragma once
 #include <Walnut/GraphicsAPI/VulkanGraphics.h>
 #include <vk_mem_alloc.h>
+#include <memory>
 
 namespace RenderSys
 {
+
+class VulkanTexture;
 namespace Vulkan
 {
 
@@ -21,7 +24,7 @@ public:
         NUMBER_OF_ATTACHMENTS
     };
 
-    ShadowMap(int width);
+    ShadowMap(std::shared_ptr<RenderSys::VulkanTexture> shadowMapTexture);
     ~ShadowMap();
 
     ShadowMap(const ShadowMap&) = delete;
@@ -34,7 +37,7 @@ public:
     const VkImage GetShadowDepthImage() const { return m_ShadowDepthImage; }
 
 private:
-    void CreateShadowDepthResources();
+    void SetShadowDepthResources(std::shared_ptr<RenderSys::VulkanTexture> shadowMapTexture);
     void CreateShadowRenderPass();
     void CreateShadowFramebuffer();
 
@@ -46,8 +49,6 @@ private:
     VkImage m_ShadowDepthImage{nullptr};
     VkImageLayout m_ImageLayout{};
     VkImageView m_ShadowDepthImageView{nullptr};
-    VmaAllocation m_ShadowDepthImageMemory{nullptr};
-    VkSampler m_ShadowDepthSampler{nullptr};
 
     VkDescriptorImageInfo m_DescriptorImageInfo{};
 };

@@ -17,6 +17,8 @@
 #include <RenderSys/Scene/SceneHierarchyPanel.h>
 #include <imgui.h>
 
+#include "ShadowHelper.h"
+
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
@@ -25,9 +27,10 @@ struct alignas(16) MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-struct LightingUniforms {
+struct alignas(16) LightingUniforms {
     std::array<glm::vec4, 1> lightDirections;
     std::array<glm::vec4, 1> lightColors;
+	std::array<glm::mat4x4, 1> padding;
 	std::array<glm::mat4x4, 1> lightViewProjections;
 };
 static_assert(sizeof(LightingUniforms) % 16 == 0);
@@ -46,63 +49,7 @@ public:
 			return;
 		}
 
-		const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
-		assert(!shaderDir.empty());
-
-		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-		{
-			{
-				std::ifstream file(shaderDir + "/ShadowMain-vert.glsl", std::ios::binary);
-				std::vector<char> content((std::istreambuf_iterator<char>(file)),
-											std::istreambuf_iterator<char>());
-
-				if (!file.is_open()) {
-					std::cerr << "Unable to open file." << std::endl;
-					assert(false);
-				}
-				RenderSys::Shader vertexShader("Vertex", std::string(content.data(), content.size()));
-				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				vertexShader.SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
-				m_renderer->SetShader(vertexShader);
-			}
-
-			{
-				std::ifstream file(shaderDir + "/ShadowMain-frag.glsl", std::ios::binary);
-				std::vector<char> content((std::istreambuf_iterator<char>(file)),
-											std::istreambuf_iterator<char>());
-
-				if (!file.is_open()) {
-					std::cerr << "Unable to open file." << std::endl;
-					assert(false);
-				}
-
-				RenderSys::Shader fragmentShader("Fragment", std::string(content.data(), content.size()));
-				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				fragmentShader.SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
-				m_renderer->SetShader(fragmentShader);
-			}
-		}
-		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
-		{
-			std::ifstream file(shaderDir + "/combined.wgsl", std::ios::binary);
-			std::vector<char> content((std::istreambuf_iterator<char>(file)),
-										std::istreambuf_iterator<char>());
-
-			if (!file.is_open()) {
-				std::cerr << "Unable to open file." << std::endl;
-				assert(false);
-			}
-			RenderSys::Shader shader("Combined", std::string(content.data(), content.size()));
-			shader.type = RenderSys::ShaderType::WGSL;
-			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
-			m_renderer->SetShader(shader);
-		}
-		else
-		{
-			assert(false);
-		}
+		loadShaders();
 
 		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f);
 		auto cameraEntity = m_scene->AddCamera(m_cameraController->GetCamera());
@@ -156,9 +103,9 @@ public:
 		}
 		
 		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
-		createLights();
+		m_scene->AddDirectionalLight(glm::vec3(1.5708f, 0.0f, 0.0f), glm::vec3(0.0f, 75.0f, 0.0f), glm::vec3( 1.0f, 1.0f, 1.0f)); // 1.5708f radians = 90 degrees
 
-		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 		// The uniform buffer binding that we already had
 		RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
 		uniformBindingLayout.setDefault();
@@ -171,15 +118,26 @@ public:
 		RenderSys::BindGroupLayoutEntry& lightingUniformLayout = bindingLayoutEntries[1];
 		lightingUniformLayout.setDefault();
 		lightingUniformLayout.binding = 1;
-		lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
+		lightingUniformLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
 		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+		// ShadowMap binding
+		RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[2];
+		textureBindingLayout.setDefault();
+		textureBindingLayout.binding = 2;
+		textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+		textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
+		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
 		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
 
+		m_renderer->CreateShadowMap(2048, 2048);
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
 		m_renderer->CreatePipeline();
+
+
+		m_renderer->CreateShadowPipeline();
 	}
 
 	virtual void OnDetach() override
@@ -209,22 +167,9 @@ public:
 			m_cameraController->OnUpdate();
 			m_scene->Update();
 
-			auto camera = m_cameraController->GetCamera();
-			m_myUniformData.viewMatrix = camera->GetViewMatrix();
-			m_myUniformData.projectionMatrix = camera->GetProjectionMatrix();
-			m_myUniformData.cameraWorldPosition = camera->GetPosition();
-			m_myUniformData.time = 0.0f;
-			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
-
-			auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent, 
-												RenderSys::TransformComponent>();
-			for (auto entity : lightView)
-			{
-				auto& lightComponent = lightView.get<RenderSys::DirectionalLightComponent>(entity);
-				m_lightingUniformData.lightDirections[0] = { lightComponent.m_Direction, 0.0f };
-				m_lightingUniformData.lightColors[0] = { lightComponent.m_Color, 1.0f };
-			}
-			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
+			updateUniforms();
+			if (m_moveLightDirection)
+				moveLight();
 
 			m_renderer->BeginFrame();
 
@@ -243,8 +188,8 @@ public:
 				auto mesh = meshComponent.m_Mesh;
 				m_renderer->RenderMesh(*mesh);
 			}
+
 			m_renderer->EndRenderPass();
-			
 			m_renderer->EndFrame();
 		}
 
@@ -263,6 +208,9 @@ public:
 			m_clearColor = newClearColor;
 			m_renderer->SetClearColor(m_clearColor);
 		}
+		ImGui::Checkbox("Texel Snapping ", &m_texelSnapping);
+		ImGui::Checkbox("Move Light Direction ", &m_moveLightDirection);
+		ImGui::Checkbox("Debug View ", &m_debugView);
 		ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -274,16 +222,157 @@ public:
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
 
-		m_renderer->OnImGuiRender();
+		if (m_debugView)
+			m_renderer->OnDebugView();
         ImGui::PopStyleVar();
 
 		m_sceneHierarchyPanel->OnImGuiRender();
 	}
 
 private:
-	void createLights()
+	void updateUniforms()
 	{
-		m_scene->AddDirectionalLight(glm::vec3( 0.5f, 0.5f, 0.5f), glm::vec3( 1.0f, 1.0f, 1.0f));
+		auto camera = m_cameraController->GetCamera();
+		m_myUniformData.viewMatrix = camera->GetViewMatrix();
+		m_myUniformData.projectionMatrix = camera->GetProjectionMatrix();
+		m_myUniformData.cameraWorldPosition = camera->GetPosition();
+		m_myUniformData.time = 0.0f;
+		m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
+
+		// ========================================================================
+		// STEP 1: Get Camera Frustum Corners in World Space
+		// ========================================================================
+
+		// Get the inverse of the main camera's combined view-projection matrix
+		glm::mat4 invView = glm::inverse(camera->GetViewMatrix());
+
+		// Define the 8 corners of the NDC cube (Vulkan's depth is [0, 1])
+		Frustum frustum;
+    	frustum.CalcCorners(camera);
+		frustum.Transform(invView);
+		Frustum view_frustum_in_world_space = frustum;   // backup for later
+
+		// ========================================================================
+
+		auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent, 
+											RenderSys::TransformComponent>();
+		for (auto entity : lightView)
+		{
+			auto& lightComponent = lightView.get<RenderSys::DirectionalLightComponent>(entity);
+			m_lightingUniformData.lightColors[0] = { lightComponent.m_Color, 1.0f };
+			auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
+			m_lightingUniformData.lightDirections[0] = { transformComponent.GetRotation(), 0.0f };
+
+			auto lightModelMatrix = glm::translate(glm::mat4(1.0f), transformComponent.GetTranslation());
+			lightModelMatrix = lightModelMatrix * glm::toMat4(glm::quat(-transformComponent.GetRotation()));
+			glm::mat4 lightViewMatrix = glm::inverse(lightModelMatrix);
+
+			OrthoProjInfo ortho;
+
+			if (m_texelSnapping) {
+				frustum.Transform(lightModelMatrix);
+				AABB aabb;
+    			frustum.CalcAABB(aabb);
+
+				//
+				// Step #5: Calculate the position of the light
+				//
+				glm::vec3 BottomLeft(aabb.MinX, aabb.MinY, aabb.MinZ);
+				glm::vec3 TopRight(aabb.MaxX, aabb.MaxY, aabb.MinZ);
+				glm::vec4 LightPosWorld4d = glm::vec4((BottomLeft + TopRight) / 2.0f, 1.0f);
+
+				//
+				// Step #6: transform the position of the light back to world space
+				//
+				LightPosWorld4d = lightViewMatrix * LightPosWorld4d;
+				auto LightPosWorld = glm::vec3(LightPosWorld4d.x, LightPosWorld4d.y, LightPosWorld4d.z);
+
+				//
+				// Step #7: transform the view frustum to light space (2nd time)
+				//
+				//LightView.InitCameraTransform(LightPosWorld, transformComponent.GetRotation(), transformComponent.GetUpVector());
+				auto LightView = glm::lookAt(LightPosWorld, transformComponent.GetRotation(), transformComponent.GetUpVector());
+				view_frustum_in_world_space.Transform(LightView);
+
+				//
+				// Step #8: with the light in its final position recalculate the aabb
+				//
+				AABB final_aabb;
+				view_frustum_in_world_space.CalcAABB(final_aabb);
+				final_aabb.UpdateOrthoInfo(ortho);
+			}
+			else {
+				// Get frustum center
+				glm::vec3 frustumCent = frustum.FarBottomLeft + frustum.FarBottomRight + frustum.FarTopLeft + frustum.FarTopRight
+										+ frustum.NearBottomLeft + frustum.NearBottomRight + frustum.NearTopLeft + frustum.NearTopRight;
+				frustumCent /= 8.0f;
+				glm::vec4 frustumCenter = glm::vec4(frustumCent, 1.0f);
+
+				float radius = 0.0f;
+				float distance = glm::length(frustum.FarBottomLeft - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.FarBottomRight - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.FarTopLeft - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.FarTopRight - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.NearBottomLeft - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.NearBottomRight - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.NearTopLeft - frustumCenter);
+				radius = glm::max(radius, distance);
+				distance = glm::length(frustum.NearTopRight - frustumCenter);
+				radius = glm::max(radius, distance);
+
+				radius = std::ceil(radius * 16.0f) / 16.0f;
+
+				const auto temp = glm::vec3(radius);
+				ortho.r = temp.x;
+				ortho.l = -ortho.r;
+				ortho.t = temp.y;
+				ortho.b = -ortho.t;
+				ortho.f = temp.z;
+				ortho.n = -ortho.f;
+			}
+			
+			// Create the final, stable orthographic matrix
+			glm::mat4 lightOrthoMatrix = glm::orthoRH_ZO(ortho.l, ortho.r, ortho.b, ortho.t, ortho.n, ortho.f);
+
+			// The final matrix is stable and correctly positioned
+			m_lightingUniformData.lightViewProjections[0] = lightOrthoMatrix * lightViewMatrix;
+		}
+		m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
+	}
+
+	void moveLight()
+	{
+		constexpr float xMax = 0.2f;
+		constexpr float xMin = -0.2f;
+		constexpr float zMax = 0.1f;
+		constexpr float zMin = -0.1f;
+		auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent, 
+											RenderSys::TransformComponent>();
+		for (auto entity : lightView)
+		{
+			auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
+			glm::vec3 rotation = transformComponent.GetRotation();
+			static float xSpeed = 0.001f;
+			static float zSpeed = 0.001f;
+			if (rotation.x > xMax + 1.5708f) // 1.5708f radians = 90 degrees
+				xSpeed = -0.002f;
+			if (rotation.x < xMin + 1.5708f)
+				xSpeed = 0.001f;
+			if (rotation.z > zMax)
+				zSpeed = -0.001f;
+			if (rotation.z < zMin)
+				zSpeed = 0.002f;
+
+			rotation.x += xSpeed;
+			rotation.z += zSpeed;
+			transformComponent.SetRotation(rotation);
+		}
 	}
 
 	bool loadScene()
@@ -310,6 +399,85 @@ private:
 		return true;
 	}
 
+	void loadShaders()
+	{
+		const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
+		assert(!shaderDir.empty());
+
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			{
+				std::ifstream file(shaderDir + "/ShadowMain-vert.glsl", std::ios::binary);
+				std::vector<char> content((std::istreambuf_iterator<char>(file)),
+											std::istreambuf_iterator<char>());
+
+				if (!file.is_open()) {
+					std::cerr << "Unable to open file." << std::endl;
+					assert(false);
+				}
+				RenderSys::Shader vertexShader("Vertex", std::string(content.data(), content.size()));
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				vertexShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
+				m_renderer->SetShader(vertexShader);
+			}
+
+			{
+				std::ifstream file(shaderDir + "/ShadowMain-frag.glsl", std::ios::binary);
+				std::vector<char> content((std::istreambuf_iterator<char>(file)),
+											std::istreambuf_iterator<char>());
+
+				if (!file.is_open()) {
+					std::cerr << "Unable to open file." << std::endl;
+					assert(false);
+				}
+
+				RenderSys::Shader fragmentShader("Fragment", std::string(content.data(), content.size()));
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				fragmentShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
+				m_renderer->SetShader(fragmentShader);
+			}
+
+			{
+				std::ifstream file(shaderDir + "/shadow-vert.glsl", std::ios::binary);
+				std::vector<char> content((std::istreambuf_iterator<char>(file)),
+											std::istreambuf_iterator<char>());
+
+				if (!file.is_open()) {
+					std::cerr << "Unable to open file." << std::endl;
+					assert(false);
+				}
+				RenderSys::Shader vertexShader("Shadow-Vertex", std::string(content.data(), content.size()));
+				vertexShader.type = RenderSys::ShaderType::SPIRV;
+				vertexShader.stage = RenderSys::ShaderStage::Vertex;
+				vertexShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
+				m_renderer->SetShader(vertexShader);
+			}
+
+			{
+				std::ifstream file(shaderDir + "/shadow-frag.glsl", std::ios::binary);
+				std::vector<char> content((std::istreambuf_iterator<char>(file)),
+											std::istreambuf_iterator<char>());
+
+				if (!file.is_open()) {
+					std::cerr << "Unable to open file." << std::endl;
+					assert(false);
+				}
+
+				RenderSys::Shader fragmentShader("Shadow-Fragment", std::string(content.data(), content.size()));
+				fragmentShader.type = RenderSys::ShaderType::SPIRV;
+				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+				fragmentShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
+				m_renderer->SetShader(fragmentShader);
+			}
+		}
+		else
+		{
+			assert(false);
+		}
+	}
+
     std::unique_ptr<RenderSys::Renderer3D> m_renderer;
     uint32_t m_viewportWidth = 0;
     uint32_t m_viewportHeight = 0;
@@ -322,6 +490,9 @@ private:
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;
 	std::unique_ptr<RenderSys::SceneHierarchyPanel> m_sceneHierarchyPanel;
+	bool m_texelSnapping = false;
+	bool m_moveLightDirection = false;
+	bool m_debugView = false;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)

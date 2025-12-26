@@ -143,7 +143,7 @@ Shader::Shader(const std::string &name, const std::string &shaderSrc)
 
 Shader::Shader(const std::filesystem::path &filePath)
 {
-    assert(!std::filesystem::exists(filePath));
+    assert(std::filesystem::exists(filePath));
     std::ifstream file(filePath, std::ios::binary);
     std::vector<char> content((std::istreambuf_iterator<char>(file)),
                                 std::istreambuf_iterator<char>());

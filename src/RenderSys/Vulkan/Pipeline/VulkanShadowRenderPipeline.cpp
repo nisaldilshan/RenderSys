@@ -11,12 +11,11 @@ ShadowRenderPipeline::ShadowRenderPipeline(VkRenderPass renderPass,
                                         std::vector<VkDescriptorSetLayout> &descriptorSetLayouts,
                                         const Vulkan::VertexInputLayout& vertexInputLayout, 
                                         const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos) 
-    : m_shaderStageInfos(shaderStageInfos), 
-      m_PipelineLayout(VK_NULL_HANDLE), 
+    : m_PipelineLayout(VK_NULL_HANDLE), 
       m_Pipeline(VK_NULL_HANDLE)
 {
     CreatePipelineLayout(descriptorSetLayouts);
-    CreatePipeline(renderPass, vertexInputLayout);
+    CreatePipeline(renderPass, vertexInputLayout, shaderStageInfos);
 }
 
 ShadowRenderPipeline::~ShadowRenderPipeline()
@@ -31,15 +30,6 @@ ShadowRenderPipeline::~ShadowRenderPipeline()
     {
         vkDestroyPipelineLayout(GraphicsAPI::Vulkan::GetDevice(), m_PipelineLayout, nullptr);
         m_PipelineLayout = VK_NULL_HANDLE;
-    }
-
-    for (auto &shaderStageInfo : m_shaderStageInfos)
-    {
-        if (shaderStageInfo.module != VK_NULL_HANDLE)
-        {
-            vkDestroyShaderModule(GraphicsAPI::Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
-            shaderStageInfo.module = VK_NULL_HANDLE;
-        }
     }
 }
 
@@ -56,7 +46,8 @@ void ShadowRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSe
     }
 }
 
-void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout)
+void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout, 
+                                            const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos)
 {
     assert(m_PipelineLayout != VK_NULL_HANDLE);
 
@@ -126,16 +117,18 @@ void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan:
     dynStatesInfo.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
     dynStatesInfo.pDynamicStates = dynStates.data();
 
-    assert(m_shaderStageInfos.size() > 0);
+    assert(shaderStageInfos.size() > 0);
     VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stageCount = m_shaderStageInfos.size();
-    pipelineCreateInfo.pStages = m_shaderStageInfos.data();
+    pipelineCreateInfo.stageCount = shaderStageInfos.size();
+    pipelineCreateInfo.pStages = shaderStageInfos.data();
     pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
     pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
     pipelineCreateInfo.pViewportState = &viewportStateInfo;
     VkPipelineRasterizationStateCreateInfo rasterizerInfo = Vulkan::Pipeline::getRasterizerInfo();
     rasterizerInfo.depthBiasEnable = VK_TRUE;
+    rasterizerInfo.cullMode = VK_CULL_MODE_FRONT_BIT;
+    rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
     // rasterizerInfo.depthBiasConstantFactor = 8.0f; // Optional
     // rasterizerInfo.depthBiasClamp = 0.0f;          // Optional
     // rasterizerInfo.depthBiasSlopeFactor = 3.0f;    // Optional
