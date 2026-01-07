@@ -287,19 +287,60 @@ private:
 				LightPosWorld4d = lightViewMatrix * LightPosWorld4d;
 				auto LightPosWorld = glm::vec3(LightPosWorld4d.x, LightPosWorld4d.y, LightPosWorld4d.z);
 
-				//
-				// Step #7: transform the view frustum to light space (2nd time)
-				//
-				//LightView.InitCameraTransform(LightPosWorld, transformComponent.GetRotation(), transformComponent.GetUpVector());
-				auto LightView = glm::lookAt(LightPosWorld, transformComponent.GetRotation(), transformComponent.GetUpVector());
+				// 3. Create Final Stable Light View Matrix
+				auto LightView = glm::lookAt(LightPosWorld, 
+												LightPosWorld + transformComponent.GetForwardVector(), 
+												transformComponent.GetUpVector());
+				
+				// Update the variable we use later for matrix multiplication
+				//lightViewMatrix = LightView; 
+
+				// 4. Move Frustum to this FINAL Light Space
+				// Note: Reset frustum to world space first if it was modified, or use a backup
 				view_frustum_in_world_space.Transform(LightView);
 
-				//
-				// Step #8: with the light in its final position recalculate the aabb
-				//
+				// 5. Calculate final Ortho X/Y bounds from this new frustum position
 				AABB final_aabb;
 				view_frustum_in_world_space.CalcAABB(final_aabb);
 				final_aabb.UpdateOrthoInfo(ortho);
+
+				// =================================================================
+				// NEW ALGORITHM INTEGRATION
+				// =================================================================
+				
+				// Extract the 8 corners of the view frustum which are now in Light Space
+				// (Assuming your Frustum class has a way to access the transformed points)
+				// If 'view_frustum_in_world_space' stores points internally:
+				std::vector<glm::vec3> lightSpaceFrustumCorners;
+				for(int i=0; i<1; i++) {
+					// REPLACE with your actual accessor, e.g. .Points[i] or .GetCorner(i)
+					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearTopLeft); 
+					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearBottomLeft); 
+					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearTopRight); 
+					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearBottomRight); 
+					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarTopLeft); 
+					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarBottomLeft); 
+					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarTopRight); 
+					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarBottomRight); 
+				}
+
+				// Define the bounds we want to clip against (The Ortho X/Y we just calculated)
+				glm::vec3 lightCameraOrthographicMin(ortho.l, ortho.b, 0.0f);
+				glm::vec3 lightCameraOrthographicMax(ortho.r, ortho.t, 0.0f);
+
+				float fNearPlane = FLT_MAX;
+				float fFarPlane = -FLT_MAX;
+
+				// Run the clipping algorithm
+				ComputeNearAndFar(fNearPlane, fFarPlane, 
+								lightCameraOrthographicMin, 
+								lightCameraOrthographicMax, 
+								lightSpaceFrustumCorners);
+
+				// Override the naive AABB Z-bounds with the tighter clipped bounds
+				ortho.n = fNearPlane;
+				ortho.f = fFarPlane;
+				// =================================================================
 			}
 			else {
 				// Get frustum center
