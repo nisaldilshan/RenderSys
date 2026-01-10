@@ -314,13 +314,14 @@ private:
 				std::vector<glm::vec3> lightSpaceFrustumCorners;
 				for(int i=0; i<1; i++) {
 					// REPLACE with your actual accessor, e.g. .Points[i] or .GetCorner(i)
+					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearTopRight); 
 					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearTopLeft); 
 					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearBottomLeft); 
-					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearTopRight); 
 					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearBottomRight); 
+
+					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarTopRight); 
 					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarTopLeft); 
 					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarBottomLeft); 
-					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarTopRight); 
 					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarBottomRight); 
 				}
 
