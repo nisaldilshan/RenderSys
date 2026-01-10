@@ -103,7 +103,7 @@ public:
 		}
 		
 		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
-		m_scene->AddDirectionalLight(glm::vec3(1.5708f, 0.0f, 0.0f), glm::vec3(0.0f, 75.0f, 0.0f), glm::vec3( 1.0f, 1.0f, 1.0f)); // 1.5708f radians = 90 degrees
+		m_scene->AddDirectionalLight(glm::vec3(1.5708f, 0.0f, 0.0f), glm::vec3(0.0f, 200.0f, 0.0f), glm::vec3( 1.0f, 1.0f, 1.0f)); // 1.5708f radians = 90 degrees
 
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 		// The uniform buffer binding that we already had

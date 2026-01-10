@@ -54,27 +54,51 @@ float textureProj(vec4 shadowCoord, vec2 off)
 	return shadow;
 }
 
+// 1. Poisson Disk Constants (4 samples for efficiency, random rotation hides the low count)
+const vec2 poissonDisk[4] = vec2[](
+    vec2( -0.94201624, -0.39906216 ),
+    vec2( 0.94558609, -0.76890725 ),
+    vec2( -0.094184101, -0.92938870 ),
+    vec2( 0.34495938, 0.29387760 )
+);
+
+// 2. Random Number Generator
+float random(vec3 seed, int i){
+    vec4 seed4 = vec4(seed, i);
+    float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
+    return fract(sin(dot_product) * 43758.5453);
+}
+
+// 3. The Main Filter Function
 float filterPCF(vec4 sc)
 {
-	ivec2 texDim = textureSize(shadowMap, 0);
-	float scale = 1.5;
-	float dx = scale * 1.0 / float(texDim.x);
-	float dy = scale * 1.0 / float(texDim.y);
+    // Calculate texel size based on your scale factor
+    ivec2 texDim = textureSize(shadowMap, 0);
+    float scale = 1.5;
+    vec2 texelSize = vec2(scale) / vec2(texDim);
 
-	float shadowFactor = 0.0;
-	int count = 0;
-	int range = 1;
-	
-	for (int x = -range; x <= range; x++)
-	{
-		for (int y = -range; y <= range; y++)
-		{
-			shadowFactor += textureProj(sc, vec2(dx*x, dy*y));
-			count++;
-		}
-	
-	}
-	return shadowFactor / count;
+    float shadowFactor = 0.0;
+    
+    // Create random rotation based on pixel coordinates to remove banding
+    float noise = random(sc.xyz, 0); 
+    float s = sin(noise * 6.28318530718);
+    float c = cos(noise * 6.28318530718);
+    mat2 rot = mat2(c, -s, s, c);
+
+    // Loop through Poisson samples
+    for (int i = 0; i < 4; i++)
+    {
+        // 1. Rotate the sample point
+        vec2 offset = rot * poissonDisk[i];
+        
+        // 2. Scale it to texture coordinates (this matches your 'dx/dy' logic)
+        offset *= texelSize;
+
+        // 3. Call YOUR custom function with the calculated offset
+        shadowFactor += textureProj(sc, offset);
+    }
+    
+    return shadowFactor / 4.0;
 }
 
 void main()
