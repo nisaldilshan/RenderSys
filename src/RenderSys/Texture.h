@@ -1,6 +1,5 @@
 #pragma once
 #include <filesystem>
-#include <stb_image.h>
 #include "TextureSampler.h"
 
 namespace RenderSys
