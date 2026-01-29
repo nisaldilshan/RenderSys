@@ -527,7 +527,10 @@ void GLTFModel::loadTextures()
         //             << ", pixel_type=" << image.pixel_type 
         //             << ", component=" << image.component 
         //             << ", sampler=" << gltfTexture.sampler << std::endl;
-        m_textures.emplace_back(std::make_shared<Texture>((unsigned char*)image.image.data(), image.width, image.height, 1));
+
+        m_textures.emplace_back(
+            std::make_shared<Texture>(image.width, image.height, 1, TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED));
+        m_textures.back()->SetData((unsigned char*)image.image.data());
         m_textures.back()->SetSampler(samplers[gltfTexture.sampler]);
     }
 

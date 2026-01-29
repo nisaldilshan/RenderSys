@@ -8,21 +8,26 @@
 namespace RenderSys
 {
 
-VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount)
-    : m_image(VK_NULL_HANDLE)
+VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage)
+    : m_width(width)
+    , m_height(height)
+    , m_image(VK_NULL_HANDLE)
     , m_imageMemory(VK_NULL_HANDLE)
     , m_descriptorImageInfo(VkDescriptorImageInfo{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED})
     , m_imageCreateInfo(VkImageCreateInfo{})
 {
+    const bool isDepthTexture = (usage == TextureUsage::SAMPLED_UNDEFINED_DEPTHSTENCIL);
     m_imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     m_imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-    m_imageCreateInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    m_imageCreateInfo.extent = {width, height, 1};
+    m_imageCreateInfo.format = isDepthTexture ? Vulkan::GetDepthFormat() : VK_FORMAT_R8G8B8A8_SRGB;
+    m_imageCreateInfo.extent = {m_width, m_height, 1};
     m_imageCreateInfo.mipLevels = mipMapLevelCount;
     m_imageCreateInfo.arrayLayers = 1;
     m_imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     m_imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    m_imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    auto usageFlags = (isDepthTexture ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_TRANSFER_DST_BIT) |
+                      VK_IMAGE_USAGE_SAMPLED_BIT;
+    m_imageCreateInfo.usage = usageFlags;
     m_imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     m_imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -37,8 +42,9 @@ VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLev
     }
 
     m_descriptorImageInfo.sampler = VK_NULL_HANDLE;
-    m_descriptorImageInfo.imageView = RenderSys::Vulkan::CreateImageView(m_image, m_imageCreateInfo.format, VK_IMAGE_ASPECT_COLOR_BIT);
-    m_descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    m_descriptorImageInfo.imageView = RenderSys::Vulkan::CreateImageView(
+        m_image, m_imageCreateInfo.format, isDepthTexture ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT);
+    m_descriptorImageInfo.imageLayout = isDepthTexture ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
 
 VulkanTexture::~VulkanTexture()

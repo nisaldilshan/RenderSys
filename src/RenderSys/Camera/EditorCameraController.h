@@ -16,7 +16,7 @@ public:
 
     void OnUpdate();
     std::shared_ptr<RenderSys::PerspectiveCamera> GetCamera() { return m_Camera; }
-    void SetCameraEntity(entt::entity cameraEntity, entt::registry& reg) { m_CameraEntity = cameraEntity; m_Registry = &reg; }
+    void SetCameraEntity(entt::entity cameraEntity, entt::registry& reg);
 private:
     void MousePan(const glm::vec2 &delta, glm::vec3 &position);
     void MouseRotate(const glm::vec2 &delta, float& yaw, float& pitch);

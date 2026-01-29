@@ -66,6 +66,12 @@ void EditorCameraController::OnUpdate()
     }
 }
 
+void EditorCameraController::SetCameraEntity(entt::entity cameraEntity, entt::registry &reg)
+{ 
+    m_CameraEntity = cameraEntity; 
+    m_Registry = &reg; 
+}
+
 void EditorCameraController::MousePan(const glm::vec2 &delta, glm::vec3 &position)
 {
     position += -m_Camera->GetRightDirection() * delta.x * PanSpeed();

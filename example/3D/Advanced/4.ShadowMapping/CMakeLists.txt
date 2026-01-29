@@ -9,5 +9,5 @@ target_compile_definitions(ShadowMapping PRIVATE
 )
 
 target_compile_definitions(ShadowMapping PRIVATE
-    RESOURCE_DIR="${CMAKE_SOURCE_DIR}/example/Resources"
+    RESOURCE_DIR="${CMAKE_SOURCE_DIR}/src/resources"
 )

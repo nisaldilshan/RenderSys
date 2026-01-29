@@ -61,7 +61,7 @@ public:
 				RenderSys::Shader vertexShader("Vertex", std::string(content.data(), content.size()));
 				vertexShader.type = RenderSys::ShaderType::SPIRV;
 				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				vertexShader.SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
+				vertexShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
 				m_renderer->SetShader(vertexShader);
 			}
 
@@ -78,7 +78,7 @@ public:
 				RenderSys::Shader fragmentShader("Fragment", std::string(content.data(), content.size()));
 				fragmentShader.type = RenderSys::ShaderType::SPIRV;
 				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				fragmentShader.SetIncludeDirectory(shaderDir + "/../../../Resources/Shaders");
+				fragmentShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
 				m_renderer->SetShader(fragmentShader);
 			}
 		}

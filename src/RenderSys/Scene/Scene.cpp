@@ -157,7 +157,7 @@ void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& 
 	instanceTagComp.GetInstanceBuffer()->Update();
 }
 
-void Scene::AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &color)
+void Scene::AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &position, const glm::vec3 &color)
 {
 	static uint32_t lightIndex = 0;
 	const auto name = "DirectionalLight" + std::to_string(lightIndex++);
@@ -165,9 +165,12 @@ void Scene::AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &col
 	m_Registry.emplace<DirectionalLightComponent>(lightEntity);
 	m_sceneGraph.CreateNode(m_instancedRootNodeIndex, lightEntity, name);
 
-	auto& dirLight = m_Registry.get<DirectionalLightComponent>(lightEntity);
-	dirLight.m_Direction = direction;
-	dirLight.m_Color = color;
+	auto& dirLightComp = m_Registry.get<DirectionalLightComponent>(lightEntity);
+	dirLightComp.m_Color = color;
+
+	auto& transformComp = m_Registry.get<TransformComponent>(lightEntity);
+	transformComp.SetRotation(direction);
+	transformComp.SetTranslation(position);
 }
 
 entt::entity Scene::AddCamera(std::shared_ptr<RenderSys::ICamera> camera)

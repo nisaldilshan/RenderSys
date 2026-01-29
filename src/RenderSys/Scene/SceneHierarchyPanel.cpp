@@ -347,7 +347,7 @@ namespace RenderSys
 		    [](auto& component)
 		    {
 		        ImGui::ColorEdit3("Color", (float*)&component.m_Color);
-		    	DrawVec3Control("Direction", component.m_Direction, 1.0f, 100.0f);
+		    	//DrawVec3Control("Direction", component.m_Direction, 1.0f, 100.0f);
 		    });
 
 		DrawComponent<PerspectiveCameraComponent>(m_Context->m_Registry, "Perspective Camera", entity,
