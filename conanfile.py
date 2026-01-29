@@ -1,7 +1,7 @@
 from conans import ConanFile
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from conan.tools.scm import Git
-from conan.errors import ConanInvalidConfiguration
+from conan.errors import ConanInvalidConfiguration, ConanException
 
 class RenderSysConan(ConanFile):
     name = "RenderSys"
@@ -26,7 +26,7 @@ class RenderSysConan(ConanFile):
     }
     
     def requirements(self):
-        self.requires('walnut/latest')
+        self.requires('walnut/1.0.0')
         self.requires('tinyobjloader/2.0.0-rc10')
         self.requires('tinygltf/2.9.0')
         self.requires('shaderc/2023.6')
@@ -49,8 +49,28 @@ class RenderSysConan(ConanFile):
 
     def source(self):
         git = Git(self)
-        clone_args = ['--depth', '1', '--branch', str(self.options.branch)]
-        git.clone(url=self.url + ".git", target = ".", args=clone_args)
+        
+        # Determine the target reference (branch or tag) based on version
+        if self.version == "latest":
+            target_ref = "main"
+        else:
+            # Assuming tags are named like "v0.0.1"
+            target_ref = f"v{self.version}"
+
+        print(f"Attempting to checkout git ref: {target_ref}")
+
+        try:
+            # We use --depth 1 for speed, and --branch to specify tag/branch
+            clone_args = ['--depth', '1', '--branch', target_ref]
+            git.clone(url=self.url + ".git", target=".", args=clone_args)
+            
+        except Exception as e:
+            raise ConanException(
+                f"\n\nERROR: Could not checkout version '{self.version}'.\n"
+                f"Attempted to fetch git ref '{target_ref}' from {self.url}\n"
+                f"Please verify that the tag 'v{self.version}' exists in the remote repository.\n"
+                f"Original Git Error: {str(e)}\n"
+            )
 
     def generate(self):
         tc = CMakeToolchain(self)
