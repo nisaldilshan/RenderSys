@@ -56,6 +56,7 @@ void EditorCameraController::OnUpdate()
         }
         else
         {
+            assert(false);
             m_Camera->SetOrientation(glm::vec3(pitch, yaw, 0.0f));
             m_Camera->SetPosition(pos);
         }

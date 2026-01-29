@@ -25,10 +25,10 @@ void PerspectiveCamera::UpdateProjection()
 void PerspectiveCamera::SetOrientation(const glm::vec3& orientation)
 {
     m_Rotation = orientation;
-    if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-    {
-        m_Rotation.z += 1.5708f * 2;  // rotate 180 degrees
-    }
+    // if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+    // {
+    //     m_Rotation.z += 1.5708f * 2;  // rotate 180 degrees
+    // }
     UpdateView();
 }
 
@@ -48,14 +48,15 @@ void PerspectiveCamera::UpdateView()
 
 glm::vec3 PerspectiveCamera::GetUpDirection() const
 {
-    if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-    {
-        return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, -1.0f, 0.0f));
-    }
-    else 
-    {
-        return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-    }
+    return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+    // if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+    // {
+    //     return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, -1.0f, 0.0f));
+    // }
+    // else 
+    // {
+    //     return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+    // }
 }
 
 glm::vec3 PerspectiveCamera::GetRightDirection() const

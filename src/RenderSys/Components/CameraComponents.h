@@ -43,7 +43,9 @@ private:
         if (m_Camera)
         {
             m_Camera->SetPosition(translation);
-            m_Camera->SetOrientation(rotation);
+            auto temp = rotation;
+            temp.z += 1.5708f * 2;
+            m_Camera->SetOrientation(temp);
         }
     }
 };
