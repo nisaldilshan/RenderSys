@@ -730,7 +730,7 @@ void VulkanRenderer2D::CreateTextureSampler()
 
 ImTextureID VulkanRenderer2D::GetDescriptorSet()
 {
-    return m_descriptorSet;
+    return (ImTextureID)m_descriptorSet;
 }
 
 void VulkanRenderer2D::BeginRenderPass()

@@ -217,7 +217,8 @@ public:
 			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
-			float time = static_cast<float>(glfwGetTime());
+			static auto startTime = std::chrono::steady_clock::now();
+			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
 
 			// Upload first value
 			constexpr float PI = 3.14159265358979323846f;

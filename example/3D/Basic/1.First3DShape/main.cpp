@@ -236,7 +236,9 @@ public:
 			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
-			m_uniformData.time = static_cast<float>(glfwGetTime()) * 0.95f; // glfwGetTime returns a double
+			static auto startTime = std::chrono::steady_clock::now();
+			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
+			m_uniformData.time = static_cast<float>(time) * 0.95f; // glfwGetTime returns a double
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
 

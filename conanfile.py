@@ -19,14 +19,14 @@ class RenderSysConan(ConanFile):
         'branch': 'ANY',
     }
     default_options = {
-        'rendering_backend': "WebGPU",
+        'rendering_backend': "Vulkan",
         'build_examples': True,
         'fPIC': True,
         'branch': 'main',
     }
     
     def requirements(self):
-        self.requires('walnut/1.0.0')
+        self.requires('walnut/1.1.0')
         self.requires('tinyobjloader/2.0.0-rc10')
         self.requires('tinygltf/2.9.0')
         self.requires('shaderc/2023.6')

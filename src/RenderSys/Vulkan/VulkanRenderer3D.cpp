@@ -830,7 +830,7 @@ void VulkanRenderer3D::DrawCube()
 
 ImTextureID VulkanRenderer3D::GetDescriptorSet()
 {
-    return m_finalImageDescriptorSet;
+    return (ImTextureID)m_finalImageDescriptorSet;
 }
 
 void VulkanRenderer3D::BeginRenderPass()
@@ -933,9 +933,9 @@ void VulkanRenderer3D::BeginShadowMapPass()
 
     VkViewport viewport{};
     viewport.x = 0.0f;
-    viewport.y = static_cast<float>(m_shadowMap->GetShadowMapExtent().height);
+    viewport.y = 0.0f;
     viewport.width = static_cast<float>(m_shadowMap->GetShadowMapExtent().width);
-    viewport.height = -1.0f * viewport.y;
+    viewport.height = static_cast<float>(m_shadowMap->GetShadowMapExtent().height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);

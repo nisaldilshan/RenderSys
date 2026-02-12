@@ -90,7 +90,7 @@ void Renderer3D::BindResources()
 
 void* Renderer3D::GetDescriptorSet() const
 {
-    return m_rendererBackend->GetDescriptorSet();
+    return (void*)m_rendererBackend->GetDescriptorSet();
 }
 
 void Renderer3D::Destroy()
