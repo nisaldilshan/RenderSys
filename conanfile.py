@@ -33,7 +33,8 @@ class RenderSysConan(ConanFile):
         if self.options.rendering_backend == "Vulkan":
             self.requires('vulkan-memory-allocator/3.1.0')
         elif self.options.rendering_backend == "WebGPU":
-            self.requires("WebGPU/latest")
+            pass
+            #self.requires("WebGPU/latest")
         else:
             raise ConanInvalidConfiguration("Unsupported Renderer Type")
         self.requires('entt/3.14.0')

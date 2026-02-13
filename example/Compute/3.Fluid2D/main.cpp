@@ -184,8 +184,8 @@ public:
 		if (m_renderer)
 		{
 			m_renderer->BeginRenderPass();
-
-			const float time = static_cast<float>(glfwGetTime());
+			static auto startTime = std::chrono::steady_clock::now();
+			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
 			m_myUniformData.time = time;
 			m_renderer->SetUniformBufferData(&m_myUniformData, 0);
        		m_renderer->Render();

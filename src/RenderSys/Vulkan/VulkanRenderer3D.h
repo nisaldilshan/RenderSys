@@ -73,7 +73,7 @@ public:
     void RenderMesh(const RenderSys::Mesh& mesh, const bool shadowPass = false);
     void DrawPlane();
     void DrawCube();
-    ImTextureID GetDescriptorSet();
+    uint64_t GetDescriptorSet();
     void BeginRenderPass();
     void EndRenderPass();
 

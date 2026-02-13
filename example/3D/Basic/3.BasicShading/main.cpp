@@ -255,7 +255,6 @@ public:
 			static auto startTime = std::chrono::steady_clock::now();
 			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
 
-
 			constexpr float PI = 3.14159265358979323846f;
 			float angle2 = 3.0f * PI / 4.0f;
 			glm::vec3 focalPoint(0.0, 0.0, -2.0);			

@@ -828,9 +828,9 @@ void VulkanRenderer3D::DrawCube()
 {
 }
 
-ImTextureID VulkanRenderer3D::GetDescriptorSet()
+uint64_t VulkanRenderer3D::GetDescriptorSet()
 {
-    return (ImTextureID)m_finalImageDescriptorSet;
+    return (uint64_t)m_finalImageDescriptorSet;
 }
 
 void VulkanRenderer3D::BeginRenderPass()

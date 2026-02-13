@@ -32,11 +32,12 @@ namespace GraphicsAPI
         void SetBufferData(uint32_t binding, const void *bufferData, uint32_t bufferLength);
         void BeginComputePass();
         void Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY);
-        void BufferMapCallback(WGPUMapAsyncStatus status, char const * message, uint32_t binding);
         void EndComputePass();
         std::vector<uint8_t>& GetMappedResult(uint32_t binding);
         void Destroy();
     private:
+        void BufferMapCallback(WGPUMapAsyncStatus status, WGPUStringView message, uint32_t binding);
+
         wgpu::BindGroupLayout m_bindGroupLayout = nullptr;
         wgpu::BindGroup m_bindGroup = nullptr;
         wgpu::ShaderModule m_shaderModule = nullptr;
