@@ -328,9 +328,9 @@ void WebGPURenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
 }
 
-ImTextureID WebGPURenderer2D::GetDescriptorSet()
+uint64_t WebGPURenderer2D::GetDescriptorSet()
 {
-    return m_textureToRenderInto;
+    return (uint64_t)(void*)m_textureToRenderInto;
 }
 
 void WebGPURenderer2D::BeginRenderPass()

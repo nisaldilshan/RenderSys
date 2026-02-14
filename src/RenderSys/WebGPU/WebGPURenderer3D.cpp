@@ -454,9 +454,9 @@ void WebGPURenderer3D::RenderMesh(const RenderSys::Mesh &mesh)
 {
 }
 
-ImTextureID WebGPURenderer3D::GetDescriptorSet()
+uint64_t WebGPURenderer3D::GetDescriptorSet()
 {
-    return m_textureToRenderInto;
+    return (uint64_t)(void*)m_textureToRenderInto;
 }
 
 void WebGPURenderer3D::BeginRenderPass()
@@ -520,9 +520,17 @@ void WebGPURenderer3D::BeginShadowMapPass()
 
 }
 
+void WebGPURenderer3D::RenderShadowMap(entt::registry &entityRegistry)
+{
+}
+
 void WebGPURenderer3D::EndShadowMapPass()
 {
 
+}
+
+void WebGPURenderer3D::OnDebugView()
+{
 }
 
 void WebGPURenderer3D::Destroy()
@@ -546,6 +554,14 @@ void WebGPURenderer3D::Destroy()
 	m_depthTexture.destroy();
     m_depthTexture = nullptr;
     m_depthTextureView = nullptr;
+}
+
+void WebGPURenderer3D::CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight)
+{
+}
+
+void WebGPURenderer3D::CreateShadowPipeline()
+{
 }
 
 void WebGPURenderer3D::DestroyImages()
@@ -613,11 +629,6 @@ void WebGPURenderer3D::CreateDefaultTextureSampler()
     samplerDesc.compare = wgpu::CompareFunction::Undefined;
     samplerDesc.maxAnisotropy = 1;
     m_defaultTextureSampler = GraphicsAPI::WebGPU::GetDevice().createSampler(samplerDesc);
-}
-
-void WebGPURenderer3D::OnImGuiRender()
-{
-
 }
 
 std::vector<uint8_t>& WebGPURenderer3D::GetRenderedImageDataToCPUSide()

@@ -56,21 +56,24 @@ public:
     void Render();
     void RenderIndexed();
     void RenderMesh(const RenderSys::Mesh& mesh);
-    ImTextureID GetDescriptorSet();
+    uint64_t GetDescriptorSet();
     void BeginRenderPass();
     void EndRenderPass();
-    void BeginShadowMapPass();
-    void RenderShadowMap(entt::registry& entityRegistry) {}
-    void EndShadowMapPass();
     void DestroyImages();
     void DestroyPipeline();
     void DestroyBindGroup();
     void Destroy();
 
+    void CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight);
+    void CreateShadowPipeline();
+    void BeginShadowMapPass();
+    void RenderShadowMap(entt::registry& entityRegistry);
+    void EndShadowMapPass();
+    void OnDebugView();
+
     void ResetCommandBuffer();
     void SubmitCommandBuffer();
 
-    void OnImGuiRender();
     std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 private:
     void CreateDefaultTextureSampler();
