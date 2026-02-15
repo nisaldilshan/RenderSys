@@ -3,7 +3,7 @@
 namespace RenderSys
 {
 
-WebGPUTexture::WebGPUTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount)
+WebGPUTexture::WebGPUTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage)
 {
 	m_textureDesc.dimension = wgpu::TextureDimension::_2D;
 	m_textureDesc.size = {width, height, 1};
@@ -41,13 +41,13 @@ WebGPUTexture::~WebGPUTexture()
 
 void WebGPUTexture::SetData(unsigned char *textureData)
 {
-    wgpu::ImageCopyTexture destination;
+    wgpu::TexelCopyTextureInfo destination;
     destination.texture = m_image;
     destination.origin = { 0, 0, 0 }; // equivalent of the offset argument of Queue::writeBuffer
     destination.aspect = wgpu::TextureAspect::All; // only relevant for depth/Stencil textures
 
     // Arguments telling how the C++ side pixel memory is laid out
-    wgpu::TextureDataLayout source;
+    wgpu::TexelCopyBufferLayout source;
     source.offset = 0;
 
     wgpu::Extent3D mipLevelSize = m_textureDesc.size;

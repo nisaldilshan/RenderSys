@@ -123,7 +123,6 @@ public:
 					float normalMapStrength = 1.0; // could be a uniform
 					vec3 encodedN = texture(normal, in_uv).rgb;
 					vec3 localN = encodedN * 2.0 - 1.0;
-					// The TBN matrix converts directions from the local space to the world space
 					mat3 localToWorld = mat3(
 						normalize(in_tangent),
 						-normalize(cross(in_normal, in_tangent)),
@@ -228,7 +227,6 @@ public:
 				let normalMapStrength = 1.0; // could be a uniform
 				let encodedN = textureSample(normalTexture, textureSampler, in.uv).rgb;
 				let localN = encodedN * 2.0 - 1.0;
-				// The TBN matrix converts directions from the local space to the world space
 				let localToWorld = mat3x3f(
 					normalize(in.tangent),
 					-normalize(cross(in.normal, in.tangent)),

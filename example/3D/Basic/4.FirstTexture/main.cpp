@@ -263,7 +263,7 @@ public:
 			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
 			constexpr float PI = 3.14159265358979323846f;		
 			m_uniformData.viewMatrix = glm::lookAt(glm::vec3(-2.0f, -3.0f, 2.0f), glm::vec3(0.0f), glm::vec3(0, 0, 1));
-			m_uniformData.projectionMatrix = glm::perspective(30 * (PI / 180), (float)(m_viewportWidth / m_viewportHeight), 0.01f, 100.0f);
+			m_uniformData.projectionMatrix = glm::perspectiveZO(30 * (PI / 180), (float)(m_viewportWidth / m_viewportHeight), 0.01f, 100.0f);
 
 			glm::mat4x4 M1(1.0);
 			float angle1 = time * 0.9f;

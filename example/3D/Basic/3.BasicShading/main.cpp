@@ -269,7 +269,6 @@ public:
 			float ratio = m_viewportWidth / m_viewportHeight;
 			float near = 0.01f;
 			float far = 100.0f;
-			//m_uniformData.projectionMatrix = glm::perspective(fov, ratio, near, far);
 			m_uniformData.projectionMatrix = makePerspectiveProj(m_viewportWidth / m_viewportHeight, 0.01, 100.0, 2.0);
 
 			glm::mat4x4 M1(1.0);

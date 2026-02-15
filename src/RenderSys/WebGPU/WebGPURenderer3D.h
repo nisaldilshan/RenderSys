@@ -77,7 +77,6 @@ public:
     std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 private:
     void CreateDefaultTextureSampler();
-    uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
     wgpu::Color m_clearColor = wgpu::Color{ 0.9, 0.1, 0.2, 1.0 };
 
