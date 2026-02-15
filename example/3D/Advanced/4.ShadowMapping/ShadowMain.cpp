@@ -18,6 +18,7 @@
 #include <imgui.h>
 
 #include "ShadowHelper.h"
+#include <glm/gtx/quaternion.hpp>
 
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
