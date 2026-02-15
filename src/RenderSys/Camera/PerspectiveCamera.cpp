@@ -19,16 +19,12 @@ void PerspectiveCamera::SetAspectRatio(float aspectRatio)
 
 void PerspectiveCamera::UpdateProjection()
 {
-    m_ProjectionMatrix = glm::perspective(glm::radians(m_FOV), m_AspectRatio, m_nearClip, m_farClip);
+    m_ProjectionMatrix = glm::perspectiveLH_ZO(glm::radians(m_FOV), m_AspectRatio, m_nearClip, m_farClip);
 }
 
 void PerspectiveCamera::SetOrientation(const glm::vec3& orientation)
 {
     m_Rotation = orientation;
-    // if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-    // {
-    //     m_Rotation.z += 1.5708f * 2;  // rotate 180 degrees
-    // }
     UpdateView();
 }
 
@@ -40,23 +36,13 @@ void PerspectiveCamera::SetPosition(const glm::vec3& position)
 
 void PerspectiveCamera::UpdateView()
 {
-    //m_ViewMatrix = glm::lookAt(glm::vec3(-2.0f, -3.0f, 2.0f), glm::vec3(0.0f), glm::vec3(0, 0, 1));
-    glm::quat orientation = glm::quat(m_Rotation);
-    m_ViewMatrix = glm::translate(glm::mat4(1.0f), m_Position) * glm::toMat4(orientation);
-    m_ViewMatrix = glm::inverse(m_ViewMatrix);
+    const glm::vec3 target = m_Position + GetForwardDirection();
+    m_ViewMatrix = glm::lookAtLH(m_Position, target, GetUpDirection());
 }
 
 glm::vec3 PerspectiveCamera::GetUpDirection() const
 {
     return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-    // if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-    // {
-    //     return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, -1.0f, 0.0f));
-    // }
-    // else 
-    // {
-    //     return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-    // }
 }
 
 glm::vec3 PerspectiveCamera::GetRightDirection() const
