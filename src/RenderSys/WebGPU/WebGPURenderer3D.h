@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <glm/ext.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
 #include <RenderSys/RenderUtil.h>

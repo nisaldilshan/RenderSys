@@ -1,6 +1,6 @@
 #include "PerspectiveCamera.h"
 #include <Walnut/RenderingBackend.h>
-#include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 namespace RenderSys
 {

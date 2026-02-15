@@ -1,8 +1,9 @@
 #include "TransformComponent.h"
 
-#include <iostream>
-#include <glm/gtx/matrix_decompose.hpp>
 #include <RenderSys/InstanceBuffer.h>
+#include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+
 
 namespace RenderSys
 {

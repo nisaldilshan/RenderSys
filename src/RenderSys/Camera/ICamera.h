@@ -1,8 +1,6 @@
 #pragma once
 #include <string>
-#define GLM_FORCE_LEFT_HANDED
-#include <glm/ext.hpp>
-#include <glm/gtx/quaternion.hpp>
+#include <glm/glm.hpp>
 
 namespace RenderSys
 {

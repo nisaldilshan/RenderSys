@@ -130,14 +130,8 @@ void WebGPURenderer3D::CreatePipeline()
 	// We'll see later how to specify the order in which vertices should be
 	// connected. When not specified, vertices are considered sequentially.
 	pipelineDesc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
-	// The face orientation is defined by assuming that when looking
-	// from the front of the face, its corner vertices are enumerated
-	// in the counter-clockwise (CCW) order.
-	pipelineDesc.primitive.frontFace = wgpu::FrontFace::CCW;
-	// But the face orientation does not matter much because we do not
-	// cull (i.e. "hide") the faces pointing away from us (which is often
-	// used for optimization).
-	pipelineDesc.primitive.cullMode = wgpu::CullMode::None;
+	pipelineDesc.primitive.frontFace = wgpu::FrontFace::CW;
+	pipelineDesc.primitive.cullMode = wgpu::CullMode::Back;
 
     // Fragment shader
 	wgpu::FragmentState fragmentState;
