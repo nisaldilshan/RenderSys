@@ -4,6 +4,8 @@
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 #include <RenderSys/TextureSampler.h>
 
+#include "RenderSys/Texture.h"
+
 namespace RenderSys
 {
 
@@ -11,10 +13,10 @@ class WebGPUTexture
 {
 public:
     WebGPUTexture() = delete;
-    WebGPUTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount);
+    WebGPUTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage);
     ~WebGPUTexture();
     void SetData(unsigned char *textureData);
-    void SetSampler(RenderSys::TextureSampler sampler);
+    void SetSampler(TextureSampler sampler);
     wgpu::TextureView GetImageView() const;
 private:
     wgpu::Texture m_image;

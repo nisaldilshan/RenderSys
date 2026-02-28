@@ -103,6 +103,8 @@ public:
 		}
 
 		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(60.0f, 0.01f, 100.0f);
+		auto cameraEntity = m_scene->AddCamera(m_cameraController->GetCamera());
+		m_cameraController->SetCameraEntity(cameraEntity, m_scene->m_Registry);
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 

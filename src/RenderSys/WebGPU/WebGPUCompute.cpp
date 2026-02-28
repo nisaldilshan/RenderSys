@@ -22,7 +22,7 @@ void WebGPUCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayout
 	wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
 	bindGroupLayoutDesc.entryCount = bindGroupLayoutEntryCount;
 	bindGroupLayoutDesc.entries = entries.data();
-    bindGroupLayoutDesc.label = "MainBindGroupLayout";
+    //bindGroupLayoutDesc.label = "MainBindGroupLayout";
     m_bindGroupLayout = WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
 
     std::vector<wgpu::BindGroupEntry> bindings;
@@ -70,11 +70,11 @@ void WebGPUCompute::CreateShaders(RenderSys::Shader& shader)
     shaderDesc.hints = nullptr;
 #endif
 
-    wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
+    wgpu::ShaderSourceWGSL shaderCodeDesc;
     // Set the chained struct's header
     shaderCodeDesc.chain.next = nullptr;
-    shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
-    shaderCodeDesc.code = shader.GetShaderSrc().c_str();
+    shaderCodeDesc.chain.sType = wgpu::SType::ShaderSourceWGSL;
+    shaderCodeDesc.code = wgpu::StringView{shader.GetShaderSrc().c_str()};
     // Connect the chain
     shaderDesc.nextInChain = &shaderCodeDesc.chain;
     m_shaderModule = WebGPU::GetDevice().createShaderModule(shaderDesc);
@@ -98,7 +98,7 @@ void WebGPUCompute::CreatePipeline()
     wgpu::ComputePipelineDescriptor computePipelineDesc;
     computePipelineDesc.compute.constantCount = 0;
     computePipelineDesc.compute.constants = nullptr;
-    computePipelineDesc.compute.entryPoint = "computeStuff";
+    computePipelineDesc.compute.entryPoint = wgpu::StringView{"computeStuff"};
     computePipelineDesc.compute.module = m_shaderModule;
     computePipelineDesc.layout = pipelineLayout;
     m_pipeline = WebGPU::GetDevice().createComputePipeline(computePipelineDesc);
@@ -115,7 +115,7 @@ void WebGPUCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             wgpu::BufferDescriptor inputBufferDesc;
             inputBufferDesc.mappedAtCreation = false;
             inputBufferDesc.size = bufferLength;
-            inputBufferDesc.label = ("Buffer bound to binding " + std::to_string(binding)).c_str();
+            //inputBufferDesc.label = ("Buffer bound to binding " + std::to_string(binding)).c_str();
             std::cout << "Creating input buffer..." << std::endl;
             inputBufferDesc.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst;
             m_buffersAccessibleToShader[binding] = WebGPU::GetDevice().createBuffer(inputBufferDesc);
@@ -127,7 +127,7 @@ void WebGPUCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             wgpu::BufferDescriptor outputBufferDesc;
             outputBufferDesc.mappedAtCreation = false;
             outputBufferDesc.size = bufferLength;
-            outputBufferDesc.label = ("Buffer bound to binding " + std::to_string(binding)).c_str();
+            //outputBufferDesc.label = ("Buffer bound to binding " + std::to_string(binding)).c_str();
             std::cout << "Creating output buffer..." << std::endl;
             outputBufferDesc.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopySrc;
             auto outBuf = WebGPU::GetDevice().createBuffer(outputBufferDesc);
@@ -136,7 +136,7 @@ void WebGPUCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             wgpu::BufferDescriptor mapbufferDesc;
             mapbufferDesc.mappedAtCreation = false;
             mapbufferDesc.size = bufferLength;
-            mapbufferDesc.label = ("Map Buffer bound to binding " + std::to_string(binding)).c_str();
+            //mapbufferDesc.label = ("Map Buffer bound to binding " + std::to_string(binding)).c_str();
             std::cout << "Creating map buffer..." << std::endl;
             mapbufferDesc.usage = wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst;
             auto mapBuf = WebGPU::GetDevice().createBuffer(mapbufferDesc);
@@ -155,7 +155,7 @@ void WebGPUCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             wgpu::BufferDescriptor uniformbufferDesc;
             uniformbufferDesc.mappedAtCreation = false;
             uniformbufferDesc.size = bufferLength;
-            uniformbufferDesc.label = ("Uniform Buffer bound to binding " + std::to_string(binding)).c_str();
+            //uniformbufferDesc.label = ("Uniform Buffer bound to binding " + std::to_string(binding)).c_str();
             std::cout << "Creating uniform buffer..." << std::endl;
             uniformbufferDesc.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
             m_buffersAccessibleToShader[binding] = WebGPU::GetDevice().createBuffer(uniformbufferDesc);
@@ -175,7 +175,7 @@ void WebGPUCompute::SetBufferData(uint32_t binding, const void *bufferData, uint
 void WebGPUCompute::BeginComputePass()
 {
     wgpu::CommandEncoderDescriptor commandEncoderDesc;
-    commandEncoderDesc.label = "Compute Command Encoder";
+    //commandEncoderDesc.label = "Compute Command Encoder";
     m_commandEncoder = WebGPU::GetDevice().createCommandEncoder(commandEncoderDesc);
     
 
@@ -193,7 +193,7 @@ void WebGPUCompute::Compute(const uint32_t workgroupCountX, const uint32_t workg
 	m_computePass.dispatchWorkgroups(workgroupCountX, workgroupCountY, 1);
 }
 
-void WebGPUCompute::BufferMapCallback(WGPUMapAsyncStatus status, char const * message, uint32_t binding)
+void WebGPUCompute::BufferMapCallback(WGPUMapAsyncStatus status, WGPUStringView message, uint32_t binding)
 {
     if (status == wgpu::MapAsyncStatus::Success)
     {
@@ -235,7 +235,7 @@ void WebGPUCompute::EndComputePass()
     }
 
     wgpu::CommandBufferDescriptor cmdBufferDescriptor;
-    cmdBufferDescriptor.label = "Compute Command Buffer";
+    //cmdBufferDescriptor.label = "Compute Command Buffer";
     wgpu::CommandBuffer commands = m_commandEncoder.finish(cmdBufferDescriptor);
     WebGPU::GetQueue().submit(commands);
 }
@@ -247,8 +247,8 @@ std::vector<uint8_t>& WebGPUCompute::GetMappedResult(uint32_t binding)
     assert(found != m_shaderOutputBuffers.end());
     auto& mapperBufferStruct = found->second;
     mapperBufferStruct->resultReady.store(false);
-    wgpu::BufferMapCallbackInfo2 callbackInfo;
-    callbackInfo.callback = [](WGPUMapAsyncStatus status, char const * message, void* userdata1, void* userdata2) 
+    wgpu::BufferMapCallbackInfo callbackInfo;
+    callbackInfo.callback = [](WGPUMapAsyncStatus status, WGPUStringView message, void* userdata1, void* userdata2) 
     {
         WebGPUCompute* compute = static_cast<WebGPUCompute*>(userdata1);
         uint32_t* binding = static_cast<uint32_t*>(userdata2);
@@ -258,8 +258,8 @@ std::vector<uint8_t>& WebGPUCompute::GetMappedResult(uint32_t binding)
     callbackInfo.userdata1 = static_cast<void*>(this);
     uint32_t* bindingPtr = const_cast<uint32_t*>(&found->first);
     callbackInfo.userdata2 = static_cast<void*>(bindingPtr);
-    wgpu::Future handle = mapperBufferStruct->mapBuffer.mapAsync2(
-                                        wgpu::MapMode::Read, 0, mapperBufferStruct->mapBuffer.getSize(), callbackInfo);
+    wgpu::Future handle = wgpuBufferMapAsync(mapperBufferStruct->mapBuffer, wgpu::MapMode::Read, 0, 
+                                        mapperBufferStruct->mapBuffer.getSize(), callbackInfo);
 
 	while (!mapperBufferStruct->resultReady.load()) 
     {

@@ -209,7 +209,9 @@ public:
 		{
 			m_renderer->BeginRenderPass();
 			// Update uniform buffer
-			m_uniformData.time = static_cast<float>(glfwGetTime()); // glfwGetTime returns a double
+			static auto startTime = std::chrono::steady_clock::now();
+			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
+			m_uniformData.time = static_cast<float>(time); // glfwGetTime returns a double
 			m_renderer->SetUniformBufferData(&m_uniformData, 0);
 
 			m_renderer->RenderIndexed(0, 0);

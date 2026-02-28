@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <glm/ext.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include <Walnut/GraphicsAPI/WebGPUGraphics.h>
 
 #include <RenderSys/RenderUtil.h>
@@ -56,25 +54,27 @@ public:
     void Render();
     void RenderIndexed();
     void RenderMesh(const RenderSys::Mesh& mesh);
-    ImTextureID GetDescriptorSet();
+    uint64_t GetDescriptorSet();
     void BeginRenderPass();
     void EndRenderPass();
-    void BeginShadowMapPass();
-    void RenderShadowMap(entt::registry& entityRegistry) {}
-    void EndShadowMapPass();
     void DestroyImages();
     void DestroyPipeline();
     void DestroyBindGroup();
     void Destroy();
 
+    void CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight);
+    void CreateShadowPipeline();
+    void BeginShadowMapPass();
+    void RenderShadowMap(entt::registry& entityRegistry);
+    void EndShadowMapPass();
+    void OnDebugView();
+
     void ResetCommandBuffer();
     void SubmitCommandBuffer();
 
-    void OnImGuiRender();
     std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 private:
     void CreateDefaultTextureSampler();
-    uint32_t GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform);
 
     wgpu::Color m_clearColor = wgpu::Color{ 0.9, 0.1, 0.2, 1.0 };
 

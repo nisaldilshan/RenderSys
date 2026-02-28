@@ -19,7 +19,7 @@ void WebGPURenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
     CreateDefaultTextureSampler();
 
     wgpu::TextureDescriptor tex_desc = {};
-    tex_desc.label = "Renderer Final Texture";
+    //tex_desc.label = "Renderer Final Texture";
     tex_desc.dimension = WGPUTextureDimension_2D;
     tex_desc.size.width = m_width;
     tex_desc.size.height = m_height;
@@ -82,11 +82,11 @@ void WebGPURenderer3D::CreateShader(RenderSys::Shader& shader)
     shaderDesc.hints = nullptr;
 #endif
 
-    wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
+    wgpu::ShaderSourceWGSL shaderCodeDesc;
     // Set the chained struct's header
     shaderCodeDesc.chain.next = nullptr;
-    shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
-    shaderCodeDesc.code = shader.GetShaderSrc().c_str();
+    shaderCodeDesc.chain.sType = wgpu::SType::ShaderSourceWGSL;
+    shaderCodeDesc.code = wgpu::StringView{shader.GetShaderSrc().c_str()};
     // Connect the chain
     shaderDesc.nextInChain = &shaderCodeDesc.chain;
     m_shaderModule = GraphicsAPI::WebGPU::GetDevice().createShaderModule(shaderDesc);
@@ -120,7 +120,7 @@ void WebGPURenderer3D::CreatePipeline()
 
     // Vertex shader
     pipelineDesc.vertex.module = m_shaderModule;
-	pipelineDesc.vertex.entryPoint = "vs_main";
+	pipelineDesc.vertex.entryPoint = wgpu::StringView{"vs_main"};
     pipelineDesc.vertex.constantCount = 0;
 	pipelineDesc.vertex.constants = nullptr;
 
@@ -130,20 +130,14 @@ void WebGPURenderer3D::CreatePipeline()
 	// We'll see later how to specify the order in which vertices should be
 	// connected. When not specified, vertices are considered sequentially.
 	pipelineDesc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
-	// The face orientation is defined by assuming that when looking
-	// from the front of the face, its corner vertices are enumerated
-	// in the counter-clockwise (CCW) order.
-	pipelineDesc.primitive.frontFace = wgpu::FrontFace::CCW;
-	// But the face orientation does not matter much because we do not
-	// cull (i.e. "hide") the faces pointing away from us (which is often
-	// used for optimization).
-	pipelineDesc.primitive.cullMode = wgpu::CullMode::None;
+	pipelineDesc.primitive.frontFace = wgpu::FrontFace::CW;
+	pipelineDesc.primitive.cullMode = wgpu::CullMode::Back;
 
     // Fragment shader
 	wgpu::FragmentState fragmentState;
 	pipelineDesc.fragment = &fragmentState;
 	fragmentState.module = m_shaderModule;
-	fragmentState.entryPoint = "fs_main";
+	fragmentState.entryPoint = wgpu::StringView{"fs_main"};
 	fragmentState.constantCount = 0;
 	fragmentState.constants = nullptr;
 
@@ -173,7 +167,7 @@ void WebGPURenderer3D::CreatePipeline()
 	// Keep a fragment only if its depth is lower than the previously blended one
 	depthStencilState.depthCompare = wgpu::CompareFunction::Less;
     // Each time a fragment is blended into the target, we update the value of the Z-buffer
-	depthStencilState.depthWriteEnabled = true;
+	depthStencilState.depthWriteEnabled = wgpu::OptionalBool::False;
 	// Store the format in a variable as later parts of the code depend on it
 	depthStencilState.format = g_depthTextureFormat;
 	// Deactivate the stencil alltogether
@@ -215,7 +209,7 @@ uint32_t WebGPURenderer3D::CreateVertexBuffer(const RenderSys::VertexBuffer& buf
     bufferDesc.size = vertexBufferSize;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
-    bufferDesc.label = "Vertex Buffer";
+    //bufferDesc.label = "Vertex Buffer";
     vertexIndexBufferInfo->m_vertexBuffer = GraphicsAPI::WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload vertex data to the buffer
@@ -243,7 +237,7 @@ void WebGPURenderer3D::CreateIndexBuffer(uint32_t vertexBufferID, const std::vec
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = bufferData.size() * sizeof(uint32_t);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
-    bufferDesc.label = "Index Buffer";
+    //bufferDesc.label = "Index Buffer";
     vertexIndexBufferInfo->m_indexBuffer = GraphicsAPI::WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload index data to the buffer
@@ -261,7 +255,7 @@ void WebGPURenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
 	wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
 	bindGroupLayoutDesc.entryCount = bindGroupLayoutEntryCount;
 	bindGroupLayoutDesc.entries = m_mainBindGroupBindings.data();
-    bindGroupLayoutDesc.label = "MainBindGroupLayout";
+    //bindGroupLayoutDesc.label = "MainBindGroupLayout";
 	m_bindGroupLayout = GraphicsAPI::WebGPU::GetDevice().createBindGroupLayout(bindGroupLayoutDesc);
 
     if (m_bindGroupLayout)
@@ -270,7 +264,7 @@ void WebGPURenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
         wgpu::PipelineLayoutDescriptor pipelineLayoutDesc;
         pipelineLayoutDesc.bindGroupLayoutCount = 1;
         pipelineLayoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*)&m_bindGroupLayout;
-        pipelineLayoutDesc.label = "PipelineLayout";
+        //pipelineLayoutDesc.label = "PipelineLayout";
         m_pipelineLayout = GraphicsAPI::WebGPU::GetDevice().createPipelineLayout(pipelineLayoutDesc);
 
         assert(bindGroupLayoutEntryCount > 0);
@@ -338,33 +332,33 @@ void WebGPURenderer3D::SetClearColor(glm::vec4 clearColor)
     m_clearColor = wgpu::Color{clearColor.x, clearColor.y, clearColor.z, clearColor.w};
 }
 
-uint32_t WebGPURenderer3D::GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
-{
-    if (uniformIndex == 0)
-        return 0;
+// uint32_t WebGPURenderer3D::GetUniformStride(const uint32_t& uniformIndex, const uint32_t& sizeOfUniform)
+// {
+//     if (uniformIndex == 0)
+//         return 0;
 
-    // Get device limits
-    wgpu::SupportedLimits deviceSupportedLimits;
-    GraphicsAPI::WebGPU::GetDevice().getLimits(&deviceSupportedLimits);
-    wgpu::Limits deviceLimits = deviceSupportedLimits.limits;
+//     // Get device limits
+//     wgpu::Limits deviceSupportedLimits;
+//     GraphicsAPI::WebGPU::GetDevice().getLimits(&deviceSupportedLimits);
+//     //wgpu::Limits deviceLimits = deviceSupportedLimits.limits;
     
-    /** Round 'value' up to the next multiplier of 'step' */
-    auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
-    {
-        uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
-        return step * divide_and_ceil;
-    };
+//     /** Round 'value' up to the next multiplier of 'step' */
+//     auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
+//     {
+//         uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
+//         return step * divide_and_ceil;
+//     };
 
-    // Create uniform buffer
-    // Subtility
-    assert(sizeOfUniform > 0);
-    uint32_t uniformStride = ceilToNextMultiple(
-        (uint32_t)sizeOfUniform,
-        (uint32_t)deviceLimits.minUniformBufferOffsetAlignment
-    );
+//     // Create uniform buffer
+//     // Subtility
+//     assert(sizeOfUniform > 0);
+//     uint32_t uniformStride = ceilToNextMultiple(
+//         (uint32_t)sizeOfUniform,
+//         (uint32_t)deviceSupportedLimits.minUniformBufferOffsetAlignment
+//     );
 
-    return uniformStride * uniformIndex;
-}
+//     return uniformStride * uniformIndex;
+// }
 
 void WebGPURenderer3D::CreateUniformBuffer(uint32_t binding, uint32_t sizeOfOneUniform)
 {
@@ -454,9 +448,9 @@ void WebGPURenderer3D::RenderMesh(const RenderSys::Mesh &mesh)
 {
 }
 
-ImTextureID WebGPURenderer3D::GetDescriptorSet()
+uint64_t WebGPURenderer3D::GetDescriptorSet()
 {
-    return m_textureToRenderInto;
+    return (uint64_t)(void*)m_textureToRenderInto;
 }
 
 void WebGPURenderer3D::BeginRenderPass()
@@ -520,9 +514,17 @@ void WebGPURenderer3D::BeginShadowMapPass()
 
 }
 
+void WebGPURenderer3D::RenderShadowMap(entt::registry &entityRegistry)
+{
+}
+
 void WebGPURenderer3D::EndShadowMapPass()
 {
 
+}
+
+void WebGPURenderer3D::OnDebugView()
+{
 }
 
 void WebGPURenderer3D::Destroy()
@@ -548,6 +550,14 @@ void WebGPURenderer3D::Destroy()
     m_depthTextureView = nullptr;
 }
 
+void WebGPURenderer3D::CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight)
+{
+}
+
+void WebGPURenderer3D::CreateShadowPipeline()
+{
+}
+
 void WebGPURenderer3D::DestroyImages()
 {
 }
@@ -563,14 +573,14 @@ void WebGPURenderer3D::DestroyBindGroup()
 void WebGPURenderer3D::ResetCommandBuffer() 
 {
     wgpu::CommandEncoderDescriptor commandEncoderDesc;
-    commandEncoderDesc.label = "Renderer Command Encoder";
+    //commandEncoderDesc.label = "Renderer Command Encoder";
     m_currentCommandEncoder = GraphicsAPI::WebGPU::GetDevice().createCommandEncoder(commandEncoderDesc);
 }
 
 void WebGPURenderer3D::SubmitCommandBuffer()
 {
     wgpu::CommandBufferDescriptor cmdBufferDescriptor;
-    cmdBufferDescriptor.label = "Command buffer";
+    //cmdBufferDescriptor.label = "Command buffer";
     wgpu::CommandBuffer commands = m_currentCommandEncoder.finish(cmdBufferDescriptor);
     GraphicsAPI::WebGPU::GetQueue().submit(commands);
 }
@@ -613,11 +623,6 @@ void WebGPURenderer3D::CreateDefaultTextureSampler()
     samplerDesc.compare = wgpu::CompareFunction::Undefined;
     samplerDesc.maxAnisotropy = 1;
     m_defaultTextureSampler = GraphicsAPI::WebGPU::GetDevice().createSampler(samplerDesc);
-}
-
-void WebGPURenderer3D::OnImGuiRender()
-{
-
 }
 
 std::vector<uint8_t>& WebGPURenderer3D::GetRenderedImageDataToCPUSide()

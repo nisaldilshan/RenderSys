@@ -13,7 +13,7 @@ void WebGPURenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     m_width = width;
     m_height = height;
     wgpu::TextureDescriptor tex_desc = {};
-    tex_desc.label = "Renderer Final Texture";
+    //tex_desc.label = "Renderer Final Texture";
     tex_desc.dimension = WGPUTextureDimension_2D;
     tex_desc.size.width = m_width;
     tex_desc.size.height = m_height;
@@ -50,11 +50,14 @@ void WebGPURenderer2D::CreateShaders(RenderSys::Shader& shader)
     shaderDesc.hints = nullptr;
 #endif
 
-    wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
+    wgpu::ShaderSourceWGSL shaderCodeDesc;
     // Set the chained struct's header
     shaderCodeDesc.chain.next = nullptr;
-    shaderCodeDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
-    shaderCodeDesc.code = shader.GetShaderSrc().c_str();
+    shaderCodeDesc.chain.sType = wgpu::SType::ShaderSourceWGSL;
+    wgpu::StringView shaderSrcStrView;
+    shaderSrcStrView.data = shader.GetShaderSrc().c_str();
+    shaderSrcStrView.length = shader.GetShaderSrc().length();
+    shaderCodeDesc.code = shaderSrcStrView;
     // Connect the chain
     shaderDesc.nextInChain = &shaderCodeDesc.chain;
     m_shaderModule = WebGPU::GetDevice().createShaderModule(shaderDesc);
@@ -87,7 +90,7 @@ void WebGPURenderer2D::CreatePipeline()
     }
     // Vertex shader
     pipelineDesc.vertex.module = m_shaderModule;
-	pipelineDesc.vertex.entryPoint = "vs_main";
+	pipelineDesc.vertex.entryPoint = wgpu::StringView{"vs_main"};
     pipelineDesc.vertex.constantCount = 0;
 	pipelineDesc.vertex.constants = nullptr;
 
@@ -110,7 +113,7 @@ void WebGPURenderer2D::CreatePipeline()
 	wgpu::FragmentState fragmentState;
 	pipelineDesc.fragment = &fragmentState;
 	fragmentState.module = m_shaderModule;
-	fragmentState.entryPoint = "fs_main";
+	fragmentState.entryPoint = wgpu::StringView{"fs_main"};
 	fragmentState.constantCount = 0;
 	fragmentState.constants = nullptr;
 
@@ -145,7 +148,7 @@ void WebGPURenderer2D::CreatePipeline()
 	pipelineDesc.multisample.mask = ~0u;
 	// Default value as well (irrelevant for count = 1 anyways)
 	pipelineDesc.multisample.alphaToCoverageEnabled = false;
-    pipelineDesc.label = "WebGPU Render Pipeline";
+    //pipelineDesc.label = "WebGPU Render Pipeline";
 
 	// Pipeline layout
     if (m_pipelineLayout)
@@ -167,7 +170,7 @@ void WebGPURenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
     bufferDesc.size = m_vertexBufferSize;
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
-    bufferDesc.label = "Vertex Buffer";
+    //bufferDesc.label = "Vertex Buffer";
     m_vertexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload vertex data to the buffer
@@ -184,7 +187,7 @@ void WebGPURenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = bufferData.size() * sizeof(float);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
-    bufferDesc.label = "Index Buffer";
+    //bufferDesc.label = "Index Buffer";
     m_indexBuffer = WebGPU::GetDevice().createBuffer(bufferDesc);
 
     // Upload index data to the buffer
@@ -235,9 +238,9 @@ uint32_t WebGPURenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_
         return 0;
 
     // Get device limits
-    wgpu::SupportedLimits deviceSupportedLimits;
+    wgpu::Limits deviceSupportedLimits;
     WebGPU::GetDevice().getLimits(&deviceSupportedLimits);
-    wgpu::Limits deviceLimits = deviceSupportedLimits.limits;
+    //wgpu::Limits deviceLimits = deviceSupportedLimits.limits;
     
     /** Round 'value' up to the next multiplier of 'step' */
     auto ceilToNextMultiple = [](uint32_t value, uint32_t step) -> uint32_t
@@ -251,7 +254,7 @@ uint32_t WebGPURenderer2D::GetOffset(const uint32_t& uniformIndex, const uint32_
     assert(sizeOfUniform > 0);
     uint32_t uniformStride = ceilToNextMultiple(
         (uint32_t)sizeOfUniform,
-        (uint32_t)deviceLimits.minUniformBufferOffsetAlignment
+        (uint32_t)deviceSupportedLimits.minUniformBufferOffsetAlignment
     );
 
     return uniformStride * uniformIndex;
@@ -328,9 +331,9 @@ void WebGPURenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     m_renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
 }
 
-ImTextureID WebGPURenderer2D::GetDescriptorSet()
+uint64_t WebGPURenderer2D::GetDescriptorSet()
 {
-    return m_textureToRenderInto;
+    return (uint64_t)(void*)m_textureToRenderInto;
 }
 
 void WebGPURenderer2D::BeginRenderPass()
@@ -339,7 +342,7 @@ void WebGPURenderer2D::BeginRenderPass()
         std::cerr << "Cannot acquire texture to render into" << std::endl;
 
     wgpu::CommandEncoderDescriptor commandEncoderDesc;
-    commandEncoderDesc.label = "Renderer Command Encoder";
+    //commandEncoderDesc.label = "Renderer Command Encoder";
     m_currentCommandEncoder = WebGPU::GetDevice().createCommandEncoder(commandEncoderDesc);
 
     wgpu::RenderPassDescriptor renderPassDesc;
@@ -378,7 +381,7 @@ void WebGPURenderer2D::Destroy()
 void WebGPURenderer2D::SubmitCommandBuffer()
 {
     wgpu::CommandBufferDescriptor cmdBufferDescriptor;
-    cmdBufferDescriptor.label = "Command buffer";
+    //cmdBufferDescriptor.label = "Command buffer";
     wgpu::CommandBuffer commands = m_currentCommandEncoder.finish(cmdBufferDescriptor);
     GraphicsAPI::WebGPU::GetQueue().submit(commands);
 }

@@ -14,7 +14,7 @@ class VulkanTexture
 {
 public:
     VulkanTexture() = delete;
-    VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, RenderSys::TextureUsage usage);
+    VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage);
     VulkanTexture(const VulkanTexture&) = delete;
     VulkanTexture& operator=(const VulkanTexture&) = delete;
     VulkanTexture(VulkanTexture&&) = delete;
@@ -22,7 +22,7 @@ public:
     ~VulkanTexture();
 
     void SetData(unsigned char *textureData);
-    void SetSampler(RenderSys::TextureSampler sampler);
+    void SetSampler(TextureSampler sampler);
 
     const VkDescriptorImageInfo* GetDescriptorImageInfoAddr() const;
     VkImage GetImage() const { return m_image; }

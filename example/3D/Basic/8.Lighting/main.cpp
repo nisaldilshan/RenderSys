@@ -344,7 +344,8 @@ public:
 			m_myUniformData.viewMatrix = camera->GetViewMatrix();
 			m_myUniformData.projectionMatrix = camera->GetProjectionMatrix();
 
-			const float time = static_cast<float>(glfwGetTime());
+			static auto startTime = std::chrono::steady_clock::now();
+			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
 			glm::mat4x4 M1(1.0);
 			float angle1 = time * 0.9f;
 			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));

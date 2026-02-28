@@ -192,7 +192,9 @@ public:
 
 		m_compute->BeginComputePass();
 		
-		m_myUniformData.time = static_cast<float>(glfwGetTime());
+		static auto startTime = std::chrono::steady_clock::now();
+		const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
+		m_myUniformData.time = static_cast<float>(time);
 		m_myUniformData.resolution.x = g_width;
 		m_myUniformData.resolution.y = g_height;
 		m_compute->SetBufferData(2, &m_myUniformData, 1 * sizeof(MyUniforms));

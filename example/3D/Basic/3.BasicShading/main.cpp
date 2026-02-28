@@ -252,8 +252,8 @@ public:
 			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 			
-			const float time = static_cast<float>(glfwGetTime());
-
+			static auto startTime = std::chrono::steady_clock::now();
+			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
 
 			constexpr float PI = 3.14159265358979323846f;
 			float angle2 = 3.0f * PI / 4.0f;
@@ -269,7 +269,6 @@ public:
 			float ratio = m_viewportWidth / m_viewportHeight;
 			float near = 0.01f;
 			float far = 100.0f;
-			//m_uniformData.projectionMatrix = glm::perspective(fov, ratio, near, far);
 			m_uniformData.projectionMatrix = makePerspectiveProj(m_viewportWidth / m_viewportHeight, 0.01, 100.0, 2.0);
 
 			glm::mat4x4 M1(1.0);

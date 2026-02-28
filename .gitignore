@@ -40,3 +40,4 @@ graph_info.json
 CMakeSettings.json
 example/Resources/Models/testModel
 .idea
+external_deps

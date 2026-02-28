@@ -29,7 +29,7 @@ namespace GraphicsAPI
         void SimpleRender();
         void Render();
         void RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffsetCount);
-        ImTextureID GetDescriptorSet();
+        uint64_t GetDescriptorSet();
         void BeginRenderPass();
         void EndRenderPass();
         void Destroy();

@@ -24,7 +24,7 @@ wgpu::VertexFormat GetWebGPUVertexFormat(RenderSys::VertexFormat renderSysFormat
     else
     {
         assert(false);
-        return wgpu::VertexFormat::Undefined;
+        return wgpu::VertexFormat::Uint8;
     }
 }
 
@@ -63,9 +63,9 @@ wgpu::VertexBufferLayout GetWebGPUVertexBufferLayout(RenderSys::VertexBufferLayo
     return layout;
 }
 
-WGPUShaderStageFlags GetWebGPUShaderStageVisibility(RenderSys::ShaderStage shaderStage)
+wgpu::ShaderStage GetWebGPUShaderStageVisibility(RenderSys::ShaderStage shaderStage)
 {
-    WGPUShaderStageFlags result;
+    wgpu::ShaderStage result;
     if (static_cast<uint32_t>(shaderStage) == 1) // RenderSys::ShaderStage::Vertex
     {
         result = wgpu::ShaderStage::Vertex;

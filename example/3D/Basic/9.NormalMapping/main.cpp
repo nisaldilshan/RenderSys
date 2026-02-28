@@ -123,7 +123,6 @@ public:
 					float normalMapStrength = 1.0; // could be a uniform
 					vec3 encodedN = texture(normal, in_uv).rgb;
 					vec3 localN = encodedN * 2.0 - 1.0;
-					// The TBN matrix converts directions from the local space to the world space
 					mat3 localToWorld = mat3(
 						normalize(in_tangent),
 						-normalize(cross(in_normal, in_tangent)),
@@ -228,7 +227,6 @@ public:
 				let normalMapStrength = 1.0; // could be a uniform
 				let encodedN = textureSample(normalTexture, textureSampler, in.uv).rgb;
 				let localN = encodedN * 2.0 - 1.0;
-				// The TBN matrix converts directions from the local space to the world space
 				let localToWorld = mat3x3f(
 					normalize(in.tangent),
 					-normalize(cross(in.normal, in.tangent)),
@@ -389,7 +387,8 @@ public:
 			m_myUniformData.viewMatrix = camera->GetViewMatrix();
 			m_myUniformData.projectionMatrix = camera->GetProjectionMatrix();
 
-			const float time = static_cast<float>(glfwGetTime());
+			static auto startTime = std::chrono::steady_clock::now();
+			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
 			glm::mat4x4 M1(1.0);
 			float angle1 = time;
 			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));

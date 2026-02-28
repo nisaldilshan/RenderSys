@@ -18,6 +18,7 @@
 #include <imgui.h>
 
 #include "ShadowHelper.h"
+#include <glm/gtx/quaternion.hpp>
 
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
@@ -288,7 +289,7 @@ private:
 				auto LightPosWorld = glm::vec3(LightPosWorld4d.x, LightPosWorld4d.y, LightPosWorld4d.z);
 
 				// 3. Create Final Stable Light View Matrix
-				auto LightView = glm::lookAt(LightPosWorld, 
+				auto LightView = glm::lookAtLH(LightPosWorld, 
 												LightPosWorld + transformComponent.GetForwardVector(), 
 												transformComponent.GetUpVector());
 				
