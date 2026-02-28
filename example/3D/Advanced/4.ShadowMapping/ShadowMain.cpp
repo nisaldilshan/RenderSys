@@ -289,7 +289,7 @@ private:
 				auto LightPosWorld = glm::vec3(LightPosWorld4d.x, LightPosWorld4d.y, LightPosWorld4d.z);
 
 				// 3. Create Final Stable Light View Matrix
-				auto LightView = glm::lookAt(LightPosWorld, 
+				auto LightView = glm::lookAtLH(LightPosWorld, 
 												LightPosWorld + transformComponent.GetForwardVector(), 
 												transformComponent.GetUpVector());
 				
