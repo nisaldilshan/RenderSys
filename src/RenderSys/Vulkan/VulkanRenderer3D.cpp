@@ -169,7 +169,7 @@ std::shared_ptr<VkPipelineShaderStageCreateInfo> VulkanRenderer3D::CreateShaderM
 
 void VulkanRenderer3D::DestroyImages()
 {
-    vkQueueWaitIdle(GraphicsAPI::Vulkan::GetDeviceQueue());
+    vkQueueWaitIdle(GraphicsAPI::Vulkan::GetQueue());
 
     for (auto &debugView : m_debugViews)
     {

@@ -1,6 +1,6 @@
 #pragma once
 #include <vk_mem_alloc.h>
-#include <Walnut/GraphicsAPI/VulkanGraphics.h>
+#include <Walnut/GraphicsAPI/Vulkan/VulkanGraphics.h>
 #include <RenderSys/RenderUtil.h>
 
 namespace RenderSys

@@ -1,5 +1,5 @@
 #include "VulkanMemAlloc.h"
-#include <Walnut/GraphicsAPI/VulkanGraphics.h>
+#include <Walnut/GraphicsAPI/Vulkan/VulkanGraphics.h>
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>

@@ -1,6 +1,10 @@
 #include "PerspectiveCamera.h"
 #include <Walnut/RenderingBackend.h>
-#include <glm/gtx/quaternion.hpp>
+#include <glm/glm.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 
 namespace RenderSys
 {
@@ -42,17 +46,23 @@ void PerspectiveCamera::UpdateView()
 
 glm::vec3 PerspectiveCamera::GetUpDirection() const
 {
-    return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+    //return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat3 rotationMatrix = glm::mat3_cast(glm::quat(m_Rotation));
+    return rotationMatrix[1]; // Second column
 }
 
 glm::vec3 PerspectiveCamera::GetRightDirection() const
 {
-    return glm::rotate(glm::quat(m_Rotation), glm::vec3(1.0f, 0.0f, 0.0f));
+    //return glm::rotate(glm::quat(m_Rotation), glm::vec3(1.0f, 0.0f, 0.0f));
+    glm::mat3 rotationMatrix = glm::mat3_cast(glm::quat(m_Rotation));
+    return rotationMatrix[0]; // First column
 }
 
 glm::vec3 PerspectiveCamera::GetForwardDirection() const
 {
-    return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+    //return glm::rotate(glm::quat(m_Rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat3 rotationMatrix = glm::mat3_cast(glm::quat(m_Rotation));
+    return rotationMatrix[2]; // Third column
 }
     
 } // namespace Camera

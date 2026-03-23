@@ -23,14 +23,14 @@ void EditorCameraController::OnUpdate()
 {
     if (Walnut::Input::IsKeyDown(Walnut::Key::LeftAlt))
     {
-        const glm::vec2& mouse = Walnut::Input::GetMousePosition();
+        const auto [x, y] = Walnut::Input::GetMousePosition();
         if (m_prevMousePosition == glm::vec2(0.0f, 0.0f))
         {
-            m_prevMousePosition = mouse;
+            m_prevMousePosition = glm::vec2(x, y);
             return;
         }
-        glm::vec2 delta = (mouse - m_prevMousePosition) * 0.003f;
-        m_prevMousePosition = mouse;
+        glm::vec2 delta = (glm::vec2(x, y) - m_prevMousePosition) * 0.003f;
+        m_prevMousePosition = glm::vec2(x, y);
 
         float yaw = m_Camera->GetRotation().y;
         float pitch = m_Camera->GetRotation().x;

@@ -12,7 +12,7 @@ VulkanCompute::VulkanCompute()
     vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
     VkPhysicalDeviceLimits deviceLimits = deviceProperties.limits;
 	std::cout << "Max Compute Shared Memory Size: " << deviceLimits.maxComputeSharedMemorySize / 1024 << " KB" << std::endl;
-    std::cout << "Compute Queue Family Index: " << Vulkan::GetQueueFamilyIndex() << std::endl;
+    std::cout << "Compute Queue Family Index: " << Vulkan::GetQueueFamily() << std::endl;
 
     if (!m_vma)
     {
@@ -246,7 +246,7 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             inputBufferDesc.size = bufferLength;
             inputBufferDesc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
             inputBufferDesc.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-            auto queueFamilyIndex = Vulkan::GetQueueFamilyIndex();
+            auto queueFamilyIndex = Vulkan::GetQueueFamily();
             inputBufferDesc.queueFamilyIndexCount = 1;
             inputBufferDesc.pQueueFamilyIndices = &queueFamilyIndex;
 
