@@ -1,4 +1,4 @@
-#include "VulkanPbrRenderPipeline.h"
+#include "VulkanRender2DPipeline.h"
 
 #include <RenderSys/Material.h>
 #include <RenderSys/MaterialFeatures.h>
@@ -11,7 +11,7 @@ namespace RenderSys {
 
 namespace Vulkan {
 
-2DRenderPipeline::2DRenderPipeline(VkRenderPass renderPass,
+Render2DPipeline::Render2DPipeline(VkRenderPass renderPass,
     std::vector<VkDescriptorSetLayout> &descriptorSetLayouts,
     const Vulkan::VertexInputLayout& vertexInputLayout, 
     const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos) 
@@ -20,7 +20,7 @@ namespace Vulkan {
     CreatePipeline(renderPass, vertexInputLayout, shaderStageInfos);
 }
 
-2DRenderPipeline::~2DRenderPipeline() 
+Render2DPipeline::~Render2DPipeline() 
 {
     if (m_Pipeline)
     {
@@ -35,21 +35,14 @@ namespace Vulkan {
     }
 }
 
-void 2DRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSetLayout> &descriptorSetLayouts)
+void Render2DPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSetLayout> &descriptorSetLayouts)
 {
-    VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    pushConstantRange.offset = 0;
-    pushConstantRange.size = sizeof(RenderSys::MaterialProperties);
-
-    std::array<VkPushConstantRange, 1> pushConstantRanges = {pushConstantRange};
-
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-    pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
-    pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges = nullptr;
     auto result = vkCreatePipelineLayout(GraphicsAPI::Vulkan::GetDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout);
     if (result != VK_SUCCESS)
     {
@@ -57,7 +50,7 @@ void 2DRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSetLay
     }
 }
 
-void 2DRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
+void Render2DPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
                                        const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos)
 {
     assert(m_PipelineLayout != VK_NULL_HANDLE);

@@ -7,20 +7,20 @@ namespace RenderSys
 namespace Vulkan 
 {
 
-class 2DRenderPipeline
+class Render2DPipeline
 {
 
 public:
-    2DRenderPipeline(VkRenderPass renderPass, 
+    Render2DPipeline(VkRenderPass renderPass, 
                         std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
                         const Vulkan::VertexInputLayout& vertexInputLayout, 
                         const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos);
-    ~2DRenderPipeline();
+    ~Render2DPipeline();
 
-    2DRenderPipeline(const 2DRenderPipeline&) = delete;
-    2DRenderPipeline& operator=(const 2DRenderPipeline&) = delete;
-    2DRenderPipeline(2DRenderPipeline&&) = delete;
-    2DRenderPipeline& operator=(2DRenderPipeline&&) = delete;
+    Render2DPipeline(const Render2DPipeline&) = delete;
+    Render2DPipeline& operator=(const Render2DPipeline&) = delete;
+    Render2DPipeline(Render2DPipeline&&) = delete;
+    Render2DPipeline& operator=(Render2DPipeline&&) = delete;
 
     VkPipeline GetPipeline() const { return m_Pipeline; }
     VkPipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
