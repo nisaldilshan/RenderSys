@@ -11,6 +11,7 @@ class Render2DPipeline
 {
 
 public:
+    Render2DPipeline() = delete;
     Render2DPipeline(VkRenderPass renderPass, 
                         std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
                         const Vulkan::VertexInputLayout& vertexInputLayout, 

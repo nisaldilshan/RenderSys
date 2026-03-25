@@ -9,7 +9,7 @@
 #include "RenderUtil.h"
 #include "Shader.h"
 
-namespace GraphicsAPI
+namespace RenderSys
 {
 #if (RENDERER_BACKEND == 1)
 class OpenGLRenderer2D;
@@ -23,11 +23,7 @@ typedef WebGPURenderer2D RendererType;
 #else
 static_assert(false);
 #endif
-}
 
-namespace RenderSys
-{
-    
 class Renderer2D
 {
 public:
@@ -62,7 +58,7 @@ public:
     void Destroy();
 private:
     uint32_t m_Width = 0, m_Height = 0;
-    std::unique_ptr<GraphicsAPI::RendererType> m_rendererBackend;
+    std::unique_ptr<RendererType> m_rendererBackend;
 };
 
 } // namespace RenderSys

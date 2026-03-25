@@ -52,6 +52,7 @@ if(RENDERER STREQUAL "Vulkan")
     target_sources(RenderSys2D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
+                    src/RenderSys/Vulkan/Pipeline/VulkanPipeline.cpp
                     src/RenderSys/Vulkan/Pipeline/VulkanRender2DPipeline.cpp
     )
     target_sources(RenderSys3D PRIVATE
