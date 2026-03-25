@@ -42,7 +42,6 @@ public:
     void EndRenderPass();
     void Destroy();
 private:
-    void CreateBindGroup();
     bool CreateRenderPass();
     void DestroyBuffers();
     void DestroyShaders();

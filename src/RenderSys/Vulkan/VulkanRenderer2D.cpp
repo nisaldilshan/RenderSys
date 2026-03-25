@@ -210,20 +210,15 @@ void VulkanRenderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroup
             throw std::runtime_error("failed to create descriptor pool!");
         }
 
-        CreateBindGroup();
-    }
-}
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = m_bindGroupPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &m_bindGroupLayout;
 
-void VulkanRenderer2D::CreateBindGroup()
-{
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = m_bindGroupPool;
-    allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &m_bindGroupLayout;
-
-    if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate descriptor sets!");
+        if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate descriptor sets!");
+        }
     }
 }
 
@@ -569,8 +564,9 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     if (m_bindGroup)
     {
         uint32_t dynamicOffset = (uniformIndex == 0) ? 0 : RenderSys::Vulkan::GetUniformStride(m_sizeOfOneUniform);
-        // vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
-        // vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
+        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_render2DPipeline->GetPipelineLayout(),
+                                     0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
+        vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
     }
     else
     {
