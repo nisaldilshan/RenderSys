@@ -61,11 +61,12 @@ void Render2DPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::Ver
 
     std::vector<VkVertexInputBindingDescription> vertexBindingDescs;
     std::vector<VkVertexInputAttributeDescription> vertexAttribDescs;
-    assert(vertexInputLayout.m_vertexAttribDescs.size() > 0);
-    vertexBindingDescs.push_back(vertexInputLayout.m_vertexBindingDescs);
-    for (const auto &vertextAttribDesc : vertexInputLayout.m_vertexAttribDescs)
-    {
-        vertexAttribDescs.push_back(vertextAttribDesc);
+    if (vertexInputLayout.m_vertexAttribDescs.size() > 0) {
+        vertexBindingDescs.push_back(vertexInputLayout.m_vertexBindingDescs);
+        for (const auto &vertextAttribDesc : vertexInputLayout.m_vertexAttribDescs)
+        {
+            vertexAttribDescs.push_back(vertextAttribDesc);
+        }
     }
 
     vertexInputInfo.vertexBindingDescriptionCount = vertexBindingDescs.size();
