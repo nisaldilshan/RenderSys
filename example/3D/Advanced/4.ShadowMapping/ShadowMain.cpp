@@ -18,7 +18,7 @@
 #include <imgui.h>
 
 #include "ShadowHelper.h"
-#include <glm/gtx/quaternion.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
@@ -265,7 +265,7 @@ private:
 			m_lightingUniformData.lightDirections[0] = { transformComponent.GetRotation(), 0.0f };
 
 			auto lightModelMatrix = glm::translate(glm::mat4(1.0f), transformComponent.GetTranslation());
-			lightModelMatrix = lightModelMatrix * glm::toMat4(glm::quat(-transformComponent.GetRotation()));
+			lightModelMatrix = lightModelMatrix * glm::mat4_cast(glm::quat(-transformComponent.GetRotation()));
 			glm::mat4 lightViewMatrix = glm::inverse(lightModelMatrix);
 
 			OrthoProjInfo ortho;

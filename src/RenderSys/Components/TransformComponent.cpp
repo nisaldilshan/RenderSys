@@ -1,7 +1,8 @@
 #include "TransformComponent.h"
 
 #include <RenderSys/InstanceBuffer.h>
-#include <glm/gtx/quaternion.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
 
 
@@ -110,7 +111,7 @@ glm::vec3 TransformComponent::GetUpVector() const
 void TransformComponent::RecalculateMatrices()
 {
     auto scale = glm::scale(glm::mat4(1.0f), m_Scale);
-    auto rotation = glm::toMat4(glm::quat(m_Rotation));
+    auto rotation = glm::mat4_cast(glm::quat(m_Rotation));
     auto translation = glm::translate(glm::mat4(1.0f), glm::vec3{m_Translation.x, m_Translation.y, m_Translation.z});
 
     m_Mat4Local = translation * rotation * scale;

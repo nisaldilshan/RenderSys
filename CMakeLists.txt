@@ -6,7 +6,7 @@ find_package(tinyobjloader REQUIRED)
 find_package(shaderc REQUIRED)
 find_package(TinyGLTF REQUIRED)
 find_package(EnTT REQUIRED)
-
+find_package(glm REQUIRED)
 include(FetchContent)
 
 add_library (RenderSys2D STATIC
@@ -42,16 +42,18 @@ add_library (ComputeSys STATIC
                 src/RenderSys/Compute.cpp
                 src/RenderSys/Shader.cpp)
 
-target_include_directories(RenderSys2D PRIVATE src)
-target_include_directories(RenderSys3D PRIVATE src example)
-target_include_directories(ComputeSys PRIVATE src)
+target_include_directories(RenderSys2D PRIVATE src ${imgui_INCLUDE_DIRS}/../res/bindings)
+target_include_directories(RenderSys3D PRIVATE src ${imgui_INCLUDE_DIRS}/../res/bindings)
+target_include_directories(ComputeSys PRIVATE src ${imgui_INCLUDE_DIRS}/../res/bindings)
 
 message(STATUS "RENDERER: " ${RENDERER})
 if(RENDERER STREQUAL "Vulkan")
-    find_package(vulkan-memory-allocator REQUIRED)
+    find_package(VulkanMemoryAllocator REQUIRED)
     target_sources(RenderSys2D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
+                    src/RenderSys/Vulkan/Pipeline/VulkanPipeline.cpp
+                    src/RenderSys/Vulkan/Pipeline/VulkanRender2DPipeline.cpp
     )
     target_sources(RenderSys3D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer3D.cpp
@@ -70,12 +72,12 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
     )
 
-    target_link_libraries(RenderSys2D PRIVATE 
-                            vulkan-memory-allocator::vulkan-memory-allocator)
-    target_link_libraries(RenderSys3D PRIVATE 
-                            vulkan-memory-allocator::vulkan-memory-allocator)
-    target_link_libraries(ComputeSys PRIVATE 
-                            vulkan-memory-allocator::vulkan-memory-allocator)
+    target_link_libraries(RenderSys2D PRIVATE GPUOpen::VulkanMemoryAllocator)
+    target_link_libraries(RenderSys3D PRIVATE GPUOpen::VulkanMemoryAllocator)
+    target_link_libraries(ComputeSys PRIVATE GPUOpen::VulkanMemoryAllocator)
+    target_link_libraries(RenderSys2D PUBLIC glm::glm)
+    target_link_libraries(RenderSys3D PUBLIC glm::glm)
+    target_link_libraries(ComputeSys PUBLIC glm::glm)
 else()
     set(WEBGPU_BACKEND DAWN)
     FetchContent_Declare(

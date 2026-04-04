@@ -189,8 +189,8 @@ void EndSingleTimeCommands(VkCommandBuffer commandBuffer, VkCommandPool commandP
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
 
-    vkQueueSubmit(GraphicsAPI::Vulkan::GetDeviceQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(GraphicsAPI::Vulkan::GetDeviceQueue()); // Wait for the command buffer to finish
+    vkQueueSubmit(GraphicsAPI::Vulkan::GetQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(GraphicsAPI::Vulkan::GetQueue()); // Wait for the command buffer to finish
 
     vkFreeCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), commandPool, 1, &commandBuffer);
 }

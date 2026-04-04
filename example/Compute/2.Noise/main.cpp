@@ -283,7 +283,7 @@ public:
 		ImVec2 uv_max = ImVec2(0, 1); 
 		float aspectRatio = (float)m_finalImage->GetWidth() / (float)m_finalImage->GetHeight();
 		float viewHeight = m_viewportHeight;
-		ImGui::Image((void*)m_finalImage->GetDescriptorSet(), { aspectRatio * viewHeight, viewHeight }, uv_min, uv_max);
+		ImGui::Image((void*)m_finalImage->GetHandle(), { aspectRatio * viewHeight, viewHeight }, uv_min, uv_max);
 
 		ImGui::End();
         ImGui::PopStyleVar();

@@ -7,31 +7,32 @@ namespace RenderSys
 namespace Vulkan 
 {
 
-class ShadowRenderPipeline
+class Render2DPipeline
 {
 
 public:
-    ShadowRenderPipeline(VkRenderPass renderPass, 
+    Render2DPipeline() = delete;
+    Render2DPipeline(VkRenderPass renderPass, 
                         std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
                         const Vulkan::VertexInputLayout& vertexInputLayout, 
                         const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos);
-    ~ShadowRenderPipeline();
+    ~Render2DPipeline();
 
-    ShadowRenderPipeline(const ShadowRenderPipeline&) = delete;
-    ShadowRenderPipeline& operator=(const ShadowRenderPipeline&) = delete;
-    ShadowRenderPipeline(ShadowRenderPipeline&&) = delete;
-    ShadowRenderPipeline& operator=(ShadowRenderPipeline&&) = delete;
+    Render2DPipeline(const Render2DPipeline&) = delete;
+    Render2DPipeline& operator=(const Render2DPipeline&) = delete;
+    Render2DPipeline(Render2DPipeline&&) = delete;
+    Render2DPipeline& operator=(Render2DPipeline&&) = delete;
 
     VkPipeline GetPipeline() const { return m_Pipeline; }
     VkPipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
 
 private:
     void CreatePipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts);
-    void CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout, 
+    void CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
                         const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos);
 
-    VkPipelineLayout m_PipelineLayout;
-    VkPipeline m_Pipeline;
+    VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
+    VkPipeline m_Pipeline = VK_NULL_HANDLE;
 };
 
 

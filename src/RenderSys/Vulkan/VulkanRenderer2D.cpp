@@ -1,22 +1,31 @@
 #include "VulkanRenderer2D.h"
 #include "VulkanRendererUtils.h"
+#include "Pipeline/VulkanRender2DPipeline.h"
 
 #include <iostream>
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
-namespace GraphicsAPI
+namespace RenderSys
 {
+
+VulkanRenderer2D::VulkanRenderer2D()
+{
+}
+
+VulkanRenderer2D::~VulkanRenderer2D()
+{
+}
 
 bool VulkanRenderer2D::Init()
 {
     if (!m_vma)
     {
         VmaAllocatorCreateInfo allocatorInfo{};
-        allocatorInfo.physicalDevice = Vulkan::GetPhysicalDevice();
-        allocatorInfo.device = Vulkan::GetDevice();
-        allocatorInfo.instance = Vulkan::GetInstance();
+        allocatorInfo.physicalDevice = GraphicsAPI::Vulkan::GetPhysicalDevice();
+        allocatorInfo.device = GraphicsAPI::Vulkan::GetDevice();
+        allocatorInfo.instance = GraphicsAPI::Vulkan::GetInstance();
         if (vmaCreateAllocator(&allocatorInfo, &m_vma) != VK_SUCCESS) {
             std::cout << "error: could not init VMA" << std::endl;
             return false;
@@ -51,18 +60,18 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_ImageToRenderInto);
-    Vulkan::check_vk_result(err);
+    VkResult err = vkCreateImage(GraphicsAPI::Vulkan::GetDevice(), &info, nullptr, &m_ImageToRenderInto);
+    GraphicsAPI::Vulkan::check_vk_result(err);
     VkMemoryRequirements req;
-    vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_ImageToRenderInto, &req);
+    vkGetImageMemoryRequirements(GraphicsAPI::Vulkan::GetDevice(), m_ImageToRenderInto, &req);
     VkMemoryAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = req.size;
-    alloc_info.memoryTypeIndex = Utils::GetVulkanMemoryType(Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
-    Vulkan::check_vk_result(err);
-    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
-    Vulkan::check_vk_result(err);
+    alloc_info.memoryTypeIndex = GraphicsAPI::Utils::GetVulkanMemoryType(GraphicsAPI::Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
+    err = vkAllocateMemory(GraphicsAPI::Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
+    GraphicsAPI::Vulkan::check_vk_result(err);
+    err = vkBindImageMemory(GraphicsAPI::Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
+    GraphicsAPI::Vulkan::check_vk_result(err);
 
     m_imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -96,7 +105,7 @@ void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
     shaderCreateInfo.pCode = compiledShader.data();
 
     VkShaderModule shaderModule = 0;
-    if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+    if (vkCreateShaderModule(GraphicsAPI::Vulkan::GetDevice(), &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
         std::cout << "could not load vertex shader" << std::endl;
         return;
     }
@@ -147,7 +156,7 @@ void VulkanRenderer2D::DestroyShaders()
 {
     for (auto& shaderStageInfo : m_shaderStageInfos)
     {
-        vkDestroyShaderModule(Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
+        vkDestroyShaderModule(GraphicsAPI::Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
     }
 
     m_shaderStageInfos.clear();
@@ -183,7 +192,7 @@ void VulkanRenderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroup
         layoutInfo.bindingCount = 1;
         layoutInfo.pBindings = &uboLayoutBinding;
 
-        if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
+        if (vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor set layout!");
         }
 
@@ -197,48 +206,19 @@ void VulkanRenderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroup
         poolInfo.pPoolSizes = &poolSize;
         poolInfo.maxSets = 1;
 
-        if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
+        if (vkCreateDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
         }
 
-        CreateBindGroup();
-    }
-}
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = m_bindGroupPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &m_bindGroupLayout;
 
-void VulkanRenderer2D::CreateBindGroup()
-{
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = m_bindGroupPool;
-    allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &m_bindGroupLayout;
-
-    if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate descriptor sets!");
-    }
-}
-
-void VulkanRenderer2D::CreatePipelineLayout()
-{
-    if (!m_pipelineLayout)
-    {
-        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-        pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        if (!m_bindGroupLayout)
-        {
-            pipelineLayoutCreateInfo.setLayoutCount = 0;
-            pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+        if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate descriptor sets!");
         }
-        else
-        {
-            pipelineLayoutCreateInfo.setLayoutCount = 1;
-            pipelineLayoutCreateInfo.pSetLayouts = &m_bindGroupLayout;
-        }
-        pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-
-        if (vkCreatePipelineLayout(Vulkan::GetDevice(), &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
-            std::cout << "error: could not create pipeline layout" << std::endl;
-        }        
     }
 }
 
@@ -310,7 +290,7 @@ bool VulkanRenderer2D::CreateRenderPass()
     //   renderPassInfo.dependencyCount = 2;
     //   renderPassInfo.pDependencies = dependencies;
 
-    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
+    if (vkCreateRenderPass(GraphicsAPI::Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
     {
         std::cout << "error; could not create renderpass" << std::endl;
         return false;
@@ -321,124 +301,23 @@ bool VulkanRenderer2D::CreateRenderPass()
 
 void VulkanRenderer2D::CreatePipeline()
 {
-    std::cout << "Creating render pipeline..." << std::endl;
-
-    /* assemble the graphics pipeline itself */
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = m_vertextBindingDescs.size();
-    vertexInputInfo.pVertexBindingDescriptions = m_vertextBindingDescs.data();
-    vertexInputInfo.vertexAttributeDescriptionCount = m_vertextAttribDescs.size();
-    vertexInputInfo.pVertexAttributeDescriptions = m_vertextAttribDescs.data();
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
-    inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
-
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(m_width);
-    viewport.height = static_cast<float>(m_height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-
-    VkRect2D scissor{};
-    scissor.offset = { 0, 0 };
-    scissor.extent = {m_width, m_height};
-
-    VkPipelineViewportStateCreateInfo viewportStateInfo{};
-    viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportStateInfo.viewportCount = 1;
-    viewportStateInfo.pViewports = &viewport;
-    viewportStateInfo.scissorCount = 1;
-    viewportStateInfo.pScissors = &scissor;
-
-    VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
-    rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizerInfo.depthClampEnable = VK_FALSE;
-    rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;
-    rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizerInfo.lineWidth = 1.0f;
-    rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    rasterizerInfo.depthBiasEnable = VK_FALSE;
-
-    VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
-    multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisamplingInfo.sampleShadingEnable = VK_FALSE;
-    multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
-
-    VkPipelineColorBlendStateCreateInfo colorBlendingInfo{};
-    colorBlendingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendingInfo.logicOpEnable = VK_FALSE;
-    colorBlendingInfo.logicOp = VK_LOGIC_OP_COPY;
-    colorBlendingInfo.attachmentCount = 1;
-    colorBlendingInfo.pAttachments = &colorBlendAttachment;
-    colorBlendingInfo.blendConstants[0] = 0.0f;
-    colorBlendingInfo.blendConstants[1] = 0.0f;
-    colorBlendingInfo.blendConstants[2] = 0.0f;
-    colorBlendingInfo.blendConstants[3] = 0.0f;
-
-    VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
-    depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencilInfo.depthTestEnable = VK_TRUE;
-    depthStencilInfo.depthWriteEnable = VK_TRUE;
-    depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-    depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
-    depthStencilInfo.minDepthBounds = 0.0f;
-    depthStencilInfo.maxDepthBounds = 1.0f;
-    depthStencilInfo.stencilTestEnable = VK_FALSE;
-
-    std::vector<VkDynamicState> dynStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-
-    VkPipelineDynamicStateCreateInfo dynStatesInfo{};
-    dynStatesInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynStatesInfo.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
-    dynStatesInfo.pDynamicStates = dynStates.data();
-
-    assert(m_shaderStageInfos.size() > 0);
-    VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
-    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stageCount = m_shaderStageInfos.size();
-    pipelineCreateInfo.pStages = m_shaderStageInfos.data();
-    pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
-    pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
-    pipelineCreateInfo.pViewportState = &viewportStateInfo;
-    pipelineCreateInfo.pRasterizationState = &rasterizerInfo;
-    pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
-    pipelineCreateInfo.pColorBlendState = &colorBlendingInfo;
-    pipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
-    pipelineCreateInfo.pDynamicState = &dynStatesInfo;
-
-    CreatePipelineLayout();
-    pipelineCreateInfo.layout = m_pipelineLayout;
-    pipelineCreateInfo.renderPass = m_renderpass;
-    pipelineCreateInfo.subpass = 0;
-    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-
-    if (vkCreateGraphicsPipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipeline) != VK_SUCCESS) {
-        std::cout << "error: could not create rendering pipeline" << std::endl;
-        vkDestroyPipelineLayout(Vulkan::GetDevice(), m_pipelineLayout, nullptr);
+    std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout};
+    m_render2DPipeline = std::make_unique<Vulkan::Render2DPipeline>(m_renderpass, layouts, m_vertexInputLayout, m_shaderStageInfos);
+    if (m_render2DPipeline->GetPipeline() == VK_NULL_HANDLE || m_render2DPipeline->GetPipelineLayout() == VK_NULL_HANDLE){
+        std::cout << "error: could not create pipeline" << std::endl;
+        assert(false);
+        return;
     }
 
     /* it is save to destroy the shader modules after pipeline has been created */
     DestroyShaders();
-    
-    std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
 void VulkanRenderer2D::CreateFrameBuffer()
 {
     if (m_frameBuffer)
     {
-        vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
+        vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_frameBuffer, nullptr);
     }
 
     VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto };
@@ -451,7 +330,7 @@ void VulkanRenderer2D::CreateFrameBuffer()
     FboInfo.height = m_height;
     FboInfo.layers = 1;
 
-    if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &m_frameBuffer) != VK_SUCCESS) {
+    if (vkCreateFramebuffer(GraphicsAPI::Vulkan::GetDevice(), &FboInfo, nullptr, &m_frameBuffer) != VK_SUCCESS) {
         std::cout << "error: failed to create framebuffer" << std::endl;
         return ;
     }
@@ -460,20 +339,14 @@ void VulkanRenderer2D::CreateFrameBuffer()
 void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t bufferLength, RenderSys::VertexBufferLayout bufferLayout)
 {
     std::cout << "Creating vertex buffer..." << std::endl;
-
     assert(bufferLayout.arrayStride > 0);
     m_vertexCount = bufferLength/bufferLayout.arrayStride;
     assert(m_vertexCount > 0);
-    
-    static bool vertBufCreated = false;
-    if (!vertBufCreated)
+    if (m_vertexInputLayout.m_vertexAttribDescs.size() == 0)
     {
-        VkVertexInputBindingDescription mainBinding{};
-        mainBinding.binding = 0;
-        mainBinding.stride = bufferLayout.arrayStride;
-        mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        m_vertextBindingDescs.push_back(mainBinding);
-
+        m_vertexInputLayout.m_vertexBindingDescs.binding = 0;
+        m_vertexInputLayout.m_vertexBindingDescs.stride = bufferLayout.arrayStride;
+        m_vertexInputLayout.m_vertexBindingDescs.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         for (size_t i = 0; i < bufferLayout.attributeCount; i++)
         {
             RenderSys::VertexAttribute attrib = bufferLayout.attributes[i];
@@ -482,8 +355,7 @@ void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
             vkAttribute.location = attrib.location;
             vkAttribute.format = RenderSys::Vulkan::RenderSysFormatToVulkanFormat(attrib.format);
             vkAttribute.offset = attrib.offset;
-
-            m_vertextAttribDescs.push_back(vkAttribute);
+            m_vertexInputLayout.m_vertexAttribDescs.push_back(vkAttribute);
         }
 
         // VkVertexInputAttributeDescription uvAttribute{};
@@ -515,8 +387,6 @@ void VulkanRenderer2D::CreateVertexBuffer(const void* bufferData, uint32_t buffe
 
 		std::memcpy(buf, bufferData, bufferLength);
 		vmaUnmapMemory(m_vma, m_vertexBufferMemory);
-        
-        vertBufCreated = true;
     }
 
     std::cout << "Vertex buffer: " << m_vertexBuffer << std::endl;
@@ -621,12 +491,12 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
     descriptorWrite.pImageInfo = nullptr; // Optional
     descriptorWrite.pTexelBufferView = nullptr; // Optional
 
-    vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
+    vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanRenderer2D::SimpleRender()
 {
-    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_render2DPipeline->GetPipeline());
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -648,7 +518,7 @@ void VulkanRenderer2D::SimpleRender()
 
 void VulkanRenderer2D::Render()
 {
-    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_render2DPipeline->GetPipeline());
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -671,7 +541,7 @@ void VulkanRenderer2D::Render()
 
 void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffsetCount)
 {
-    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_render2DPipeline->GetPipeline());
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -694,7 +564,8 @@ void VulkanRenderer2D::RenderIndexed(uint32_t uniformIndex, uint32_t dynamicOffs
     if (m_bindGroup)
     {
         uint32_t dynamicOffset = (uniformIndex == 0) ? 0 : RenderSys::Vulkan::GetUniformStride(m_sizeOfOneUniform);
-        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
+        vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_render2DPipeline->GetPipelineLayout(),
+                                     0, 1, &m_bindGroup, dynamicOffsetCount, &dynamicOffset);
         vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
     }
     else
@@ -723,7 +594,7 @@ void VulkanRenderer2D::CreateTextureSampler()
     texSamplerInfo.anisotropyEnable = VK_FALSE;
     texSamplerInfo.maxAnisotropy = 1.0f;
 
-    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_textureSampler) != VK_SUCCESS) {
+    if (vkCreateSampler(GraphicsAPI::Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_textureSampler) != VK_SUCCESS) {
         std::cout << "error: could not create sampler for texture" << std::endl;
     }
 }
@@ -744,13 +615,13 @@ void VulkanRenderer2D::BeginRenderPass()
     // TODO: move commandpool/commandbuffer creation to constructor
     if (!m_commandPool)
     {
-        auto queueFamilyIndices = Vulkan::FindQueueFamilies();
+        auto queueFamilyIndices = GraphicsAPI::Vulkan::FindQueueFamilies();
         VkCommandPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-        auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
-        Vulkan::check_vk_result(err);
+        auto err = vkCreateCommandPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
+        GraphicsAPI::Vulkan::check_vk_result(err);
     }
     
     if (!m_commandBuffer)
@@ -760,20 +631,20 @@ void VulkanRenderer2D::BeginRenderPass()
         cmdBufAllocateInfo.commandPool = m_commandPool;
         cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cmdBufAllocateInfo.commandBufferCount = 1;
-        auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
-        Vulkan::check_vk_result(err);
+        auto err = vkAllocateCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+        GraphicsAPI::Vulkan::check_vk_result(err);
     }
     else
     {
         auto err = vkResetCommandBuffer(m_commandBuffer, 0);
-        Vulkan::check_vk_result(err);
+        GraphicsAPI::Vulkan::check_vk_result(err);
     }
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     auto err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
-    Vulkan::check_vk_result(err);
+    GraphicsAPI::Vulkan::check_vk_result(err);
 
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
@@ -806,7 +677,7 @@ void VulkanRenderer2D::Destroy()
 void VulkanRenderer2D::SubmitCommandBuffer()
 {
     auto err = vkEndCommandBuffer(m_commandBuffer);
-    Vulkan::check_vk_result(err);
+    GraphicsAPI::Vulkan::check_vk_result(err);
 
     VkSubmitInfo end_info{};
     end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

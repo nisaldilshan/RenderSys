@@ -1,4 +1,4 @@
-#include "VulkanPbrRenderPipeline.h"
+#include "VulkanRender2DPipeline.h"
 
 #include <RenderSys/Material.h>
 #include <RenderSys/MaterialFeatures.h>
@@ -11,7 +11,7 @@ namespace RenderSys {
 
 namespace Vulkan {
 
-PbrRenderPipeline::PbrRenderPipeline(VkRenderPass renderPass,
+Render2DPipeline::Render2DPipeline(VkRenderPass renderPass,
     std::vector<VkDescriptorSetLayout> &descriptorSetLayouts,
     const Vulkan::VertexInputLayout& vertexInputLayout, 
     const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos) 
@@ -20,7 +20,7 @@ PbrRenderPipeline::PbrRenderPipeline(VkRenderPass renderPass,
     CreatePipeline(renderPass, vertexInputLayout, shaderStageInfos);
 }
 
-PbrRenderPipeline::~PbrRenderPipeline() 
+Render2DPipeline::~Render2DPipeline() 
 {
     if (m_Pipeline)
     {
@@ -35,21 +35,14 @@ PbrRenderPipeline::~PbrRenderPipeline()
     }
 }
 
-void PbrRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSetLayout> &descriptorSetLayouts)
+void Render2DPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSetLayout> &descriptorSetLayouts)
 {
-    VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    pushConstantRange.offset = 0;
-    pushConstantRange.size = sizeof(RenderSys::MaterialProperties);
-
-    std::array<VkPushConstantRange, 1> pushConstantRanges = {pushConstantRange};
-
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-    pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
-    pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges = nullptr;
     auto result = vkCreatePipelineLayout(GraphicsAPI::Vulkan::GetDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout);
     if (result != VK_SUCCESS)
     {
@@ -57,7 +50,7 @@ void PbrRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSetLa
     }
 }
 
-void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
+void Render2DPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
                                        const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos)
 {
     assert(m_PipelineLayout != VK_NULL_HANDLE);
@@ -68,11 +61,12 @@ void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::Ve
 
     std::vector<VkVertexInputBindingDescription> vertexBindingDescs;
     std::vector<VkVertexInputAttributeDescription> vertexAttribDescs;
-    assert(vertexInputLayout.m_vertexAttribDescs.size() > 0);
-    vertexBindingDescs.push_back(vertexInputLayout.m_vertexBindingDescs);
-    for (const auto &vertextAttribDesc : vertexInputLayout.m_vertexAttribDescs)
-    {
-        vertexAttribDescs.push_back(vertextAttribDesc);
+    if (vertexInputLayout.m_vertexAttribDescs.size() > 0) {
+        vertexBindingDescs.push_back(vertexInputLayout.m_vertexBindingDescs);
+        for (const auto &vertextAttribDesc : vertexInputLayout.m_vertexAttribDescs)
+        {
+            vertexAttribDescs.push_back(vertextAttribDesc);
+        }
     }
 
     vertexInputInfo.vertexBindingDescriptionCount = vertexBindingDescs.size();

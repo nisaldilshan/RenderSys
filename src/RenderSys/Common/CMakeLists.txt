@@ -5,8 +5,9 @@ add_library (RenderSysCommon STATIC
 )
 
 target_link_libraries(RenderSysCommon PRIVATE 
-                            vulkan-memory-allocator::vulkan-memory-allocator
+                            GPUOpen::VulkanMemoryAllocator
                             walnut::walnut)
+target_include_directories(RenderSysCommon PRIVATE ${imgui_INCLUDE_DIRS}/../res/bindings)
 else()
 add_library (RenderSysCommon STATIC
     ../WebGPU/WebGPUBuffer.cpp
