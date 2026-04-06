@@ -15,6 +15,8 @@
 #include <RenderSys/Material.h>
 #include <RenderSys/MaterialFeatures.h>
 
+#include <../res/bindings/imgui_impl_vulkan.h>
+
 #include <array>
 #include <iostream>
 
@@ -1059,10 +1061,8 @@ VkImageView createImguiImageView(const std::shared_ptr<RenderSys::Vulkan::Shadow
     return m_imguiView;
 }
 
-void VulkanRenderer3D::OnDebugView()
+uint64_t VulkanRenderer3D::GetDebugView()
 {
-    ImGui::Begin("VulkanRenderer3D DebugView");
-
     if (m_shadowMap)
     {
         if (m_debugViews.empty())
@@ -1074,12 +1074,10 @@ void VulkanRenderer3D::OnDebugView()
                                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
             m_debugViews.push_back({imguiImageView, shadowDescSet});
         }
-        const float imageWidth = m_width;
-        const float imageHeight = m_height;
-        ImGui::Image(m_debugViews.at(0).descriptorSet, {imageWidth, imageHeight});
     }
 
-    ImGui::End();
+    
+    return (uint64_t)m_debugViews.at(0).descriptorSet;
 }
 
 void VulkanRenderer3D::CreateImageCopyBuffers() 

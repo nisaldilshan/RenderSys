@@ -223,8 +223,13 @@ public:
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
 
-		if (m_debugView)
-			m_renderer->OnDebugView();
+		if (m_debugView) {
+			ImGui::Begin("VulkanRenderer3D DebugView");
+			const auto debugViewDescriptorSet = m_renderer->GetDebugView();
+			if (debugViewDescriptorSet != 0) // Ensure the debug view is available before trying to display it
+        		ImGui::Image(debugViewDescriptorSet, {imageWidth, imageHeight});
+			ImGui::End();
+		}
         ImGui::PopStyleVar();
 
 		m_sceneHierarchyPanel->OnImGuiRender();

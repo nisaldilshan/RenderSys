@@ -150,9 +150,9 @@ void Renderer3D::ShadowPass(entt::registry &entityRegistry)
     m_rendererBackend->EndShadowMapPass();
 }
 
-void Renderer3D::OnDebugView()
+uint64_t Renderer3D::GetDebugView()
 {
-    m_rendererBackend->OnDebugView();
+    return m_rendererBackend->GetDebugView();
 }
 
 std::vector<uint8_t>& Renderer3D::GetRenderedImageData()

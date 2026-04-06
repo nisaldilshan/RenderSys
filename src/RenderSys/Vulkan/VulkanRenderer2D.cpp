@@ -2,10 +2,12 @@
 #include "VulkanRendererUtils.h"
 #include "Pipeline/VulkanRender2DPipeline.h"
 
-#include <iostream>
-
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
+
+#include <../res/bindings/imgui_impl_vulkan.h>
+
+#include <iostream>
 
 namespace RenderSys
 {

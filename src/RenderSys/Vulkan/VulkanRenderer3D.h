@@ -87,7 +87,7 @@ public:
     void ResetCommandBuffer();
     void SubmitCommandBuffer();
 
-    void OnDebugView();
+    uint64_t GetDebugView();
     std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 
 private:
