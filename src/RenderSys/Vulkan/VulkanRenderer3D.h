@@ -43,6 +43,7 @@ struct VulkanShaderData
 struct VulkanDebugView
 {
     VkImageView view;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSet descriptorSet;
 };
 

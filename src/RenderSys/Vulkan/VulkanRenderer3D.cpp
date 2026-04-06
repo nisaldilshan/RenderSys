@@ -175,7 +175,7 @@ void VulkanRenderer3D::DestroyImages()
 
     for (auto &debugView : m_debugViews)
     {
-        ImGui_ImplVulkan_RemoveTexture(debugView.descriptorSet);
+        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), debugView.descriptorSetLayout, nullptr);
         vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), debugView.view, nullptr);
     }
     m_debugViews.clear();
@@ -1027,7 +1027,7 @@ void VulkanRenderer3D::SubmitCommandBuffer()
     GraphicsAPI::Vulkan::QueueSubmit(end_info);
 }
 
-VkImageView createImguiImageView(const std::shared_ptr<RenderSys::Vulkan::ShadowMap>& shadowMap)
+VkImageView createDebugImageView(const std::shared_ptr<RenderSys::Vulkan::ShadowMap>& shadowMap)
 {
     // NOW, CREATE A NEW VIEW FOR IMGUI
     VkImageView m_imguiView = VK_NULL_HANDLE;
@@ -1067,12 +1067,43 @@ uint64_t VulkanRenderer3D::GetDebugView()
     {
         if (m_debugViews.empty())
         {
-            auto imguiImageView = createImguiImageView(m_shadowMap);
-            auto shadowDescSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(
-                                                        m_defaultTextureSampler, 
-                                                        imguiImageView, 
-                                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-            m_debugViews.push_back({imguiImageView, shadowDescSet});
+            auto imguiImageView = createDebugImageView(m_shadowMap);
+
+            VkDescriptorSetLayout shadowDescSetLayout = VK_NULL_HANDLE;
+            VkDescriptorSetLayoutBinding binding[1] = {};
+            binding[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            binding[0].descriptorCount = 1;
+            binding[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+            VkDescriptorSetLayoutCreateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            info.bindingCount = 1;
+            info.pBindings = binding;
+            VkResult err = vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &info, 
+                                                GraphicsAPI::Vulkan::GetAllocator(), &shadowDescSetLayout);
+            GraphicsAPI::Vulkan::check_vk_result(err);
+
+            VkDescriptorSet shadowDescSet = VK_NULL_HANDLE;
+            VkDescriptorSetAllocateInfo alloc_info = {};
+            alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            alloc_info.descriptorPool = GraphicsAPI::Vulkan::GetDescriptorPool();
+            alloc_info.descriptorSetCount = 1;
+            alloc_info.pSetLayouts = &shadowDescSetLayout;
+            VkResult shadowDescSetErr = vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &alloc_info, &shadowDescSet);
+            GraphicsAPI::Vulkan::check_vk_result(shadowDescSetErr);
+
+            VkDescriptorImageInfo desc_image[1] = {};
+            desc_image[0].sampler = m_defaultTextureSampler;
+            desc_image[0].imageView = imguiImageView;
+            desc_image[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            VkWriteDescriptorSet write_desc[1] = {};
+            write_desc[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write_desc[0].dstSet = shadowDescSet;
+            write_desc[0].descriptorCount = 1;
+            write_desc[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            write_desc[0].pImageInfo = desc_image;
+            vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), 1, write_desc, 0, nullptr);
+
+            m_debugViews.push_back({imguiImageView, shadowDescSetLayout, shadowDescSet});
         }
     }
 
