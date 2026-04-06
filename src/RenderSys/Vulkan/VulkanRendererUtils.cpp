@@ -1,5 +1,6 @@
 #include "VulkanRendererUtils.h"
 #include <stdexcept>
+#include <cassert>
 
 namespace RenderSys
 {

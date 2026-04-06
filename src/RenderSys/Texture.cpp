@@ -12,6 +12,8 @@ static_assert(false);
 static_assert(false);
 #endif
 
+#include <cassert>
+
 namespace RenderSys
 {
 
