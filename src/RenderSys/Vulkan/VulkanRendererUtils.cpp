@@ -272,5 +272,45 @@ uint32_t GetUniformStride(const uint32_t sizeOfUniform)
     return uniformStride;
 }
 
+std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSampler sampler)
+{
+    auto ret = std::make_unique<RenderTarget>();
+    ret->view = imageView;
+
+    VkDescriptorSetLayoutBinding binding[1] = {};
+    binding[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    binding[0].descriptorCount = 1;
+    binding[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    VkDescriptorSetLayoutCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    info.bindingCount = 1;
+    info.pBindings = binding;
+    VkResult err = vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &info, 
+                                        GraphicsAPI::Vulkan::GetAllocator(), &ret->descriptorSetLayout);
+    GraphicsAPI::Vulkan::check_vk_result(err);
+
+    VkDescriptorSetAllocateInfo alloc_info = {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    alloc_info.descriptorPool = GraphicsAPI::Vulkan::GetDescriptorPool();
+    alloc_info.descriptorSetCount = 1;
+    alloc_info.pSetLayouts = &ret->descriptorSetLayout;
+    VkResult shadowDescSetErr = vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &alloc_info, &ret->descriptorSet);
+    GraphicsAPI::Vulkan::check_vk_result(shadowDescSetErr);
+
+    VkDescriptorImageInfo desc_image[1] = {};
+    desc_image[0].sampler = sampler;
+    desc_image[0].imageView = imageView;
+    desc_image[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkWriteDescriptorSet write_desc[1] = {};
+    write_desc[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write_desc[0].dstSet = ret->descriptorSet;
+    write_desc[0].descriptorCount = 1;
+    write_desc[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write_desc[0].pImageInfo = desc_image;
+    vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), 1, write_desc, 0, nullptr);
+
+    return ret;
+}
+
 } // namespace Vulkan
 } // namespace RenderSys

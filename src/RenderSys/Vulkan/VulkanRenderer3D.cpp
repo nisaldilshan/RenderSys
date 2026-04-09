@@ -15,8 +15,6 @@
 #include <RenderSys/Material.h>
 #include <RenderSys/MaterialFeatures.h>
 
-#include <../res/bindings/imgui_impl_vulkan.h>
-
 #include <array>
 #include <iostream>
 
@@ -70,8 +68,8 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
         assert(false);
     }
 
-    m_imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-    m_finalImageDescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+    const auto finalRenderTargetView = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+    m_finalRenderTarget = RenderSys::Vulkan::CreateRenderTarget(finalRenderTargetView, m_defaultTextureSampler);
 
     // create image copy staging buffer for cpu image copy
     CreateImageCopyBuffers();
@@ -175,16 +173,10 @@ void VulkanRenderer3D::DestroyImages()
 
     for (auto &debugView : m_debugViews)
     {
-        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), debugView.descriptorSetLayout, nullptr);
-        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), debugView.view, nullptr);
+        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), debugView->descriptorSetLayout, nullptr);
+        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), debugView->view, nullptr);
     }
     m_debugViews.clear();
-    
-    if (m_finalImageDescriptorSet)
-    {
-        ImGui_ImplVulkan_RemoveTexture(m_finalImageDescriptorSet);
-        m_finalImageDescriptorSet = VK_NULL_HANDLE;
-    }
 
     if (m_frameBuffer)
     {
@@ -192,12 +184,14 @@ void VulkanRenderer3D::DestroyImages()
         vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_frameBuffer, nullptr);
         m_frameBuffer = VK_NULL_HANDLE;
     }
-    
-    if (m_imageViewToRenderInto != VK_NULL_HANDLE)
+
+    if (m_finalRenderTarget)
     {
-        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_imageViewToRenderInto, nullptr);
-        m_imageViewToRenderInto = VK_NULL_HANDLE;
+        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), m_finalRenderTarget->descriptorSetLayout, nullptr);
+        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_finalRenderTarget->view, nullptr);
     }
+    m_finalRenderTarget.reset();
+
     if (m_ImageToRenderInto != VK_NULL_HANDLE)
     {
         vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), m_ImageToRenderInto, m_renderImageMemory);
@@ -511,9 +505,9 @@ void VulkanRenderer3D::CreatePipeline()
 
 void VulkanRenderer3D::CreateFrameBuffer()
 {
-    assert(m_imageViewToRenderInto);
+    assert(m_finalRenderTarget->view);
     assert(m_depthimageView);
-    VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto, m_depthimageView };
+    VkImageView frameBufferAttachments[] = { m_finalRenderTarget->view, m_depthimageView };
     VkFramebufferCreateInfo FboInfo{};
     FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     FboInfo.renderPass = m_renderpass;
@@ -832,7 +826,7 @@ void VulkanRenderer3D::DrawCube()
 
 uint64_t VulkanRenderer3D::GetDescriptorSet()
 {
-    return (uint64_t)m_finalImageDescriptorSet;
+    return (uint64_t)m_finalRenderTarget->descriptorSet;
 }
 
 void VulkanRenderer3D::BeginRenderPass()
@@ -1067,48 +1061,13 @@ uint64_t VulkanRenderer3D::GetDebugView()
     {
         if (m_debugViews.empty())
         {
-            auto imguiImageView = createDebugImageView(m_shadowMap);
-
-            VkDescriptorSetLayout shadowDescSetLayout = VK_NULL_HANDLE;
-            VkDescriptorSetLayoutBinding binding[1] = {};
-            binding[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            binding[0].descriptorCount = 1;
-            binding[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-            VkDescriptorSetLayoutCreateInfo info = {};
-            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            info.bindingCount = 1;
-            info.pBindings = binding;
-            VkResult err = vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &info, 
-                                                GraphicsAPI::Vulkan::GetAllocator(), &shadowDescSetLayout);
-            GraphicsAPI::Vulkan::check_vk_result(err);
-
-            VkDescriptorSet shadowDescSet = VK_NULL_HANDLE;
-            VkDescriptorSetAllocateInfo alloc_info = {};
-            alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            alloc_info.descriptorPool = GraphicsAPI::Vulkan::GetDescriptorPool();
-            alloc_info.descriptorSetCount = 1;
-            alloc_info.pSetLayouts = &shadowDescSetLayout;
-            VkResult shadowDescSetErr = vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &alloc_info, &shadowDescSet);
-            GraphicsAPI::Vulkan::check_vk_result(shadowDescSetErr);
-
-            VkDescriptorImageInfo desc_image[1] = {};
-            desc_image[0].sampler = m_defaultTextureSampler;
-            desc_image[0].imageView = imguiImageView;
-            desc_image[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            VkWriteDescriptorSet write_desc[1] = {};
-            write_desc[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write_desc[0].dstSet = shadowDescSet;
-            write_desc[0].descriptorCount = 1;
-            write_desc[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            write_desc[0].pImageInfo = desc_image;
-            vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), 1, write_desc, 0, nullptr);
-
-            m_debugViews.push_back({imguiImageView, shadowDescSetLayout, shadowDescSet});
+            const auto imguiImageView = createDebugImageView(m_shadowMap);
+            m_debugViews.push_back(Vulkan::CreateRenderTarget(imguiImageView, m_defaultTextureSampler));
         }
     }
 
     
-    return (uint64_t)m_debugViews.at(0).descriptorSet;
+    return (uint64_t)m_debugViews.at(0)->descriptorSet;
 }
 
 void VulkanRenderer3D::CreateImageCopyBuffers() 

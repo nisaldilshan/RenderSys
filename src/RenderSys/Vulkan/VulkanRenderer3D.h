@@ -12,6 +12,7 @@
 #include <RenderSys/Texture.h>
 #include <RenderSys/Scene/Mesh.h>
 #include <RenderSys/Vulkan/VulkanVertex.h>
+#include <RenderSys/Vulkan/VulkanRendererUtils.h>
 #include <entt/entt.hpp>
 
 
@@ -38,13 +39,6 @@ struct VulkanShaderData
 {
     VkPipelineShaderStageCreateInfo shaderStageInfo;
     std::vector<uint32_t> compiledShader;
-};
-
-struct VulkanDebugView
-{
-    VkImageView view;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorSet descriptorSet;
 };
 
 class VulkanRenderer3D
@@ -108,13 +102,12 @@ private:
     uint32_t m_height = 0;
     VkImage m_ImageToRenderInto = VK_NULL_HANDLE;
     VmaAllocation m_renderImageMemory = VK_NULL_HANDLE;
-    VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
     VkImage m_depthimage = VK_NULL_HANDLE;
     VmaAllocation m_depthimageMemory = VK_NULL_HANDLE;
     VkImageView m_depthimageView = VK_NULL_HANDLE;
 
     VkSampler m_defaultTextureSampler = VK_NULL_HANDLE;
-    VkDescriptorSet m_finalImageDescriptorSet = VK_NULL_HANDLE;
+    std::unique_ptr<Vulkan::RenderTarget> m_finalRenderTarget;
     std::unordered_map<std::string, VulkanShaderData> m_shaderMap;
 
     std::unique_ptr<Vulkan::PbrRenderPipeline> m_pbrRenderPipeline;
@@ -138,7 +131,7 @@ private:
     std::shared_ptr<RenderSys::Vulkan::ShadowMap> m_shadowMap;
     std::unique_ptr<Vulkan::ShadowRenderPipeline> m_shadowRenderPipeline;
     std::unique_ptr<VulkanCPUImageCopyData> m_cpuImageData;
-    std::vector<VulkanDebugView> m_debugViews;
+    std::vector<std::unique_ptr<Vulkan::RenderTarget>> m_debugViews;
 };
 
 }
