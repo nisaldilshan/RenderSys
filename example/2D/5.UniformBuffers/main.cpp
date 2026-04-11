@@ -11,7 +11,8 @@
 
 
 //The same structure as in the shader, replicated in C++
-struct MyUniforms {
+struct MyUniforms
+{
 	// offset = 0 * sizeof(vec4f) -> OK
 	std::array<float, 4> color;
 	// offset = 16 = 4 * sizeof(f32) -> OK
@@ -27,29 +28,11 @@ public:
 	virtual void OnAttach() override
 	{
 		m_renderer = std::make_shared<RenderSys::Renderer2D>();
-	}
+		m_renderer->Init();
 
-	virtual void OnDetach() override
-	{
-
-	}
-
-	virtual void OnUpdate(float ts) override
-	{
-        Walnut::Timer timer;
-		if (m_viewportWidth == 0 || m_viewportHeight == 0)
-			return;
-
-        if (!m_renderer ||
-            m_viewportWidth != m_renderer->GetWidth() ||
-            m_viewportHeight != m_renderer->GetHeight())
-        {
-			m_renderer->Init();
-			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-			{
-				const char* vertexShaderSource = R"(
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			const char *vertexShaderSource = R"(
 					#version 450 core
 					layout(binding = 0) uniform UniformBufferObject {
 						vec4 color;
@@ -67,12 +50,12 @@ public:
 						vColor = aColor; // Pass color to fragment shader
 					}
 				)";
-				RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
-				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				m_renderer->SetShader(vertexShader);
+			RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
+			vertexShader.type = RenderSys::ShaderType::SPIRV;
+			vertexShader.stage = RenderSys::ShaderStage::Vertex;
+			m_renderer->SetShader(vertexShader);
 
-				const char* fragmentShaderSource = R"(
+			const char *fragmentShaderSource = R"(
 					#version 450
 					layout(location = 0) in vec3 vColor;
 					layout(location = 0) out vec4 FragColor;
@@ -82,14 +65,14 @@ public:
 						FragColor = vec4(vColor, 1.0); // Use the color from the vertex shader
 					}
 				)";
-				RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
-				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				m_renderer->SetShader(fragmentShader);
-			}
-			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
-			{
-				const char* shaderSource = R"(
+			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
+			fragmentShader.type = RenderSys::ShaderType::SPIRV;
+			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+			m_renderer->SetShader(fragmentShader);
+		}
+		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+		{
+			const char *shaderSource = R"(
 				/**
 				 * A structure with fields labeled with vertex attribute locations can be used
 				 * as input to the entry point of a shader.
@@ -143,82 +126,92 @@ public:
 				}
 				)";
 
-				RenderSys::Shader shader("Combined", shaderSource);
-				shader.type = RenderSys::ShaderType::WGSL;
-				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
-				m_renderer->SetShader(shader);
-			}
-			else
-			{
-				assert(false);
-			}
+			RenderSys::Shader shader("Combined", shaderSource);
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+			m_renderer->SetShader(shader);
+		}
+		else
+		{
+			assert(false);
+		}
 
+		//
+		std::vector<float> vertexData;
+		std::vector<uint16_t> indexData;
+		auto success = Geometry::load2DGeometry(RESOURCE_DIR "/model.txt", vertexData, indexData);
+		if (!success)
+		{
+			std::cerr << "Could not load geometry!" << std::endl;
+			return;
+		}
+		//
 
-			//
-			std::vector<float> vertexData;
-			std::vector<uint16_t> indexData;
-			auto success = Geometry::load2DGeometry(RESOURCE_DIR "/model.txt", vertexData, indexData);
-			if (!success) 
-			{
-				std::cerr << "Could not load geometry!" << std::endl;
-				return;
-			}
-			//
+		// Vertex fetch
+		// We now have 2 attributes
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
 
-			// Vertex fetch
-			// We now have 2 attributes
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
+		// Position attribute
+		vertexAttribs[0].location = 0;
+		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x2;
+		vertexAttribs[0].offset = 0;
 
-			// Position attribute
-			vertexAttribs[0].location = 0;
-			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[0].offset = 0;
+		// Color attribute
+		vertexAttribs[1].location = 1;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; // different type!
+		vertexAttribs[1].offset = 2 * sizeof(float);				  // non null offset!
 
-			// Color attribute
-			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; // different type!
-			vertexAttribs[1].offset = 2 * sizeof(float); // non null offset!
+		RenderSys::VertexBufferLayout vertexBufferLayout;
+		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
+		vertexBufferLayout.attributes = vertexAttribs.data();
+		// stride
+		vertexBufferLayout.arrayStride = 5 * sizeof(float);
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-			RenderSys::VertexBufferLayout vertexBufferLayout;
-			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
-			vertexBufferLayout.attributes = vertexAttribs.data();
-			// stride
-			vertexBufferLayout.arrayStride = 5 * sizeof(float);
-			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
+		m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
+		m_renderer->SetIndexBufferData(indexData);
 
+		// Create binding layout (don't forget to = Default)
+		RenderSys::BindGroupLayoutEntry bGLayoutEntry; // = wgpu::Default;
+		// The binding index as used in the @binding attribute in the shader
+		bGLayoutEntry.binding = 0;
+		// The stage that needs to access this resource
+		bGLayoutEntry.visibility = RenderSys::ShaderStage::Vertex;
+		bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
+		bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
+		bGLayoutEntry.buffer.hasDynamicOffset = false;
 
-			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
-			m_renderer->SetIndexBufferData(indexData);
+		m_renderer->CreateUniformBuffer(1, sizeof(MyUniforms));
+		m_renderer->CreateBindGroup(bGLayoutEntry);
+		m_renderer->CreatePipeline();
+	}
 
-			// Create binding layout (don't forget to = Default)
-			RenderSys::BindGroupLayoutEntry bGLayoutEntry;// = wgpu::Default;
-			// The binding index as used in the @binding attribute in the shader
-			bGLayoutEntry.binding = 0;
-			// The stage that needs to access this resource
-			bGLayoutEntry.visibility = RenderSys::ShaderStage::Vertex;
-			bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
-			bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
-			bGLayoutEntry.buffer.hasDynamicOffset = false;
+	virtual void OnDetach() override
+	{
 
-			m_renderer->CreateUniformBuffer(1, sizeof(MyUniforms));
-			m_renderer->CreateBindGroup(bGLayoutEntry);
-			m_renderer->CreatePipeline();
+	}
+
+	virtual void OnUpdate(float ts) override
+	{
+        Walnut::Timer timer;
+		if (m_viewportWidth == 0 || m_viewportHeight == 0)
+			return;
+
+        if (m_viewportWidth != m_renderer->GetWidth() ||
+            m_viewportHeight != m_renderer->GetHeight())
+        {
+			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
         }
 
-		if (m_renderer)
-		{
-			m_renderer->BeginRenderPass();
-			// Update uniform buffer
-			static auto startTime = std::chrono::steady_clock::now();
-			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
-			m_uniformData.time = static_cast<float>(time); // glfwGetTime returns a double
-			m_renderer->SetUniformBufferData(&m_uniformData, 0);
+		m_renderer->BeginRenderPass();
+		// Update uniform buffer
+		static auto startTime = std::chrono::steady_clock::now();
+		const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
+		m_uniformData.time = static_cast<float>(time); // glfwGetTime returns a double
+		m_renderer->SetUniformBufferData(&m_uniformData, 0);
 
-			m_renderer->RenderIndexed(0, 0);
-			m_renderer->EndRenderPass();
-		}
-       		
-
+		m_renderer->RenderIndexed(0, 0);
+		m_renderer->EndRenderPass();
         m_lastRenderTime = timer.ElapsedMillis();
 	}
 

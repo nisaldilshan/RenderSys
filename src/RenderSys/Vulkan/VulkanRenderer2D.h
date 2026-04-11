@@ -9,6 +9,7 @@
 #include <RenderSys/RenderUtil.h>
 #include <RenderSys/Shader.h>
 #include <RenderSys/Vulkan/VulkanVertex.h>
+#include <RenderSys/Vulkan/VulkanRendererUtils.h>
 
 namespace RenderSys
 {
@@ -50,9 +51,8 @@ private:
     uint32_t m_width = 0;
     uint32_t m_height = 0;
     VkImage m_ImageToRenderInto = VK_NULL_HANDLE;
-    VkImageView m_imageViewToRenderInto = VK_NULL_HANDLE;
+    std::unique_ptr<Vulkan::RenderTarget> m_finalRenderTarget;
     VkSampler m_textureSampler;
-    VkDescriptorSet m_descriptorSet;
     std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
     std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
 

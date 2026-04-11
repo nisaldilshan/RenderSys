@@ -31,6 +31,7 @@ void Renderer2D::OnResize(uint32_t width, uint32_t height)
 void Renderer2D::Init()
 {
     m_rendererBackend->Init();
+    OnResize(1, 1);
 }
 
 void Renderer2D::SetShader(RenderSys::Shader& shader)
