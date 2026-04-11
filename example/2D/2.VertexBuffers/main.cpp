@@ -13,30 +13,11 @@ public:
 	virtual void OnAttach() override
 	{
 		m_renderer = std::make_shared<RenderSys::Renderer2D>();
-	}
+		m_renderer->Init();
 
-	virtual void OnDetach() override
-	{
-
-	}
-
-	virtual void OnUpdate(float ts) override
-	{
-        Walnut::Timer timer;
-		if (m_viewportWidth == 0 || m_viewportHeight == 0)
-			return;
-
-        if (!m_renderer ||
-            m_viewportWidth != m_renderer->GetWidth() ||
-            m_viewportHeight != m_renderer->GetHeight())
-        {
-			m_renderer->Init();
-			
-			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-			{			
-				const char* vertexShaderSource = R"(
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			const char *vertexShaderSource = R"(
 					#version 450 core
 					layout (location = 0) in vec2 aPos;
 
@@ -44,12 +25,12 @@ public:
 						gl_Position = vec4(aPos, 0.0, 1.0);
 					}
 				)";
-				RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
-				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				m_renderer->SetShader(vertexShader);
+			RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
+			vertexShader.type = RenderSys::ShaderType::SPIRV;
+			vertexShader.stage = RenderSys::ShaderStage::Vertex;
+			m_renderer->SetShader(vertexShader);
 
-				const char* fragmentShaderSource = R"(
+			const char *fragmentShaderSource = R"(
 					#version 450
 
 					layout(location = 0) out vec4 FragColor;
@@ -59,14 +40,14 @@ public:
 						FragColor = vec4(1.0, 0.4000000059604644775390625, 0.0, 1.0);
 					}
 				)";
-				RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
-				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				m_renderer->SetShader(fragmentShader);
-			}
-			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
-			{
-				const char* shaderSource = R"(
+			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
+			fragmentShader.type = RenderSys::ShaderType::SPIRV;
+			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+			m_renderer->SetShader(fragmentShader);
+		}
+		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+		{
+			const char *shaderSource = R"(
 				// The `@location(0)` attribute means that this input variable is described
 				// by the vertex buffer layout at index 0 in the `pipelineDesc.vertex.buffers`
 				// array.
@@ -84,62 +65,72 @@ public:
 					}
 				)";
 
-				RenderSys::Shader shader("Combined", shaderSource);
-				shader.type = RenderSys::ShaderType::WGSL;
-				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
-				m_renderer->SetShader(shader);
-			}
-			else
-			{
-				assert(false);
-			}
+			RenderSys::Shader shader("Combined", shaderSource);
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+			m_renderer->SetShader(shader);
+		}
+		else
+		{
+			assert(false);
+		}
 
-			
+		// Vertex buffer
+		// There are 2 floats per vertex, one for x and one for y.
+		// But in the end this is just a bunch of floats to the eyes of the GPU,
+		// the *layout* will tell how to interpret this.
+		const std::vector<float> vertexData = {
+			-0.5, -0.5,
+			+0.5, -0.5,
+			+0.0, +0.5,
 
-			// Vertex buffer
-			// There are 2 floats per vertex, one for x and one for y.
-			// But in the end this is just a bunch of floats to the eyes of the GPU,
-			// the *layout* will tell how to interpret this.
-			const std::vector<float> vertexData = {
-				-0.5, -0.5,
-				+0.5, -0.5,
-				+0.0, +0.5,
+			-0.55f, -0.5,
+			-0.05f, +0.5,
+			-0.55f, +0.5,
 
-				-0.55f, -0.5,
-				-0.05f, +0.5,
-				-0.55f, +0.5,
+			+0.275f, +0.05,
+			+0.5f, +0.5,
+			+0.05f, +0.5};
 
-				+0.275f, +0.05,
-				+0.5f, +0.5,
-				+0.05f, +0.5
-			};
+		RenderSys::VertexAttribute vertexAttrib;
+		// == Per attribute ==
+		// Corresponds to @location(...)
+		vertexAttrib.location = 0;
+		// Means vec2f in the shader
+		vertexAttrib.format = RenderSys::VertexFormat::Float32x2;
+		// Index of the first element
+		vertexAttrib.offset = 0;
 
-			RenderSys::VertexAttribute vertexAttrib;
-			// == Per attribute ==
-			// Corresponds to @location(...)
-			vertexAttrib.location = 0;
-			// Means vec2f in the shader
-			vertexAttrib.format = RenderSys::VertexFormat::Float32x2;
-			// Index of the first element
-			vertexAttrib.offset = 0;
+		RenderSys::VertexBufferLayout vertexBufferLayout;
+		vertexBufferLayout.attributeCount = 1;
+		vertexBufferLayout.attributes = &vertexAttrib;
+		vertexBufferLayout.arrayStride = 2 * sizeof(float);
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-			RenderSys::VertexBufferLayout vertexBufferLayout;
-			vertexBufferLayout.attributeCount = 1;
-			vertexBufferLayout.attributes = &vertexAttrib;
-			vertexBufferLayout.arrayStride = 2 * sizeof(float);
-			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
+		m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
+		m_renderer->CreatePipeline();
+	}
 
+	virtual void OnDetach() override
+	{
 
-			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
-			m_renderer->CreatePipeline();
+	}
+
+	virtual void OnUpdate(float ts) override
+	{
+        Walnut::Timer timer;
+		if (m_viewportWidth == 0 || m_viewportHeight == 0)
+			return;
+
+        if (m_viewportWidth != m_renderer->GetWidth() ||
+            m_viewportHeight != m_renderer->GetHeight())
+        {
+			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
         }
 
-		if (m_renderer)
-		{
-			m_renderer->BeginRenderPass();
-       		m_renderer->Render();
-			m_renderer->EndRenderPass();
-		}
+		m_renderer->BeginRenderPass();
+		m_renderer->Render();
+		m_renderer->EndRenderPass();
 
         m_lastRenderTime = timer.ElapsedMillis();
 	}

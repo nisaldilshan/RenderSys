@@ -13,30 +13,11 @@ public:
 	virtual void OnAttach() override
 	{
 		m_renderer = std::make_shared<RenderSys::Renderer2D>();
-	}
+		m_renderer->Init();
 
-	virtual void OnDetach() override
-	{
-		if (m_renderer)
-			m_renderer->Destroy();
-	}
-
-	virtual void OnUpdate(float ts) override
-	{
-        Walnut::Timer timer;
-		if (m_viewportWidth == 0 || m_viewportHeight == 0)
-			return;
-
-        if (!m_renderer ||
-            m_viewportWidth != m_renderer->GetWidth() ||
-            m_viewportHeight != m_renderer->GetHeight())
-        {
-			m_renderer->Init();
-			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-
-			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-			{
-				const char* vertexShaderSource = R"(
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			const char *vertexShaderSource = R"(
 					#version 450 core
 					layout (location = 0) in vec2 aPos;
 					layout (location = 1) in vec3 aColor; // Add color attribute
@@ -47,12 +28,12 @@ public:
 						vColor = aColor; // Pass color to fragment shader
 					}
 				)";
-				RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
-				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				m_renderer->SetShader(vertexShader);
+			RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
+			vertexShader.type = RenderSys::ShaderType::SPIRV;
+			vertexShader.stage = RenderSys::ShaderStage::Vertex;
+			m_renderer->SetShader(vertexShader);
 
-				const char* fragmentShaderSource = R"(
+			const char *fragmentShaderSource = R"(
 					#version 450
 					layout(location = 0) in vec3 vColor;
 					layout(location = 0) out vec4 FragColor;
@@ -62,14 +43,14 @@ public:
 						FragColor = vec4(vColor, 1.0); // Use the color from the vertex shader
 					}
 				)";
-				RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
-				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				m_renderer->SetShader(fragmentShader);
-			}
-			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
-			{
-				const char* shaderSource = R"(
+			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
+			fragmentShader.type = RenderSys::ShaderType::SPIRV;
+			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+			m_renderer->SetShader(fragmentShader);
+		}
+		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+		{
+			const char *shaderSource = R"(
 				/**
 				 * A structure with fields labeled with vertex attribute locations can be used
 				 * as input to the entry point of a shader.
@@ -106,59 +87,74 @@ public:
 					return vec4f(in.color, 1.0);
 				}
 				)";
-				RenderSys::Shader shader("Combined", shaderSource);
-				shader.type = RenderSys::ShaderType::WGSL;
-				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
-				m_renderer->SetShader(shader);
-			}
-			else
-			{
-				assert(false);
-			}
+			RenderSys::Shader shader("Combined", shaderSource);
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+			m_renderer->SetShader(shader);
+		}
+		else
+		{
+			assert(false);
+		}
 
-			// Vertex buffer
-			// The de-duplicated list of point positions
-			std::vector<float> vertexData = {
-				// x,   y,     r,   g,   b
-				-0.5, -0.5,   1.0, 0.0, 0.0,
-				+0.5, -0.5,   0.0, 1.0, 0.0,
-				+0.5, +0.5,   0.0, 0.0, 1.0,
-				-0.5, +0.5,   1.0, 1.0, 0.0
-			};
+		// Vertex buffer
+		// The de-duplicated list of point positions
+		std::vector<float> vertexData = {
+			// x,   y,     r,   g,   b
+			-0.5, -0.5, 1.0, 0.0, 0.0,
+			+0.5, -0.5, 0.0, 1.0, 0.0,
+			+0.5, +0.5, 0.0, 0.0, 1.0,
+			-0.5, +0.5, 1.0, 1.0, 0.0};
 
-			// Vertex fetch
-			// We now have 2 attributes
-			std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
+		// Vertex fetch
+		// We now have 2 attributes
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
 
-			// Position attribute
-			vertexAttribs[0].location = 0;
-			vertexAttribs[0].format = RenderSys::VertexFormat::Float32x2;
-			vertexAttribs[0].offset = 0;
+		// Position attribute
+		vertexAttribs[0].location = 0;
+		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x2;
+		vertexAttribs[0].offset = 0;
 
-			// Color attribute
-			vertexAttribs[1].location = 1;
-			vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; // different type!
-			vertexAttribs[1].offset = 2 * sizeof(float); // non null offset!
+		// Color attribute
+		vertexAttribs[1].location = 1;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; // different type!
+		vertexAttribs[1].offset = 2 * sizeof(float);				  // non null offset!
 
-			RenderSys::VertexBufferLayout vertexBufferLayout;
-			vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
-			vertexBufferLayout.attributes = vertexAttribs.data();
-			// stride
-			vertexBufferLayout.arrayStride = 5 * sizeof(float);
-			vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
+		RenderSys::VertexBufferLayout vertexBufferLayout;
+		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
+		vertexBufferLayout.attributes = vertexAttribs.data();
+		// stride
+		vertexBufferLayout.arrayStride = 5 * sizeof(float);
+		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
+		m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
 
-			m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
+		// Index Buffer
+		// This is a list of indices referencing positions in the pointData
+		std::vector<uint16_t> indexData = {
+			0, 1, 2, // Triangle #0
+			0, 2, 3	 // Triangle #1
+		};
+		m_renderer->SetIndexBufferData(indexData);
 
-			// Index Buffer
-			// This is a list of indices referencing positions in the pointData
-			std::vector<uint16_t> indexData = {
-				0, 1, 2, // Triangle #0
-				0, 2, 3  // Triangle #1
-			};
-			m_renderer->SetIndexBufferData(indexData);
+		m_renderer->CreatePipeline();
+	}
 
-			m_renderer->CreatePipeline();
+	virtual void OnDetach() override
+	{
+		m_renderer->Destroy();			
+	}
+
+	virtual void OnUpdate(float ts) override
+	{
+        Walnut::Timer timer;
+		if (m_viewportWidth == 0 || m_viewportHeight == 0)
+			return;
+
+        if (m_viewportWidth != m_renderer->GetWidth() ||
+            m_viewportHeight != m_renderer->GetHeight())
+        {
+			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
         }
 
 		if (m_renderer)
