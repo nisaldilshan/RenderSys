@@ -64,7 +64,7 @@ public:
     void ShadowPass(entt::registry& entityRegistry);
     void* GetDescriptorSet() const;
     void Destroy();
-    void OnDebugView();
+    uint64_t GetDebugView();
     std::vector<uint8_t>& GetRenderedImageData();
 
 private:

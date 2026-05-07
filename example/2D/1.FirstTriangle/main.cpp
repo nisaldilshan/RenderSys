@@ -13,29 +13,11 @@ public:
 	virtual void OnAttach() override
 	{
 		m_renderer = std::make_shared<RenderSys::Renderer2D>();
-	}
+		m_renderer->Init();
 
-	virtual void OnDetach() override
-	{
-
-	}
-
-	virtual void OnUpdate(float ts) override
-	{
-        Walnut::Timer timer;
-		if (m_viewportWidth == 0 || m_viewportHeight == 0)
-			return;
-
-        if (!m_renderer ||
-            m_viewportWidth != m_renderer->GetWidth() ||
-            m_viewportHeight != m_renderer->GetHeight())
-        {
-			m_renderer->Init();
-			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-			
-			if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-			{
-				const char* vertexShaderSource = R"(
+		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
+		{
+			const char *vertexShaderSource = R"(
 					#version 450
 
 					vec2 positions[3] = vec2[](
@@ -48,12 +30,12 @@ public:
 						gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
 					}
 				)";
-				RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
-				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				m_renderer->SetStandaloneShader(vertexShader, 3);
+			RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
+			vertexShader.type = RenderSys::ShaderType::SPIRV;
+			vertexShader.stage = RenderSys::ShaderStage::Vertex;
+			m_renderer->SetStandaloneShader(vertexShader, 3);
 
-				const char* fragmentShaderSource = R"(
+			const char *fragmentShaderSource = R"(
 					#version 450
 
 					layout(location = 0) out vec4 FragColor;
@@ -64,14 +46,14 @@ public:
 						FragColor = vec4(1.0, 0.4000000059604644775390625, 0.0, 1.0);
 					}
 				)";
-				RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
-				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				m_renderer->SetStandaloneShader(fragmentShader, 3);
-			}
-			else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
-			{
-				const char* shaderSource = R"(
+			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
+			fragmentShader.type = RenderSys::ShaderType::SPIRV;
+			fragmentShader.stage = RenderSys::ShaderStage::Fragment;
+			m_renderer->SetStandaloneShader(fragmentShader, 3);
+		}
+		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
+		{
+			const char *shaderSource = R"(
 					@vertex
 					fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
 						var p = vec2f(0.0, 0.0);
@@ -90,25 +72,39 @@ public:
 						return vec4f(0.0, 0.4, 1.0, 1.0);
 					}
 				)";
-				RenderSys::Shader shader("Combined", shaderSource);
-				shader.type = RenderSys::ShaderType::WGSL;
-				shader.stage = RenderSys::ShaderStage::VertexAndFragment;
-				m_renderer->SetStandaloneShader(shader, 3);
-			}
-			else
-			{
-				assert(false);
-			}
-			
-			m_renderer->CreatePipeline();
+			RenderSys::Shader shader("Combined", shaderSource);
+			shader.type = RenderSys::ShaderType::WGSL;
+			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
+			m_renderer->SetStandaloneShader(shader, 3);
+		}
+		else
+		{
+			assert(false);
+		}
+
+		m_renderer->CreatePipeline();
+	}
+
+	virtual void OnDetach() override
+	{
+
+	}
+
+	virtual void OnUpdate(float ts) override
+	{
+        Walnut::Timer timer;
+		if (m_viewportWidth == 0 || m_viewportHeight == 0)
+			return;
+
+        if (m_viewportWidth != m_renderer->GetWidth() ||
+            m_viewportHeight != m_renderer->GetHeight())
+        {
+			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
         }
 
-		if (m_renderer)
-		{
-			m_renderer->BeginRenderPass();
-       		m_renderer->SimpleRender();
-			m_renderer->EndRenderPass();
-		}
+		m_renderer->BeginRenderPass();
+		m_renderer->SimpleRender();
+		m_renderer->EndRenderPass();
 
         m_lastRenderTime = timer.ElapsedMillis();
 	}

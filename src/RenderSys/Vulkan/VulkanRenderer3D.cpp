@@ -68,8 +68,8 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
         assert(false);
     }
 
-    m_imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-    m_finalImageDescriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_defaultTextureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
+    const auto finalRenderTargetView = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+    m_finalRenderTarget = RenderSys::Vulkan::CreateRenderTarget(finalRenderTargetView, m_defaultTextureSampler);
 
     // create image copy staging buffer for cpu image copy
     CreateImageCopyBuffers();
@@ -173,16 +173,10 @@ void VulkanRenderer3D::DestroyImages()
 
     for (auto &debugView : m_debugViews)
     {
-        ImGui_ImplVulkan_RemoveTexture(debugView.descriptorSet);
-        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), debugView.view, nullptr);
+        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), debugView->descriptorSetLayout, nullptr);
+        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), debugView->view, nullptr);
     }
     m_debugViews.clear();
-    
-    if (m_finalImageDescriptorSet)
-    {
-        ImGui_ImplVulkan_RemoveTexture(m_finalImageDescriptorSet);
-        m_finalImageDescriptorSet = VK_NULL_HANDLE;
-    }
 
     if (m_frameBuffer)
     {
@@ -190,12 +184,14 @@ void VulkanRenderer3D::DestroyImages()
         vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_frameBuffer, nullptr);
         m_frameBuffer = VK_NULL_HANDLE;
     }
-    
-    if (m_imageViewToRenderInto != VK_NULL_HANDLE)
+
+    if (m_finalRenderTarget)
     {
-        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_imageViewToRenderInto, nullptr);
-        m_imageViewToRenderInto = VK_NULL_HANDLE;
+        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), m_finalRenderTarget->descriptorSetLayout, nullptr);
+        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_finalRenderTarget->view, nullptr);
     }
+    m_finalRenderTarget.reset();
+
     if (m_ImageToRenderInto != VK_NULL_HANDLE)
     {
         vmaDestroyImage(RenderSys::Vulkan::GetMemoryAllocator(), m_ImageToRenderInto, m_renderImageMemory);
@@ -509,9 +505,9 @@ void VulkanRenderer3D::CreatePipeline()
 
 void VulkanRenderer3D::CreateFrameBuffer()
 {
-    assert(m_imageViewToRenderInto);
+    assert(m_finalRenderTarget->view);
     assert(m_depthimageView);
-    VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto, m_depthimageView };
+    VkImageView frameBufferAttachments[] = { m_finalRenderTarget->view, m_depthimageView };
     VkFramebufferCreateInfo FboInfo{};
     FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     FboInfo.renderPass = m_renderpass;
@@ -830,7 +826,7 @@ void VulkanRenderer3D::DrawCube()
 
 uint64_t VulkanRenderer3D::GetDescriptorSet()
 {
-    return (uint64_t)m_finalImageDescriptorSet;
+    return (uint64_t)m_finalRenderTarget->descriptorSet;
 }
 
 void VulkanRenderer3D::BeginRenderPass()
@@ -1025,7 +1021,7 @@ void VulkanRenderer3D::SubmitCommandBuffer()
     GraphicsAPI::Vulkan::QueueSubmit(end_info);
 }
 
-VkImageView createImguiImageView(const std::shared_ptr<RenderSys::Vulkan::ShadowMap>& shadowMap)
+VkImageView createDebugImageView(const std::shared_ptr<RenderSys::Vulkan::ShadowMap>& shadowMap)
 {
     // NOW, CREATE A NEW VIEW FOR IMGUI
     VkImageView m_imguiView = VK_NULL_HANDLE;
@@ -1059,27 +1055,19 @@ VkImageView createImguiImageView(const std::shared_ptr<RenderSys::Vulkan::Shadow
     return m_imguiView;
 }
 
-void VulkanRenderer3D::OnDebugView()
+uint64_t VulkanRenderer3D::GetDebugView()
 {
-    ImGui::Begin("VulkanRenderer3D DebugView");
-
     if (m_shadowMap)
     {
         if (m_debugViews.empty())
         {
-            auto imguiImageView = createImguiImageView(m_shadowMap);
-            auto shadowDescSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(
-                                                        m_defaultTextureSampler, 
-                                                        imguiImageView, 
-                                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-            m_debugViews.push_back({imguiImageView, shadowDescSet});
+            const auto imguiImageView = createDebugImageView(m_shadowMap);
+            m_debugViews.push_back(Vulkan::CreateRenderTarget(imguiImageView, m_defaultTextureSampler));
         }
-        const float imageWidth = m_width;
-        const float imageHeight = m_height;
-        ImGui::Image(m_debugViews.at(0).descriptorSet, {imageWidth, imageHeight});
     }
 
-    ImGui::End();
+    
+    return (uint64_t)m_debugViews.at(0)->descriptorSet;
 }
 
 void VulkanRenderer3D::CreateImageCopyBuffers() 

@@ -2,6 +2,7 @@
 
 #include <RenderSys/Vulkan/Pipeline/VulkanPipeline.h>
 #include <iostream>
+#include <cassert>
 
 namespace RenderSys {
 

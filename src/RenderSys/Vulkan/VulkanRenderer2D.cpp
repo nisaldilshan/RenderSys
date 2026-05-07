@@ -1,11 +1,10 @@
 #include "VulkanRenderer2D.h"
-#include "VulkanRendererUtils.h"
 #include "Pipeline/VulkanRender2DPipeline.h"
-
-#include <iostream>
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
+
+#include <iostream>
 
 namespace RenderSys
 {
@@ -73,11 +72,10 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     err = vkBindImageMemory(GraphicsAPI::Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
     GraphicsAPI::Vulkan::check_vk_result(err);
 
-    m_imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-
     CreateTextureSampler();
-    m_descriptorSet = (VkDescriptorSet)ImGui_ImplVulkan_AddTexture(m_textureSampler, m_imageViewToRenderInto, VK_IMAGE_LAYOUT_GENERAL);
 
+    const auto imageViewToRenderInto = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+    m_finalRenderTarget = RenderSys::Vulkan::CreateRenderTarget(imageViewToRenderInto, m_textureSampler);
 
     CreateFrameBuffer();
 }
@@ -320,7 +318,7 @@ void VulkanRenderer2D::CreateFrameBuffer()
         vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_frameBuffer, nullptr);
     }
 
-    VkImageView frameBufferAttachments[] = { m_imageViewToRenderInto };
+    VkImageView frameBufferAttachments[] = { m_finalRenderTarget->view };
     VkFramebufferCreateInfo FboInfo{};
     FboInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     FboInfo.renderPass = m_renderpass;
@@ -601,7 +599,7 @@ void VulkanRenderer2D::CreateTextureSampler()
 
 uint64_t VulkanRenderer2D::GetDescriptorSet()
 {
-    return (uint64_t)m_descriptorSet;
+    return (uint64_t)m_finalRenderTarget->descriptorSet;
 }
 
 void VulkanRenderer2D::BeginRenderPass()

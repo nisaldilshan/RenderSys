@@ -42,9 +42,9 @@ add_library (ComputeSys STATIC
                 src/RenderSys/Compute.cpp
                 src/RenderSys/Shader.cpp)
 
-target_include_directories(RenderSys2D PRIVATE src ${imgui_INCLUDE_DIRS}/../res/bindings)
-target_include_directories(RenderSys3D PRIVATE src ${imgui_INCLUDE_DIRS}/../res/bindings)
-target_include_directories(ComputeSys PRIVATE src ${imgui_INCLUDE_DIRS}/../res/bindings)
+target_include_directories(RenderSys2D PRIVATE src)
+target_include_directories(RenderSys3D PRIVATE src)
+target_include_directories(ComputeSys PRIVATE src)
 
 message(STATUS "RENDERER: " ${RENDERER})
 if(RENDERER STREQUAL "Vulkan")
