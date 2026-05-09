@@ -271,8 +271,6 @@ public:
 			m_renderer->SetClearColor(m_clearColor);
 		}
 		
-        ImGui::InputInt("input int", &m_instanceCount);
-		
 		ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -312,7 +310,6 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
-	int m_instanceCount = 1;
 	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::unique_ptr<RenderSys::Model> m_model;
