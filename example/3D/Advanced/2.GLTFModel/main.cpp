@@ -152,9 +152,24 @@ public:
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 
-		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
-		m_scene->AddInstanceOfSubTree(1, glm::vec3(0.0f, 0.0f, 15.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
-		m_scene->AddInstanceOfSubTree(2, glm::vec3(10.0f, 0.0f, 7.5f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
+		constexpr int N = 4;
+		constexpr float spacing = 15.0f; 
+		int instanceId = 0;
+
+		// Loop to create the NxN grid
+		for (int x = 0; x < N; ++x) {
+			for (int z = 0; z < N; ++z) {
+				glm::vec3 position(x * spacing, 0.0f, z * spacing);
+				m_scene->AddInstanceOfSubTree(
+					instanceId, 
+					position, 
+					m_scene->m_rootNodeIndex, 
+					m_scene->m_instancedRootNodeIndex
+				);
+				
+				instanceId++;
+			}
+		}
 
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
 		// The uniform buffer binding that we already had
