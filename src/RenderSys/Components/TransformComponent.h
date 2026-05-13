@@ -29,7 +29,7 @@ namespace RenderSys
 
         void SetMat4Local(const glm::mat4 &mat4);
         void SetMat4Global(const glm::mat4 &parent);
-        void SetMat4Global();
+        void UpdateMat4Global();
 
         const glm::mat4 &GetMat4Local();
         const glm::mat4 &GetMat4Global() const;

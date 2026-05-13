@@ -160,7 +160,7 @@ public:
 		for (int x = 0; x < N; ++x) {
 			for (int z = 0; z < N; ++z) {
 				glm::vec3 position(x * spacing, 0.0f, z * spacing);
-				m_scene->AddInstanceOfSubTree(
+				m_scene->AddCopyOfSubTree(
 					instanceId, 
 					position, 
 					m_scene->m_rootNodeIndex, 

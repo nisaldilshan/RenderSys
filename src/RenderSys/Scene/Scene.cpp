@@ -151,9 +151,75 @@ void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& 
 	instanceTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), instanceIndex);
 	instanceTransform.SetScale(glm::vec3(0.05f));
 	instanceTransform.SetTranslation(translation);
-	instanceTransform.SetMat4Global();
+	instanceTransform.UpdateMat4Global();
 	instanceTagComp.AddInstance(instanceEntity);
 	m_Registry.emplace<RenderSys::MeshComponent>(instanceEntity, "", meshComponent.m_Mesh);
+	instanceTagComp.GetInstanceBuffer()->Update();
+}
+
+void Scene::AddCopyOfSubTree(const uint32_t copyIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent)
+{
+	auto& childNode = m_sceneGraph.GetNode(subTreeNodeIndex);
+	std::vector<uint32_t> children = childNode.GetChildren();
+	if (children.size() == 0) 
+	{
+		return; // No children to process
+	}
+	
+	for (auto childNodeIndex : children)
+	{
+		auto& childNode = m_sceneGraph.GetNode(childNodeIndex);
+		auto nodeEntity = childNode.GetGameObject();
+		assert(nodeEntity != entt::null);
+		if (m_Registry.all_of<RenderSys::MeshComponent>(nodeEntity))
+		{
+			AddCopyOfEntity(copyIndex, nodeEntity, pos, parent);
+		}
+		else
+		{
+			if (subTreeNodeIndex == m_rootNodeIndex)
+			{
+				// need a proper entity copy mechanism here.
+				const auto name = childNode.GetName() + "_copy" + std::to_string(copyIndex + 1);
+				auto instanceModelTop = CreateEntity(name);
+				parent = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceModelTop, name);
+			}
+			AddCopyOfSubTree(copyIndex, pos, childNodeIndex, parent);
+		}
+	}
+}
+
+void Scene::AddCopyOfEntity(const uint32_t copyIndex, entt::entity &entity, const glm::vec3 &translation, const uint32_t parentNodeIndex)
+{
+	auto& meshComponent = m_Registry.get<MeshComponent>(entity);
+	const auto name = meshComponent.m_Name + "_copy" + std::to_string(copyIndex + 1);
+	auto copy = CreateEntity(name);
+	m_sceneGraph.CreateNode(parentNodeIndex, copy, name);
+
+	if (!m_Registry.all_of<InstanceTagComponent>(copy))
+    {
+        InstanceTagComponent& instanceTag{m_Registry.emplace<InstanceTagComponent>(copy)};
+
+		auto resource = std::make_shared<RenderSys::Resource>();
+		resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
+		resource->Init();
+		for (auto &subMesh : meshComponent.m_Mesh->subMeshes)
+		{
+			subMesh.m_Resource = resource;
+		}
+    } else {
+		assert(false && "Copying an entity that already has an instance tag component is not supported yet!");
+	}
+
+	RenderSys::TransformComponent& copyTransform{m_Registry.get<RenderSys::TransformComponent>(copy)};
+	auto& instanceTagComp = m_Registry.get<InstanceTagComponent>(copy);
+	assert(instanceTagComp.GetInstanceBuffer() != nullptr);
+	copyTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), 0);
+	copyTransform.SetScale(glm::vec3(0.05f));
+	copyTransform.SetTranslation(translation);
+	copyTransform.UpdateMat4Global();
+	instanceTagComp.AddInstance(copy);
+	m_Registry.emplace<RenderSys::MeshComponent>(copy, "", meshComponent.m_Mesh);
 	instanceTagComp.GetInstanceBuffer()->Update();
 }
 

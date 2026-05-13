@@ -20,7 +20,7 @@ public:
 
     std::string m_Name;
     std::shared_ptr<Mesh> m_Mesh;
-    bool m_Enabled{false};
+    //bool m_Enabled{false};
 };
    
 } // namespace RenderSys

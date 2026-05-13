@@ -42,7 +42,7 @@ void TransformComponent::SetMat4Global(const glm::mat4 &parent)
     m_Parent = parent;
 }
 
-void TransformComponent::SetMat4Global()
+void TransformComponent::UpdateMat4Global()
 {
     if (m_InstanceBuffer)
     {

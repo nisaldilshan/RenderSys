@@ -29,7 +29,7 @@ public:
 	SceneGraph::TreeNode& GetSceneGraphTreeNode(uint32_t nodeIndex);
 	void printNodeGraph() const;
 	void AddInstanceOfSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent);
-	void AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
+	void AddCopyOfSubTree(const uint32_t copyIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent);
 
 	void AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &position, const glm::vec3 &color);
 	entt::entity AddCamera(std::shared_ptr<RenderSys::ICamera> camera);
@@ -40,6 +40,8 @@ public:
 	uint32_t m_instancedRootNodeIndex = 1;
 
 private:
+	void AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
+	void AddCopyOfEntity(const uint32_t copyIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
 	void UpdateTransformCache(uint32_t const nodeIndex, glm::mat4 const& parentMat4, bool parentDirtyFlag);
 };
 
