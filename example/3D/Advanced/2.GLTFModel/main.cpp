@@ -152,8 +152,8 @@ public:
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 
-		constexpr int N = 4;
-		constexpr float spacing = 15.0f; 
+		constexpr int N = 16;
+		constexpr float spacing = 12.0f; 
 		int instanceId = 0;
 
 		// Loop to create the NxN grid
