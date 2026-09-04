@@ -747,9 +747,10 @@ void VulkanRenderer3D::RenderIndexed()
     }
 }
 
-void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh, const bool shadowPass)
+void VulkanRenderer3D::RenderMesh(const RenderSys::MeshComponent& meshComponent, const bool shadowPass)
 {
-    auto vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(mesh.vertexBufferID);
+    const auto mesh = meshComponent.m_Mesh;
+    auto vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(mesh->vertexBufferID);
     assert(vertexIndexBufferInfoIter != m_vertexIndexBufferInfoMap.end());
     const auto& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
     VkDeviceSize offset = 0;
@@ -761,21 +762,25 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::Mesh& mesh, const bool shadow
     }
 
     assert(m_mainBindGroup != VK_NULL_HANDLE);
-    for (const auto &subMesh : mesh.subMeshes)
+    assert(mesh->subMeshes.size() == meshComponent.m_SubMeshResources.size());
+    for (size_t i = 0; i < mesh->subMeshes.size(); i++)
     {
+        const auto& subMesh = mesh->subMeshes[i];
+        const auto& resource = meshComponent.m_SubMeshResources[i];
         assert(subMesh.m_Material);
         if (shadowPass)
-            RenderSubMesh(mesh.vertexBufferID, subMesh, m_shadowRenderPipeline->GetPipelineLayout());
+            RenderSubMesh(mesh->vertexBufferID, subMesh, resource, m_shadowRenderPipeline->GetPipelineLayout());
         else
-            RenderSubMesh(mesh.vertexBufferID, subMesh, m_pbrRenderPipeline->GetPipelineLayout());
+            RenderSubMesh(mesh->vertexBufferID, subMesh, resource, m_pbrRenderPipeline->GetPipelineLayout());
     }
 }
 
-void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, VkPipelineLayout pipelineLayout)
+void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, const std::shared_ptr<RenderSys::Resource>& resource, VkPipelineLayout pipelineLayout)
 {
     auto materialBindGroup = subMesh.m_Material->GetDescriptor()->GetPlatformDescriptor()->m_bindGroup;
     assert(materialBindGroup != VK_NULL_HANDLE);
-    auto resourceBindGroup = subMesh.m_Resource->GetDescriptor()->GetPlatformDescriptor()->m_bindGroup;
+    assert(resource);
+    auto resourceBindGroup = resource->GetDescriptor()->GetPlatformDescriptor()->m_bindGroup;
     assert(resourceBindGroup != VK_NULL_HANDLE);
     std::vector<VkDescriptorSet> descriptorsets{m_mainBindGroup, materialBindGroup, resourceBindGroup};
 
@@ -952,8 +957,7 @@ void VulkanRenderer3D::RenderShadowMap(entt::registry& entityRegistry)
         auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
         auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
         instanceTagComponent.GetInstanceBuffer()->Update();
-        auto mesh = meshComponent.m_Mesh;
-        RenderMesh(*mesh, true);
+        RenderMesh(meshComponent, true);
     }
 }
 

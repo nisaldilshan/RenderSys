@@ -246,9 +246,8 @@ public:
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
 				auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
 				instanceTagComponent.GetInstanceBuffer()->Update();
-				auto mesh = meshComponent.m_Mesh;
-				mesh->subMeshes[0].m_InstanceCount = instanceTagComponent.GetInstanceCount();
-				m_renderer->RenderMesh(*mesh);
+				meshComponent.m_Mesh->subMeshes[0].m_InstanceCount = instanceTagComponent.GetInstanceCount();
+				m_renderer->RenderMesh(meshComponent);
 			}
 
 			m_renderer->EndRenderPass();

@@ -9,6 +9,7 @@
 #include "Shader.h"
 #include <RenderSys/Texture.h>
 #include <RenderSys/Scene/Mesh.h>
+#include <RenderSys/Components/MeshComponent.h>
 #include <entt/entt.hpp>
 
 namespace RenderSys
@@ -55,7 +56,7 @@ public:
     void RenderIndexed(uint32_t uniformIndex);
     void BeginFrame();
     void EndFrame();
-    void RenderMesh(const RenderSys::Mesh& mesh);
+    void RenderMesh(const RenderSys::MeshComponent& meshComponent);
     void BeginRenderPass();
     void EndRenderPass();
 

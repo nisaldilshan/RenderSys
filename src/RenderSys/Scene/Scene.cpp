@@ -135,9 +135,9 @@ void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& 
 		auto resource = std::make_shared<RenderSys::Resource>();
 		resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
 		resource->Init();
-		for (auto &subMesh : meshComponent.m_Mesh->subMeshes)
+		for (auto &subMeshResource : meshComponent.m_SubMeshResources)
 		{
-			subMesh.m_Resource = resource;
+			subMeshResource = resource;
 		}
     }
 
@@ -196,10 +196,8 @@ void Scene::AddCopyOfEntity(const uint32_t copyIndex, entt::entity &entity, cons
 	auto copy = CreateEntity(name);
 	m_sceneGraph.CreateNode(parentNodeIndex, copy, name);
 
-	auto& meshComponentCopy = m_Registry.emplace<MeshComponent>(copy, meshComponent.m_Name, std::make_shared<Mesh>(std::make_shared<MeshData>()));
-	meshComponentCopy.m_Mesh->vertexBufferID = meshComponent.m_Mesh->vertexBufferID;
-	meshComponentCopy.m_Mesh->m_meshData = meshComponent.m_Mesh->m_meshData;
-	meshComponentCopy.m_Mesh->subMeshes = meshComponent.m_Mesh->subMeshes; 
+	// Share the immutable mesh asset; per-entity resource bindings live on the component.
+	auto& meshComponentCopy = m_Registry.emplace<MeshComponent>(copy, meshComponent.m_Name, meshComponent.m_Mesh);
 
 	if (!m_Registry.all_of<InstanceTagComponent>(copy))
     {
@@ -208,9 +206,9 @@ void Scene::AddCopyOfEntity(const uint32_t copyIndex, entt::entity &entity, cons
 		auto resource = std::make_shared<RenderSys::Resource>();
 		resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
 		resource->Init();
-		for (auto &subMesh : meshComponentCopy.m_Mesh->subMeshes)
+		for (auto &subMeshResource : meshComponentCopy.m_SubMeshResources)
 		{
-			subMesh.m_Resource = resource;
+			subMeshResource = resource;
 		}
     } else {
 		assert(false && "Copying an entity that already has an instance tag component is not supported yet!");

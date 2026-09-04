@@ -444,7 +444,7 @@ void WebGPURenderer3D::RenderIndexed()
     }
 }
 
-void WebGPURenderer3D::RenderMesh(const RenderSys::Mesh &mesh)
+void WebGPURenderer3D::RenderMesh(const RenderSys::MeshComponent &meshComponent)
 {
 }
 

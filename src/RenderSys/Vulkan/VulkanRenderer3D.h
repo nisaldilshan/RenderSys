@@ -11,6 +11,7 @@
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
 #include <RenderSys/Scene/Mesh.h>
+#include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Vulkan/VulkanVertex.h>
 #include <RenderSys/Vulkan/VulkanRendererUtils.h>
 #include <entt/entt.hpp>
@@ -64,7 +65,7 @@ public:
     void BindResources();
     void Render();
     void RenderIndexed();
-    void RenderMesh(const RenderSys::Mesh& mesh, const bool shadowPass = false);
+    void RenderMesh(const RenderSys::MeshComponent& meshComponent, const bool shadowPass = false);
     void DrawPlane();
     void DrawCube();
     uint64_t GetDescriptorSet();
@@ -86,7 +87,7 @@ public:
     std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 
 private:
-    void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, VkPipelineLayout pipelineLayout);
+    void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, const std::shared_ptr<RenderSys::Resource>& resource, VkPipelineLayout pipelineLayout);
     void CreateDefaultTextureSampler();
     void CreateRenderPass();
     void CreateCommandBuffers();

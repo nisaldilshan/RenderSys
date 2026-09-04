@@ -9,6 +9,7 @@
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
 #include <RenderSys/Scene/Mesh.h>
+#include <RenderSys/Components/MeshComponent.h>
 #include <entt/entt.hpp>
 
 namespace RenderSys
@@ -53,7 +54,7 @@ public:
     void BindResources();
     void Render();
     void RenderIndexed();
-    void RenderMesh(const RenderSys::Mesh& mesh);
+    void RenderMesh(const RenderSys::MeshComponent& meshComponent);
     uint64_t GetDescriptorSet();
     void BeginRenderPass();
     void EndRenderPass();
