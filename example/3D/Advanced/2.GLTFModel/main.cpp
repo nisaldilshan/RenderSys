@@ -102,9 +102,15 @@ public:
 			assert(false);
 		}
 
-		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(60.0f, 0.01f, 100.0f);
+		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(60.0f, 0.1f, 1000.0f);
 		auto cameraEntity = m_scene->AddCamera(m_cameraController->GetCamera());
 		m_cameraController->SetCameraEntity(cameraEntity, m_scene->m_Registry);
+
+		// The camera follows its entity's transform, so the starting pose is set there: above the grid's
+		// near corner, looking diagonally down at its centre (frames up to a 64x64 grid).
+		auto& cameraTransform = m_scene->m_Registry.get<RenderSys::TransformComponent>(cameraEntity);
+		cameraTransform.SetTranslation(glm::vec3(-100.0f, 150.0f, -100.0f));
+		cameraTransform.SetRotation(glm::vec3(glm::radians(23.0f), glm::radians(45.0f), 0.0f));
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
@@ -152,7 +158,7 @@ public:
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 
-		constexpr int N = 16;
+		constexpr int N = 32;
 		constexpr float spacing = 12.0f; 
 		int instanceId = 0;
 
@@ -245,7 +251,6 @@ public:
 			{
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
 				auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
-				instanceTagComponent.GetInstanceBuffer()->Update();
 				meshComponent.m_Mesh->subMeshes[0].m_InstanceCount = instanceTagComponent.GetInstanceCount();
 				m_renderer->RenderMesh(meshComponent);
 			}

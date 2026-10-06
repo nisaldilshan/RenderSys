@@ -50,6 +50,8 @@ public:
     uint32_t CreateNode(uint32_t parentNode, entt::entity const gameObject, std::string const& name);
     uint32_t CreateRootNode(entt::entity const gameObject, std::string const& name);
     TreeNode& GetNode(uint32_t const nodeIndex);
+    // Skips the lock: only for readers that run while no other thread can add nodes.
+    const TreeNode& GetNodeUnsynchronized(uint32_t const nodeIndex) const;
     TreeNode& GetNodeByGameObject(entt::entity const gameObject);
     TreeNode& GetRoot();
 

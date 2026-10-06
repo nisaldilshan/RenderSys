@@ -1,5 +1,6 @@
 #pragma once
 #include <RenderSys/Buffer.h>
+#include <atomic>
 namespace RenderSys
 {
 
@@ -27,7 +28,7 @@ public:
     
 private:
     std::shared_ptr<Buffer> m_buffer;
-    bool m_Dirty;
+    std::atomic<bool> m_Dirty; // set concurrently by Scene::UpdateTransformCache workers (one slot per transform)
     std::vector<InstanceData> m_DataInstances;
 };
 

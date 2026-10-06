@@ -228,8 +228,6 @@ public:
 			for (auto entity : view)
 			{
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
-				auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
-				instanceTagComponent.GetInstanceBuffer()->Update();
 				m_renderer->RenderMesh(meshComponent);
 			}
 

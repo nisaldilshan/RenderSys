@@ -20,7 +20,7 @@ VkDescriptorPool g_resourceBindGroupPool = VK_NULL_HANDLE;
 void CreateResourceBindGroupPool()
 {
     assert(g_resourceBindGroupPool == VK_NULL_HANDLE);    
-    constexpr uint32_t maxNumOfModels = 10;
+    constexpr uint32_t maxNumOfModels = 100;
     constexpr uint32_t maxMaterialsPerModel = 50;
 
     std::vector<VkDescriptorPoolSize> poolSizes;

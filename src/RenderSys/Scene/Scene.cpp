@@ -5,17 +5,27 @@
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/LightComponents.h>
 #include <RenderSys/Components/CameraComponents.h>
+#include <RenderSys/Utils/threadpool.hpp>
+#include <algorithm>
 #include <iostream>
 
 namespace RenderSys
 {
+
+namespace
+{
+// Enough independent subtrees per worker that uneven subtree sizes still even out across the pool.
+constexpr size_t SUBTREES_PER_WORKER = 4;
+}
 
 Scene::Scene() 
 	: m_Registry()
 	, m_sceneGraph()
 	, m_rootNodeIndex(m_sceneGraph.CreateRootNode(CreateEntity("RootNode"), "RootNode"))
 	, m_instancedRootNodeIndex(m_sceneGraph.CreateRootNode(CreateEntity("InstancedRootNode"), "InstancedRootNode"))
+	, m_threadPool(std::make_unique<vks::ThreadPool>())
 {
+	m_threadPool->setThreadCount(std::max(1u, std::thread::hardware_concurrency()));
 	std::cout << "Scene created with root node index: " << m_rootNodeIndex << std::endl;
 	std::cout << "Instanced root node index: " << m_instancedRootNodeIndex << std::endl;
 }
@@ -58,27 +68,92 @@ void Scene::DestroyAllEntities()
 void Scene::Update()
 {
 	// Update the transform cache for the root node
-	UpdateTransformCache(m_instancedRootNodeIndex, glm::mat4(1.0f), false);
+	UpdateTransformCacheParallel(m_instancedRootNodeIndex);
+
+	// Upload each instance buffer once per frame, after every transform that writes into it is final.
+	auto instanceView = m_Registry.view<InstanceTagComponent>();
+	for (auto entity : instanceView)
+	{
+		instanceView.get<InstanceTagComponent>(entity).GetInstanceBuffer()->Update();
+	}
 }
 
+void Scene::UpdateTransformCacheParallel(uint32_t const rootNodeIndex)
+{
+	struct PendingSubtree
+	{
+		uint32_t nodeIndex;
+		glm::mat4 parentMat4;
+		bool parentDirtyFlag;
+	};
+
+	const size_t workerCount = m_threadPool->threads.size();
+	const size_t targetSubtrees = workerCount * SUBTREES_PER_WORKER;
+
+	// Walk breadth-first on this thread until the frontier holds enough subtrees to share out. Every frontier
+	// node's parent is already final, so the subtrees are independent of each other. Small scenes finish here.
+	std::vector<PendingSubtree> frontier{{rootNodeIndex, glm::mat4(1.0f), false}};
+	while (!frontier.empty() && frontier.size() < targetSubtrees)
+	{
+		std::vector<PendingSubtree> nextLevel;
+		for (const auto& pending : frontier)
+		{
+			const auto& node = m_sceneGraph.GetNodeUnsynchronized(pending.nodeIndex);
+			bool dirtyFlag = pending.parentDirtyFlag;
+			const glm::mat4& mat4Global = UpdateNodeTransform(node.GetGameObject(), pending.parentMat4, dirtyFlag);
+			for (uint32_t index = 0; index < node.Children(); index++)
+			{
+				nextLevel.push_back({node.GetChild(index), mat4Global, dirtyFlag});
+			}
+		}
+		frontier = std::move(nextLevel);
+	}
+
+	if (frontier.empty())
+	{
+		return;
+	}
+
+	// Neighbouring siblings tend to be similar in size (e.g. copies of one model), so interleave them across workers.
+	for (size_t worker = 0; worker < workerCount; worker++)
+	{
+		m_threadPool->threads[worker]->addJob([this, &frontier, worker, workerCount]()
+		{
+			for (size_t index = worker; index < frontier.size(); index += workerCount)
+			{
+				const auto& pending = frontier[index];
+				UpdateTransformCache(pending.nodeIndex, pending.parentMat4, pending.parentDirtyFlag);
+			}
+		});
+	}
+	m_threadPool->wait();
+}
+
+// Thread-safe for disjoint subtrees: the scene graph and registry are only read, and each node writes only its own transform.
 void Scene::UpdateTransformCache(uint32_t const nodeIndex, glm::mat4 const &parentMat4, bool parentDirtyFlag)
 {
-	auto& node = GetSceneGraphTreeNode(nodeIndex);
-	entt::entity gameObject = node.GetGameObject();
+	const auto& node = m_sceneGraph.GetNodeUnsynchronized(nodeIndex);
+	bool dirtyFlag = parentDirtyFlag;
+	const glm::mat4& mat4Global = UpdateNodeTransform(node.GetGameObject(), parentMat4, dirtyFlag);
+	for (uint32_t index = 0; index < node.Children(); index++)
+	{
+		UpdateTransformCache(node.GetChild(index), mat4Global, dirtyFlag);
+	}
+}
 
+// dirtyFlag carries the parent's state in and this node's state out, for its children to inherit.
+const glm::mat4& Scene::UpdateNodeTransform(entt::entity const gameObject, glm::mat4 const &parentMat4, bool& dirtyFlag)
+{
+	// registry.get on an existing storage is a lookup only, so concurrent calls are safe.
 	auto& transform = m_Registry.get<TransformComponent>(gameObject);
-	bool dirtyFlag = transform.GetDirtyFlag() || parentDirtyFlag;
+	dirtyFlag = transform.GetDirtyFlag() || dirtyFlag;
 
 	if (dirtyFlag)
 	{
 		transform.SetMat4Global(parentMat4);
 	}
 
-	const glm::mat4& mat4Global = transform.GetMat4Global();
-	for (uint32_t index = 0; index < node.Children(); index++)
-	{
-		UpdateTransformCache(node.GetChild(index), mat4Global, dirtyFlag);
-	}
+	return transform.GetMat4Global();
 }
 
 SceneGraph::TreeNode &Scene::GetSceneGraphTreeNode(uint32_t nodeIndex)

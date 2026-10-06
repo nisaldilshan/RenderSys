@@ -955,8 +955,6 @@ void VulkanRenderer3D::RenderShadowMap(entt::registry& entityRegistry)
     for (auto entity : view)
     {
         auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
-        auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
-        instanceTagComponent.GetInstanceBuffer()->Update();
         RenderMesh(meshComponent, true);
     }
 }

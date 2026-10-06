@@ -67,6 +67,11 @@ SceneGraph::TreeNode& SceneGraph::GetNode(uint32_t const nodeIndex)
     return m_Nodes[nodeIndex];
 }
 
+const SceneGraph::TreeNode& SceneGraph::GetNodeUnsynchronized(uint32_t const nodeIndex) const
+{
+    return m_Nodes[nodeIndex];
+}
+
 SceneGraph::TreeNode& SceneGraph::GetNodeByGameObject(entt::entity const gameObject)
 {
     std::lock_guard<std::mutex> guard(m_MutexSceneGraph);

@@ -2,8 +2,14 @@
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
+#include <memory>
 #include <RenderSys/Scene/SceneGraph.h>
 #include <RenderSys/Scene/UUID.h>
+
+namespace vks
+{
+class ThreadPool;
+}
 
 namespace RenderSys 
 {
@@ -42,7 +48,11 @@ public:
 private:
 	void AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
 	void AddCopyOfEntity(const uint32_t copyIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
+	void UpdateTransformCacheParallel(uint32_t const rootNodeIndex);
 	void UpdateTransformCache(uint32_t const nodeIndex, glm::mat4 const& parentMat4, bool parentDirtyFlag);
+	const glm::mat4& UpdateNodeTransform(entt::entity const gameObject, glm::mat4 const& parentMat4, bool& dirtyFlag);
+
+	std::unique_ptr<vks::ThreadPool> m_threadPool;
 };
 
 } // namespace RenderSys
