@@ -161,6 +161,10 @@ public:
 		static uint32_t windowHeight = 0;
 		auto& mainImage = appPtr->MainImageRef();
 		if (mainImage) {
+			// A minimised window reports 0x0, which would create zero-extent images and a NaN aspect ratio.
+			if (mainImage->GetWidth() == 0 || mainImage->GetHeight() == 0)
+				return;
+
 			if (windowWidth != mainImage->GetWidth() ||
 				windowHeight != mainImage->GetHeight())
 			{

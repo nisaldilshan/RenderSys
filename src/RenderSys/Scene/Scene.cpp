@@ -70,6 +70,13 @@ void Scene::Update()
 	// Update the transform cache for the root node
 	UpdateTransformCacheParallel(m_instancedRootNodeIndex);
 
+	// Change callbacks mutate objects outside the transform (e.g. the camera), so they run here, never on the workers.
+	auto transformView = m_Registry.view<TransformComponent>();
+	for (auto entity : transformView)
+	{
+		transformView.get<TransformComponent>(entity).FlushChangeNotification();
+	}
+
 	// Upload each instance buffer once per frame, after every transform that writes into it is final.
 	auto instanceView = m_Registry.view<InstanceTagComponent>();
 	for (auto entity : instanceView)
@@ -129,7 +136,8 @@ void Scene::UpdateTransformCacheParallel(uint32_t const rootNodeIndex)
 	m_threadPool->wait();
 }
 
-// Thread-safe for disjoint subtrees: the scene graph and registry are only read, and each node writes only its own transform.
+// Thread-safe for disjoint subtrees: the scene graph and registry are only read, and each node writes only its own
+// transform (plus its own slot in a shared instance buffer). Transform change callbacks are deferred to Scene::Update.
 void Scene::UpdateTransformCache(uint32_t const nodeIndex, glm::mat4 const &parentMat4, bool parentDirtyFlag)
 {
 	const auto& node = m_sceneGraph.GetNodeUnsynchronized(nodeIndex);

@@ -749,7 +749,7 @@ void VulkanRenderer3D::RenderIndexed()
 
 void VulkanRenderer3D::RenderMesh(const RenderSys::MeshComponent& meshComponent, const bool shadowPass)
 {
-    const auto mesh = meshComponent.m_Mesh;
+    const auto& mesh = meshComponent.m_Mesh;
     auto vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(mesh->vertexBufferID);
     assert(vertexIndexBufferInfoIter != m_vertexIndexBufferInfoMap.end());
     const auto& vertexIndexBufferInfo = vertexIndexBufferInfoIter->second;
