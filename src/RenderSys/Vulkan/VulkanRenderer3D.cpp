@@ -769,13 +769,13 @@ void VulkanRenderer3D::RenderMesh(const RenderSys::MeshComponent& meshComponent,
         const auto& resource = meshComponent.m_SubMeshResources[i];
         assert(subMesh.m_Material);
         if (shadowPass)
-            RenderSubMesh(mesh->vertexBufferID, subMesh, resource, m_shadowRenderPipeline->GetPipelineLayout());
+            RenderSubMesh(mesh->vertexBufferID, subMesh, resource, meshComponent.m_FirstInstance, m_shadowRenderPipeline->GetPipelineLayout());
         else
-            RenderSubMesh(mesh->vertexBufferID, subMesh, resource, m_pbrRenderPipeline->GetPipelineLayout());
+            RenderSubMesh(mesh->vertexBufferID, subMesh, resource, meshComponent.m_FirstInstance, m_pbrRenderPipeline->GetPipelineLayout());
     }
 }
 
-void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, const std::shared_ptr<RenderSys::Resource>& resource, VkPipelineLayout pipelineLayout)
+void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, const std::shared_ptr<RenderSys::Resource>& resource, const uint32_t firstInstance, VkPipelineLayout pipelineLayout)
 {
     auto materialBindGroup = subMesh.m_Material->GetDescriptor()->GetPlatformDescriptor()->m_bindGroup;
     assert(materialBindGroup != VK_NULL_HANDLE);
@@ -808,16 +808,16 @@ void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const Render
         assert(subMesh.m_InstanceCount > 0);
         if (subMesh.m_IndexCount > 0)
         {
-            vkCmdDrawIndexed(m_commandBuffer, subMesh.m_IndexCount, subMesh.m_InstanceCount, subMesh.m_FirstIndex, 0, 0);
+            vkCmdDrawIndexed(m_commandBuffer, subMesh.m_IndexCount, subMesh.m_InstanceCount, subMesh.m_FirstIndex, 0, firstInstance);
         }
         else
         {
-            vkCmdDrawIndexed(m_commandBuffer, vertexIndexBufferInfo->m_indexCount, subMesh.m_InstanceCount, 0, 0, 0);
+            vkCmdDrawIndexed(m_commandBuffer, vertexIndexBufferInfo->m_indexCount, subMesh.m_InstanceCount, 0, 0, firstInstance);
         }
     }
     else
     {
-        vkCmdDraw(m_commandBuffer, vertexIndexBufferInfo->m_vertexCount, 1, 0, 0);
+        vkCmdDraw(m_commandBuffer, vertexIndexBufferInfo->m_vertexCount, 1, 0, firstInstance);
     }
 }
 

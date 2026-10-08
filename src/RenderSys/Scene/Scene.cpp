@@ -6,6 +6,7 @@
 #include <RenderSys/Components/LightComponents.h>
 #include <RenderSys/Components/CameraComponents.h>
 #include <RenderSys/Utils/threadpool.hpp>
+#include <resources/Shaders/ShaderResource.h>
 #include <algorithm>
 #include <iostream>
 
@@ -63,6 +64,7 @@ void Scene::DestroyAllEntities()
 	for (auto entity : allEntities) {
 		DestroyEntity(entity);
 	}
+	m_copyInstanceGroups.clear();
 }
 
 void Scene::Update()
@@ -78,6 +80,7 @@ void Scene::Update()
 	}
 
 	// Upload each instance buffer once per frame, after every transform that writes into it is final.
+	// Copies share buffers, but Update() only writes while the buffer is dirty, so each one is uploaded once.
 	auto instanceView = m_Registry.view<InstanceTagComponent>();
 	for (auto entity : instanceView)
 	{
@@ -213,7 +216,7 @@ void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& 
 	auto& meshComponent = m_Registry.get<MeshComponent>(entity);
 	if (!m_Registry.all_of<InstanceTagComponent>(entity))
     {
-        InstanceTagComponent& instanceTag{m_Registry.emplace<InstanceTagComponent>(entity)};
+        InstanceTagComponent& instanceTag{m_Registry.emplace<InstanceTagComponent>(entity, std::make_shared<InstanceBuffer>())};
 
 		auto resource = std::make_shared<RenderSys::Resource>();
 		resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
@@ -279,33 +282,35 @@ void Scene::AddCopyOfEntity(const uint32_t copyIndex, entt::entity &entity, cons
 	auto copy = CreateEntity(name);
 	m_sceneGraph.CreateNode(parentNodeIndex, copy, name);
 
-	// Share the immutable mesh asset; per-entity resource bindings live on the component.
-	auto& meshComponentCopy = m_Registry.emplace<MeshComponent>(copy, meshComponent.m_Name, meshComponent.m_Mesh);
-
-	if (!m_Registry.all_of<InstanceTagComponent>(copy))
-    {
-        InstanceTagComponent& instanceTag{m_Registry.emplace<InstanceTagComponent>(copy)};
-
+	// Take the next free slot in this source's shared instance buffers, starting a new block when the last is full.
+	auto& copyGroup = m_copyInstanceGroups[entity];
+	const uint32_t slot = copyGroup.m_copyCount % MAX_INSTANCE;
+	if (slot == 0)
+	{
+		auto instanceBuffer = std::make_shared<InstanceBuffer>();
 		auto resource = std::make_shared<RenderSys::Resource>();
-		resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
+		resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceBuffer->GetBuffer());
 		resource->Init();
-		for (auto &subMeshResource : meshComponentCopy.m_SubMeshResources)
-		{
-			subMeshResource = resource;
-		}
-    } else {
-		assert(false && "Copying an entity that already has an instance tag component is not supported yet!");
+		copyGroup.m_blocks.push_back({instanceBuffer, resource});
 	}
+	copyGroup.m_copyCount++;
+	const auto& block = copyGroup.m_blocks.back();
 
+	// Share the immutable mesh asset; per-entity resource bindings live on the component.
+	// Each copy is still drawn on its own, reading only its slot of the shared buffer.
+	auto& meshComponentCopy = m_Registry.emplace<MeshComponent>(copy, meshComponent.m_Name, meshComponent.m_Mesh);
+	std::fill(meshComponentCopy.m_SubMeshResources.begin(), meshComponentCopy.m_SubMeshResources.end(), block.m_resource);
+	meshComponentCopy.m_FirstInstance = slot;
+
+	InstanceTagComponent& instanceTag{m_Registry.emplace<InstanceTagComponent>(copy, block.m_instanceBuffer)};
+	instanceTag.AddInstance(copy);
+
+	// The buffer is uploaded by Scene::Update once all transforms writing into it are final.
 	RenderSys::TransformComponent& copyTransform{m_Registry.get<RenderSys::TransformComponent>(copy)};
-	auto& instanceTagComp = m_Registry.get<InstanceTagComponent>(copy);
-	assert(instanceTagComp.GetInstanceBuffer() != nullptr);
-	copyTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), 0);
+	copyTransform.SetInstance(block.m_instanceBuffer, slot);
 	copyTransform.SetScale(glm::vec3(0.05f));
 	copyTransform.SetTranslation(translation);
 	copyTransform.UpdateMat4Global();
-	instanceTagComp.AddInstance(copy);
-	instanceTagComp.GetInstanceBuffer()->Update();
 }
 
 void Scene::AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &position, const glm::vec3 &color)

@@ -3,6 +3,8 @@
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <memory>
+#include <unordered_map>
+#include <vector>
 #include <RenderSys/Scene/SceneGraph.h>
 #include <RenderSys/Scene/UUID.h>
 
@@ -15,6 +17,8 @@ namespace RenderSys
 {
 
 class ICamera;
+class InstanceBuffer;
+class Resource;
 
 class Scene
 {
@@ -51,6 +55,20 @@ private:
 	void UpdateTransformCacheParallel(uint32_t const rootNodeIndex);
 	void UpdateTransformCache(uint32_t const nodeIndex, glm::mat4 const& parentMat4, bool parentDirtyFlag);
 	const glm::mat4& UpdateNodeTransform(entt::entity const gameObject, glm::mat4 const& parentMat4, bool& dirtyFlag);
+
+	// Copies of one source entity fill shared instance buffers slot by slot, one buffer (and one resource
+	// descriptor set) per MAX_INSTANCE copies, instead of one per copy.
+	struct CopyInstanceBlock
+	{
+		std::shared_ptr<InstanceBuffer> m_instanceBuffer;
+		std::shared_ptr<Resource> m_resource;
+	};
+	struct CopyInstanceGroup
+	{
+		std::vector<CopyInstanceBlock> m_blocks;
+		uint32_t m_copyCount = 0;
+	};
+	std::unordered_map<entt::entity, CopyInstanceGroup> m_copyInstanceGroups;
 
 	std::unique_ptr<vks::ThreadPool> m_threadPool;
 };

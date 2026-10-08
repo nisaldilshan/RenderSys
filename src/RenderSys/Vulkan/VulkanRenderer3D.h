@@ -87,7 +87,7 @@ public:
     std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 
 private:
-    void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, const std::shared_ptr<RenderSys::Resource>& resource, VkPipelineLayout pipelineLayout);
+    void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, const std::shared_ptr<RenderSys::Resource>& resource, const uint32_t firstInstance, VkPipelineLayout pipelineLayout);
     void CreateDefaultTextureSampler();
     void CreateRenderPass();
     void CreateCommandBuffers();

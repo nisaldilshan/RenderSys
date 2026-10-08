@@ -27,6 +27,8 @@ public:
     // Entity-specific resource bindings, one per entry in m_Mesh->subMeshes.
     // Kept off the shared Mesh asset so copies/instances never share this state.
     std::vector<std::shared_ptr<Resource>> m_SubMeshResources;
+    // Slot of this entity's first instance in the instance buffer bound by m_SubMeshResources.
+    uint32_t m_FirstInstance = 0;
 };
 
 } // namespace RenderSys

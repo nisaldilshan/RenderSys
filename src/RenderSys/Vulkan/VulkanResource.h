@@ -8,7 +8,6 @@ namespace RenderSys
 {
 
 void CreateResourceBindGroupPool();
-VkDescriptorPool GetResourceBindGroupPool();
 void DestroyResourceBindGroupPool();
 
 void CreateResourceBindGroupLayout();
