@@ -50,6 +50,9 @@ public:
 	uint32_t m_instancedRootNodeIndex = 1;
 
 private:
+	using AddMeshEntityFn = void (Scene::*)(const uint32_t, entt::entity&, const glm::vec3&, const uint32_t);
+	void AddSubTree(const uint32_t index, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent, const char* nameSuffix, AddMeshEntityFn addMeshEntity);
+	entt::entity CreateInstanceSlotEntity(const std::string& name, const uint32_t parentNodeIndex, const std::shared_ptr<InstanceBuffer>& instanceBuffer, const uint32_t slot, const glm::vec3& translation);
 	void AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
 	void AddCopyOfEntity(const uint32_t copyIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
 	void UpdateTransformCacheParallel(uint32_t const rootNodeIndex);
