@@ -787,11 +787,8 @@ void VulkanRenderer3D::RenderSubMesh(const uint32_t vertexBufferID, const Render
     vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0
                                 , descriptorsets.size(), descriptorsets.data()
                                 , 0, nullptr);
-    if (pipelineLayout == m_pbrRenderPipeline->GetPipelineLayout())
-    {
-        vkCmdPushConstants(m_commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 
-                        sizeof(RenderSys::MaterialProperties), &subMesh.m_Material->GetMaterialProperties());
-    }
+    vkCmdPushConstants(m_commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 
+                    sizeof(RenderSys::MaterialProperties), &subMesh.m_Material->GetMaterialProperties());
 
     assert(vertexBufferID >= 1);
     const auto& vertexIndexBufferInfoIter = m_vertexIndexBufferInfoMap.find(vertexBufferID);

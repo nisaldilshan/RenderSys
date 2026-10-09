@@ -646,6 +646,11 @@ void GLTFModel::loadMaterials()
         materialProp->m_baseColor = glm::make_vec4(mat.pbrMetallicRoughness.baseColorFactor.data());
         materialProp->m_metallic = mat.pbrMetallicRoughness.metallicFactor;
         materialProp->m_roughness = mat.pbrMetallicRoughness.roughnessFactor;
+        materialProp->m_AlphaCutoff = static_cast<float>(mat.alphaCutoff);
+        if (mat.alphaMode == "MASK")
+            materialProp->m_features |= RenderSys::MaterialFeatures::ALPHA_MODE_MASK;
+        else if (mat.alphaMode == "BLEND")
+            materialProp->m_features |= RenderSys::MaterialFeatures::ALPHA_MODE_BLEND;
         // std::cout << "Material Name: " << mat.name 
         //             << ", metallicFactor=" << material.metallicFactor 
         //             << ", roughnessFactor=" << material.roughnessFactor << std::endl;

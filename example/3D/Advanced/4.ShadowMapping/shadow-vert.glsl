@@ -32,10 +32,13 @@ layout (location = 2) in vec2 in_uv;
 layout (location = 3) in vec3 in_color;
 layout (location = 4) in vec3 in_tangent;
 
+layout (location = 0) out vec2 out_uv;
+
 void main()
 {
     mat4 modelMatrix = uboInstanced.m_InstanceData[gl_InstanceIndex].m_ModelMatrix;
 
     vec4 worldPosition = modelMatrix * vec4(aPos, 1.0);
     gl_Position = lightingUbo.viewProjection[0] * worldPosition;
+    out_uv = in_uv;
 }
