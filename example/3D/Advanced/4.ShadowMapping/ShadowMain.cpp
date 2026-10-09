@@ -290,7 +290,8 @@ private:
 			auto& lightComponent = lightView.get<RenderSys::DirectionalLightComponent>(entity);
 			m_lightingUniformData.lightColors[0] = { lightComponent.m_Color, 1.0f };
 			auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
-			m_lightingUniformData.lightDirections[0] = { transformComponent.GetRotation(), 0.0f };
+			// shader expects the direction towards the light, the light shines along its forward vector
+			m_lightingUniformData.lightDirections[0] = { -transformComponent.GetForwardVector(), 0.0f };
 
 			auto lightModelMatrix = glm::translate(glm::mat4(1.0f), transformComponent.GetTranslation());
 			lightModelMatrix = lightModelMatrix * glm::mat4_cast(glm::quat(-transformComponent.GetRotation()));
