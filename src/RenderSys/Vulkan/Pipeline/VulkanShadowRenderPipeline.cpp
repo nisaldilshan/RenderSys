@@ -1,5 +1,7 @@
 #include "VulkanShadowRenderPipeline.h"
 
+#include <RenderSys/Material.h>
+#include <RenderSys/MaterialFeatures.h>
 #include <RenderSys/Vulkan/Pipeline/VulkanPipeline.h>
 #include <iostream>
 #include <cassert>
@@ -36,10 +38,18 @@ ShadowRenderPipeline::~ShadowRenderPipeline()
 
 void ShadowRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSetLayout> &descriptorSetLayouts)
 {
+    // material properties are needed in the shadow pass for alpha-masked materials
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(RenderSys::MaterialProperties);
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
     auto result = vkCreatePipelineLayout(GraphicsAPI::Vulkan::GetDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout);
     if (result != VK_SUCCESS)
     {

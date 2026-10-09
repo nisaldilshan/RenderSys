@@ -120,6 +120,18 @@ void main()
         alpha = col.a; // <-- Store the alpha here
     }
 
+    // glTF alpha modes: OPAQUE ignores alpha, MASK alpha-tests against the cutoff
+    if (bool(pushConstants.m_materialProperties.m_features & GLSL_ALPHA_MODE_MASK))
+    {
+        if (alpha < pushConstants.m_materialProperties.m_AlphaCutoff)
+            discard;
+        alpha = 1.0;
+    }
+    else if (!bool(pushConstants.m_materialProperties.m_features & GLSL_ALPHA_MODE_BLEND))
+    {
+        alpha = 1.0;
+    }
+
     vec3 texNormal = texture(normalTexture, in_uv).xyz * 2.0 - 1.0;
     N = (bool(pushConstants.m_materialProperties.m_features & GLSL_HAS_NORMAL_MAP)) ? getNormalFromNormalMaps(texNormal, in_normal, in_tangent) : N;
     vec3 albedo = col.rgb;
