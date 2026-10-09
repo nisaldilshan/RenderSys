@@ -19,6 +19,8 @@
 #define GLSL_HAS_ROUGHNESS_METALLIC_MAP (0x1 << 0x4)
 #define GLSL_HAS_EMISSIVE_COLOR (0x1 << 0x5)
 #define GLSL_HAS_EMISSIVE_MAP (0x1 << 0x6)
+#define GLSL_ALPHA_MODE_MASK (0x1 << 0x7)
+#define GLSL_ALPHA_MODE_BLEND (0x1 << 0x8)
 
 #define GLSL_NUM_MULTI_MATERIAL 4
 
@@ -35,6 +37,12 @@ struct MaterialProperties
     // byte 32 to 47
     vec3 m_EmissiveColor;
     float m_EmissiveStrength;
+
+    // byte 48 to 63
+    float m_AlphaCutoff;
+    float m_padding0;
+    float m_padding1;
+    float m_padding2;
 };
 
 #endif // SHADERMATERIAL_H
