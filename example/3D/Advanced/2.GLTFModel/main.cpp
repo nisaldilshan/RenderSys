@@ -102,9 +102,15 @@ public:
 			assert(false);
 		}
 
-		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(60.0f, 0.01f, 100.0f);
+		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(60.0f, 0.1f, 1000.0f);
 		auto cameraEntity = m_scene->AddCamera(m_cameraController->GetCamera());
 		m_cameraController->SetCameraEntity(cameraEntity, m_scene->m_Registry);
+
+		// The camera follows its entity's transform, so the starting pose is set there: above the grid's
+		// near corner, looking diagonally down at its centre (frames up to a 64x64 grid).
+		auto& cameraTransform = m_scene->m_Registry.get<RenderSys::TransformComponent>(cameraEntity);
+		cameraTransform.SetTranslation(glm::vec3(-100.0f, 150.0f, -100.0f));
+		cameraTransform.SetRotation(glm::vec3(glm::radians(23.0f), glm::radians(45.0f), 0.0f));
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
@@ -152,9 +158,24 @@ public:
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
 
-		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
-		m_scene->AddInstanceOfSubTree(1, glm::vec3(0.0f, 0.0f, 15.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
-		m_scene->AddInstanceOfSubTree(2, glm::vec3(10.0f, 0.0f, 7.5f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
+		constexpr int N = 32;
+		constexpr float spacing = 12.0f; 
+		int instanceId = 0;
+
+		// Loop to create the NxN grid
+		for (int x = 0; x < N; ++x) {
+			for (int z = 0; z < N; ++z) {
+				glm::vec3 position(x * spacing, 0.0f, z * spacing);
+				m_scene->AddCopyOfSubTree(
+					instanceId, 
+					position, 
+					m_scene->m_rootNodeIndex, 
+					m_scene->m_instancedRootNodeIndex
+				);
+				
+				instanceId++;
+			}
+		}
 
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
 		// The uniform buffer binding that we already had
@@ -230,10 +251,8 @@ public:
 			{
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
 				auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
-				instanceTagComponent.GetInstanceBuffer()->Update();
-				auto mesh = meshComponent.m_Mesh;
-				mesh->subMeshes[0].m_InstanceCount = instanceTagComponent.GetInstanceCount();
-				m_renderer->RenderMesh(*mesh);
+				meshComponent.m_Mesh->subMeshes[0].m_InstanceCount = instanceTagComponent.GetInstanceCount();
+				m_renderer->RenderMesh(meshComponent);
 			}
 
 			m_renderer->EndRenderPass();
@@ -255,8 +274,6 @@ public:
 			m_clearColor = newClearColor;
 			m_renderer->SetClearColor(m_clearColor);
 		}
-		
-        ImGui::InputInt("input int", &m_instanceCount);
 		
 		ImGui::End();
 
@@ -297,7 +314,6 @@ private:
 
 	MyUniforms m_myUniformData;
 	LightingUniforms m_lightingUniformData;
-	int m_instanceCount = 1;
 	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::unique_ptr<RenderSys::Model> m_model;

@@ -2,13 +2,23 @@
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
+#include <memory>
+#include <unordered_map>
+#include <vector>
 #include <RenderSys/Scene/SceneGraph.h>
 #include <RenderSys/Scene/UUID.h>
+
+namespace vks
+{
+class ThreadPool;
+}
 
 namespace RenderSys 
 {
 
 class ICamera;
+class InstanceBuffer;
+class Resource;
 
 class Scene
 {
@@ -29,7 +39,7 @@ public:
 	SceneGraph::TreeNode& GetSceneGraphTreeNode(uint32_t nodeIndex);
 	void printNodeGraph() const;
 	void AddInstanceOfSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent);
-	void AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
+	void AddCopyOfSubTree(const uint32_t copyIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent);
 
 	void AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &position, const glm::vec3 &color);
 	entt::entity AddCamera(std::shared_ptr<RenderSys::ICamera> camera);
@@ -40,7 +50,30 @@ public:
 	uint32_t m_instancedRootNodeIndex = 1;
 
 private:
+	using AddMeshEntityFn = void (Scene::*)(const uint32_t, entt::entity&, const glm::vec3&, const uint32_t);
+	void AddSubTree(const uint32_t index, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent, const char* nameSuffix, AddMeshEntityFn addMeshEntity);
+	entt::entity CreateInstanceSlotEntity(const std::string& name, const uint32_t parentNodeIndex, const std::shared_ptr<InstanceBuffer>& instanceBuffer, const uint32_t slot, const glm::vec3& translation);
+	void AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
+	void AddCopyOfEntity(const uint32_t copyIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex);
+	void UpdateTransformCacheParallel(uint32_t const rootNodeIndex);
 	void UpdateTransformCache(uint32_t const nodeIndex, glm::mat4 const& parentMat4, bool parentDirtyFlag);
+	const glm::mat4& UpdateNodeTransform(entt::entity const gameObject, glm::mat4 const& parentMat4, bool& dirtyFlag);
+
+	// Copies of one source entity fill shared instance buffers slot by slot, one buffer (and one resource
+	// descriptor set) per MAX_INSTANCE copies, instead of one per copy.
+	struct CopyInstanceBlock
+	{
+		std::shared_ptr<InstanceBuffer> m_instanceBuffer;
+		std::shared_ptr<Resource> m_resource;
+	};
+	struct CopyInstanceGroup
+	{
+		std::vector<CopyInstanceBlock> m_blocks;
+		uint32_t m_copyCount = 0;
+	};
+	std::unordered_map<entt::entity, CopyInstanceGroup> m_copyInstanceGroups;
+
+	std::unique_ptr<vks::ThreadPool> m_threadPool;
 };
 
 } // namespace RenderSys

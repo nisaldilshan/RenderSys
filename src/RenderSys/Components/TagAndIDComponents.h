@@ -35,10 +35,15 @@ public:
 class InstanceTagComponent
 {
 public:
-    InstanceTagComponent()
-        : m_instances() 
-        , m_instanceBuffer(std::make_shared<InstanceBuffer>())
-    {}
+    InstanceTagComponent() = delete;
+
+    // Shares a buffer owned by other entities too (e.g. copies of one mesh, each drawing its own slot).
+    explicit InstanceTagComponent(std::shared_ptr<InstanceBuffer> sharedInstanceBuffer)
+        : m_instances()
+        , m_instanceBuffer(std::move(sharedInstanceBuffer))
+    {
+        assert(m_instanceBuffer);
+    }
 
     void AddInstance(entt::entity instanceEntity);
     uint32_t GetInstanceCount() const;

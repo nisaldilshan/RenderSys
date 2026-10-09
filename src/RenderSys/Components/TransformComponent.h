@@ -29,7 +29,7 @@ namespace RenderSys
 
         void SetMat4Local(const glm::mat4 &mat4);
         void SetMat4Global(const glm::mat4 &parent);
-        void SetMat4Global();
+        void UpdateMat4Global();
 
         const glm::mat4 &GetMat4Local();
         const glm::mat4 &GetMat4Global() const;
@@ -41,6 +41,9 @@ namespace RenderSys
         {
             m_changeNotifyCallback = std::move(callback);
         }
+        // Matrices can be recalculated on Scene worker threads, so the change callback is deferred until this is
+        // called from the owning thread (Scene::Update does it after the parallel transform update).
+        void FlushChangeNotification();
 
         glm::vec3 GetForwardVector() const;
         glm::vec3 GetRightVector() const;
@@ -51,6 +54,7 @@ namespace RenderSys
 
     private:
         bool m_Dirty{true};
+        bool m_ChangeNotifyPending{false};
 
         // local
         glm::vec3 m_Scale = glm::vec3{1.0f};

@@ -42,7 +42,7 @@ void TransformComponent::SetMat4Global(const glm::mat4 &parent)
     m_Parent = parent;
 }
 
-void TransformComponent::SetMat4Global()
+void TransformComponent::UpdateMat4Global()
 {
     if (m_InstanceBuffer)
     {
@@ -120,8 +120,18 @@ void TransformComponent::RecalculateMatrices()
 
     if (m_changeNotifyCallback)
     {
-        std::invoke(m_changeNotifyCallback, m_Translation, m_Rotation);
+        m_ChangeNotifyPending = true;
     }
+}
+
+void TransformComponent::FlushChangeNotification()
+{
+    if (!m_ChangeNotifyPending)
+    {
+        return;
+    }
+    m_ChangeNotifyPending = false;
+    std::invoke(m_changeNotifyCallback, m_Translation, m_Rotation);
 }
 
 void TransformComponent::SetScale(const glm::vec3 &scale)

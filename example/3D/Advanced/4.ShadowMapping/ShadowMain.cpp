@@ -4,6 +4,7 @@
 #include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
+#include <Walnut/Image.h>
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Camera/PerspectiveCamera.h>
@@ -35,6 +36,8 @@ struct alignas(16) LightingUniforms {
 	std::array<glm::mat4x4, 1> lightViewProjections;
 };
 static_assert(sizeof(LightingUniforms) % 16 == 0);
+
+Walnut::Application* appPtr = nullptr;
 
 class Renderer3DLayer : public Walnut::Layer
 {
@@ -153,15 +156,35 @@ public:
 	virtual void OnUpdate(float ts) override
 	{
         Walnut::Timer timer;
-		if (m_viewportWidth == 0 || m_viewportHeight == 0)
-			return;
 
-        if (m_viewportWidth != m_renderer->GetWidth() ||
-            m_viewportHeight != m_renderer->GetHeight())
-        {
-			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-			m_cameraController->GetCamera()->SetAspectRatio(static_cast<float>(m_viewportWidth)/ static_cast<float>(m_viewportHeight));
-        }
+		static uint32_t windowWidth = 0;
+		static uint32_t windowHeight = 0;
+		auto& mainImage = appPtr->MainImageRef();
+		if (mainImage) {
+			// A minimised window reports 0x0, which would create zero-extent images and a NaN aspect ratio.
+			if (mainImage->GetWidth() == 0 || mainImage->GetHeight() == 0)
+				return;
+
+			if (windowWidth != mainImage->GetWidth() ||
+				windowHeight != mainImage->GetHeight())
+			{
+				windowWidth = mainImage->GetWidth();
+				windowHeight = mainImage->GetHeight();
+				m_renderer->OnResize(windowWidth, windowHeight);
+				m_cameraController->GetCamera()->SetAspectRatio(static_cast<float>(windowWidth)/ static_cast<float>(windowHeight));
+			}
+		} else {
+			if (m_viewportWidth == 0 || m_viewportHeight == 0)
+				return;
+	
+			if (m_viewportWidth != m_renderer->GetWidth() ||
+				m_viewportHeight != m_renderer->GetHeight())
+			{
+				m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
+				m_cameraController->GetCamera()->SetAspectRatio(static_cast<float>(m_viewportWidth)/ static_cast<float>(m_viewportHeight));
+			}
+		}
+
 
 		if (m_renderer)
 		{
@@ -184,16 +207,16 @@ public:
 			for (auto entity : meshView)
 			{
 				auto& meshComponent = meshView.get<RenderSys::MeshComponent>(entity);
-				auto& instanceTagComponent = meshView.get<RenderSys::InstanceTagComponent>(entity);
-				instanceTagComponent.GetInstanceBuffer()->Update();
-				auto mesh = meshComponent.m_Mesh;
-				m_renderer->RenderMesh(*mesh);
+				m_renderer->RenderMesh(meshComponent);
 			}
 
 			m_renderer->EndRenderPass();
 			m_renderer->EndFrame();
 		}
 
+		if (mainImage) {
+			mainImage->SetData(m_renderer->GetRenderedImageData().data());
+		}
         m_lastRenderTime = timer.ElapsedMillis();
 	}
 
@@ -547,8 +570,9 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 {
 	Walnut::ApplicationSpecification spec;
 	spec.Name = "Renderer3D Example";
+	spec.UseImGui = false;
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	app->PushLayer<Renderer3DLayer>();
-	return app;
+	appPtr = new Walnut::Application(spec);
+	appPtr->PushLayer<Renderer3DLayer>();
+	return appPtr;
 }

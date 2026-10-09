@@ -118,9 +118,9 @@ void Renderer3D::EndFrame()
     m_rendererBackend->SubmitCommandBuffer();
 }
 
-void Renderer3D::RenderMesh(const RenderSys::Mesh& mesh)
+void Renderer3D::RenderMesh(const RenderSys::MeshComponent& meshComponent)
 {
-    m_rendererBackend->RenderMesh(mesh);
+    m_rendererBackend->RenderMesh(meshComponent);
 }
 
 void Renderer3D::BeginRenderPass()

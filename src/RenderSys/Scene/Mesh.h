@@ -44,7 +44,6 @@ struct MeshData
     std::vector<uint32_t> indices;
 };
     
-class Resource;
 struct SubMesh
 {
     uint32_t m_FirstIndex = 0;
@@ -53,7 +52,6 @@ struct SubMesh
     uint32_t m_VertexCount = 0;
     uint32_t m_InstanceCount = 1;
     std::shared_ptr<Material> m_Material = nullptr;
-    std::shared_ptr<Resource> m_Resource = nullptr;
 };
 
 struct Mesh

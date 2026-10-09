@@ -16,10 +16,14 @@ std::vector<VkDescriptorSetLayoutBinding> GetResourceBindGroupBindings()
     return resourceBindGroupBindings;
 }
 
-VkDescriptorPool g_resourceBindGroupPool = VK_NULL_HANDLE;
-void CreateResourceBindGroupPool()
+// Resource descriptor sets come from a chain of pools. When the newest pool is full, another one is added,
+// so the number of sets is not capped by a guess at the scene size.
+std::vector<VkDescriptorPool> g_resourceBindGroupPools;
+
+namespace
 {
-    assert(g_resourceBindGroupPool == VK_NULL_HANDLE);    
+VkDescriptorPool CreateResourceBindGroupPoolBlock()
+{
     constexpr uint32_t maxNumOfModels = 10;
     constexpr uint32_t maxMaterialsPerModel = 50;
 
@@ -37,24 +41,41 @@ void CreateResourceBindGroupPool()
     poolInfo.pPoolSizes = poolSizes.data();
     poolInfo.maxSets = maxMaterialsPerModel * maxNumOfModels;
 
-    if (vkCreateDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &g_resourceBindGroupPool) != VK_SUCCESS) {
+    VkDescriptorPool pool = VK_NULL_HANDLE;
+    if (vkCreateDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &pool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
+    return pool;
 }
 
-VkDescriptorPool GetResourceBindGroupPool()
+VkResult AllocateResourceBindGroup(VkDescriptorPool pool, VkDescriptorSet& bindGroup)
 {
-    assert(g_resourceBindGroupPool != VK_NULL_HANDLE);   
-    return g_resourceBindGroupPool;
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = pool;
+    allocInfo.descriptorSetCount = 1;
+    auto resourceBindGroupLayout = GetResourceBindGroupLayout();
+    allocInfo.pSetLayouts = &resourceBindGroupLayout;
+    return vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &bindGroup);
+}
+} // namespace
+
+void CreateResourceBindGroupPool()
+{
+    assert(g_resourceBindGroupPools.empty());
+    g_resourceBindGroupPools.push_back(CreateResourceBindGroupPoolBlock());
 }
 
 void DestroyResourceBindGroupPool()
 {
-    assert(g_resourceBindGroupPool != VK_NULL_HANDLE); 
+    assert(!g_resourceBindGroupPools.empty());
     vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
     // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
-    vkDestroyDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), g_resourceBindGroupPool, nullptr);
-    g_resourceBindGroupPool = VK_NULL_HANDLE;
+    for (auto pool : g_resourceBindGroupPools)
+    {
+        vkDestroyDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), pool, nullptr);
+    }
+    g_resourceBindGroupPools.clear();
 }
 
 VkDescriptorSetLayout g_resourceBindGroupLayout = VK_NULL_HANDLE;
@@ -87,14 +108,15 @@ void DestroyResourceBindGroupLayout()
 
 VulkanResourceDescriptor::VulkanResourceDescriptor()
 {
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = GetResourceBindGroupPool();
-    allocInfo.descriptorSetCount = 1;
-    auto resourceBindGroupLayout = GetResourceBindGroupLayout();
-    allocInfo.pSetLayouts = &resourceBindGroupLayout;
+    assert(!g_resourceBindGroupPools.empty());
+    VkResult result = AllocateResourceBindGroup(g_resourceBindGroupPools.back(), m_bindGroup);
+    if (result == VK_ERROR_OUT_OF_POOL_MEMORY || result == VK_ERROR_FRAGMENTED_POOL)
+    {
+        g_resourceBindGroupPools.push_back(CreateResourceBindGroupPoolBlock());
+        result = AllocateResourceBindGroup(g_resourceBindGroupPools.back(), m_bindGroup);
+    }
 
-    if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+    if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 }

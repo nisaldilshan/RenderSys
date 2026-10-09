@@ -5,17 +5,49 @@
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/LightComponents.h>
 #include <RenderSys/Components/CameraComponents.h>
+#include <RenderSys/Utils/threadpool.hpp>
+#include <resources/Shaders/ShaderResource.h>
+#include <algorithm>
 #include <iostream>
 
 namespace RenderSys
 {
+
+namespace
+{
+// Enough independent subtrees per worker that uneven subtree sizes still even out across the pool.
+constexpr size_t SUBTREES_PER_WORKER = 4;
+
+constexpr const char* INSTANCE_NAME_SUFFIX = "_instance";
+constexpr const char* COPY_NAME_SUFFIX = "_copy";
+
+std::string IndexedName(const std::string& baseName, const char* suffix, const uint32_t index)
+{
+	return baseName + suffix + std::to_string(index + 1);
+}
+
+std::shared_ptr<Resource> CreateInstanceResource(const std::shared_ptr<InstanceBuffer>& instanceBuffer)
+{
+	auto resource = std::make_shared<Resource>();
+	resource->SetBuffer(Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceBuffer->GetBuffer());
+	resource->Init();
+	return resource;
+}
+
+void BindInstanceResource(MeshComponent& meshComponent, const std::shared_ptr<Resource>& resource)
+{
+	std::fill(meshComponent.m_SubMeshResources.begin(), meshComponent.m_SubMeshResources.end(), resource);
+}
+}
 
 Scene::Scene() 
 	: m_Registry()
 	, m_sceneGraph()
 	, m_rootNodeIndex(m_sceneGraph.CreateRootNode(CreateEntity("RootNode"), "RootNode"))
 	, m_instancedRootNodeIndex(m_sceneGraph.CreateRootNode(CreateEntity("InstancedRootNode"), "InstancedRootNode"))
+	, m_threadPool(std::make_unique<vks::ThreadPool>())
 {
+	m_threadPool->setThreadCount(std::max(1u, std::thread::hardware_concurrency()));
 	std::cout << "Scene created with root node index: " << m_rootNodeIndex << std::endl;
 	std::cout << "Instanced root node index: " << m_instancedRootNodeIndex << std::endl;
 }
@@ -53,32 +85,107 @@ void Scene::DestroyAllEntities()
 	for (auto entity : allEntities) {
 		DestroyEntity(entity);
 	}
+	m_copyInstanceGroups.clear();
 }
 
 void Scene::Update()
 {
 	// Update the transform cache for the root node
-	UpdateTransformCache(m_instancedRootNodeIndex, glm::mat4(1.0f), false);
+	UpdateTransformCacheParallel(m_instancedRootNodeIndex);
+
+	// Change callbacks mutate objects outside the transform (e.g. the camera), so they run here, never on the workers.
+	auto transformView = m_Registry.view<TransformComponent>();
+	for (auto entity : transformView)
+	{
+		transformView.get<TransformComponent>(entity).FlushChangeNotification();
+	}
+
+	// Upload each instance buffer once per frame, after every transform that writes into it is final.
+	// Copies share buffers, but Update() only writes while the buffer is dirty, so each one is uploaded once.
+	auto instanceView = m_Registry.view<InstanceTagComponent>();
+	for (auto entity : instanceView)
+	{
+		instanceView.get<InstanceTagComponent>(entity).GetInstanceBuffer()->Update();
+	}
 }
 
+void Scene::UpdateTransformCacheParallel(uint32_t const rootNodeIndex)
+{
+	struct PendingSubtree
+	{
+		uint32_t nodeIndex;
+		glm::mat4 parentMat4;
+		bool parentDirtyFlag;
+	};
+
+	const size_t workerCount = m_threadPool->threads.size();
+	const size_t targetSubtrees = workerCount * SUBTREES_PER_WORKER;
+
+	// Walk breadth-first on this thread until the frontier holds enough subtrees to share out. Every frontier
+	// node's parent is already final, so the subtrees are independent of each other. Small scenes finish here.
+	std::vector<PendingSubtree> frontier{{rootNodeIndex, glm::mat4(1.0f), false}};
+	while (!frontier.empty() && frontier.size() < targetSubtrees)
+	{
+		std::vector<PendingSubtree> nextLevel;
+		for (const auto& pending : frontier)
+		{
+			const auto& node = m_sceneGraph.GetNodeUnsynchronized(pending.nodeIndex);
+			bool dirtyFlag = pending.parentDirtyFlag;
+			const glm::mat4& mat4Global = UpdateNodeTransform(node.GetGameObject(), pending.parentMat4, dirtyFlag);
+			for (uint32_t index = 0; index < node.Children(); index++)
+			{
+				nextLevel.push_back({node.GetChild(index), mat4Global, dirtyFlag});
+			}
+		}
+		frontier = std::move(nextLevel);
+	}
+
+	if (frontier.empty())
+	{
+		return;
+	}
+
+	// Neighbouring siblings tend to be similar in size (e.g. copies of one model), so interleave them across workers.
+	for (size_t worker = 0; worker < workerCount; worker++)
+	{
+		m_threadPool->threads[worker]->addJob([this, &frontier, worker, workerCount]()
+		{
+			for (size_t index = worker; index < frontier.size(); index += workerCount)
+			{
+				const auto& pending = frontier[index];
+				UpdateTransformCache(pending.nodeIndex, pending.parentMat4, pending.parentDirtyFlag);
+			}
+		});
+	}
+	m_threadPool->wait();
+}
+
+// Thread-safe for disjoint subtrees: the scene graph and registry are only read, and each node writes only its own
+// transform (plus its own slot in a shared instance buffer). Transform change callbacks are deferred to Scene::Update.
 void Scene::UpdateTransformCache(uint32_t const nodeIndex, glm::mat4 const &parentMat4, bool parentDirtyFlag)
 {
-	auto& node = GetSceneGraphTreeNode(nodeIndex);
-	entt::entity gameObject = node.GetGameObject();
+	const auto& node = m_sceneGraph.GetNodeUnsynchronized(nodeIndex);
+	bool dirtyFlag = parentDirtyFlag;
+	const glm::mat4& mat4Global = UpdateNodeTransform(node.GetGameObject(), parentMat4, dirtyFlag);
+	for (uint32_t index = 0; index < node.Children(); index++)
+	{
+		UpdateTransformCache(node.GetChild(index), mat4Global, dirtyFlag);
+	}
+}
 
+// dirtyFlag carries the parent's state in and this node's state out, for its children to inherit.
+const glm::mat4& Scene::UpdateNodeTransform(entt::entity const gameObject, glm::mat4 const &parentMat4, bool& dirtyFlag)
+{
+	// registry.get on an existing storage is a lookup only, so concurrent calls are safe.
 	auto& transform = m_Registry.get<TransformComponent>(gameObject);
-	bool dirtyFlag = transform.GetDirtyFlag() || parentDirtyFlag;
+	dirtyFlag = transform.GetDirtyFlag() || dirtyFlag;
 
 	if (dirtyFlag)
 	{
 		transform.SetMat4Global(parentMat4);
 	}
 
-	const glm::mat4& mat4Global = transform.GetMat4Global();
-	for (uint32_t index = 0; index < node.Children(); index++)
-	{
-		UpdateTransformCache(node.GetChild(index), mat4Global, dirtyFlag);
-	}
+	return transform.GetMat4Global();
 }
 
 SceneGraph::TreeNode &Scene::GetSceneGraphTreeNode(uint32_t nodeIndex)
@@ -95,13 +202,19 @@ void Scene::printNodeGraph() const
 
 void Scene::AddInstanceOfSubTree(const uint32_t instanceIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent)
 {
-	auto& childNode = m_sceneGraph.GetNode(subTreeNodeIndex);
-	std::vector<uint32_t> children = childNode.GetChildren();
-	if (children.size() == 0) 
-	{
-		return; // No children to process
-	}
-	
+	AddSubTree(instanceIndex, pos, subTreeNodeIndex, parent, INSTANCE_NAME_SUFFIX, &Scene::AddMeshInstanceOfEntity);
+}
+
+void Scene::AddCopyOfSubTree(const uint32_t copyIndex, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent)
+{
+	AddSubTree(copyIndex, pos, subTreeNodeIndex, parent, COPY_NAME_SUFFIX, &Scene::AddCopyOfEntity);
+}
+
+// Mesh entities among the children are handed to addMeshEntity. A non-mesh child of the root gets a new node under
+// the instanced root, and deeper non-mesh nodes are walked into that node.
+void Scene::AddSubTree(const uint32_t index, const glm::vec3& pos, const uint32_t subTreeNodeIndex, uint32_t parent, const char* nameSuffix, AddMeshEntityFn addMeshEntity)
+{
+	const std::vector<uint32_t> children = m_sceneGraph.GetNode(subTreeNodeIndex).GetChildren();
 	for (auto childNodeIndex : children)
 	{
 		auto& childNode = m_sceneGraph.GetNode(childNodeIndex);
@@ -109,52 +222,79 @@ void Scene::AddInstanceOfSubTree(const uint32_t instanceIndex, const glm::vec3& 
 		assert(nodeEntity != entt::null);
 		if (m_Registry.all_of<RenderSys::MeshComponent>(nodeEntity))
 		{
-			AddMeshInstanceOfEntity(instanceIndex, nodeEntity, pos, parent);
+			(this->*addMeshEntity)(index, nodeEntity, pos, parent);
 		}
 		else
 		{
 			if (subTreeNodeIndex == m_rootNodeIndex)
 			{
 				// need a proper entity copy mechanism here.
-				const auto name = childNode.GetName() + "_instance" + std::to_string(instanceIndex + 1);
-				auto instanceModelTop = CreateEntity(name);
-				parent = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, instanceModelTop, name);
+				const auto name = IndexedName(childNode.GetName(), nameSuffix, index);
+				auto modelTop = CreateEntity(name);
+				parent = m_sceneGraph.CreateNode(m_instancedRootNodeIndex, modelTop, name);
 			}
-			AddInstanceOfSubTree(instanceIndex, pos, childNodeIndex, parent);
+			AddSubTree(index, pos, childNodeIndex, parent, nameSuffix, addMeshEntity);
 		}
 	}
+}
+
+entt::entity Scene::CreateInstanceSlotEntity(const std::string& name, const uint32_t parentNodeIndex, const std::shared_ptr<InstanceBuffer>& instanceBuffer, const uint32_t slot, const glm::vec3& translation)
+{
+	auto entity = CreateEntity(name);
+	m_sceneGraph.CreateNode(parentNodeIndex, entity, name);
+
+	RenderSys::TransformComponent& transform{m_Registry.get<RenderSys::TransformComponent>(entity)};
+	transform.SetInstance(instanceBuffer, slot);
+	transform.SetScale(glm::vec3(0.05f));
+	transform.SetTranslation(translation);
+	transform.UpdateMat4Global();
+	return entity;
 }
 
 void Scene::AddMeshInstanceOfEntity(const uint32_t instanceIndex, entt::entity& entity, const glm::vec3& translation, const uint32_t parentNodeIndex)
 {
 	auto& meshComponent = m_Registry.get<MeshComponent>(entity);
-	if (!m_Registry.all_of<InstanceTagComponent>(entity))
-    {
-        InstanceTagComponent& instanceTag{m_Registry.emplace<InstanceTagComponent>(entity)};
+	auto* instanceTag = m_Registry.try_get<InstanceTagComponent>(entity);
+	if (!instanceTag)
+	{
+		instanceTag = &m_Registry.emplace<InstanceTagComponent>(entity, std::make_shared<InstanceBuffer>());
+		BindInstanceResource(meshComponent, CreateInstanceResource(instanceTag->GetInstanceBuffer()));
+	}
 
-		auto resource = std::make_shared<RenderSys::Resource>();
-		resource->SetBuffer(RenderSys::Resource::BufferIndices::INSTANCE_BUFFER_INDEX, instanceTag.GetInstanceBuffer()->GetBuffer());
-		resource->Init();
-		for (auto &subMesh : meshComponent.m_Mesh->subMeshes)
-		{
-			subMesh.m_Resource = resource;
-		}
-    }
-
-	auto& instanceTagComp = m_Registry.get<InstanceTagComponent>(entity);
-
-	const auto name = meshComponent.m_Name + "_instance" + std::to_string(instanceIndex + 1);
-	auto instanceEntity = CreateEntity(name);
-	m_sceneGraph.CreateNode(parentNodeIndex, instanceEntity, name);
-	RenderSys::TransformComponent& instanceTransform{m_Registry.get<RenderSys::TransformComponent>(instanceEntity)};
-	assert(instanceTagComp.GetInstanceBuffer() != nullptr);
-	instanceTransform.SetInstance(instanceTagComp.GetInstanceBuffer(), instanceIndex);
-	instanceTransform.SetScale(glm::vec3(0.05f));
-	instanceTransform.SetTranslation(translation);
-	instanceTransform.SetMat4Global();
-	instanceTagComp.AddInstance(instanceEntity);
+	const auto name = IndexedName(meshComponent.m_Name, INSTANCE_NAME_SUFFIX, instanceIndex);
+	auto instanceEntity = CreateInstanceSlotEntity(name, parentNodeIndex, instanceTag->GetInstanceBuffer(), instanceIndex, translation);
+	instanceTag->AddInstance(instanceEntity);
 	m_Registry.emplace<RenderSys::MeshComponent>(instanceEntity, "", meshComponent.m_Mesh);
-	instanceTagComp.GetInstanceBuffer()->Update();
+	instanceTag->GetInstanceBuffer()->Update();
+}
+
+void Scene::AddCopyOfEntity(const uint32_t copyIndex, entt::entity &entity, const glm::vec3 &translation, const uint32_t parentNodeIndex)
+{
+	auto& meshComponent = m_Registry.get<MeshComponent>(entity);
+
+	// Take the next free slot in this source's shared instance buffers, starting a new block when the last is full.
+	auto& copyGroup = m_copyInstanceGroups[entity];
+	const uint32_t slot = copyGroup.m_copyCount % MAX_INSTANCE;
+	if (slot == 0)
+	{
+		auto instanceBuffer = std::make_shared<InstanceBuffer>();
+		copyGroup.m_blocks.push_back({instanceBuffer, CreateInstanceResource(instanceBuffer)});
+	}
+	copyGroup.m_copyCount++;
+	const auto& block = copyGroup.m_blocks.back();
+
+	// The buffer is uploaded by Scene::Update once all transforms writing into it are final.
+	const auto name = IndexedName(meshComponent.m_Name, COPY_NAME_SUFFIX, copyIndex);
+	auto copy = CreateInstanceSlotEntity(name, parentNodeIndex, block.m_instanceBuffer, slot, translation);
+
+	// Share the immutable mesh asset; per-entity resource bindings live on the component.
+	// Each copy is still drawn on its own, reading only its slot of the shared buffer.
+	auto& meshComponentCopy = m_Registry.emplace<MeshComponent>(copy, meshComponent.m_Name, meshComponent.m_Mesh);
+	BindInstanceResource(meshComponentCopy, block.m_resource);
+	meshComponentCopy.m_FirstInstance = slot;
+
+	InstanceTagComponent& instanceTag{m_Registry.emplace<InstanceTagComponent>(copy, block.m_instanceBuffer)};
+	instanceTag.AddInstance(copy);
 }
 
 void Scene::AddDirectionalLight(const glm::vec3 &direction, const glm::vec3 &position, const glm::vec3 &color)

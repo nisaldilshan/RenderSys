@@ -33,10 +33,9 @@ void InstanceBuffer::SetInstanceData(uint32_t index, glm::mat4 const &modelMatri
 
 void InstanceBuffer::Update()
 {
-    if (m_Dirty)
+    if (m_Dirty.exchange(false))
     {
         m_buffer->WriteToBuffer(m_DataInstances.data());
-        m_Dirty = false;
     }
 }
 
