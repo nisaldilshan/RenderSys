@@ -14,7 +14,7 @@ class VulkanTexture
 {
 public:
     VulkanTexture() = delete;
-    VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage);
+    VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage, TextureColorSpace colorSpace);
     VulkanTexture(const VulkanTexture&) = delete;
     VulkanTexture& operator=(const VulkanTexture&) = delete;
     VulkanTexture(VulkanTexture&&) = delete;

@@ -516,8 +516,20 @@ void GLTFModel::loadTextures()
     std::cout << "Loading Textures - " << gltfTextures.size() << std::endl;
     m_textures.reserve(gltfTextures.size());
 
-    for (const auto& gltfTexture : gltfTextures)
+    // glTF stores only base color and emissive textures as sRGB. Normal, metallic-roughness and
+    // occlusion textures hold linear data, so sampling them as sRGB would bend their values.
+    std::vector<bool> isColorTexture(gltfTextures.size(), false);
+    for (const auto& mat : m_gltfModel->materials)
     {
+        if (mat.pbrMetallicRoughness.baseColorTexture.index != -1)
+            isColorTexture[mat.pbrMetallicRoughness.baseColorTexture.index] = true;
+        if (mat.emissiveTexture.index != -1)
+            isColorTexture[mat.emissiveTexture.index] = true;
+    }
+
+    for (size_t textureIndex = 0; textureIndex < gltfTextures.size(); textureIndex++)
+    {
+        const tinygltf::Texture& gltfTexture = gltfTextures[textureIndex];
         const tinygltf::Image& image = m_gltfModel->images[gltfTexture.source];
         // const std::string textureFilePath = m_sceneFilePath.parent_path().string() + "/" + image.uri;
         // std::cout << "Texture Name: " << image.name 
@@ -529,8 +541,9 @@ void GLTFModel::loadTextures()
         //             << ", component=" << image.component 
         //             << ", sampler=" << gltfTexture.sampler << std::endl;
 
+        const auto colorSpace = isColorTexture[textureIndex] ? TextureColorSpace::SRGB : TextureColorSpace::LINEAR;
         m_textures.emplace_back(
-            std::make_shared<Texture>(image.width, image.height, 1, TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED));
+            std::make_shared<Texture>(image.width, image.height, 1, TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED, colorSpace));
         m_textures.back()->SetData((unsigned char*)image.image.data());
         m_textures.back()->SetSampler(samplers[gltfTexture.sampler]);
     }

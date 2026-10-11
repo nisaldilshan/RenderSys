@@ -8,7 +8,7 @@
 namespace RenderSys
 {
 
-VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage)
+VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage, TextureColorSpace colorSpace)
     : m_width(width)
     , m_height(height)
     , m_image(VK_NULL_HANDLE)
@@ -19,7 +19,8 @@ VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, uint32_t mipMapLev
     const bool isDepthTexture = (usage == TextureUsage::SAMPLED_UNDEFINED_DEPTHSTENCIL);
     m_imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     m_imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-    m_imageCreateInfo.format = isDepthTexture ? Vulkan::GetDepthFormat() : VK_FORMAT_R8G8B8A8_SRGB;
+    const VkFormat colorFormat = (colorSpace == TextureColorSpace::LINEAR) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+    m_imageCreateInfo.format = isDepthTexture ? Vulkan::GetDepthFormat() : colorFormat;
     m_imageCreateInfo.extent = {m_width, m_height, 1};
     m_imageCreateInfo.mipLevels = mipMapLevelCount;
     m_imageCreateInfo.arrayLayers = 1;
@@ -70,7 +71,7 @@ VulkanTexture::~VulkanTexture()
 void VulkanTexture::SetData(unsigned char *textureData)
 {
     // Transition Image to a copyable Layout
-    RenderSys::Vulkan::TransitionImageLayout(m_image, VK_FORMAT_R8G8B8A8_SRGB,
+    RenderSys::Vulkan::TransitionImageLayout(m_image, m_imageCreateInfo.format,
                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, RenderSys::Vulkan::GetCommandPool());
 
     uint32_t mipLevelWidth = m_imageCreateInfo.extent.width;
@@ -137,7 +138,7 @@ void VulkanTexture::SetData(unsigned char *textureData)
     }
 
     // Transition Image to Shader Readable Layout
-    RenderSys::Vulkan::TransitionImageLayout(m_image, VK_FORMAT_R8G8B8A8_SRGB,
+    RenderSys::Vulkan::TransitionImageLayout(m_image, m_imageCreateInfo.format,
                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, RenderSys::Vulkan::GetCommandPool());
 }
 
