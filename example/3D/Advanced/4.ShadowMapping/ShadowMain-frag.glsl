@@ -162,7 +162,7 @@ void main()
 
     vec3 total_diffuse = vec3(0.0);
     vec3 total_specular = vec3(0.0);
-    for (int i = 0; i < 2; ++i) 
+    for (int i = 0; i < lightingUbo.directions.length(); ++i) 
     {
         vec3 L = normalize(lightingUbo.directions[i].xyz);
         vec3 H = normalize(V + L);
