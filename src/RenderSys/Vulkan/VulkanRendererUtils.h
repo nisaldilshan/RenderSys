@@ -11,9 +11,9 @@ namespace Vulkan
 
 struct RenderTarget
 {
-    VkImageView view;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorSet descriptorSet;
+    VkImageView view = VK_NULL_HANDLE;
+    VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+    VkDescriptorSet descriptorSet = VK_NULL_HANDLE; // sampled image for the host UI, e.g. ImGui::Image
 };
 
 inline VkFormat GetDepthFormat()

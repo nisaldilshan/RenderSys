@@ -47,6 +47,16 @@ target_include_directories(RenderSys3D PRIVATE src)
 target_include_directories(ComputeSys PRIVATE src)
 
 message(STATUS "RENDERER: " ${RENDERER})
+# Backend switch for the public headers: 1 = OpenGL, 2 = Vulkan, 3 = WebGPU
+if(RENDERER STREQUAL "Vulkan")
+    set(RENDERSYS_BACKEND 2)
+else()
+    set(RENDERSYS_BACKEND 3)
+endif()
+target_compile_definitions(RenderSys2D PUBLIC RENDERSYS_BACKEND=${RENDERSYS_BACKEND})
+target_compile_definitions(RenderSys3D PUBLIC RENDERSYS_BACKEND=${RENDERSYS_BACKEND})
+target_compile_definitions(ComputeSys PUBLIC RENDERSYS_BACKEND=${RENDERSYS_BACKEND})
+
 if(RENDERER STREQUAL "Vulkan")
     find_package(VulkanMemoryAllocator REQUIRED)
     target_sources(RenderSys2D PRIVATE
@@ -126,6 +136,7 @@ target_sources(RenderSys3D
                         src/RenderSys/Camera/ICamera.h
                         src/RenderSys/Camera/PerspectiveCamera.h
                         src/RenderSys/Camera/EditorCameraController.h
+                        src/RenderSys/Walnut/WalnutInput.h
                         src/RenderSys/Material.h
                         src/RenderSys/Resource.h
                         src/RenderSys/Scene/Mesh.h

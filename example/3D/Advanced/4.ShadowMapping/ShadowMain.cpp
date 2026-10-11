@@ -9,6 +9,7 @@
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Camera/PerspectiveCamera.h>
 #include <RenderSys/Camera/EditorCameraController.h>
+#include <RenderSys/Walnut/WalnutInput.h>
 #include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
@@ -193,7 +194,7 @@ public:
 
 		if (m_renderer)
 		{
-			m_cameraController->OnUpdate();
+			m_cameraController->OnUpdate(RenderSys::GetCameraInputFromWalnut());
 			m_scene->Update();
 
 			updateUniforms();

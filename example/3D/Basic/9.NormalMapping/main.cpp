@@ -8,6 +8,7 @@
 #include <RenderSys/Geometry.h>
 #include <RenderSys/Texture.h>
 #include <RenderSys/Camera/EditorCameraController.h>
+#include <RenderSys/Walnut/WalnutInput.h>
 #include <imgui.h>
 
 struct MyUniforms {
@@ -378,7 +379,7 @@ public:
 
 		if (m_renderer)
 		{
-			m_cameraController->OnUpdate();
+			m_cameraController->OnUpdate(RenderSys::GetCameraInputFromWalnut());
 
 			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();

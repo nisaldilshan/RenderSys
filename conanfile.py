@@ -112,6 +112,8 @@ class RenderSysConan(ConanFile):
         self.cpp_info.components['Common'].set_property('cmake_target_name', 'RenderSys::Common')
         self.cpp_info.components['Common'].libs = ['RenderSysCommon']
         self.cpp_info.components['Common'].resdirs = ['res']
+        backend = {"OpenGL": 1, "Vulkan": 2, "WebGPU": 3}[str(self.options.rendering_backend)]
+        self.cpp_info.components['Common'].defines = [f"RENDERSYS_BACKEND={backend}"]
 
     def layout(self):
         # Standardizes build and source folder structures for Conan 2.x

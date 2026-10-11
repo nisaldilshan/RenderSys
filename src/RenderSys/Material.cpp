@@ -1,10 +1,10 @@
 #include "Material.h"
 
-#if (RENDERER_BACKEND == 1)
+#if (RENDERSYS_BACKEND == 1)
 static_assert(false);
-#elif (RENDERER_BACKEND == 2)
+#elif (RENDERSYS_BACKEND == 2)
 #include "Vulkan/VulkanMaterial.h"
-#elif (RENDERER_BACKEND == 3)
+#elif (RENDERSYS_BACKEND == 3)
 #include "WebGPU/WebGPUMaterial.h"
 #else
 static_assert(false);

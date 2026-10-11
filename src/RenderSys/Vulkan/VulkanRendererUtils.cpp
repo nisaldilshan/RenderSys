@@ -276,6 +276,10 @@ std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSample
 {
     auto ret = std::make_unique<RenderTarget>();
     ret->view = imageView;
+    if (Vulkan::GetContext().uiDescriptorPool == VK_NULL_HANDLE)
+    {
+        return ret; // the host shows nothing through a UI, e.g. it presents to a swapchain
+    }
 
     VkDescriptorSetLayoutBinding binding[1] = {};
     binding[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;

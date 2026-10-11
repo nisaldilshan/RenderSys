@@ -22,6 +22,8 @@ target_link_libraries(RenderSysCommon PRIVATE
                             walnut::walnut)
 endif()
 
+target_compile_definitions(RenderSysCommon PUBLIC RENDERSYS_BACKEND=${RENDERSYS_BACKEND})
+
 install(TARGETS RenderSysCommon
 FILE_SET renderSysFileSet
 COMPONENT RenderSysCommon
