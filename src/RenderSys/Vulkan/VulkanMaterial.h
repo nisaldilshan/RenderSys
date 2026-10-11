@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <Walnut/GraphicsAPI/Vulkan/VulkanGraphics.h>
+#include <RenderSys/Vulkan/VulkanContext.h>
 #include <RenderSys/Material.h>
 
 namespace RenderSys

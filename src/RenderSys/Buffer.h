@@ -6,13 +6,13 @@
 namespace RenderSys
 {
 
-#if (RENDERER_BACKEND == 1)
+#if (RENDERSYS_BACKEND == 1)
 class OpenGLBuffer;
 typedef OpenGLBuffer BufferType;
-#elif (RENDERER_BACKEND == 2)
+#elif (RENDERSYS_BACKEND == 2)
 class VulkanBuffer;
 typedef VulkanBuffer BufferType;
-#elif (RENDERER_BACKEND == 3)
+#elif (RENDERSYS_BACKEND == 3)
 class WebGPUBuffer;
 typedef WebGPUBuffer BufferType;
 #else

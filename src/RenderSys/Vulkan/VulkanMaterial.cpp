@@ -40,7 +40,7 @@ void CreateMaterialBindGroupPool()
     poolInfo.pPoolSizes = poolSizes.data();
     poolInfo.maxSets = maxMaterialsPerModel * maxNumOfModels;
 
-    if (vkCreateDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &g_materialBindGroupPool) != VK_SUCCESS) {
+    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &g_materialBindGroupPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
 }
@@ -54,9 +54,9 @@ VkDescriptorPool GetMaterialBindGroupPool()
 void DestroyMaterialBindGroupPool()
 {
     assert(g_materialBindGroupPool != VK_NULL_HANDLE); 
-    vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
+    vkDeviceWaitIdle(Vulkan::GetDevice());
     // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
-    vkDestroyDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), g_materialBindGroupPool, nullptr);
+    vkDestroyDescriptorPool(Vulkan::GetDevice(), g_materialBindGroupPool, nullptr);
     g_materialBindGroupPool = VK_NULL_HANDLE;
 }
 
@@ -70,7 +70,7 @@ void CreateMaterialBindGroupLayout()
     layoutInfo.bindingCount = bindings.size();
     layoutInfo.pBindings = bindings.data();
 
-    if (vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &layoutInfo, nullptr, &g_materialBindGroupLayout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &g_materialBindGroupLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 }
@@ -84,7 +84,7 @@ VkDescriptorSetLayout GetMaterialBindGroupLayout()
 void DestroyMaterialBindGroupLayout()
 {
     assert(g_materialBindGroupLayout != VK_NULL_HANDLE);
-    vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), g_materialBindGroupLayout, nullptr);
+    vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), g_materialBindGroupLayout, nullptr);
     g_materialBindGroupLayout = VK_NULL_HANDLE;
 }
 
@@ -97,7 +97,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
     auto materialBindGroupLayout = GetMaterialBindGroupLayout();
     allocInfo.pSetLayouts = &materialBindGroupLayout;
 
-    if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
@@ -187,7 +187,7 @@ VulkanMaterialDescriptor::VulkanMaterialDescriptor(MaterialTextures& textures)
         descriptorWrites[4].pImageInfo = metallicRoughnessTextureImageInfo;
     }
 
-    vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+    vkUpdateDescriptorSets(Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
     
 }
 

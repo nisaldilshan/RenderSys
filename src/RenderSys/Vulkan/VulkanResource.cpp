@@ -42,7 +42,7 @@ VkDescriptorPool CreateResourceBindGroupPoolBlock()
     poolInfo.maxSets = maxMaterialsPerModel * maxNumOfModels;
 
     VkDescriptorPool pool = VK_NULL_HANDLE;
-    if (vkCreateDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &pool) != VK_SUCCESS) {
+    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &pool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
     return pool;
@@ -56,7 +56,7 @@ VkResult AllocateResourceBindGroup(VkDescriptorPool pool, VkDescriptorSet& bindG
     allocInfo.descriptorSetCount = 1;
     auto resourceBindGroupLayout = GetResourceBindGroupLayout();
     allocInfo.pSetLayouts = &resourceBindGroupLayout;
-    return vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &bindGroup);
+    return vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &bindGroup);
 }
 } // namespace
 
@@ -69,11 +69,11 @@ void CreateResourceBindGroupPool()
 void DestroyResourceBindGroupPool()
 {
     assert(!g_resourceBindGroupPools.empty());
-    vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
+    vkDeviceWaitIdle(Vulkan::GetDevice());
     // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
     for (auto pool : g_resourceBindGroupPools)
     {
-        vkDestroyDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), pool, nullptr);
+        vkDestroyDescriptorPool(Vulkan::GetDevice(), pool, nullptr);
     }
     g_resourceBindGroupPools.clear();
 }
@@ -88,7 +88,7 @@ void CreateResourceBindGroupLayout()
     layoutInfo.bindingCount = bindings.size();
     layoutInfo.pBindings = bindings.data();
 
-    if (vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &layoutInfo, nullptr, &g_resourceBindGroupLayout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &g_resourceBindGroupLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 }
@@ -102,7 +102,7 @@ VkDescriptorSetLayout GetResourceBindGroupLayout()
 void DestroyResourceBindGroupLayout()
 {
     assert(g_resourceBindGroupLayout != VK_NULL_HANDLE);
-    vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), g_resourceBindGroupLayout, nullptr);
+    vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), g_resourceBindGroupLayout, nullptr);
     g_resourceBindGroupLayout = VK_NULL_HANDLE;
 }
 
@@ -146,7 +146,7 @@ void VulkanResourceDescriptor::AttachBuffer(uint32_t binding, const std::shared_
 
 void VulkanResourceDescriptor::Init()
 {
-    vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), m_Writes.size(), m_Writes.data(), 0, nullptr);
+    vkUpdateDescriptorSets(Vulkan::GetDevice(), m_Writes.size(), m_Writes.data(), 0, nullptr);
 }
 
 } // namespace RenderSys

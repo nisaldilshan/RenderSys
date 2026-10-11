@@ -1,7 +1,5 @@
 #include "EditorCameraController.h"
 
-#include <Walnut/Input/Input.h>
-
 namespace RenderSys
 {
 
@@ -19,31 +17,31 @@ EditorCameraController::EditorCameraController(float fov, float nearClip, float 
     m_Camera->SetPosition(initialFocalPoint - m_Camera->GetForwardDirection() * initialDistance);
 }
 
-void EditorCameraController::OnUpdate()
+void EditorCameraController::OnUpdate(const CameraInput& input)
 {
-    if (Walnut::Input::IsKeyDown(Walnut::Key::LeftAlt))
+    if (input.navigate)
     {
-        const auto [x, y] = Walnut::Input::GetMousePosition();
+        const glm::vec2 mousePosition = input.mousePosition;
         if (m_prevMousePosition == glm::vec2(0.0f, 0.0f))
         {
-            m_prevMousePosition = glm::vec2(x, y);
+            m_prevMousePosition = mousePosition;
             return;
         }
-        glm::vec2 delta = (glm::vec2(x, y) - m_prevMousePosition) * 0.003f;
-        m_prevMousePosition = glm::vec2(x, y);
+        glm::vec2 delta = (mousePosition - m_prevMousePosition) * 0.003f;
+        m_prevMousePosition = mousePosition;
 
         float yaw = m_Camera->GetRotation().y;
         float pitch = m_Camera->GetRotation().x;
         glm::vec3 pos = m_Camera->GetPosition();
-        if (Walnut::Input::IsMouseButtonDown(Walnut::MouseButton::Middle))
+        if (input.middleButton)
         {
             MousePan(delta, pos);
         }
-        else if (Walnut::Input::IsMouseButtonDown(Walnut::MouseButton::Left))
+        else if (input.leftButton)
         {
             MouseRotate(delta, yaw, pitch);
         }
-        else if (Walnut::Input::IsMouseButtonDown(Walnut::MouseButton::Right))
+        else if (input.rightButton)
         {
             MouseZoom(delta.y, pos);
         }

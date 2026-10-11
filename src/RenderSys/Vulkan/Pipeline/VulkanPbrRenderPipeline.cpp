@@ -24,13 +24,13 @@ PbrRenderPipeline::~PbrRenderPipeline()
 {
     if (m_Pipeline)
     {
-        vkDestroyPipeline(GraphicsAPI::Vulkan::GetDevice(), m_Pipeline, nullptr);
+        vkDestroyPipeline(Vulkan::GetDevice(), m_Pipeline, nullptr);
         m_Pipeline = VK_NULL_HANDLE;
     }
 
     if (m_PipelineLayout)
     {
-        vkDestroyPipelineLayout(GraphicsAPI::Vulkan::GetDevice(), m_PipelineLayout, nullptr);
+        vkDestroyPipelineLayout(Vulkan::GetDevice(), m_PipelineLayout, nullptr);
         m_PipelineLayout = VK_NULL_HANDLE;
     }
 }
@@ -50,10 +50,10 @@ void PbrRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSetLa
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
     pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
     pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
-    auto result = vkCreatePipelineLayout(GraphicsAPI::Vulkan::GetDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout);
+    auto result = vkCreatePipelineLayout(Vulkan::GetDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout);
     if (result != VK_SUCCESS)
     {
-        GraphicsAPI::Vulkan::check_vk_result(result);
+        Vulkan::CheckVkResult(result);
     }
 }
 
@@ -147,7 +147,7 @@ void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::Ve
     pipelineCreateInfo.subpass = 0;
     pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-    if (vkCreateGraphicsPipelines(GraphicsAPI::Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_Pipeline) != VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_Pipeline) != VK_SUCCESS) {
         std::cout << "error: could not create rendering pipeline" << std::endl;
     }
 

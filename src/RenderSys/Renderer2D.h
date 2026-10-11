@@ -3,7 +3,6 @@
 #include <memory>
 #include <vector>
 #include <stdint.h>
-#include <Walnut/ImageFormat.h>
 
 
 #include "RenderUtil.h"
@@ -11,13 +10,13 @@
 
 namespace RenderSys
 {
-#if (RENDERER_BACKEND == 1)
+#if (RENDERSYS_BACKEND == 1)
 class OpenGLRenderer2D;
 typedef OpenGLRenderer2D RendererType;
-#elif (RENDERER_BACKEND == 2)
+#elif (RENDERSYS_BACKEND == 2)
 class VulkanRenderer2D;
 typedef VulkanRenderer2D RendererType;
-#elif (RENDERER_BACKEND == 3)
+#elif (RENDERSYS_BACKEND == 3)
 class WebGPURenderer2D;
 typedef WebGPURenderer2D RendererType;
 #else

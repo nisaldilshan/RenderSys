@@ -5,13 +5,13 @@
 namespace RenderSys
 {
 
-#if (RENDERER_BACKEND == 1)
+#if (RENDERSYS_BACKEND == 1)
 class OpenGLTexture;
 typedef OpenGLTexture TextureType;
-#elif (RENDERER_BACKEND == 2)
+#elif (RENDERSYS_BACKEND == 2)
 class VulkanTexture;
 typedef VulkanTexture TextureType;
-#elif (RENDERER_BACKEND == 3)
+#elif (RENDERSYS_BACKEND == 3)
 class WebGPUTexture;
 typedef WebGPUTexture TextureType;
 #else

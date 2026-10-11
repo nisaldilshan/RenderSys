@@ -18,6 +18,7 @@ class RenderSysConan(ConanFile):
         "shared": [True, False],
         "rendering_backend": ["OpenGL", "Vulkan", "WebGPU"],
         "build_examples": [True, False],
+        "with_walnut": [True, False],
         "fPIC": [True, False],
         "branch": ["ANY"],
     }
@@ -25,18 +26,24 @@ class RenderSysConan(ConanFile):
         "shared": False,
         "rendering_backend": "Vulkan",
         "build_examples": True,
+        "with_walnut": True,
         "fPIC": True,
         "branch": "main",
     }
 
     def requirements(self):
-        self.requires("walnut/2.1.0")
+        # The Vulkan core runs without Walnut; the WebGPU backend still gets its device from it
+        if self.options.with_walnut or self.options.rendering_backend != "Vulkan":
+            self.requires("walnut/2.1.0")
         self.requires("tinyobjloader/2.0.0-rc10")
         self.requires("tinygltf/2.9.0")
         self.requires("shaderc/2023.6")
         self.requires("entt/3.14.0")
         self.requires("glm/1.0.1")
         if self.options.rendering_backend == "Vulkan":
+            # Pin the headers to the loader's version before VMA's [~1] range can pick a newer one
+            self.requires("vulkan-headers/1.3.239.0")
+            self.requires("vulkan-loader/1.3.239.0")
             self.requires("vulkan-memory-allocator/3.3.0")
         elif self.options.rendering_backend == "WebGPU":
             pass # self.requires("webgpu/latest")
@@ -54,6 +61,10 @@ class RenderSysConan(ConanFile):
         if self.options.get_safe("shared"):
             self.options.rm_safe("fPIC")
         self.options["walnut"].rendering_backend = self.options.rendering_backend
+
+    def validate(self):
+        if self.options.build_examples and not self.options.with_walnut:
+            raise ConanInvalidConfiguration("build_examples requires with_walnut")
 
     def source(self):
         git = Git(self)
@@ -74,6 +85,7 @@ class RenderSysConan(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["RENDERER"] = self.options.rendering_backend
         tc.variables["BUILD_EXAMPLES"] = self.options.build_examples
+        tc.variables["RENDERSYS_WITH_WALNUT"] = self.options.with_walnut
         self.output.info(f"Renderer: {self.options.rendering_backend}")
         tc.generate()
         
@@ -96,6 +108,7 @@ class RenderSysConan(ConanFile):
         # Component: Renderer2D
         self.cpp_info.components['Renderer2D'].set_property('cmake_target_name', 'RenderSys::Renderer2D')
         self.cpp_info.components['Renderer2D'].libs = ['RenderSys2D']
+        self.cpp_info.components['Renderer2D'].requires = ['Common']
 
         # Component: Renderer3D
         self.cpp_info.components['Renderer3D'].set_property('cmake_target_name', 'RenderSys::Renderer3D')
@@ -111,6 +124,19 @@ class RenderSysConan(ConanFile):
         self.cpp_info.components['Common'].set_property('cmake_target_name', 'RenderSys::Common')
         self.cpp_info.components['Common'].libs = ['RenderSysCommon']
         self.cpp_info.components['Common'].resdirs = ['res']
+        backend = {"OpenGL": 1, "Vulkan": 2, "WebGPU": 3}[str(self.options.rendering_backend)]
+        self.cpp_info.components['Common'].defines = [f"RENDERSYS_BACKEND={backend}"]
+
+        if self.options.with_walnut:
+            # Component: Walnut (runs RenderSys inside a Walnut::Application)
+            self.cpp_info.components['Walnut'].set_property('cmake_target_name', 'RenderSys::Walnut')
+            self.cpp_info.components['Walnut'].libs = ['RenderSysWalnut']
+            self.cpp_info.components['Walnut'].requires = ['Common']
+
+            # Component: Editor (ImGui panels for the 3D scene)
+            self.cpp_info.components['Editor'].set_property('cmake_target_name', 'RenderSys::Editor')
+            self.cpp_info.components['Editor'].libs = ['RenderSysEditor']
+            self.cpp_info.components['Editor'].requires = ['Renderer3D']
 
     def layout(self):
         # Standardizes build and source folder structures for Conan 2.x

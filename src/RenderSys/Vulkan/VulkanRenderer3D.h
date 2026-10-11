@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <glm/ext.hpp>
 #include <vk_mem_alloc.h>
-#include <Walnut/GraphicsAPI/Vulkan/VulkanGraphics.h>
+#include <RenderSys/Vulkan/VulkanContext.h>
 #include <RenderSys/RenderUtil.h>
 #include <RenderSys/Shader.h>
 #include <RenderSys/Buffer.h>

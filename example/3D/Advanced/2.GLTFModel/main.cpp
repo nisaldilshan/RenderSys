@@ -1,6 +1,7 @@
 #include <array>
 #include <fstream>
 #include <Walnut/Application.h>
+#include <RenderSys/Walnut/WalnutAdapter.h>
 #include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
@@ -8,6 +9,7 @@
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Camera/PerspectiveCamera.h>
 #include <RenderSys/Camera/EditorCameraController.h>
+#include <RenderSys/Walnut/WalnutInput.h>
 #include <RenderSys/Scene/Model.h>
 #include <RenderSys/Components/TransformComponent.h>
 #include <RenderSys/Components/MeshComponent.h>
@@ -225,7 +227,7 @@ public:
 
 		if (m_renderer)
 		{
-			m_cameraController->OnUpdate();
+			m_cameraController->OnUpdate(RenderSys::GetCameraInputFromWalnut());
 			m_scene->Update();
 
 			m_renderer->BeginFrame();
@@ -326,6 +328,7 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	spec.Name = "Renderer3D Example";
 
 	Walnut::Application* app = new Walnut::Application(spec);
+	RenderSys::AttachToWalnut();
 	app->PushLayer<Renderer3DLayer>();
 	return app;
 }

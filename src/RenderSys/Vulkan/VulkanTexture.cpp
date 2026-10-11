@@ -52,12 +52,12 @@ VulkanTexture::~VulkanTexture()
 {
     if (m_descriptorImageInfo.sampler != VK_NULL_HANDLE)
     {
-        vkDestroySampler(GraphicsAPI::Vulkan::GetDevice(), m_descriptorImageInfo.sampler, nullptr);
+        vkDestroySampler(Vulkan::GetDevice(), m_descriptorImageInfo.sampler, nullptr);
         m_descriptorImageInfo.sampler = VK_NULL_HANDLE;
     }
     if (m_descriptorImageInfo.imageView != VK_NULL_HANDLE)
     {
-        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_descriptorImageInfo.imageView, nullptr);
+        vkDestroyImageView(Vulkan::GetDevice(), m_descriptorImageInfo.imageView, nullptr);
         m_descriptorImageInfo.imageView = VK_NULL_HANDLE;
     }
     if (m_image != VK_NULL_HANDLE)
@@ -163,7 +163,7 @@ void VulkanTexture::SetSampler(RenderSys::TextureSampler sampler)
     texSamplerInfo.maxAnisotropy = 1.0f;
 
     assert(m_descriptorImageInfo.sampler == VK_NULL_HANDLE);
-    if (vkCreateSampler(GraphicsAPI::Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_descriptorImageInfo.sampler) != VK_SUCCESS) {
+    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_descriptorImageInfo.sampler) != VK_SUCCESS) {
         std::cout << "error: could not create sampler for texture" << std::endl;
     }
 }

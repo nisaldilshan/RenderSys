@@ -10,12 +10,12 @@
 
 namespace GraphicsAPI
 {
-#if (RENDERER_BACKEND == 1)
+#if (RENDERSYS_BACKEND == 1)
 static_assert(false);
-#elif (RENDERER_BACKEND == 2)
+#elif (RENDERSYS_BACKEND == 2)
 class VulkanCompute;
 typedef VulkanCompute ComputeType;
-#elif (RENDERER_BACKEND == 3)
+#elif (RENDERSYS_BACKEND == 3)
 class WebGPUCompute;
 typedef WebGPUCompute ComputeType;
 #else

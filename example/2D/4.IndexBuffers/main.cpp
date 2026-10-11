@@ -1,4 +1,5 @@
 #include <Walnut/Application.h>
+#include <RenderSys/Walnut/WalnutAdapter.h>
 #include <Walnut/EntryPoint.h>
 #include <Walnut/Random.h>
 #include <Walnut/Timer.h>
@@ -199,6 +200,7 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	spec.Name = "Renderer2D Example";
 
 	Walnut::Application* app = new Walnut::Application(spec);
+	RenderSys::AttachToWalnut();
 	app->PushLayer<Renderer2DLayer>();
 	return app;
 }
