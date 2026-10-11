@@ -23,14 +23,14 @@ inline uint32_t bit_width(uint32_t m) {
     else { uint32_t w = 0; while (m >>= 1) ++w; return w; }
 }
 
-Texture::Texture(int width, int height, uint32_t mipMapLevelCount, TextureUsage usage)
+Texture::Texture(int width, int height, uint32_t mipMapLevelCount, TextureUsage usage, TextureColorSpace colorSpace)
     : m_texWidth(width)
     , m_texHeight(height)
 {
-    m_platformTexture = std::make_shared<RenderSys::TextureType>(m_texWidth, m_texHeight, mipMapLevelCount, usage);
+    m_platformTexture = std::make_shared<RenderSys::TextureType>(m_texWidth, m_texHeight, mipMapLevelCount, usage, colorSpace);
 }
 
-Texture::Texture(const std::filesystem::path &path)
+Texture::Texture(const std::filesystem::path &path, TextureColorSpace colorSpace)
 {
     int channels;
     unsigned char *pixelData = stbi_load(path.string().c_str(), &m_texWidth, &m_texHeight, &channels, 4 /* force 4 channels */);
@@ -40,7 +40,7 @@ Texture::Texture(const std::filesystem::path &path)
     }
 
     const uint32_t mipMapLevelCount = bit_width(std::max(m_texWidth, m_texHeight));
-    m_platformTexture = std::make_shared<RenderSys::TextureType>(m_texWidth, m_texHeight, mipMapLevelCount, TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED);
+    m_platformTexture = std::make_shared<RenderSys::TextureType>(m_texWidth, m_texHeight, mipMapLevelCount, TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED, colorSpace);
     m_platformTexture->SetData(pixelData);
     stbi_image_free(pixelData);
 }

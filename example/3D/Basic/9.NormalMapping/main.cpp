@@ -274,7 +274,7 @@ public:
 		}
 
 		auto baseColorTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/cobblestone_floor_08_diff_2k.jpg");
-		auto normalTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/cobblestone_floor_08_nor_gl_2k.png");
+		auto normalTexture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/cobblestone_floor_08_nor_gl_2k.png", RenderSys::TextureColorSpace::LINEAR);
 		m_renderer->CreateTexture(1, baseColorTexture);
 		m_renderer->CreateTexture(2, normalTexture);
 

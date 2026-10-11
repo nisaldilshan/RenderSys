@@ -26,12 +26,18 @@ enum class TextureUsage
     SAMPLED_UNDEFINED_DEPTHSTENCIL,
 };
 
+enum class TextureColorSpace
+{
+    SRGB = 0, // color data (base color, emissive): converted to linear when sampled
+    LINEAR,   // non-color data (normal, metallic-roughness, occlusion): sampled as stored
+};
+
 class Texture
 {
 public:
     Texture() = delete;
-    Texture(int width, int height, uint32_t mipMapLevelCount, TextureUsage usage);
-    Texture(const std::filesystem::path &path);
+    Texture(int width, int height, uint32_t mipMapLevelCount, TextureUsage usage, TextureColorSpace colorSpace = TextureColorSpace::SRGB);
+    Texture(const std::filesystem::path &path, TextureColorSpace colorSpace = TextureColorSpace::SRGB);
     Texture(const Texture&) = delete;
     Texture& operator=(const Texture&) = delete;
     Texture(Texture&&) = delete;

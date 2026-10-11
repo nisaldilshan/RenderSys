@@ -3,11 +3,11 @@
 namespace RenderSys
 {
 
-WebGPUTexture::WebGPUTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage)
+WebGPUTexture::WebGPUTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage, TextureColorSpace colorSpace)
 {
 	m_textureDesc.dimension = wgpu::TextureDimension::_2D;
 	m_textureDesc.size = {width, height, 1};
-	m_textureDesc.format = wgpu::TextureFormat::RGBA8Unorm;;
+	m_textureDesc.format = wgpu::TextureFormat::RGBA8Unorm; // TODO: use RGBA8UnormSrgb for TextureColorSpace::SRGB (the WebGPU backend samples every texture as stored for now)
 	m_textureDesc.mipLevelCount = mipMapLevelCount;
 	m_textureDesc.sampleCount = 1;
 	m_textureDesc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;

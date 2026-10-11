@@ -13,7 +13,7 @@ class WebGPUTexture
 {
 public:
     WebGPUTexture() = delete;
-    WebGPUTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage);
+    WebGPUTexture(uint32_t width, uint32_t height, uint32_t mipMapLevelCount, TextureUsage usage, TextureColorSpace colorSpace);
     ~WebGPUTexture();
     void SetData(unsigned char *textureData);
     void SetSampler(TextureSampler sampler);
