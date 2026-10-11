@@ -1,5 +1,8 @@
 #include "Texture.h"
 
+// A private copy of stb_image, so RenderSys links with or without Walnut, which defines its own
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #if (RENDERSYS_BACKEND == 1)

@@ -7,6 +7,11 @@ add_library (RenderSysCommon STATIC
 target_include_directories(RenderSysCommon PRIVATE ../..)
 target_link_libraries(RenderSysCommon PRIVATE GPUOpen::VulkanMemoryAllocator)
 target_link_libraries(RenderSysCommon PUBLIC Vulkan::Loader)
+target_sources(RenderSysCommon
+                PUBLIC FILE_SET renderSysFileSet
+                TYPE HEADERS
+                BASE_DIRS ../..
+                FILES ../Vulkan/VulkanContext.h)
 else()
 add_library (RenderSysCommon STATIC
     ../WebGPU/WebGPUBuffer.cpp

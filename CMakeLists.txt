@@ -229,3 +229,10 @@ endif()
 if(BUILD_EXAMPLES)
     add_subdirectory(example)
 endif()
+
+# Headless tests on a device RenderSys creates itself; run them through conanrun.bat for validation layers
+option(RENDERSYS_BUILD_TESTS "Build the RenderSys tests" ${BUILD_EXAMPLES})
+if(RENDERSYS_BUILD_TESTS AND RENDERER STREQUAL "Vulkan")
+    enable_testing()
+    add_subdirectory(test)
+endif()

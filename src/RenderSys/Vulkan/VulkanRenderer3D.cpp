@@ -55,7 +55,7 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
     renderImageInfo.arrayLayers = 1;
     renderImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     renderImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    renderImageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    renderImageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT; // TRANSFER_SRC: GetRenderedImageData copies it out
     renderImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     renderImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
