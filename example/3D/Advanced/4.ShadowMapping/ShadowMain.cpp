@@ -1,6 +1,7 @@
 #include <array>
 #include <fstream>
 #include <Walnut/Application.h>
+#include <RenderSys/Walnut/WalnutAdapter.h>
 #include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
@@ -580,6 +581,7 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	spec.UseImGui = false;
 
 	appPtr = new Walnut::Application(spec);
+	RenderSys::AttachToWalnut();
 	appPtr->PushLayer<Renderer3DLayer>();
 	return appPtr;
 }

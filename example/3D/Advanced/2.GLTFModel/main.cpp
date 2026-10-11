@@ -1,6 +1,7 @@
 #include <array>
 #include <fstream>
 #include <Walnut/Application.h>
+#include <RenderSys/Walnut/WalnutAdapter.h>
 #include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
@@ -327,6 +328,7 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	spec.Name = "Renderer3D Example";
 
 	Walnut::Application* app = new Walnut::Application(spec);
+	RenderSys::AttachToWalnut();
 	app->PushLayer<Renderer3DLayer>();
 	return app;
 }

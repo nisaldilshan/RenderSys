@@ -1,13 +1,10 @@
 #pragma once
-#include <RenderSys/Vulkan/VulkanContext.h>
 
 namespace RenderSys
 {
-namespace Vulkan
-{
 
-// Wraps the device Walnut created, so the examples keep running inside Walnut::Application.
-Context MakeContextFromWalnut();
+// Points RenderSys at the device Walnut created. Call once the Walnut::Application
+// exists and before creating any renderer.
+void AttachToWalnut();
 
-} // namespace Vulkan
 } // namespace RenderSys

@@ -1,14 +1,17 @@
 #include "WalnutAdapter.h"
+
+#if (RENDERSYS_BACKEND == 2)
+#include <RenderSys/Vulkan/VulkanContext.h>
 #include <Walnut/GraphicsAPI/Vulkan/VulkanGraphics.h>
+#endif
 
 namespace RenderSys
 {
-namespace Vulkan
-{
 
-Context MakeContextFromWalnut()
+void AttachToWalnut()
 {
-    Context context;
+#if (RENDERSYS_BACKEND == 2)
+    Vulkan::Context context;
     context.instance = GraphicsAPI::Vulkan::GetInstance();
     context.physicalDevice = GraphicsAPI::Vulkan::GetPhysicalDevice();
     context.device = GraphicsAPI::Vulkan::GetDevice();
@@ -16,8 +19,8 @@ Context MakeContextFromWalnut()
     context.queue = GraphicsAPI::Vulkan::GetQueue();
     context.uiDescriptorPool = GraphicsAPI::Vulkan::GetDescriptorPool();
     context.allocator = GraphicsAPI::Vulkan::GetAllocator();
-    return context;
+    Vulkan::SetContext(context);
+#endif
 }
 
-} // namespace Vulkan
 } // namespace RenderSys

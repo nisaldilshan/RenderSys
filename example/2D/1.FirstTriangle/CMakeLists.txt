@@ -2,6 +2,6 @@ add_executable(FirstTriangle
             main.cpp
 )
 
-target_link_libraries(FirstTriangle PRIVATE RenderSys2D walnut::walnut)
+target_link_libraries(FirstTriangle PRIVATE RenderSys2D RenderSysWalnut)
 
 

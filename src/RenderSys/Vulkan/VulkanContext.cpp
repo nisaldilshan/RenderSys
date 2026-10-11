@@ -1,9 +1,5 @@
 #include "VulkanContext.h"
 
-#ifdef RENDERSYS_WALNUT_ADAPTER
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#endif
-
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -26,15 +22,7 @@ void SetContext(const Context& context)
 
 const Context& GetContext()
 {
-    if (g_context.device == VK_NULL_HANDLE)
-    {
-#ifdef RENDERSYS_WALNUT_ADAPTER
-        // Walnut-hosted apps never set a context themselves, so adopt Walnut's device on first use.
-        SetContext(MakeContextFromWalnut());
-#else
-        assert(false && "RenderSys::Vulkan::SetContext must be called before using RenderSys");
-#endif
-    }
+    assert(g_context.device != VK_NULL_HANDLE && "RenderSys::Vulkan::SetContext must be called before using RenderSys");
     return g_context;
 }
 
