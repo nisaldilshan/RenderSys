@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <Walnut/GraphicsAPI/Vulkan/VulkanGraphics.h>
+#include <RenderSys/Vulkan/VulkanContext.h>
 #include <vk_mem_alloc.h>
 #include <RenderSys/TextureSampler.h>
 

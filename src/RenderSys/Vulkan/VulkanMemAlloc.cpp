@@ -1,5 +1,5 @@
 #include "VulkanMemAlloc.h"
-#include <Walnut/GraphicsAPI/Vulkan/VulkanGraphics.h>
+#include <RenderSys/Vulkan/VulkanContext.h>
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
@@ -18,9 +18,9 @@ VmaAllocator GetMemoryAllocator()
     if (g_allocator == VK_NULL_HANDLE)
     {
         VmaAllocatorCreateInfo allocatorInfo{};
-        allocatorInfo.physicalDevice = GraphicsAPI::Vulkan::GetPhysicalDevice();
-        allocatorInfo.device = GraphicsAPI::Vulkan::GetDevice();
-        allocatorInfo.instance = GraphicsAPI::Vulkan::GetInstance();
+        allocatorInfo.physicalDevice = Vulkan::GetPhysicalDevice();
+        allocatorInfo.device = Vulkan::GetDevice();
+        allocatorInfo.instance = Vulkan::GetInstance();
         if (vmaCreateAllocator(&allocatorInfo, &g_allocator) != VK_SUCCESS) {
             std::cout << "error: could not init VMA" << std::endl;
             assert(false);

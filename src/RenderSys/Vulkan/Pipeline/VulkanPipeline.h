@@ -1,5 +1,5 @@
 #pragma once
-#include <Walnut/GraphicsAPI/Vulkan/VulkanGraphics.h>
+#include <RenderSys/Vulkan/VulkanContext.h>
 
 namespace RenderSys
 {

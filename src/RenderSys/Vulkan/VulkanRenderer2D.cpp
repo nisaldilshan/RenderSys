@@ -1,7 +1,6 @@
 #include "VulkanRenderer2D.h"
 #include "Pipeline/VulkanRender2DPipeline.h"
 
-#define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
 #include <iostream>
@@ -22,9 +21,9 @@ bool VulkanRenderer2D::Init()
     if (!m_vma)
     {
         VmaAllocatorCreateInfo allocatorInfo{};
-        allocatorInfo.physicalDevice = GraphicsAPI::Vulkan::GetPhysicalDevice();
-        allocatorInfo.device = GraphicsAPI::Vulkan::GetDevice();
-        allocatorInfo.instance = GraphicsAPI::Vulkan::GetInstance();
+        allocatorInfo.physicalDevice = Vulkan::GetPhysicalDevice();
+        allocatorInfo.device = Vulkan::GetDevice();
+        allocatorInfo.instance = Vulkan::GetInstance();
         if (vmaCreateAllocator(&allocatorInfo, &m_vma) != VK_SUCCESS) {
             std::cout << "error: could not init VMA" << std::endl;
             return false;
@@ -59,18 +58,18 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkResult err = vkCreateImage(GraphicsAPI::Vulkan::GetDevice(), &info, nullptr, &m_ImageToRenderInto);
-    GraphicsAPI::Vulkan::check_vk_result(err);
+    VkResult err = vkCreateImage(Vulkan::GetDevice(), &info, nullptr, &m_ImageToRenderInto);
+    Vulkan::CheckVkResult(err);
     VkMemoryRequirements req;
-    vkGetImageMemoryRequirements(GraphicsAPI::Vulkan::GetDevice(), m_ImageToRenderInto, &req);
+    vkGetImageMemoryRequirements(Vulkan::GetDevice(), m_ImageToRenderInto, &req);
     VkMemoryAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = req.size;
-    alloc_info.memoryTypeIndex = GraphicsAPI::Utils::GetVulkanMemoryType(GraphicsAPI::Vulkan::GetPhysicalDevice(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-    err = vkAllocateMemory(GraphicsAPI::Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
-    GraphicsAPI::Vulkan::check_vk_result(err);
-    err = vkBindImageMemory(GraphicsAPI::Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
-    GraphicsAPI::Vulkan::check_vk_result(err);
+    alloc_info.memoryTypeIndex = Vulkan::FindMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
+    Vulkan::CheckVkResult(err);
+    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
+    Vulkan::CheckVkResult(err);
 
     CreateTextureSampler();
 
@@ -103,7 +102,7 @@ void VulkanRenderer2D::CreateShaders(RenderSys::Shader& shader)
     shaderCreateInfo.pCode = compiledShader.data();
 
     VkShaderModule shaderModule = 0;
-    if (vkCreateShaderModule(GraphicsAPI::Vulkan::GetDevice(), &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+    if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
         std::cout << "could not load vertex shader" << std::endl;
         return;
     }
@@ -154,7 +153,7 @@ void VulkanRenderer2D::DestroyShaders()
 {
     for (auto& shaderStageInfo : m_shaderStageInfos)
     {
-        vkDestroyShaderModule(GraphicsAPI::Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
+        vkDestroyShaderModule(Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
     }
 
     m_shaderStageInfos.clear();
@@ -190,7 +189,7 @@ void VulkanRenderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroup
         layoutInfo.bindingCount = 1;
         layoutInfo.pBindings = &uboLayoutBinding;
 
-        if (vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
+        if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor set layout!");
         }
 
@@ -204,7 +203,7 @@ void VulkanRenderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroup
         poolInfo.pPoolSizes = &poolSize;
         poolInfo.maxSets = 1;
 
-        if (vkCreateDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
+        if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
         }
 
@@ -214,7 +213,7 @@ void VulkanRenderer2D::CreateBindGroup(RenderSys::BindGroupLayoutEntry bindGroup
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &m_bindGroupLayout;
 
-        if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
             throw std::runtime_error("failed to allocate descriptor sets!");
         }
     }
@@ -288,7 +287,7 @@ bool VulkanRenderer2D::CreateRenderPass()
     //   renderPassInfo.dependencyCount = 2;
     //   renderPassInfo.pDependencies = dependencies;
 
-    if (vkCreateRenderPass(GraphicsAPI::Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
+    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
     {
         std::cout << "error; could not create renderpass" << std::endl;
         return false;
@@ -315,7 +314,7 @@ void VulkanRenderer2D::CreateFrameBuffer()
 {
     if (m_frameBuffer)
     {
-        vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_frameBuffer, nullptr);
+        vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
     }
 
     VkImageView frameBufferAttachments[] = { m_finalRenderTarget->view };
@@ -328,7 +327,7 @@ void VulkanRenderer2D::CreateFrameBuffer()
     FboInfo.height = m_height;
     FboInfo.layers = 1;
 
-    if (vkCreateFramebuffer(GraphicsAPI::Vulkan::GetDevice(), &FboInfo, nullptr, &m_frameBuffer) != VK_SUCCESS) {
+    if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &m_frameBuffer) != VK_SUCCESS) {
         std::cout << "error: failed to create framebuffer" << std::endl;
         return ;
     }
@@ -489,7 +488,7 @@ void VulkanRenderer2D::SetUniformData(const void* bufferData, uint32_t uniformIn
     descriptorWrite.pImageInfo = nullptr; // Optional
     descriptorWrite.pTexelBufferView = nullptr; // Optional
 
-    vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
+    vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanRenderer2D::SimpleRender()
@@ -592,7 +591,7 @@ void VulkanRenderer2D::CreateTextureSampler()
     texSamplerInfo.anisotropyEnable = VK_FALSE;
     texSamplerInfo.maxAnisotropy = 1.0f;
 
-    if (vkCreateSampler(GraphicsAPI::Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_textureSampler) != VK_SUCCESS) {
+    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_textureSampler) != VK_SUCCESS) {
         std::cout << "error: could not create sampler for texture" << std::endl;
     }
 }
@@ -613,13 +612,12 @@ void VulkanRenderer2D::BeginRenderPass()
     // TODO: move commandpool/commandbuffer creation to constructor
     if (!m_commandPool)
     {
-        auto queueFamilyIndices = GraphicsAPI::Vulkan::FindQueueFamilies();
         VkCommandPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-        auto err = vkCreateCommandPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
-        GraphicsAPI::Vulkan::check_vk_result(err);
+        poolInfo.queueFamilyIndex = Vulkan::GetQueueFamily();
+        auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
+        Vulkan::CheckVkResult(err);
     }
     
     if (!m_commandBuffer)
@@ -629,20 +627,20 @@ void VulkanRenderer2D::BeginRenderPass()
         cmdBufAllocateInfo.commandPool = m_commandPool;
         cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cmdBufAllocateInfo.commandBufferCount = 1;
-        auto err = vkAllocateCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
-        GraphicsAPI::Vulkan::check_vk_result(err);
+        auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+        Vulkan::CheckVkResult(err);
     }
     else
     {
         auto err = vkResetCommandBuffer(m_commandBuffer, 0);
-        GraphicsAPI::Vulkan::check_vk_result(err);
+        Vulkan::CheckVkResult(err);
     }
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     auto err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
-    GraphicsAPI::Vulkan::check_vk_result(err);
+    Vulkan::CheckVkResult(err);
 
     assert(m_frameBuffer);
     VkRenderPassBeginInfo rpInfo{};
@@ -675,13 +673,13 @@ void VulkanRenderer2D::Destroy()
 void VulkanRenderer2D::SubmitCommandBuffer()
 {
     auto err = vkEndCommandBuffer(m_commandBuffer);
-    GraphicsAPI::Vulkan::check_vk_result(err);
+    Vulkan::CheckVkResult(err);
 
     VkSubmitInfo end_info{};
     end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     end_info.commandBufferCount = 1;
     end_info.pCommandBuffers = &m_commandBuffer;
-    GraphicsAPI::Vulkan::QueueSubmit(end_info);
+    Vulkan::QueueSubmitAndWait(end_info);
 }
 
 } // namespace GraphicsAPI

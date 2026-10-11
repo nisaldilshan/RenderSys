@@ -96,6 +96,7 @@ class RenderSysConan(ConanFile):
         # Component: Renderer2D
         self.cpp_info.components['Renderer2D'].set_property('cmake_target_name', 'RenderSys::Renderer2D')
         self.cpp_info.components['Renderer2D'].libs = ['RenderSys2D']
+        self.cpp_info.components['Renderer2D'].requires = ['Common']
 
         # Component: Renderer3D
         self.cpp_info.components['Renderer3D'].set_property('cmake_target_name', 'RenderSys::Renderer3D')

@@ -26,8 +26,8 @@ ShadowMap::ShadowMap(std::shared_ptr<RenderSys::VulkanTexture> shadowMapTexture)
 
 ShadowMap::~ShadowMap()
 {
-    vkDestroyRenderPass(GraphicsAPI::Vulkan::GetDevice(), m_ShadowRenderPass, nullptr);
-    vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_ShadowFramebuffer, nullptr);
+    vkDestroyRenderPass(Vulkan::GetDevice(), m_ShadowRenderPass, nullptr);
+    vkDestroyFramebuffer(Vulkan::GetDevice(), m_ShadowFramebuffer, nullptr);
 }
 
 void ShadowMap::SetShadowDepthResources(std::shared_ptr<RenderSys::VulkanTexture> shadowMapTexture)
@@ -104,7 +104,7 @@ void ShadowMap::CreateShadowRenderPass()
     renderPassInfo.dependencyCount = NUMBER_OF_DEPENDENCIES;
     renderPassInfo.pDependencies = dependencies.data();
 
-    auto result = vkCreateRenderPass(GraphicsAPI::Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_ShadowRenderPass);
+    auto result = vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_ShadowRenderPass);
     if (result != VK_SUCCESS)
     {
         std::cout << "error: failed to create render pass!" << std::endl;
@@ -123,7 +123,7 @@ void ShadowMap::CreateShadowFramebuffer()
     framebufferInfo.height = m_ShadowMapExtent.height;
     framebufferInfo.layers = 1;
 
-    if (vkCreateFramebuffer(GraphicsAPI::Vulkan::GetDevice(), &framebufferInfo, nullptr, &m_ShadowFramebuffer) != VK_SUCCESS)
+    if (vkCreateFramebuffer(Vulkan::GetDevice(), &framebufferInfo, nullptr, &m_ShadowFramebuffer) != VK_SUCCESS)
     {
         std::cout << "error: failed to create framebuffer" << std::endl;
         assert(false);
