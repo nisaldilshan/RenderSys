@@ -50,7 +50,7 @@ public:
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
 			{
-				std::ifstream file(shaderDir + "/anim-vertex.glsl", std::ios::binary);
+				std::ifstream file(std::string(RESOURCE_DIR) + "/Shaders/instanced-vertex.glsl", std::ios::binary);
 				std::vector<char> content((std::istreambuf_iterator<char>(file)),
 											std::istreambuf_iterator<char>());
 
@@ -66,7 +66,7 @@ public:
 			}
 
 			{
-				std::ifstream file(shaderDir + "/anim-fragment.glsl", std::ios::binary);
+				std::ifstream file(std::string(RESOURCE_DIR) + "/Shaders/pbr-fragment.glsl", std::ios::binary);
 				std::vector<char> content((std::istreambuf_iterator<char>(file)),
 											std::istreambuf_iterator<char>());
 
