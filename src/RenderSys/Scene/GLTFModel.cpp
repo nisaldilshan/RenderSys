@@ -144,12 +144,13 @@ RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive
         const tinygltf::Accessor &accessor = m_gltfModel->accessors[primitive.attributes.find("TANGENT")->second];
         const tinygltf::BufferView &bufferView = m_gltfModel->bufferViews[accessor.bufferView];
         const auto* bufferPos = reinterpret_cast<const float *>(&(m_gltfModel->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
-        const auto byteStride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
+        // glTF tangents are VEC4: w is the handedness that the shader needs to build the bitangent
+        const auto byteStride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC4);
 
         for (size_t v = 0; v < vertexCount; v++) 
         {
             ModelVertex& vert = modelData->vertices[v + vertexStart];
-            vert.tangent = glm::vec4(glm::make_vec3(&bufferPos[v * byteStride]), 1.0f);
+            vert.tangent = glm::make_vec4(&bufferPos[v * byteStride]);
         }
     }
 

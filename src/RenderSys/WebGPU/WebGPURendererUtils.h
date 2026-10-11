@@ -13,6 +13,10 @@ wgpu::VertexFormat GetWebGPUVertexFormat(RenderSys::VertexFormat renderSysFormat
     {
         return wgpu::VertexFormat::Float32x3;
     }
+    else if (renderSysFormat == RenderSys::VertexFormat::Float32x4)
+    {
+        return wgpu::VertexFormat::Float32x4;
+    }
     else if (renderSysFormat == RenderSys::VertexFormat::Uint16x2)
     {
         return wgpu::VertexFormat::Uint16x2;

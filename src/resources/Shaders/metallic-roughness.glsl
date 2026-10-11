@@ -41,11 +41,12 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-vec3 getNormalFromNormalMaps(vec3 texNormal, vec3 in_normal, vec3 in_tangent)
+// in_tangent.w is the glTF handedness (+1 or -1); it flips the bitangent on mirrored UVs.
+vec3 getNormalFromNormalMaps(vec3 texNormal, vec3 in_normal, vec4 in_tangent)
 {
 	vec3 N = normalize(in_normal);
-	vec3 T = normalize(in_tangent);
-	vec3 B = -normalize(cross(N, T));
+	vec3 T = normalize(in_tangent.xyz);
+	vec3 B = normalize(cross(N, T)) * in_tangent.w;
 	mat3 TBN = mat3(T, B, N);
 
 	return normalize(TBN * texNormal);

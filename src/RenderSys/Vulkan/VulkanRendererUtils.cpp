@@ -39,6 +39,7 @@ VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
     {
     case RenderSys::VertexFormat::Float32x2: return VK_FORMAT_R32G32_SFLOAT;
     case RenderSys::VertexFormat::Float32x3: return VK_FORMAT_R32G32B32_SFLOAT;
+    case RenderSys::VertexFormat::Float32x4: return VK_FORMAT_R32G32B32A32_SFLOAT;
     default: assert(false);
     }
     return (VkFormat)0;

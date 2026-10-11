@@ -19,7 +19,7 @@ layout(set = 0, binding = 1) uniform LightingUniforms {
 layout (location = 0) in vec3 in_viewDirection;
 layout (location = 1) in vec2 in_uv;
 layout (location = 2) in vec3 in_normal;
-layout (location = 3) in vec3 in_tangent;
+layout (location = 3) in vec4 in_tangent;
 
 layout (location = 0) out vec4 out_color;
 
