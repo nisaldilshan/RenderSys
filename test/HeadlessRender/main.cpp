@@ -1,6 +1,7 @@
 // Renders a triangle on a Vulkan device RenderSys creates itself (no window, no Walnut),
 // reads the image back and checks a few pixels. Exits with 0 on success.
-// Run through build/generators/conanrun.bat so VK_LAYER_PATH finds the validation layer.
+// For validation, set VK_LAYER_PATH to a vulkan-validationlayers 1.3.243+ bin folder: the 1.3.239.0
+// package Walnut pulls in has a manifest the Vulkan loader skips.
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Vulkan/VulkanContext.h>
 
