@@ -41,8 +41,10 @@ class RenderSysConan(ConanFile):
         self.requires("entt/3.14.0")
         self.requires("glm/1.0.1")
         if self.options.rendering_backend == "Vulkan":
-            self.requires("vulkan-memory-allocator/3.3.0")
+            # Pin the headers to the loader's version before VMA's [~1] range can pick a newer one
+            self.requires("vulkan-headers/1.3.239.0")
             self.requires("vulkan-loader/1.3.239.0")
+            self.requires("vulkan-memory-allocator/3.3.0")
         elif self.options.rendering_backend == "WebGPU":
             pass # self.requires("webgpu/latest")
         else:
