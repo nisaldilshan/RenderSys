@@ -58,6 +58,11 @@ public:
 		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f);
 		auto cameraEntity = m_scene->AddCamera(m_cameraController->GetCamera());
 		m_cameraController->SetCameraEntity(cameraEntity, m_scene->m_Registry);
+		// Start facing the top brick wall of the Sponza atrium, lit by the overhead light at a grazing angle.
+		// Its glTF tangents have w = +1, so its bricks look lit from above only if the shader honours tangent.w.
+		auto& cameraTransform = m_scene->m_Registry.get<RenderSys::TransformComponent>(cameraEntity);
+		cameraTransform.SetTranslation(glm::vec3(10.0f, 62.0f, -3.0f));
+		cameraTransform.SetRotation(glm::vec3(0.0f, glm::pi<float>(), 0.0f));
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(5);
 
@@ -83,7 +88,7 @@ public:
 
 		// Tangent attribute
 		vertexAttribs[4].location = 4;
-		vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[4].format = RenderSys::VertexFormat::Float32x4;
 		vertexAttribs[4].offset = offsetof(RenderSys::Vertex, tangent);
 
 		RenderSys::VertexBufferLayout vertexBufferLayout;

@@ -24,7 +24,7 @@ struct alignas(16) Vertex {
     glm::vec3 normal;
     glm::vec2 texcoord0;
     glm::vec3 color;
-    glm::vec3 tangent;
+    glm::vec4 tangent; // xyz = direction, w = handedness (+1 or -1) for the bitangent
 };
 
 static_assert(sizeof(Vertex) % 16 == 0);

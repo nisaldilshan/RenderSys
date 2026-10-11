@@ -14,7 +14,7 @@ struct ModelVertex {
     glm::uvec4 joint0;
     glm::vec4 weight0;
     glm::vec4 color;
-    glm::vec3 tangent;
+    glm::vec4 tangent; // xyz = direction, w = handedness (+1 or -1) for the bitangent
 };
 
 struct MeshData 

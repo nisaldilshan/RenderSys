@@ -136,7 +136,7 @@ public:
 
 		// Tangent attribute
 		vertexAttribs[4].location = 4;
-		vertexAttribs[4].format = RenderSys::VertexFormat::Float32x3;
+		vertexAttribs[4].format = RenderSys::VertexFormat::Float32x4;
 		vertexAttribs[4].offset = offsetof(RenderSys::Vertex, tangent);
 
 		RenderSys::VertexBufferLayout vertexBufferLayout;

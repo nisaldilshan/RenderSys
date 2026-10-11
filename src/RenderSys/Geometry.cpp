@@ -236,7 +236,7 @@ void populateTextureFrameAttributes(RenderSys::VertexBuffer& vertexData)
 
 		for (int k = 0; k < 3; ++k) {
 			glm::mat3x3 TBN = computeTBN<RenderSys::Vertex>(v, v[k].normal);
-			v[k].tangent = TBN[0];
+			v[k].tangent = glm::vec4(TBN[0], 1.0f);
 			//v[k].bitangent = TBN[1];
 		}
 	}

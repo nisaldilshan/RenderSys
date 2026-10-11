@@ -24,7 +24,7 @@ struct PbrSurface
 };
 
 // Samples the material at uv. Applies the glTF alpha mode, so MASK materials discard here.
-PbrSurface getPbrSurface(vec2 uv, vec3 normal, vec3 tangent)
+PbrSurface getPbrSurface(vec2 uv, vec3 normal, vec4 tangent)
 {
     PbrSurface surface;
 
