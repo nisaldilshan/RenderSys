@@ -52,6 +52,11 @@ target_include_directories(RenderSys2D PRIVATE src)
 target_include_directories(RenderSys3D PRIVATE src)
 target_include_directories(ComputeSys PRIVATE src)
 
+# The names Conan consumers link, so in-tree builds can use them too
+add_library(RenderSys::Renderer2D ALIAS RenderSys2D)
+add_library(RenderSys::Renderer3D ALIAS RenderSys3D)
+add_library(RenderSys::Compute ALIAS ComputeSys)
+
 message(STATUS "RENDERER: " ${RENDERER})
 # Backend switch for the public headers: 1 = OpenGL, 2 = Vulkan, 3 = WebGPU
 if(RENDERER STREQUAL "Vulkan")
@@ -207,6 +212,8 @@ if(RENDERSYS_WITH_WALNUT)
     add_library(RenderSysEditor STATIC src/RenderSys/Scene/SceneHierarchyPanel.cpp)
     target_include_directories(RenderSysEditor PRIVATE src)
     target_link_libraries(RenderSysEditor PUBLIC RenderSys3D PRIVATE walnut::walnut)
+    add_library(RenderSys::Walnut ALIAS RenderSysWalnut)
+    add_library(RenderSys::Editor ALIAS RenderSysEditor)
     target_sources(RenderSysEditor
                     PUBLIC FILE_SET renderSysFileSet
                     TYPE HEADERS

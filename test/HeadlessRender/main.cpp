@@ -1,13 +1,15 @@
 // Renders a triangle on a Vulkan device RenderSys creates itself (no window, no Walnut),
 // reads the image back and checks a few pixels. Exits with 0 on success.
 // For validation, set VK_LAYER_PATH to a vulkan-validationlayers 1.3.243+ bin folder: the 1.3.239.0
-// package Walnut pulls in has a manifest the Vulkan loader skips.
+// package Walnut pulls in has a manifest the Vulkan loader skips. Set RENDERSYS_REQUIRE_VALIDATION=1
+// to fail when the layer does not load.
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Vulkan/VulkanContext.h>
 
 #include <array>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <memory>
 
 namespace
@@ -137,6 +139,13 @@ int main()
     if (!RenderSys::Vulkan::CreateContext(createInfo))
         return EXIT_FAILURE;
 
+    // Without the layer the test still checks the image; this makes a missing layer a failure
+    const char* requireValidation = std::getenv("RENDERSYS_REQUIRE_VALIDATION");
+    const bool validationOk = RenderSys::Vulkan::IsValidationEnabled()
+                           || !requireValidation || strcmp(requireValidation, "1") != 0;
+    if (!validationOk)
+        printf("RENDERSYS_REQUIRE_VALIDATION=1 but the validation layer did not load\n");
+
     const bool imageOk = RenderAndCheck();
     const uint32_t renderErrors = RenderSys::Vulkan::GetValidationErrorCount();
 
@@ -145,5 +154,5 @@ int main()
 
     printf("image %s, validation errors: %u while rendering, %u at teardown\n",
            imageOk ? "matches" : "DIFFERS", renderErrors, teardownErrors);
-    return imageOk && renderErrors == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return validationOk && imageOk && renderErrors == 0 && teardownErrors == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -23,6 +23,7 @@ target_link_libraries(RenderSysCommon PRIVATE
 endif()
 
 target_compile_definitions(RenderSysCommon PUBLIC RENDERSYS_BACKEND=${RENDERSYS_BACKEND})
+add_library(RenderSys::Common ALIAS RenderSysCommon)
 
 install(TARGETS RenderSysCommon
 FILE_SET renderSysFileSet

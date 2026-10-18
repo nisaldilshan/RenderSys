@@ -135,6 +135,14 @@ bool CreateContext(const ContextCreateInfo& createInfo)
     if (createInfo.surface)
         extensions = createInfo.surface->instanceExtensions;
 
+    // MoltenVK on macOS is a portability driver, which the loader hides unless asked for
+    VkInstanceCreateFlags instanceFlags = 0;
+    if (HasInstanceExtension(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME))
+    {
+        extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+        instanceFlags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+    }
+
     bool useDebugUtils = false;
     if (createInfo.validation)
     {
@@ -169,6 +177,7 @@ bool CreateContext(const ContextCreateInfo& createInfo)
     VkInstanceCreateInfo instanceInfo{};
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceInfo.pNext = useDebugUtils ? &messengerInfo : nullptr; // also reports on instance creation itself
+    instanceInfo.flags = instanceFlags;
     instanceInfo.pApplicationInfo = &appInfo;
     instanceInfo.enabledLayerCount = static_cast<uint32_t>(layers.size());
     instanceInfo.ppEnabledLayerNames = layers.data();
@@ -281,6 +290,10 @@ bool CreateContext(const ContextCreateInfo& createInfo)
     std::vector<const char*> deviceExtensions;
     if (surface != VK_NULL_HANDLE)
         deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    // A portability driver must have this enabled; it is declared in vulkan_beta.h, hence the literal
+    constexpr const char* portabilitySubset = "VK_KHR_portability_subset";
+    if (HasDeviceExtension(physicalDevice, portabilitySubset))
+        deviceExtensions.push_back(portabilitySubset);
 
     VkDeviceCreateInfo deviceInfo{};
     deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -332,6 +345,11 @@ void DestroyContext()
 uint32_t GetValidationErrorCount()
 {
     return g_validationErrorCount;
+}
+
+bool IsValidationEnabled()
+{
+    return g_debugMessenger != VK_NULL_HANDLE;
 }
 
 VkInstance GetInstance()

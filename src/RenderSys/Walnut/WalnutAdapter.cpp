@@ -20,6 +20,10 @@ void AttachToWalnut()
     context.uiDescriptorPool = GraphicsAPI::Vulkan::GetDescriptorPool();
     context.allocator = GraphicsAPI::Vulkan::GetAllocator();
     Vulkan::SetContext(context);
+#elif (RENDERSYS_BACKEND == 3)
+    // The WebGPU backend still takes its device straight from Walnut; nothing to attach yet
+#else
+    static_assert(false, "AttachToWalnut does not support this backend");
 #endif
 }
 

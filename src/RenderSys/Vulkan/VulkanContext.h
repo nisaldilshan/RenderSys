@@ -60,6 +60,8 @@ bool CreateContext(const ContextCreateInfo& createInfo);
 void DestroyContext();
 // Validation errors reported since CreateContext; always 0 without validation.
 uint32_t GetValidationErrorCount();
+// Whether CreateContext loaded the validation layer and is counting its errors.
+bool IsValidationEnabled();
 
 VkInstance GetInstance();
 VkPhysicalDevice GetPhysicalDevice();
