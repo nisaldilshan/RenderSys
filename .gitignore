@@ -41,3 +41,7 @@ CMakeSettings.json
 example/Resources/Models/testModel
 .idea
 external_deps
+
+# Python
+__pycache__/
+*.pyc
