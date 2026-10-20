@@ -3,6 +3,8 @@
 #include "VulkanRendererUtils.h"
 #include "VulkanMemAlloc.h"
 
+#include <cstring>
+
 namespace GraphicsAPI
 {
 

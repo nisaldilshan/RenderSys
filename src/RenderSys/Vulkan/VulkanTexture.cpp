@@ -4,6 +4,7 @@
 #include "VulkanRendererUtils.h"
 #include "VulkanBuffer.h"
 #include <iostream>
+#include <cstring>
 
 namespace RenderSys
 {

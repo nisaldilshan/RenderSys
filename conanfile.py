@@ -36,7 +36,7 @@ class RenderSysConan(ConanFile):
         # transitive_headers: RenderSys's installed headers include these, so consumers need them too
         # The Vulkan core runs without Walnut; the WebGPU backend still gets its device from it
         if self.options.with_walnut or self.options.rendering_backend != "Vulkan":
-            self.requires("walnut/2.1.0", transitive_headers=True)
+            self.requires("walnut/2.2.0", transitive_headers=True)
         self.requires("tinyobjloader/2.0.0-rc10")
         self.requires("tinygltf/2.9.0")
         self.requires("shaderc/2023.6")
