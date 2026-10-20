@@ -232,7 +232,9 @@ bool VulkanRenderer2D::CreateRenderPass()
     colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAtt.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+    // Matches the layout CreateRenderTarget() declares for the ImGui descriptor set that
+    // samples this image (VulkanRendererUtils.cpp); GENERAL here was a validation-hidden mismatch.
+    colorAtt.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference colorAttRef{};
     colorAttRef.attachment = 0;
