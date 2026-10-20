@@ -10,13 +10,12 @@ namespace Vulkan
 VkCommandPool g_commandPool = VK_NULL_HANDLE;
 void CreateCommandPool()
 {
-    auto queueFamilyIndices = GraphicsAPI::Vulkan::FindQueueFamilies();
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-    auto err = vkCreateCommandPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &g_commandPool);
-    GraphicsAPI::Vulkan::check_vk_result(err);
+    poolInfo.queueFamilyIndex = Vulkan::GetQueueFamily();
+    auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &g_commandPool);
+    Vulkan::CheckVkResult(err);
 }
 
 VkCommandPool GetCommandPool()
@@ -26,9 +25,9 @@ VkCommandPool GetCommandPool()
 
 void DestroyCommandPool()
 {
-    vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
+    vkDeviceWaitIdle(Vulkan::GetDevice());
     // when you destroy a command pool, all command buffers allocated from that pool are automatically destroyed
-    vkDestroyCommandPool(GraphicsAPI::Vulkan::GetDevice(), g_commandPool, nullptr);
+    vkDestroyCommandPool(Vulkan::GetDevice(), g_commandPool, nullptr);
     g_commandPool = VK_NULL_HANDLE;
 }
 
@@ -48,10 +47,10 @@ VkFormat RenderSysFormatToVulkanFormat(RenderSys::VertexFormat format)
 std::pair<int, VkDeviceSize> FindAppropriateMemoryType(const VkBuffer& buffer, unsigned int flags)
 {
     VkMemoryRequirements mem_reqs;
-    vkGetBufferMemoryRequirements(GraphicsAPI::Vulkan::GetDevice(), buffer, &mem_reqs);
+    vkGetBufferMemoryRequirements(Vulkan::GetDevice(), buffer, &mem_reqs);
 
     VkPhysicalDeviceMemoryProperties gpu_mem;
-    vkGetPhysicalDeviceMemoryProperties(GraphicsAPI::Vulkan::GetPhysicalDevice(), &gpu_mem);
+    vkGetPhysicalDeviceMemoryProperties(Vulkan::GetPhysicalDevice(), &gpu_mem);
 
     int mem_type_idx = -1;
     for (int j = 0; j < gpu_mem.memoryTypeCount; j++) {
@@ -107,7 +106,7 @@ VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags a
     viewInfo.subresourceRange.layerCount = 1;
 
     VkImageView imageView;
-    if (vkCreateImageView(GraphicsAPI::Vulkan::GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) 
+    if (vkCreateImageView(Vulkan::GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) 
     {
         throw std::runtime_error("failed to create image view!");
     }
@@ -171,7 +170,7 @@ VkCommandBuffer BeginSingleTimeCommands(VkCommandPool commandPool)
     allocInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &commandBuffer);
+    vkAllocateCommandBuffers(Vulkan::GetDevice(), &allocInfo, &commandBuffer);
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -191,10 +190,10 @@ void EndSingleTimeCommands(VkCommandBuffer commandBuffer, VkCommandPool commandP
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
 
-    vkQueueSubmit(GraphicsAPI::Vulkan::GetQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(GraphicsAPI::Vulkan::GetQueue()); // Wait for the command buffer to finish
+    vkQueueSubmit(Vulkan::GetQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(Vulkan::GetQueue()); // Wait for the command buffer to finish
 
-    vkFreeCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), commandPool, 1, &commandBuffer);
+    vkFreeCommandBuffers(Vulkan::GetDevice(), commandPool, 1, &commandBuffer);
 }
 
 void TransitionImageLayout(VkImage image, VkFormat format, 
@@ -252,7 +251,7 @@ uint32_t GetUniformStride(const uint32_t sizeOfUniform)
     if (minUniformBufferOffsetAlignment == 0)
     {
         VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceProperties(GraphicsAPI::Vulkan::GetPhysicalDevice(), &deviceProperties);
+        vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
         minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
         //std::cout << "maxMemoryAllocationCount : " << deviceProperties.limits.maxMemoryAllocationCount << std::endl;
         //std::cout << "maxDrawIndexedIndexValue : " << deviceProperties.limits.maxDrawIndexedIndexValue << std::endl;
@@ -277,6 +276,10 @@ std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSample
 {
     auto ret = std::make_unique<RenderTarget>();
     ret->view = imageView;
+    if (Vulkan::GetContext().uiDescriptorPool == VK_NULL_HANDLE)
+    {
+        return ret; // the host shows nothing through a UI, e.g. it presents to a swapchain
+    }
 
     VkDescriptorSetLayoutBinding binding[1] = {};
     binding[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -286,17 +289,17 @@ std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSample
     info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     info.bindingCount = 1;
     info.pBindings = binding;
-    VkResult err = vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &info, 
-                                        GraphicsAPI::Vulkan::GetAllocator(), &ret->descriptorSetLayout);
-    GraphicsAPI::Vulkan::check_vk_result(err);
+    VkResult err = vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &info, 
+                                        Vulkan::GetContext().allocator, &ret->descriptorSetLayout);
+    Vulkan::CheckVkResult(err);
 
     VkDescriptorSetAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    alloc_info.descriptorPool = GraphicsAPI::Vulkan::GetDescriptorPool();
+    alloc_info.descriptorPool = Vulkan::GetContext().uiDescriptorPool;
     alloc_info.descriptorSetCount = 1;
     alloc_info.pSetLayouts = &ret->descriptorSetLayout;
-    VkResult shadowDescSetErr = vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &alloc_info, &ret->descriptorSet);
-    GraphicsAPI::Vulkan::check_vk_result(shadowDescSetErr);
+    VkResult shadowDescSetErr = vkAllocateDescriptorSets(Vulkan::GetDevice(), &alloc_info, &ret->descriptorSet);
+    Vulkan::CheckVkResult(shadowDescSetErr);
 
     VkDescriptorImageInfo desc_image[1] = {};
     desc_image[0].sampler = sampler;
@@ -308,7 +311,7 @@ std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSample
     write_desc[0].descriptorCount = 1;
     write_desc[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     write_desc[0].pImageInfo = desc_image;
-    vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), 1, write_desc, 0, nullptr);
+    vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, write_desc, 0, nullptr);
 
     return ret;
 }

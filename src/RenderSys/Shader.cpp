@@ -6,11 +6,11 @@
 #include <string.h> // for the usage of strlen in Linux
 #include <shaderc/shaderc.hpp>
 
-#if (RENDERER_BACKEND == 1) // OpenGL
+#if (RENDERSYS_BACKEND == 1) // OpenGL
 static_assert(false);
-#elif (RENDERER_BACKEND == 2) // Vulkan
+#elif (RENDERSYS_BACKEND == 2) // Vulkan
 #define USE_SHADERC
-#elif (RENDERER_BACKEND == 3) // WebGPU
+#elif (RENDERSYS_BACKEND == 3) // WebGPU
 #else
 static_assert(false);
 #endif

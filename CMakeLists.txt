@@ -1,7 +1,14 @@
 cmake_minimum_required (VERSION 3.25.0)
 project (RenderSys)
 
-find_package(walnut REQUIRED)
+# The Walnut adapter lets RenderSys run inside a Walnut::Application; the examples need it.
+option(RENDERSYS_WITH_WALNUT "Build the RenderSysWalnut and RenderSysEditor adapter libraries" ON)
+if(BUILD_EXAMPLES AND NOT RENDERSYS_WITH_WALNUT)
+    message(FATAL_ERROR "BUILD_EXAMPLES requires RENDERSYS_WITH_WALNUT")
+endif()
+if(RENDERSYS_WITH_WALNUT OR NOT RENDERER STREQUAL "Vulkan")
+    find_package(walnut REQUIRED)
+endif()
 find_package(tinyobjloader REQUIRED)
 find_package(shaderc REQUIRED)
 find_package(TinyGLTF REQUIRED)
@@ -29,7 +36,6 @@ add_library (RenderSys3D STATIC
                 src/RenderSys/Scene/Model.cpp
                 src/RenderSys/Scene/Scene.cpp
                 src/RenderSys/Scene/SceneGraph.cpp
-                src/RenderSys/Scene/SceneHierarchyPanel.cpp
                 src/RenderSys/Scene/Skeleton.cpp
                 src/RenderSys/Scene/Animation.cpp
                 src/RenderSys/Scene/UUID.cpp
@@ -46,9 +52,25 @@ target_include_directories(RenderSys2D PRIVATE src)
 target_include_directories(RenderSys3D PRIVATE src)
 target_include_directories(ComputeSys PRIVATE src)
 
+# The names Conan consumers link, so in-tree builds can use them too
+add_library(RenderSys::Renderer2D ALIAS RenderSys2D)
+add_library(RenderSys::Renderer3D ALIAS RenderSys3D)
+add_library(RenderSys::Compute ALIAS ComputeSys)
+
 message(STATUS "RENDERER: " ${RENDERER})
+# Backend switch for the public headers: 1 = OpenGL, 2 = Vulkan, 3 = WebGPU
+if(RENDERER STREQUAL "Vulkan")
+    set(RENDERSYS_BACKEND 2)
+else()
+    set(RENDERSYS_BACKEND 3)
+endif()
+target_compile_definitions(RenderSys2D PUBLIC RENDERSYS_BACKEND=${RENDERSYS_BACKEND})
+target_compile_definitions(RenderSys3D PUBLIC RENDERSYS_BACKEND=${RENDERSYS_BACKEND})
+target_compile_definitions(ComputeSys PUBLIC RENDERSYS_BACKEND=${RENDERSYS_BACKEND})
+
 if(RENDERER STREQUAL "Vulkan")
     find_package(VulkanMemoryAllocator REQUIRED)
+    find_package(VulkanLoader REQUIRED)
     target_sources(RenderSys2D PRIVATE
                     src/RenderSys/Vulkan/VulkanRenderer2D.cpp
                     src/RenderSys/Vulkan/VulkanRendererUtils.cpp
@@ -75,6 +97,10 @@ if(RENDERER STREQUAL "Vulkan")
     target_link_libraries(RenderSys2D PRIVATE GPUOpen::VulkanMemoryAllocator)
     target_link_libraries(RenderSys3D PRIVATE GPUOpen::VulkanMemoryAllocator)
     target_link_libraries(ComputeSys PRIVATE GPUOpen::VulkanMemoryAllocator)
+    # RenderSysCommon owns the Vulkan context and the single VMA implementation
+    target_link_libraries(RenderSys2D PUBLIC RenderSysCommon)
+    target_link_libraries(RenderSys3D PUBLIC RenderSysCommon)
+    target_link_libraries(ComputeSys PUBLIC RenderSysCommon)
     target_link_libraries(RenderSys2D PUBLIC glm::glm)
     target_link_libraries(RenderSys3D PUBLIC glm::glm)
     target_link_libraries(ComputeSys PUBLIC glm::glm)
@@ -103,6 +129,10 @@ else()
     target_link_libraries(RenderSys2D PRIVATE webgpu)
     target_link_libraries(RenderSys3D PRIVATE webgpu)
     target_link_libraries(ComputeSys PRIVATE webgpu)
+    # The WebGPU backend still takes its device from Walnut
+    target_link_libraries(RenderSys2D PRIVATE walnut::walnut)
+    target_link_libraries(RenderSys3D PRIVATE walnut::walnut)
+    target_link_libraries(ComputeSys PRIVATE walnut::walnut)
     
 endif()
 
@@ -127,7 +157,6 @@ target_sources(RenderSys3D
                         src/RenderSys/Scene/Mesh.h
                         src/RenderSys/Scene/Model.h
                         src/RenderSys/Scene/Scene.h
-                        src/RenderSys/Scene/SceneHierarchyPanel.h
                         src/RenderSys/Scene/Skeleton.h
                         src/RenderSys/Scene/Animation.h
                         src/RenderSys/Scene/UUID.h
@@ -143,10 +172,10 @@ target_sources(ComputeSys
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
                 FILES src/RenderSys/Compute.h src/RenderSys/Buffer.h)
 
-target_link_libraries(RenderSys2D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc)
-target_link_libraries(RenderSys3D PRIVATE walnut::walnut tinyobjloader::tinyobjloader shaderc::shaderc TinyGLTF::TinyGLTF)
+target_link_libraries(RenderSys2D PRIVATE tinyobjloader::tinyobjloader shaderc::shaderc)
+target_link_libraries(RenderSys3D PRIVATE tinyobjloader::tinyobjloader shaderc::shaderc TinyGLTF::TinyGLTF)
 target_link_libraries(RenderSys3D PUBLIC EnTT::EnTT)
-target_link_libraries(ComputeSys PRIVATE walnut::walnut shaderc::shaderc)
+target_link_libraries(ComputeSys PRIVATE shaderc::shaderc)
 
 install(TARGETS RenderSys2D
     FILE_SET renderSysFileSet
@@ -168,6 +197,49 @@ install(TARGETS ComputeSys
 
 add_subdirectory(src/RenderSys/Common)
 
+if(RENDERSYS_WITH_WALNUT)
+    # Hosts RenderSys inside Walnut: adopts Walnut's device, reads Walnut's input
+    add_library(RenderSysWalnut STATIC src/RenderSys/Walnut/WalnutAdapter.cpp)
+    target_include_directories(RenderSysWalnut PRIVATE src)
+    target_link_libraries(RenderSysWalnut PUBLIC RenderSysCommon walnut::walnut)
+    target_sources(RenderSysWalnut
+                    PUBLIC FILE_SET renderSysFileSet
+                    TYPE HEADERS
+                    BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
+                    FILES src/RenderSys/Walnut/WalnutAdapter.h src/RenderSys/Walnut/WalnutInput.h)
+
+    # ImGui editor panels for the 3D scene, drawn through Walnut's ImGui
+    add_library(RenderSysEditor STATIC src/RenderSys/Scene/SceneHierarchyPanel.cpp)
+    target_include_directories(RenderSysEditor PRIVATE src)
+    target_link_libraries(RenderSysEditor PUBLIC RenderSys3D PRIVATE walnut::walnut)
+    add_library(RenderSys::Walnut ALIAS RenderSysWalnut)
+    add_library(RenderSys::Editor ALIAS RenderSysEditor)
+    target_sources(RenderSysEditor
+                    PUBLIC FILE_SET renderSysFileSet
+                    TYPE HEADERS
+                    BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
+                    FILES src/RenderSys/Scene/SceneHierarchyPanel.h)
+
+    install(TARGETS RenderSysWalnut
+        FILE_SET renderSysFileSet
+        COMPONENT Walnut
+        LIBRARY DESTINATION lib
+        INCLUDES DESTINATION include)
+
+    install(TARGETS RenderSysEditor
+        FILE_SET renderSysFileSet
+        COMPONENT Editor
+        LIBRARY DESTINATION lib
+        INCLUDES DESTINATION include)
+endif()
+
 if(BUILD_EXAMPLES)
     add_subdirectory(example)
+endif()
+
+# Headless tests on a device RenderSys creates itself; run them through conanrun.bat for validation layers
+option(RENDERSYS_BUILD_TESTS "Build the RenderSys tests" ${BUILD_EXAMPLES})
+if(RENDERSYS_BUILD_TESTS AND RENDERER STREQUAL "Vulkan")
+    enable_testing()
+    add_subdirectory(test)
 endif()

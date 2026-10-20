@@ -1,6 +1,7 @@
 #pragma once
-#include <Walnut/GraphicsAPI/Vulkan/VulkanGraphics.h>
+#include <RenderSys/Vulkan/VulkanContext.h>
 #include <RenderSys/Vulkan/VulkanVertex.h>
+#include <vector>
 
 namespace RenderSys
 {

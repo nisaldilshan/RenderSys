@@ -9,17 +9,17 @@ namespace GraphicsAPI
 VulkanCompute::VulkanCompute()
 {
     VkPhysicalDeviceProperties deviceProperties;
-    vkGetPhysicalDeviceProperties(Vulkan::GetPhysicalDevice(), &deviceProperties);
+    vkGetPhysicalDeviceProperties(RenderSys::Vulkan::GetPhysicalDevice(), &deviceProperties);
     VkPhysicalDeviceLimits deviceLimits = deviceProperties.limits;
 	std::cout << "Max Compute Shared Memory Size: " << deviceLimits.maxComputeSharedMemorySize / 1024 << " KB" << std::endl;
-    std::cout << "Compute Queue Family Index: " << Vulkan::GetQueueFamily() << std::endl;
+    std::cout << "Compute Queue Family Index: " << RenderSys::Vulkan::GetQueueFamily() << std::endl;
 
     if (!m_vma)
     {
         VmaAllocatorCreateInfo allocatorInfo{};
-        allocatorInfo.physicalDevice = Vulkan::GetPhysicalDevice();
-        allocatorInfo.device = Vulkan::GetDevice();
-        allocatorInfo.instance = Vulkan::GetInstance();
+        allocatorInfo.physicalDevice = RenderSys::Vulkan::GetPhysicalDevice();
+        allocatorInfo.device = RenderSys::Vulkan::GetDevice();
+        allocatorInfo.instance = RenderSys::Vulkan::GetInstance();
         if (vmaCreateAllocator(&allocatorInfo, &m_vma) != VK_SUCCESS) {
             std::cout << "error: could not init VMA" << std::endl;
         }
@@ -31,7 +31,7 @@ VulkanCompute::~VulkanCompute()
     // Destroy Shaders
     for (auto& shaderStageInfo : m_shaderStageInfos)
     {
-        vkDestroyShaderModule(Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
+        vkDestroyShaderModule(RenderSys::Vulkan::GetDevice(), shaderStageInfo.module, nullptr);
     }
 
     m_shaderStageInfos.clear();
@@ -39,16 +39,16 @@ VulkanCompute::~VulkanCompute()
     // Destroy Bind Group
     if (m_bindGroup && m_bindGroupPool)
     {
-        vkDeviceWaitIdle(Vulkan::GetDevice());
+        vkDeviceWaitIdle(RenderSys::Vulkan::GetDevice());
         // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
-        vkDestroyDescriptorPool(Vulkan::GetDevice(), m_bindGroupPool, nullptr);
+        vkDestroyDescriptorPool(RenderSys::Vulkan::GetDevice(), m_bindGroupPool, nullptr);
         m_bindGroup = VK_NULL_HANDLE;
         m_bindGroupPool = VK_NULL_HANDLE;
     }
 
     if (m_bindGroupLayout)
     {
-        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_bindGroupLayout, nullptr);
+        vkDestroyDescriptorSetLayout(RenderSys::Vulkan::GetDevice(), m_bindGroupLayout, nullptr);
         m_bindGroupLayout = VK_NULL_HANDLE;
     }
 
@@ -57,13 +57,13 @@ VulkanCompute::~VulkanCompute()
     // Destroy Pipeline
     if (m_pipeline)
     {
-        vkDestroyPipeline(Vulkan::GetDevice(), m_pipeline, nullptr);
+        vkDestroyPipeline(RenderSys::Vulkan::GetDevice(), m_pipeline, nullptr);
         m_pipeline = VK_NULL_HANDLE;
     }
 
     if (m_pipelineLayout)
     {
-        vkDestroyPipelineLayout(Vulkan::GetDevice(), m_pipelineLayout, nullptr);
+        vkDestroyPipelineLayout(RenderSys::Vulkan::GetDevice(), m_pipelineLayout, nullptr);
         m_pipelineLayout = VK_NULL_HANDLE;
     }
 
@@ -71,9 +71,9 @@ VulkanCompute::~VulkanCompute()
 
     if (m_commandBuffer && m_commandPool)
     {
-        vkDeviceWaitIdle(Vulkan::GetDevice());
+        vkDeviceWaitIdle(RenderSys::Vulkan::GetDevice());
         // when you destroy a command pool, all command buffers allocated from that pool are automatically destroyed
-        vkDestroyCommandPool(Vulkan::GetDevice(), m_commandPool, nullptr);
+        vkDestroyCommandPool(RenderSys::Vulkan::GetDevice(), m_commandPool, nullptr);
         m_commandBuffer = VK_NULL_HANDLE;
         m_commandPool = VK_NULL_HANDLE;
     }   
@@ -117,7 +117,7 @@ void VulkanCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayout
         layoutInfo.bindingCount = m_bindGroupBindings.size();
         layoutInfo.pBindings = m_bindGroupBindings.data();
     
-        if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
+        if (vkCreateDescriptorSetLayout(RenderSys::Vulkan::GetDevice(), &layoutInfo, nullptr, &m_bindGroupLayout) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor set layout!");
         }
     }
@@ -136,7 +136,7 @@ void VulkanCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayout
         poolInfo.pPoolSizes = poolSizes.data();
         poolInfo.maxSets = 1;
     
-        if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
+        if (vkCreateDescriptorPool(RenderSys::Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
         }
     }
@@ -149,7 +149,7 @@ void VulkanCompute::CreateBindGroup(const std::vector<RenderSys::BindGroupLayout
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &m_bindGroupLayout;
     
-        if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
+        if (vkAllocateDescriptorSets(RenderSys::Vulkan::GetDevice(), &allocInfo, &m_bindGroup) != VK_SUCCESS) {
             throw std::runtime_error("failed to allocate descriptor sets!");
         }
     }
@@ -179,7 +179,7 @@ void VulkanCompute::CreateShaders(RenderSys::Shader &shader)
     shaderCreateInfo.pCode = compiledShader.data();
 
     VkShaderModule shaderModule = 0;
-    if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+    if (vkCreateShaderModule(RenderSys::Vulkan::GetDevice(), &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
         std::cout << "could not load shader" << std::endl;
         return;
     }
@@ -214,7 +214,7 @@ void VulkanCompute::CreatePipeline()
         pipelineLayoutCreateInfo.pSetLayouts = &m_bindGroupLayout;
         pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 
-        if (vkCreatePipelineLayout(Vulkan::GetDevice(), &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
+        if (vkCreatePipelineLayout(RenderSys::Vulkan::GetDevice(), &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
             std::cout << "error: could not create pipeline layout" << std::endl;
         }        
     }
@@ -225,7 +225,7 @@ void VulkanCompute::CreatePipeline()
     assert(m_shaderStageInfos.size() == 1);
     pipelineInfo.stage = m_shaderStageInfos[0];
 
-    if (vkCreateComputePipelines(Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_pipeline) != VK_SUCCESS) {
+    if (vkCreateComputePipelines(RenderSys::Vulkan::GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_pipeline) != VK_SUCCESS) {
         throw std::runtime_error("failed to create compute pipeline!");
     }
 
@@ -246,7 +246,7 @@ void VulkanCompute::CreateBuffer(uint32_t binding, uint32_t bufferLength, Render
             inputBufferDesc.size = bufferLength;
             inputBufferDesc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
             inputBufferDesc.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-            auto queueFamilyIndex = Vulkan::GetQueueFamily();
+            auto queueFamilyIndex = RenderSys::Vulkan::GetQueueFamily();
             inputBufferDesc.queueFamilyIndexCount = 1;
             inputBufferDesc.pQueueFamilyIndices = &queueFamilyIndex;
 
@@ -380,13 +380,12 @@ void VulkanCompute::BeginComputePass()
     // TODO: move commandpool/commandbuffer creation to constructor
     if (!m_commandPool)
     {
-        auto queueFamilyIndices = Vulkan::FindQueueFamilies();
         VkCommandPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-        auto err = vkCreateCommandPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
-        Vulkan::check_vk_result(err);
+        poolInfo.queueFamilyIndex = RenderSys::Vulkan::GetQueueFamily();
+        auto err = vkCreateCommandPool(RenderSys::Vulkan::GetDevice(), &poolInfo, nullptr, &m_commandPool);
+        RenderSys::Vulkan::CheckVkResult(err);
     }
     
     if (!m_commandBuffer)
@@ -396,20 +395,20 @@ void VulkanCompute::BeginComputePass()
         cmdBufAllocateInfo.commandPool = m_commandPool;
         cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cmdBufAllocateInfo.commandBufferCount = 1;
-        auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
-        Vulkan::check_vk_result(err);
+        auto err = vkAllocateCommandBuffers(RenderSys::Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+        RenderSys::Vulkan::CheckVkResult(err);
     }
     else
     {
         auto err = vkResetCommandBuffer(m_commandBuffer, 0);
-        Vulkan::check_vk_result(err);
+        RenderSys::Vulkan::CheckVkResult(err);
     }
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     auto err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
-    Vulkan::check_vk_result(err);
+    RenderSys::Vulkan::CheckVkResult(err);
 }
 
 void VulkanCompute::Compute(const uint32_t workgroupCountX, const uint32_t workgroupCountY)
@@ -439,7 +438,7 @@ void VulkanCompute::Compute(const uint32_t workgroupCountX, const uint32_t workg
         descriptorWrite.pBufferInfo = &mappedBufferPair->gpuBuffer.bufferInfo;
         descriptorWrites.push_back(descriptorWrite);
     }
-    vkUpdateDescriptorSets(Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+    vkUpdateDescriptorSets(RenderSys::Vulkan::GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
     assert(m_bindGroup != VK_NULL_HANDLE);
@@ -450,13 +449,13 @@ void VulkanCompute::Compute(const uint32_t workgroupCountX, const uint32_t workg
 void VulkanCompute::EndComputePass()
 {
     auto err = vkEndCommandBuffer(m_commandBuffer);
-    Vulkan::check_vk_result(err);
+    RenderSys::Vulkan::CheckVkResult(err);
 
     VkSubmitInfo end_info{};
     end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     end_info.commandBufferCount = 1;
     end_info.pCommandBuffers = &m_commandBuffer;
-    GraphicsAPI::Vulkan::QueueSubmit(end_info);
+    RenderSys::Vulkan::QueueSubmitAndWait(end_info);
 }
 
 std::vector<uint8_t>& VulkanCompute::GetMappedResult(uint32_t binding)

@@ -55,7 +55,7 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
     renderImageInfo.arrayLayers = 1;
     renderImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     renderImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    renderImageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    renderImageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT; // TRANSFER_SRC: GetRenderedImageData copies it out
     renderImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     renderImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -138,7 +138,7 @@ void VulkanRenderer3D::CreateShader(RenderSys::Shader& shader)
 std::shared_ptr<VkPipelineShaderStageCreateInfo> VulkanRenderer3D::CreateShaderModule(const VkShaderModuleCreateInfo& shaderModuleCreateInfo, const RenderSys::ShaderStage& stage)
 {
     VkShaderModule shaderModule = VK_NULL_HANDLE;
-    if (vkCreateShaderModule(GraphicsAPI::Vulkan::GetDevice(), &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+    if (vkCreateShaderModule(Vulkan::GetDevice(), &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) {
         std::cout << "could not load vertex shader" << std::endl;
         return nullptr;
     }
@@ -169,26 +169,26 @@ std::shared_ptr<VkPipelineShaderStageCreateInfo> VulkanRenderer3D::CreateShaderM
 
 void VulkanRenderer3D::DestroyImages()
 {
-    vkQueueWaitIdle(GraphicsAPI::Vulkan::GetQueue());
+    vkQueueWaitIdle(Vulkan::GetQueue());
 
     for (auto &debugView : m_debugViews)
     {
-        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), debugView->descriptorSetLayout, nullptr);
-        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), debugView->view, nullptr);
+        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), debugView->descriptorSetLayout, nullptr);
+        vkDestroyImageView(Vulkan::GetDevice(), debugView->view, nullptr);
     }
     m_debugViews.clear();
 
     if (m_frameBuffer)
     {
-        vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
-        vkDestroyFramebuffer(GraphicsAPI::Vulkan::GetDevice(), m_frameBuffer, nullptr);
+        vkDeviceWaitIdle(Vulkan::GetDevice());
+        vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
         m_frameBuffer = VK_NULL_HANDLE;
     }
 
     if (m_finalRenderTarget)
     {
-        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), m_finalRenderTarget->descriptorSetLayout, nullptr);
-        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_finalRenderTarget->view, nullptr);
+        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_finalRenderTarget->descriptorSetLayout, nullptr);
+        vkDestroyImageView(Vulkan::GetDevice(), m_finalRenderTarget->view, nullptr);
     }
     m_finalRenderTarget.reset();
 
@@ -200,7 +200,7 @@ void VulkanRenderer3D::DestroyImages()
 
     if (m_depthimageView != VK_NULL_HANDLE)
     {
-        vkDestroyImageView(GraphicsAPI::Vulkan::GetDevice(), m_depthimageView, nullptr);
+        vkDestroyImageView(Vulkan::GetDevice(), m_depthimageView, nullptr);
         m_depthimageView = VK_NULL_HANDLE;
     }
     if (m_depthimage != VK_NULL_HANDLE)
@@ -220,16 +220,16 @@ void VulkanRenderer3D::DestroyBindGroup()
 {
     if (m_mainBindGroup && m_bindGroupPool)
     {
-        vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
+        vkDeviceWaitIdle(Vulkan::GetDevice());
         // when you destroy a descriptor pool, all descriptor sets allocated from that pool are automatically destroyed
-        vkDestroyDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), m_bindGroupPool, nullptr);
+        vkDestroyDescriptorPool(Vulkan::GetDevice(), m_bindGroupPool, nullptr);
         m_mainBindGroup = VK_NULL_HANDLE;
         m_bindGroupPool = VK_NULL_HANDLE;
     }
 
     if (m_mainBindGroupLayout)
     {
-        vkDestroyDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), m_mainBindGroupLayout, nullptr);
+        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_mainBindGroupLayout, nullptr);
         m_mainBindGroupLayout = VK_NULL_HANDLE;
     }
 }
@@ -274,7 +274,7 @@ void VulkanRenderer3D::DestroyShaders()
 {
     for (auto& [shaderName, shaderData] : m_shaderMap)
     {
-        vkDestroyShaderModule(GraphicsAPI::Vulkan::GetDevice(), shaderData.shaderStageInfo.module, nullptr);
+        vkDestroyShaderModule(Vulkan::GetDevice(), shaderData.shaderStageInfo.module, nullptr);
     }
 
     m_shaderMap.clear();
@@ -308,7 +308,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     layoutInfo.bindingCount = mainBindGroupBindings.size();
     layoutInfo.pBindings = mainBindGroupBindings.data();
 
-    if (vkCreateDescriptorSetLayout(GraphicsAPI::Vulkan::GetDevice(), &layoutInfo, nullptr, &m_mainBindGroupLayout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(Vulkan::GetDevice(), &layoutInfo, nullptr, &m_mainBindGroupLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 
@@ -324,7 +324,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     poolInfo.pPoolSizes = poolSizes.data();
     poolInfo.maxSets = 1;
 
-    if (vkCreateDescriptorPool(GraphicsAPI::Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
+    if (vkCreateDescriptorPool(Vulkan::GetDevice(), &poolInfo, nullptr, &m_bindGroupPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
 
@@ -334,7 +334,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
     allocInfo.descriptorSetCount = 1;
     allocInfo.pSetLayouts = &m_mainBindGroupLayout;
 
-    if (vkAllocateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), &allocInfo, &m_mainBindGroup) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(Vulkan::GetDevice(), &allocInfo, &m_mainBindGroup) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
@@ -378,7 +378,7 @@ void VulkanRenderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLay
             descriptorWrite.pImageInfo = &imageInfo;
         }
         
-        vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
+        vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
     }
 }
 
@@ -447,7 +447,7 @@ void VulkanRenderer3D::CreateRenderPass()
     renderPassInfo.dependencyCount = 2;
     renderPassInfo.pDependencies = dependencies;
 
-    if (vkCreateRenderPass(GraphicsAPI::Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
+    if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
     {
         std::cout << "error; could not create renderpass" << std::endl;
         assert(false);
@@ -463,14 +463,14 @@ void VulkanRenderer3D::CreateCommandBuffers()
     cmdBufAllocateInfo.commandPool = RenderSys::Vulkan::GetCommandPool();
     cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cmdBufAllocateInfo.commandBufferCount = 1;
-    auto err = vkAllocateCommandBuffers(GraphicsAPI::Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
-    GraphicsAPI::Vulkan::check_vk_result(err);
+    auto err = vkAllocateCommandBuffers(Vulkan::GetDevice(), &cmdBufAllocateInfo, &m_commandBuffer);
+    Vulkan::CheckVkResult(err);
 }
 
 void VulkanRenderer3D::DestroyRenderPass()
 {
-    vkDeviceWaitIdle(GraphicsAPI::Vulkan::GetDevice());
-    vkDestroyRenderPass(GraphicsAPI::Vulkan::GetDevice(), m_renderpass, nullptr);
+    vkDeviceWaitIdle(Vulkan::GetDevice());
+    vkDestroyRenderPass(Vulkan::GetDevice(), m_renderpass, nullptr);
 }
 
 void VulkanRenderer3D::CreatePipeline()
@@ -517,7 +517,7 @@ void VulkanRenderer3D::CreateFrameBuffer()
     FboInfo.height = m_height;
     FboInfo.layers = 1;
 
-    if (vkCreateFramebuffer(GraphicsAPI::Vulkan::GetDevice(), &FboInfo, nullptr, &m_frameBuffer) != VK_SUCCESS) {
+    if (vkCreateFramebuffer(Vulkan::GetDevice(), &FboInfo, nullptr, &m_frameBuffer) != VK_SUCCESS) {
         std::cout << "error: failed to create framebuffer" << std::endl;
         return ;
     }
@@ -705,7 +705,7 @@ void VulkanRenderer3D::SetUniformData(uint32_t binding, const void* bufferData)
     descriptorWrite.pTexelBufferView = nullptr; // Optional
     
 
-    vkUpdateDescriptorSets(GraphicsAPI::Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
+    vkUpdateDescriptorSets(Vulkan::GetDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanRenderer3D::BindResources()
@@ -970,7 +970,7 @@ void VulkanRenderer3D::DestroyTextures()
     
     if (m_defaultTextureSampler)
     {
-        vkDestroySampler(GraphicsAPI::Vulkan::GetDevice(), m_defaultTextureSampler, nullptr);
+        vkDestroySampler(Vulkan::GetDevice(), m_defaultTextureSampler, nullptr);
         m_defaultTextureSampler = VK_NULL_HANDLE;
     }
 }
@@ -999,25 +999,25 @@ void VulkanRenderer3D::Destroy()
 void VulkanRenderer3D::ResetCommandBuffer()
 {
     auto err = vkResetCommandBuffer(m_commandBuffer, 0);
-    GraphicsAPI::Vulkan::check_vk_result(err);
+    Vulkan::CheckVkResult(err);
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
-    GraphicsAPI::Vulkan::check_vk_result(err);
+    Vulkan::CheckVkResult(err);
 }
 
 void VulkanRenderer3D::SubmitCommandBuffer()
 {
     auto err = vkEndCommandBuffer(m_commandBuffer);
-    GraphicsAPI::Vulkan::check_vk_result(err);
+    Vulkan::CheckVkResult(err);
 
     VkSubmitInfo end_info{};
     end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     end_info.commandBufferCount = 1;
     end_info.pCommandBuffers = &m_commandBuffer;
-    GraphicsAPI::Vulkan::QueueSubmit(end_info);
+    Vulkan::QueueSubmitAndWait(end_info);
 }
 
 VkImageView createDebugImageView(const std::shared_ptr<RenderSys::Vulkan::ShadowMap>& shadowMap)
@@ -1047,7 +1047,7 @@ VkImageView createDebugImageView(const std::shared_ptr<RenderSys::Vulkan::Shadow
     };
     viewInfo.components = componentMapping;
 
-    if (vkCreateImageView(GraphicsAPI::Vulkan::GetDevice(), &viewInfo, nullptr, &m_imguiView) != VK_SUCCESS) {
+    if (vkCreateImageView(Vulkan::GetDevice(), &viewInfo, nullptr, &m_imguiView) != VK_SUCCESS) {
         assert(false);
     }
 
@@ -1195,7 +1195,7 @@ void VulkanRenderer3D::CreateDefaultTextureSampler()
     texSamplerInfo.anisotropyEnable = VK_FALSE;
     texSamplerInfo.maxAnisotropy = 1.0f;
 
-    if (vkCreateSampler(GraphicsAPI::Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_defaultTextureSampler) != VK_SUCCESS) {
+    if (vkCreateSampler(Vulkan::GetDevice(), &texSamplerInfo, nullptr, &m_defaultTextureSampler) != VK_SUCCESS) {
         std::cout << "error: could not create sampler for texture" << std::endl;
     }
 }
