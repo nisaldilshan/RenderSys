@@ -39,7 +39,7 @@ public:
     void CreateImageToRender(uint32_t width, uint32_t height);
     void CreateDepthImage();
     void CreateShader(RenderSys::Shader& shader);
-    void CreatePipeline();
+    void CreatePipeline(RenderSys::FrontFace frontFace);
     void CreateFrameBuffer();
     uint32_t CreateVertexBuffer(const RenderSys::VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
     void CreateIndexBuffer(uint32_t vertexBufferID, const std::vector<uint32_t> &bufferData);

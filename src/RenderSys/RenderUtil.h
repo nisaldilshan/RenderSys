@@ -62,6 +62,13 @@ namespace RenderSys
     };
 
 
+    // Winding of front-facing triangles on screen. Right-handed data such as glTF, seen through a
+    // right-handed camera, is CounterClockwise; Clockwise suits the left-handed matrices RenderSys used so far.
+    enum class FrontFace : uint32_t {
+        Clockwise = 0,
+        CounterClockwise,
+    };
+
     enum class ShaderStage : uint32_t {
         None = 0x00000000,
         Vertex = 0x00000001,

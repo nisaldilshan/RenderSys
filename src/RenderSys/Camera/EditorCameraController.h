@@ -21,7 +21,7 @@ class EditorCameraController
 {
 public:
     EditorCameraController() = delete;
-    EditorCameraController(float fov, float nearClip, float farClip);
+    EditorCameraController(float fov, float nearClip, float farClip, Handedness handedness = Handedness::Left);
     ~EditorCameraController() = default;
 
     void OnUpdate(const CameraInput& input);

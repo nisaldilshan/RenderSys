@@ -105,7 +105,8 @@ public:
 			assert(false);
 		}
 
-		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f);
+		// glTF is right-handed: a left-handed camera shows it mirrored
+		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f, RenderSys::Handedness::Right);
 		auto cameraEntity = m_scene->AddCamera(m_cameraController->GetCamera());
 		m_cameraController->SetCameraEntity(cameraEntity, m_scene->m_Registry);
 
@@ -179,7 +180,7 @@ public:
 		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
 
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
-		m_renderer->CreatePipeline();
+		m_renderer->CreatePipeline(RenderSys::FrontFace::CounterClockwise); // glTF winding through the right-handed camera
 	}
 
 	virtual void OnDetach() override

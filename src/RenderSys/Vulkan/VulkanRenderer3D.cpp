@@ -483,7 +483,7 @@ void VulkanRenderer3D::DestroyRenderPass()
     vkDestroyRenderPass(Vulkan::GetDevice(), m_renderpass, nullptr);
 }
 
-void VulkanRenderer3D::CreatePipeline()
+void VulkanRenderer3D::CreatePipeline(RenderSys::FrontFace frontFace)
 {
     auto vertexShaderIter = m_shaderMap.find("Vertex");
     if (vertexShaderIter == m_shaderMap.end()) {
@@ -505,7 +505,8 @@ void VulkanRenderer3D::CreatePipeline()
     std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
                                                     RenderSys::GetMaterialBindGroupLayout(),
                                                     RenderSys::GetResourceBindGroupLayout()};
-    m_pbrRenderPipeline = std::make_unique<RenderSys::Vulkan::PbrRenderPipeline>(m_renderpass, layouts, m_vertexInputLayout, shaderStageInfos);
+    const VkFrontFace vkFrontFace = frontFace == RenderSys::FrontFace::CounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+    m_pbrRenderPipeline = std::make_unique<RenderSys::Vulkan::PbrRenderPipeline>(m_renderpass, layouts, m_vertexInputLayout, shaderStageInfos, vkFrontFace);
     if (m_pbrRenderPipeline->GetPipeline() == VK_NULL_HANDLE || m_pbrRenderPipeline->GetPipelineLayout() == VK_NULL_HANDLE){
         std::cout << "error: could not create pipeline" << std::endl;
         assert(false);

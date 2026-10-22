@@ -94,7 +94,7 @@ void WebGPURenderer3D::CreateShader(RenderSys::Shader& shader)
     std::cout << "Shader module: " << m_shaderModule << std::endl;
 }
 
-void WebGPURenderer3D::CreatePipeline()
+void WebGPURenderer3D::CreatePipeline(RenderSys::FrontFace frontFace)
 {
     std::cout << "Creating render pipeline..." << std::endl;
 
@@ -130,7 +130,7 @@ void WebGPURenderer3D::CreatePipeline()
 	// We'll see later how to specify the order in which vertices should be
 	// connected. When not specified, vertices are considered sequentially.
 	pipelineDesc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
-	pipelineDesc.primitive.frontFace = wgpu::FrontFace::CW;
+	pipelineDesc.primitive.frontFace = frontFace == RenderSys::FrontFace::CounterClockwise ? wgpu::FrontFace::CCW : wgpu::FrontFace::CW;
 	pipelineDesc.primitive.cullMode = wgpu::CullMode::Back;
 
     // Fragment shader

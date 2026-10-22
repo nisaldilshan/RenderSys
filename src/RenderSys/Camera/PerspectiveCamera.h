@@ -5,11 +5,22 @@
 namespace RenderSys
 {
 
+// Left is what RenderSys always used, and it shows right-handed data such as glTF mirrored.
+// Right draws it as authored; pair it with FrontFace::CounterClockwise in Renderer3D::CreatePipeline.
+// Either way the camera looks along +Z of its rotation, so a position and orientation see the same place.
+enum class Handedness
+{
+    Left = 0,
+    Right,
+};
+
 class PerspectiveCamera : public ICamera
 {
 public:
-    PerspectiveCamera(float fov, float nearClip, float farClip);
+    PerspectiveCamera(float fov, float nearClip, float farClip, Handedness handedness = Handedness::Left);
     ~PerspectiveCamera() override = default;
+
+    Handedness GetHandedness() const { return m_handedness; }
 
     glm::vec3 GetUpDirection() const;
     glm::vec3 GetRightDirection() const;
@@ -36,6 +47,7 @@ private:
     float m_AspectRatio = 1.0f;
     float m_nearClip = 0.0f;
     float m_farClip = 0.0f;
+    Handedness m_handedness = Handedness::Left;
 };
 
 

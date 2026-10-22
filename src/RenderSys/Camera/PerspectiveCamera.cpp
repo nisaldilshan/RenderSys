@@ -8,10 +8,11 @@
 namespace RenderSys
 {
 
-PerspectiveCamera::PerspectiveCamera(float fov, float nearClip, float farClip)
+PerspectiveCamera::PerspectiveCamera(float fov, float nearClip, float farClip, Handedness handedness)
     : m_FOV(fov)
     , m_nearClip(nearClip)
     , m_farClip(farClip)
+    , m_handedness(handedness)
 {}
 
 void PerspectiveCamera::SetAspectRatio(float aspectRatio)
@@ -22,7 +23,9 @@ void PerspectiveCamera::SetAspectRatio(float aspectRatio)
 
 void PerspectiveCamera::UpdateProjection()
 {
-    m_ProjectionMatrix = glm::perspectiveLH_ZO(glm::radians(m_FOV), m_AspectRatio, m_nearClip, m_farClip);
+    m_ProjectionMatrix = m_handedness == Handedness::Right
+        ? glm::perspectiveRH_ZO(glm::radians(m_FOV), m_AspectRatio, m_nearClip, m_farClip)
+        : glm::perspectiveLH_ZO(glm::radians(m_FOV), m_AspectRatio, m_nearClip, m_farClip);
 }
 
 void PerspectiveCamera::SetOrientation(const glm::vec3& orientation)
@@ -40,7 +43,9 @@ void PerspectiveCamera::SetPosition(const glm::vec3& position)
 void PerspectiveCamera::UpdateView()
 {
     const glm::vec3 target = m_Position + GetForwardDirection();
-    m_ViewMatrix = glm::lookAtLH(m_Position, target, GetUpDirection());
+    m_ViewMatrix = m_handedness == Handedness::Right
+        ? glm::lookAtRH(m_Position, target, GetUpDirection())
+        : glm::lookAtLH(m_Position, target, GetUpDirection());
 }
 
 glm::vec3 PerspectiveCamera::GetUpDirection() const
@@ -54,7 +59,8 @@ glm::vec3 PerspectiveCamera::GetRightDirection() const
 {
     //return glm::rotate(glm::quat(m_Rotation), glm::vec3(1.0f, 0.0f, 0.0f));
     glm::mat3 rotationMatrix = glm::mat3_cast(glm::quat(m_Rotation));
-    return rotationMatrix[0]; // First column
+    // Looking along +Z with +Y up, screen right is +X in a left-handed view and -X in a right-handed one
+    return m_handedness == Handedness::Right ? -rotationMatrix[0] : rotationMatrix[0]; // First column
 }
 
 glm::vec3 PerspectiveCamera::GetForwardDirection() const
