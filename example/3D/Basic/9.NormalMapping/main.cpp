@@ -41,6 +41,7 @@ public:
 	{
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 		m_renderer->Init();
+		m_renderer->SetClearColor(m_clearColor); // OnUIRender only applies changes, and starts equal to it
 
 		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cylinder.obj", m_vertexBuffer);
 		assert(success);

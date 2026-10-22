@@ -48,6 +48,7 @@ public:
 	{
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 		m_renderer->Init();
+		m_renderer->SetClearColor(m_clearColor); // OnUIRender only applies changes, and starts equal to it
 
 		if (!loadScene())
 		{

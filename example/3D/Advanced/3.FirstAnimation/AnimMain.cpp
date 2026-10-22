@@ -39,6 +39,7 @@ public:
 	{
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 		m_renderer->Init();
+		m_renderer->SetClearColor(m_clearColor); // OnUIRender only applies changes, and starts equal to it
 
 		if (!loadScene())
 		{
@@ -230,6 +231,10 @@ public:
 			for (auto entity : view)
 			{
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
+				// Every primitive of the mesh draws all its instances, e.g. one per placed robot
+				const uint32_t instanceCount = view.get<RenderSys::InstanceTagComponent>(entity).GetInstanceCount();
+				for (auto& subMesh : meshComponent.m_Mesh->subMeshes)
+					subMesh.m_InstanceCount = instanceCount;
 				m_renderer->RenderMesh(meshComponent);
 			}
 
