@@ -173,8 +173,7 @@ void VulkanRenderer3D::DestroyImages()
 
     for (auto &debugView : m_debugViews)
     {
-        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), debugView->descriptorSetLayout, nullptr);
-        vkDestroyImageView(Vulkan::GetDevice(), debugView->view, nullptr);
+        Vulkan::DestroyRenderTarget(*debugView);
     }
     m_debugViews.clear();
 
@@ -187,8 +186,7 @@ void VulkanRenderer3D::DestroyImages()
 
     if (m_finalRenderTarget)
     {
-        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_finalRenderTarget->descriptorSetLayout, nullptr);
-        vkDestroyImageView(Vulkan::GetDevice(), m_finalRenderTarget->view, nullptr);
+        Vulkan::DestroyRenderTarget(*m_finalRenderTarget);
     }
     m_finalRenderTarget.reset();
 

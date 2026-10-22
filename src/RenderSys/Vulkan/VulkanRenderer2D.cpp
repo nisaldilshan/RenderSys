@@ -40,10 +40,10 @@ bool VulkanRenderer2D::Init()
 
 void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
 {
+    DestroyImages();
     m_width = width;
     m_height = height;
 
-    static VkDeviceMemory m_Memory;
     VkImageCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     info.imageType = VK_IMAGE_TYPE_2D;
@@ -66,9 +66,9 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = req.size;
     alloc_info.memoryTypeIndex = Vulkan::FindMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
+    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_renderImageMemory);
     Vulkan::CheckVkResult(err);
-    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
+    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_renderImageMemory, 0);
     Vulkan::CheckVkResult(err);
 
     CreateTextureSampler();
@@ -146,6 +146,36 @@ void VulkanRenderer2D::DestroyBuffers()
     if (m_indexBuffer != VK_NULL_HANDLE && m_indexBufferMemory != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(m_vma, m_indexBuffer, m_indexBufferMemory);
+    }
+}
+
+void VulkanRenderer2D::DestroyImages()
+{
+    // Called on every resize; the UI may still be sampling the old image
+    vkDeviceWaitIdle(Vulkan::GetDevice());
+
+    if (m_finalRenderTarget)
+    {
+        Vulkan::DestroyRenderTarget(*m_finalRenderTarget);
+    }
+    m_finalRenderTarget.reset();
+
+    if (m_textureSampler != VK_NULL_HANDLE)
+    {
+        vkDestroySampler(Vulkan::GetDevice(), m_textureSampler, nullptr);
+        m_textureSampler = VK_NULL_HANDLE;
+    }
+
+    if (m_ImageToRenderInto != VK_NULL_HANDLE)
+    {
+        vkDestroyImage(Vulkan::GetDevice(), m_ImageToRenderInto, nullptr);
+        m_ImageToRenderInto = VK_NULL_HANDLE;
+    }
+
+    if (m_renderImageMemory != VK_NULL_HANDLE)
+    {
+        vkFreeMemory(Vulkan::GetDevice(), m_renderImageMemory, nullptr);
+        m_renderImageMemory = VK_NULL_HANDLE;
     }
 }
 
@@ -666,6 +696,7 @@ void VulkanRenderer2D::EndRenderPass()
 
 void VulkanRenderer2D::Destroy()
 {
+    DestroyImages();
     DestroyBuffers();
 
     // Destroy VMA instance

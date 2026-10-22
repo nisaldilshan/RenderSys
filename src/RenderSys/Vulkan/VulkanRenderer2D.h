@@ -46,14 +46,16 @@ public:
 private:
     bool CreateRenderPass();
     void DestroyBuffers();
+    void DestroyImages();
     void DestroyShaders();
     void SubmitCommandBuffer();
 
     uint32_t m_width = 0;
     uint32_t m_height = 0;
     VkImage m_ImageToRenderInto = VK_NULL_HANDLE;
+    VkDeviceMemory m_renderImageMemory = VK_NULL_HANDLE;
     std::unique_ptr<Vulkan::RenderTarget> m_finalRenderTarget;
-    VkSampler m_textureSampler;
+    VkSampler m_textureSampler = VK_NULL_HANDLE;
     std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
     std::unordered_map<std::string, std::vector<uint32_t>> m_shaderMap;
 
