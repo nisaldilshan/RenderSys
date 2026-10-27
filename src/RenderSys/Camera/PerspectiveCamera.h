@@ -1,19 +1,12 @@
 #pragma once
 
 #include "ICamera.h"
+#include <RenderSys/RenderUtil.h>
 
 namespace RenderSys
 {
 
-// Left is what RenderSys always used, and it shows right-handed data such as glTF mirrored.
-// Right draws it as authored; pair it with FrontFace::CounterClockwise in Renderer3D::CreatePipeline.
-// Either way the camera looks along +Z of its rotation, so a position and orientation see the same place.
-enum class Handedness
-{
-    Left = 0,
-    Right,
-};
-
+// Either handedness looks along +Z of the camera's rotation, so a position and orientation see the same place.
 class PerspectiveCamera : public ICamera
 {
 public:

@@ -30,8 +30,9 @@ VkPipelineRasterizationStateCreateInfo Pipeline::getRasterizerInfo()
     rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizerInfo.lineWidth = 1.0f;
     rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    // because we use negative viewports in vulkan main pipeline (not in shadow)
-    rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE; 
+    // Counter-clockwise triangles land clockwise through the left-handed matrices RenderSys uses by default.
+    // The main pass's negative viewport only undoes Vulkan's Y flip, so it does not change the winding.
+    rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterizerInfo.depthBiasEnable = VK_FALSE;
     return rasterizerInfo;
 }

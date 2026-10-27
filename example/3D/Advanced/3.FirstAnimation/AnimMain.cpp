@@ -180,7 +180,7 @@ public:
 		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
 
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
-		m_renderer->CreatePipeline(RenderSys::FrontFace::CounterClockwise); // glTF winding through the right-handed camera
+		m_renderer->CreatePipeline(m_cameraController->GetCamera()->GetHandedness());
 	}
 
 	virtual void OnDetach() override
