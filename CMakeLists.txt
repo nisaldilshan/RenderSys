@@ -104,32 +104,6 @@ if(RENDERER STREQUAL "Vulkan")
     target_link_libraries(RenderSys2D PUBLIC glm::glm)
     target_link_libraries(RenderSys3D PUBLIC glm::glm)
     target_link_libraries(ComputeSys PUBLIC glm::glm)
-
-    if(RENDERSYS_WITH_WALNUT)
-        # Walnut (transitively) requires vulkan-validationlayers; Conan's generated manifest has a
-        # 4-part api_version the loader's parser rejects, so the layer silently never loads. Rewrite
-        # a loader-compatible copy at configure time and point VK_LAYER_PATH at it for debugging
-        # (see .vscode/launch.json).
-        file(GLOB _rendersys_vvl_data_files "${CMAKE_BINARY_DIR}/generators/vulkan-validationlayers-*-data.cmake")
-        if(_rendersys_vvl_data_files)
-            list(GET _rendersys_vvl_data_files 0 _rendersys_vvl_data_file)
-            include(${_rendersys_vvl_data_file})
-            string(TOUPPER "${CMAKE_BUILD_TYPE}" _rendersys_vvl_build_type)
-            if(DEFINED vulkan-validationlayers_PACKAGE_FOLDER_${_rendersys_vvl_build_type})
-                set(RENDERSYS_VULKAN_LAYER_DIR "${CMAKE_BINARY_DIR}/vulkan-layers/explicit_layer.d")
-                add_custom_target(RenderSysFixVulkanValidationManifest ALL
-                    COMMAND ${CMAKE_COMMAND} -E make_directory "${RENDERSYS_VULKAN_LAYER_DIR}"
-                    COMMAND python3 "${CMAKE_SOURCE_DIR}/tools/fix_vulkan_validation_manifest.py"
-                            "${vulkan-validationlayers_PACKAGE_FOLDER_${_rendersys_vvl_build_type}}"
-                            "${RENDERSYS_VULKAN_LAYER_DIR}"
-                    COMMENT "Generating a loader-compatible VK_LAYER_KHRONOS_validation manifest"
-                    VERBATIM
-                )
-            endif()
-            unset(_rendersys_vvl_build_type)
-        endif()
-        unset(_rendersys_vvl_data_files)
-    endif()
 else()
     set(WEBGPU_BACKEND DAWN)
     FetchContent_Declare(

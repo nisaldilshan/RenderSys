@@ -1,0 +1,17 @@
+// Project settings for Zed: https://zed.dev/docs/configuring-zed
+{
+  "lsp": {
+    "clangd": {
+      "binary": {
+        "arguments": [
+          // Conan's cmake_layout writes compile_commands.json here; clangd only looks in ./ and ./build by default
+          "--compile-commands-dir=build/Debug",
+          // Take the standard library include paths from the GCC that builds the project. Without this,
+          // clangd picks GCC 12 (runtime installed, headers not) and cannot find <memory>, <array>, ...
+          "--query-driver=/usr/bin/c++,/usr/bin/g++*,/usr/bin/gcc*",
+          "--background-index"
+        ]
+      }
+    }
+  }
+}
