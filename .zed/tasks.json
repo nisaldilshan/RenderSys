@@ -1,0 +1,25 @@
+// Project tasks for Zed: https://zed.dev/docs/tasks
+// The system cmake is too old for the Conan presets, so each CMake task first sources conanbuild.sh,
+// which puts Conan's cmake on PATH.
+[
+  {
+    "label": "CMake: build",
+    "command": "source build/Debug/generators/conanbuild.sh && cmake --build --preset conan-debug",
+    "save": "all"
+  },
+  {
+    "label": "CMake: configure",
+    "command": "source build/Debug/generators/conanbuild.sh && cmake --preset conan-debug",
+    "save": "all"
+  },
+  {
+    "label": "CMake: clean",
+    "command": "source build/Debug/generators/conanbuild.sh && cmake --build --preset conan-debug --target clean"
+  },
+  {
+    // Run after editing conanfile.py or deleting build/; regenerates the presets and toolchain the CMake tasks use
+    "label": "Conan: install dependencies",
+    "command": "conan install . --build=missing -s build_type=Debug",
+    "save": "all"
+  }
+]

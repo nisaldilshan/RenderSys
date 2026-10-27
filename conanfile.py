@@ -97,7 +97,7 @@ class RenderSysConan(ConanFile):
 
         if self.options.with_walnut and self.options.rendering_backend == "Vulkan":
             # Walnut's run environment points VK_LAYER_PATH at a loader-compatible validation layer manifest.
-            # VS Code's cppdbg cannot source conanrun.sh, so hand the variable over as an envFile
+            # The VS Code debugger cannot source conanrun.sh, so hand the variable over as an envFile
             # (see .vscode/launch.json).
             layer_path = VirtualRunEnv(self).environment().vars(self, scope="run").get("VK_LAYER_PATH")
             if layer_path:
