@@ -15,7 +15,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -29,7 +28,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -43,7 +41,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -57,7 +54,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -71,7 +67,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -85,7 +80,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -99,7 +93,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -113,7 +106,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -127,7 +119,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -141,7 +132,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -155,7 +145,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -169,7 +158,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -183,7 +171,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -197,7 +184,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -211,7 +197,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -225,7 +210,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -239,7 +223,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -253,7 +236,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -267,7 +249,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -281,7 +262,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -295,7 +275,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         },
         {
@@ -309,7 +288,6 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-                "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
             },
         }
     ]
