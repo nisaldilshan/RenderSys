@@ -14,6 +14,7 @@ VulkanRenderer2D::VulkanRenderer2D()
 
 VulkanRenderer2D::~VulkanRenderer2D()
 {
+    Destroy();
 }
 
 bool VulkanRenderer2D::Init()
@@ -141,12 +142,24 @@ void VulkanRenderer2D::DestroyBuffers()
     if (m_vertexBuffer != VK_NULL_HANDLE && m_vertexBufferMemory != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(m_vma, m_vertexBuffer, m_vertexBufferMemory);
+        m_vertexBuffer = VK_NULL_HANDLE;
+        m_vertexBufferMemory = VK_NULL_HANDLE;
     }
 
     if (m_indexBuffer != VK_NULL_HANDLE && m_indexBufferMemory != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(m_vma, m_indexBuffer, m_indexBufferMemory);
+        m_indexBuffer = VK_NULL_HANDLE;
+        m_indexBufferMemory = VK_NULL_HANDLE;
     }
+
+    for (size_t i = 0; i < m_uniformBuffers.size(); i++)
+    {
+        vmaDestroyBuffer(m_vma, m_uniformBuffers[i], m_uniformBuffersMemory[i]);
+    }
+    m_uniformBuffers.clear();
+    m_uniformBuffersMemory.clear();
+    m_uniformBuffersMapped.clear();
 }
 
 void VulkanRenderer2D::DestroyImages()
@@ -352,7 +365,10 @@ bool VulkanRenderer2D::CreateRenderPass()
 
 void VulkanRenderer2D::CreatePipeline()
 {
-    std::vector<VkDescriptorSetLayout> layouts{m_bindGroupLayout};
+    // Examples without uniforms have no bind group, and a null set layout is invalid
+    std::vector<VkDescriptorSetLayout> layouts;
+    if (m_bindGroupLayout != VK_NULL_HANDLE)
+        layouts.push_back(m_bindGroupLayout);
     m_render2DPipeline = std::make_unique<Vulkan::Render2DPipeline>(m_renderpass, layouts, m_vertexInputLayout, m_shaderStageInfos);
     if (m_render2DPipeline->GetPipeline() == VK_NULL_HANDLE || m_render2DPipeline->GetPipelineLayout() == VK_NULL_HANDLE){
         std::cout << "error: could not create pipeline" << std::endl;
@@ -450,8 +466,8 @@ void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
     m_indexCount = bufferData.size();
     assert(m_indexCount > 0);
     
-    static bool indexBufCreated = false;
-    if (!indexBufCreated)
+    // Per renderer: a static flag here left every renderer after the first one without an index buffer
+    if (m_indexBuffer == VK_NULL_HANDLE)
     {
         VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -477,8 +493,6 @@ void VulkanRenderer2D::CreateIndexBuffer(const std::vector<uint16_t> &bufferData
 
 		std::memcpy(buf, bufferData.data(), bufferInfo.size);
 		vmaUnmapMemory(m_vma, m_indexBufferMemory);
-        
-        indexBufCreated = true;
     }
 
     std::cout << "Index buffer: " << m_indexBuffer << std::endl;
@@ -718,11 +732,45 @@ void VulkanRenderer2D::EndRenderPass()
 
 void VulkanRenderer2D::Destroy()
 {
+    // Also called by the destructor, so it may run twice
+    if (!m_vma)
+        return;
+
+    // DestroyImages waits for the device, so nothing below is still in use
     DestroyImages();
     DestroyBuffers();
+    DestroyShaders();
+    m_render2DPipeline.reset();
 
-    // Destroy VMA instance
+    if (m_bindGroupPool != VK_NULL_HANDLE)
+    {
+        // Frees m_bindGroup with it
+        vkDestroyDescriptorPool(Vulkan::GetDevice(), m_bindGroupPool, nullptr);
+        m_bindGroupPool = VK_NULL_HANDLE;
+        m_bindGroup = VK_NULL_HANDLE;
+    }
+    if (m_bindGroupLayout != VK_NULL_HANDLE)
+    {
+        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_bindGroupLayout, nullptr);
+        m_bindGroupLayout = VK_NULL_HANDLE;
+    }
+    m_bindGroupBindings.clear();
+
+    if (m_commandPool != VK_NULL_HANDLE)
+    {
+        // Frees m_commandBuffer with it
+        vkDestroyCommandPool(Vulkan::GetDevice(), m_commandPool, nullptr);
+        m_commandPool = VK_NULL_HANDLE;
+        m_commandBuffer = VK_NULL_HANDLE;
+    }
+    if (m_renderpass != VK_NULL_HANDLE)
+    {
+        vkDestroyRenderPass(Vulkan::GetDevice(), m_renderpass, nullptr);
+        m_renderpass = VK_NULL_HANDLE;
+    }
+
     vmaDestroyAllocator(m_vma);
+    m_vma = VK_NULL_HANDLE;
 }
 
 void VulkanRenderer2D::SubmitCommandBuffer()

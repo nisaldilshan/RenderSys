@@ -5,68 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "FirstTriangle",
+            "name": "Examples2D",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/example/2D/1.FirstTriangle/Debug/FirstTriangle",
-            "args": [],
+            "program": "${workspaceFolder}/build/example/2D/Debug/Examples2D",
+            "args": [], // the 1-based example to start with, e.g. ["3"]
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/2D/1.FirstTriangle/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "VertexBuffers",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/2D/2.VertexBuffers/Debug/VertexBuffers",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/2D/2.VertexBuffers/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "VertexAttributes",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/2D/3.VertexAttributes/Debug/VertexAttributes",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/2D/3.VertexAttributes/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "IndexBuffers",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/2D/4.IndexBuffers/Debug/IndexBuffers",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/2D/4.IndexBuffers/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "UniformBuffers",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/2D/5.UniformBuffers/Debug/UniformBuffers",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/2D/5.UniformBuffers/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "DynamicUniforms",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/2D/6.DynamicUniforms/Debug/DynamicUniforms",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/2D/6.DynamicUniforms/Debug",
+            "cwd": "${workspaceFolder}/build/example/2D/Debug",
             "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
             "console": "integratedTerminal"
         },
@@ -104,101 +49,13 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "First3DShape",
+            "name": "Examples3DBasic",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/1.First3DShape/Debug/First3DShape",
-            "args": [],
+            "program": "${workspaceFolder}/build/example/3D/Basic/Debug/Examples3DBasic",
+            "args": [], // the 1-based example to start with, e.g. ["3"]
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/1.First3DShape/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "TransformationMatrices",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/2.TransformationMatrices/Debug/TransformationMatrices",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/2.TransformationMatrices/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "BasicShading",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/3.BasicShading/Debug/BasicShading",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/3.BasicShading/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "FirstTexture",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/4.FirstTexture/Debug/FirstTexture",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/4.FirstTexture/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "TextureSampler",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/5.TextureSampler/Debug/TextureSampler",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/5.TextureSampler/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "TextureLoader",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/6.TextureLoader/Debug/TextureLoader",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/6.TextureLoader/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "CameraControls",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/7.CameraControls/Debug/CameraControls",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/7.CameraControls/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Lighting",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/8.Lighting/Debug/Lighting",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/8.Lighting/Debug",
-            "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "NormalMapping",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/example/3D/Basic/9.NormalMapping/Debug/NormalMapping",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/example/3D/Basic/9.NormalMapping/Debug",
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/Debug",
             "environment": [ { "name": "VK_LAYER_PATH", "value": "C:/.conan/318e52/1/bin" } ],
             "console": "integratedTerminal"
         },

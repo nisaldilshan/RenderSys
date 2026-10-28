@@ -1,8 +1,5 @@
 #include <array>
-
 #include <Walnut/Application.h>
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
 
@@ -10,8 +7,12 @@
 #include <RenderSys/Geometry.h>
 #include <imgui.h>
 
+#include "Examples3DBasic.h"
+
+namespace
+{
+
 struct MyUniforms {
-	// We add transform matrices
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
     glm::mat4x4 modelMatrix;
@@ -20,19 +21,7 @@ struct MyUniforms {
     float _pad[3];
 };
 
-glm::mat4x4 makePerspectiveProj(float ratio, float near, float far, float focalLength)
-{
-	float divides = 1.0f / (far - near);
-	float aaa[16] = {
-		focalLength,         0.0,              0.0,               0.0,
-			0.0,     focalLength * ratio,      0.0,               0.0,
-			0.0,             0.0,         far * divides, -far * near * divides,
-			0.0,             0.0,              1.0,               0.0,
-	};
-	return glm::transpose(glm::make_mat4(aaa));
-}
-
-class Renderer3DLayer : public Walnut::Layer
+class FirstTextureLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
@@ -43,8 +32,7 @@ public:
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
 			const char* vertexShaderSource = R"(
-				#version 450 core
-
+				#version 460
 				layout(binding = 0) uniform UniformBufferObject {
 					mat4 projectionMatrix;
 					mat4 viewMatrix;
@@ -56,16 +44,17 @@ public:
 				layout (location = 0) in vec3 aPos;
 				layout (location = 1) in vec3 in_normal;
 				layout (location = 2) in vec3 in_color;
+				layout (location = 3) in vec2 in_uv;
 
 				layout (location = 0) out vec3 out_color;
-				layout (location = 1) out vec3 out_normal;
+				layout (location = 1) out vec2 out_uv;
 
 				void main() 
 				{
 					gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
 					vec4 mult = ubo.modelMatrix * vec4(in_normal, 0.0);
-					out_normal = mult.xyz;
 					out_color = in_color;
+					out_uv = in_uv;
 				}
 			)";
 			RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
@@ -74,7 +63,7 @@ public:
 			m_renderer->SetShader(vertexShader);
 
 			const char* fragmentShaderSource = R"(
-				#version 450
+				#version 460
 
 				layout(binding = 0) uniform UniformBufferObject {
 					mat4 projectionMatrix;
@@ -85,25 +74,19 @@ public:
 					float _pad[3];
 				} ubo;
 
+				layout(binding = 1) uniform sampler2D tex;
+
 				layout (location = 0) in vec3 in_color;
-				layout (location = 1) in vec3 in_normal;
+				layout (location = 1) in vec2 in_uv;
 
 				layout (location = 0) out vec4 out_color;
 
 				void main()
 				{
-					vec3 normal = normalize(in_normal);
+					ivec2 texelCoords = ivec2(in_uv * vec2(textureSize(tex, 0)));
+					vec3 texColor = texelFetch(tex, texelCoords, 0).rgb;
 
-					vec3 lightColor1 = vec3(1.0, 0.9, 0.6);
-					vec3 lightColor2 = vec3(0.6, 0.9, 1.0);
-					vec3 lightDirection1 = vec3(0.5, -0.9, 0.1);
-					vec3 lightDirection2 = vec3(0.2, 0.4, 0.3);
-					float shading1 = max(0.0, dot(lightDirection1, normal));
-					float shading2 = max(0.0, dot(lightDirection2, normal));
-					vec3 shading = shading1 * lightColor1 + shading2 * lightColor2;
-					vec3 color = in_color * shading;
-
-					out_color = vec4(color, ubo.color.a);
+					out_color = vec4(texColor, ubo.color.a);
 				}
 			)";
 			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
@@ -118,12 +101,14 @@ public:
 				@location(0) position: vec3f,
 				@location(1) normal: vec3f,
 				@location(2) color: vec3f,
+				@location(3) uv: vec2f,
 			};
 
 			struct VertexOutput {
 				@builtin(position) position: vec4f,
 				@location(0) color: vec3f,
 				@location(1) normal: vec3f,
+				@location(2) uv: vec2f,
 			};
 
 			/**
@@ -137,8 +122,8 @@ public:
 				time: f32,
 			};
 
-			// Instead of the simple uTime variable, our uniform variable is a struct
 			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
+			@group(0) @binding(1) var gradientTexture: texture_2d<f32>;
 
 			@vertex
 			fn vs_main(in: VertexInput) -> VertexOutput {
@@ -147,28 +132,22 @@ public:
 				// Forward the normal
 				out.normal = (uMyUniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
 				out.color = in.color;
+				out.uv = in.uv;
+
 				return out;
 			}
 
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-				let normal = normalize(in.normal);
-
-				let lightColor1 = vec3f(1.0, 0.9, 0.6);
-				let lightColor2 = vec3f(0.6, 0.9, 1.0);
-				let lightDirection1 = vec3f(0.5, -0.9, 0.1);
-				let lightDirection2 = vec3f(0.2, 0.4, 0.3);
-				let shading1 = max(0.0, dot(lightDirection1, normal));
-				let shading2 = max(0.0, dot(lightDirection2, normal));
-				let shading = shading1 * lightColor1 + shading2 * lightColor2;
-				let color = in.color * shading;
+				// We remap UV coords to actual texel coordinates
+				let texelCoords = vec2i(in.uv * vec2f(textureDimensions(gradientTexture)));
+				let color = textureLoad(gradientTexture, texelCoords, 0).rgb;
 
 				// Gamma-correction
 				let corrected_color = pow(color, vec3f(2.2));
 				return vec4f(corrected_color, uMyUniforms.color.a);
 			}
 			)";
-
 			RenderSys::Shader shader("Combined", shaderSource);
 			shader.type = RenderSys::ShaderType::WGSL;
 			shader.stage = RenderSys::ShaderStage::VertexAndFragment;
@@ -180,14 +159,15 @@ public:
 		}
 
 		RenderSys::VertexBuffer vertexData;
-		bool success = Geometry::loadGeometryFromObj(RESOURCE_DIR "/mammoth.obj", vertexData);
+		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cube.obj", vertexData);
 		if (!success) 
 		{
 			std::cerr << "Could not load geometry!" << std::endl;
+			assert(false);
 			return;
 		}
 
-		std::vector<RenderSys::VertexAttribute> vertexAttribs(3);
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
 
 		// Position attribute
 		vertexAttribs[0].location = 0;
@@ -204,6 +184,11 @@ public:
 		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
 		vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
 
+		// UV attribute
+		vertexAttribs[3].location = 3;
+		vertexAttribs[3].format = RenderSys::VertexFormat::Float32x2;
+		vertexAttribs[3].offset = offsetof(RenderSys::Vertex, texcoord0);
+
 		RenderSys::VertexBufferLayout vertexBufferLayout;
 		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 		vertexBufferLayout.attributes = vertexAttribs.data();
@@ -212,20 +197,45 @@ public:
 
 		m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
 
-		// Create binding layout (don't forget to = Default)
-		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);
-		RenderSys::BindGroupLayoutEntry& bGLayoutEntry = bindingLayoutEntries[0];
-		bGLayoutEntry.setDefault();
-		// The binding index as used in the @binding attribute in the shader
-		bGLayoutEntry.binding = 0;
-		// The stage that needs to access this resource
-		bGLayoutEntry.visibility = RenderSys::ShaderStage::VertexAndFragment;
-		bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
-		bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
-		// Make this binding dynamic so we can offset it between draw calls
-		bGLayoutEntry.buffer.hasDynamicOffset = false;
+		constexpr uint32_t texWidth = 256;
+		constexpr uint32_t texHeight = 256;
+		std::vector<uint8_t> pixels(4 * texWidth * texHeight);
 
-		m_renderer->CreateUniformBuffer(bGLayoutEntry.binding, sizeof(MyUniforms), 2);
+		for (uint32_t i = 0; i < texWidth; ++i) {
+			for (uint32_t j = 0; j < texHeight; ++j) {
+				uint8_t *p = &pixels[4 * (j * texWidth + i)];
+				p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
+				p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
+				p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
+				p[3] = 255; // a
+			}
+		}
+
+		auto texture = std::make_shared<RenderSys::Texture>(texWidth, texHeight, 1, RenderSys::TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED);
+		texture->SetData(pixels.data());
+		m_renderer->CreateTexture(1, texture);
+
+		// Since we now have 2 bindings, we use a vector to store them
+		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
+		// The uniform buffer binding that we already had
+		RenderSys::BindGroupLayoutEntry& uniformBindingLayout = bindingLayoutEntries[0];
+		uniformBindingLayout.setDefault();
+		uniformBindingLayout.binding = 0;
+		uniformBindingLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
+		uniformBindingLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
+		uniformBindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
+		uniformBindingLayout.buffer.hasDynamicOffset = false;
+
+		// The texture binding
+		RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
+		textureBindingLayout.setDefault();
+		textureBindingLayout.binding = 1;
+		textureBindingLayout.visibility = RenderSys::ShaderStage::Fragment;
+		textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
+		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
+
+		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 2);
+
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
 		m_renderer->CreatePipeline();
 	}
@@ -252,30 +262,17 @@ public:
 		{
 			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
-			
+
 			static auto startTime = std::chrono::steady_clock::now();
 			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
-
-			constexpr float PI = 3.14159265358979323846f;
-			float angle2 = 3.0f * PI / 4.0f;
-			glm::vec3 focalPoint(0.0, 0.0, -2.0);			
-
-			glm::mat4x4 V(1.0);
-			V = glm::translate(V, -focalPoint);
-			V = glm::rotate(V, -angle2, glm::vec3(1.0, 0.0, 0.0));
-			m_uniformData.viewMatrix = V;
-			
-			float focalLength = 2.0;
-			float fov = 2 * glm::atan(1 / focalLength);
-			float ratio = m_viewportWidth / m_viewportHeight;
-			float near = 0.01f;
-			float far = 100.0f;
-			m_uniformData.projectionMatrix = makePerspectiveProj(m_viewportWidth / m_viewportHeight, 0.01, 100.0, 2.0);
+			constexpr float PI = 3.14159265358979323846f;		
+			m_uniformData.viewMatrix = glm::lookAtLH(glm::vec3(-2.0f, -3.0f, 2.0f), glm::vec3(0.0f), glm::vec3(0, 0, 1));
+			m_uniformData.projectionMatrix = glm::perspectiveLH_ZO(30 * (PI / 180), (float)(m_viewportWidth / m_viewportHeight), 0.01f, 100.0f);
 
 			glm::mat4x4 M1(1.0);
 			float angle1 = time * 0.9f;
 			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));
-			M1 = glm::translate(M1, glm::vec3(0.5, 0.0, 0.0));
+			M1 = glm::translate(M1, glm::vec3(1.0, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.3f));
 			m_uniformData.modelMatrix = M1;
 
@@ -288,7 +285,6 @@ public:
 			m_renderer->EndRenderPass();
 			m_renderer->EndFrame();
 		}
-       		
 
         m_lastRenderTime = timer.ElapsedMillis();
 	}
@@ -321,16 +317,9 @@ private:
 	MyUniforms m_uniformData;
 };
 
-Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
-{
-	Walnut::ApplicationSpecification spec;
-	spec.Name = "Renderer3D Example";
-#ifndef NDEBUG
-	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
-#endif
+} // namespace
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	RenderSys::AttachToWalnut();
-	app->PushLayer<Renderer3DLayer>();
-	return app;
+std::shared_ptr<Walnut::Layer> CreateFirstTextureLayer()
+{
+	return std::make_shared<FirstTextureLayer>();
 }

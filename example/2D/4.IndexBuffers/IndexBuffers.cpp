@@ -1,6 +1,4 @@
 #include <Walnut/Application.h>
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#include <Walnut/EntryPoint.h>
 #include <Walnut/Random.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
@@ -8,7 +6,12 @@
 #include <RenderSys/Renderer2D.h>
 #include <imgui.h>
 
-class Renderer2DLayer : public Walnut::Layer
+#include "Examples2D.h"
+
+namespace
+{
+
+class IndexBuffersLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
@@ -99,18 +102,13 @@ public:
 		}
 
 		// Vertex buffer
-		// There are 2 floats per vertex, one for x and one for y.
-		// But in the end this is just a bunch of floats to the eyes of the GPU,
-		// the *layout* will tell how to interpret this.
+		// The de-duplicated list of point positions
 		std::vector<float> vertexData = {
-			// x ,  y ,  r ,  g ,  b
+			// x,   y,     r,   g,   b
 			-0.5, -0.5, 1.0, 0.0, 0.0,
 			+0.5, -0.5, 0.0, 1.0, 0.0,
-			+0.0, +0.5, 0.0, 0.0, 1.0,
-
-			-0.55f, -0.5, 1.0, 1.0, 0.0,
-			-0.05f, +0.5, 1.0, 0.0, 1.0,
-			-0.55f, +0.5, 0.0, 1.0, 1.0};
+			+0.5, +0.5, 0.0, 0.0, 1.0,
+			-0.5, +0.5, 1.0, 1.0, 0.0};
 
 		// Vertex fetch
 		// We now have 2 attributes
@@ -134,12 +132,21 @@ public:
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
 		m_renderer->SetVertexBufferData(vertexData.data(), vertexData.size() * 4, vertexBufferLayout);
+
+		// Index Buffer
+		// This is a list of indices referencing positions in the pointData
+		std::vector<uint16_t> indexData = {
+			0, 1, 2, // Triangle #0
+			0, 2, 3	 // Triangle #1
+		};
+		m_renderer->SetIndexBufferData(indexData);
+
 		m_renderer->CreatePipeline();
 	}
 
 	virtual void OnDetach() override
 	{
-		m_renderer->Destroy();
+		m_renderer->Destroy();			
 	}
 
 	virtual void OnUpdate(float ts) override
@@ -154,9 +161,13 @@ public:
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
         }
 
-		m_renderer->BeginRenderPass();
-		m_renderer->Render();
-		m_renderer->EndRenderPass();
+		if (m_renderer)
+		{
+			m_renderer->BeginRenderPass();
+			m_renderer->RenderIndexed(0, 0);
+			m_renderer->EndRenderPass();
+		}
+       		
 
         m_lastRenderTime = timer.ElapsedMillis();
 	}
@@ -186,16 +197,9 @@ private:
     float m_lastRenderTime = 0.0f;
 };
 
-Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
-{
-	Walnut::ApplicationSpecification spec;
-	spec.Name = "Renderer2D Example";
-#ifndef NDEBUG
-	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
-#endif
+} // namespace
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	RenderSys::AttachToWalnut();
-	app->PushLayer<Renderer2DLayer>();
-	return app;
+std::shared_ptr<Walnut::Layer> CreateIndexBuffersLayer()
+{
+	return std::make_shared<IndexBuffersLayer>();
 }
