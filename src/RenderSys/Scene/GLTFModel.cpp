@@ -1,5 +1,6 @@
 #include "GLTFModel.h"
 
+#include <cstring>
 #include <iostream>
 
 // tinygltf decodes images with a private copy of stb_image, as Texture.cpp does
@@ -94,6 +95,30 @@ void GLTFModel::computeProps()
     s_indexCount = 0;
 }
 
+// glTF stores TEXCOORD_n as float, or as normalized unsigned byte or unsigned short (glTF 2.0, meshes)
+static glm::vec2 readTexCoord(const unsigned char* element, int componentType)
+{
+    switch (componentType) {
+    case TINYGLTF_COMPONENT_TYPE_FLOAT:
+    {
+        glm::vec2 texCoord;
+        std::memcpy(&texCoord, element, sizeof(texCoord)); // a byte stride need not keep floats aligned
+        return texCoord;
+    }
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+        return glm::vec2(element[0], element[1]) / 255.0f;
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+    {
+        uint16_t components[2];
+        std::memcpy(components, element, sizeof(components));
+        return glm::vec2(components[0], components[1]) / 65535.0f;
+    }
+    }
+
+    std::cerr << "Unknown component type for readTexCoord: " << componentType << std::endl;
+    return glm::vec2(0.0f);
+}
+
 RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive, std::shared_ptr<MeshData> modelData, const uint32_t indexCount)
 {
     assert(primitive.attributes.find("POSITION") != primitive.attributes.end()); // position is mandatory
@@ -118,13 +143,15 @@ RenderSys::SubMesh GLTFModel::loadPrimitive(const tinygltf::Primitive &primitive
     {
         const tinygltf::Accessor &accessor = m_gltfModel->accessors[primitive.attributes.find("TEXCOORD_0")->second];
         const tinygltf::BufferView &bufferView = m_gltfModel->bufferViews[accessor.bufferView];
-        const auto* bufferPos = reinterpret_cast<const float *>(&(m_gltfModel->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]));
-        const auto byteStride = accessor.ByteStride(bufferView) ? (accessor.ByteStride(bufferView) / sizeof(float)) : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC2);
+        const auto* bufferPos = &(m_gltfModel->buffers[bufferView.buffer].data[accessor.byteOffset + bufferView.byteOffset]);
+        // In bytes, since texcoords need not be float; the packed element size when the view sets no stride
+        const int byteStride = accessor.ByteStride(bufferView);
+        assert(byteStride > 0);
 
-        for (size_t v = 0; v < vertexCount; v++) 
+        for (size_t v = 0; v < vertexCount; v++)
         {
             ModelVertex& vert = modelData->vertices[v + vertexStart];
-            vert.uv0 = glm::make_vec2(&bufferPos[v * byteStride]); // VEC2: reading a vec3 runs past the last vertex
+            vert.uv0 = readTexCoord(&bufferPos[v * byteStride], accessor.componentType);
         }
     }
 
@@ -509,7 +536,7 @@ void GLTFModel::applyVertexSkinning(RenderSys::VertexBuffer& vertexBuffer)
     }
 }
 
-RenderSys::TextureSampler getDefaultSampler();
+static RenderSys::TextureSampler getDefaultSampler();
 
 void GLTFModel::loadTextures()
 {
@@ -552,7 +579,10 @@ void GLTFModel::loadTextures()
             std::make_shared<Texture>(image.width, image.height, 1, TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED, colorSpace));
         m_textures.back()->SetData((unsigned char*)image.image.data());
         // A texture without a sampler uses repeat wrapping and auto filtering (glTF 2.0, texture.sampler)
-        m_textures.back()->SetSampler(gltfTexture.sampler >= 0 ? samplers[gltfTexture.sampler] : getDefaultSampler());
+        const bool hasSampler = gltfTexture.sampler >= 0 && static_cast<size_t>(gltfTexture.sampler) < samplers.size();
+        if (gltfTexture.sampler >= 0 && !hasSampler)
+            std::cerr << "Texture " << textureIndex << " names missing sampler " << gltfTexture.sampler << ", using the default" << std::endl;
+        m_textures.back()->SetSampler(hasSampler ? samplers[gltfTexture.sampler] : getDefaultSampler());
     }
 
     //std::cout << "Texture loading completed!" << std::endl;
@@ -576,7 +606,8 @@ RenderSys::TextureSampler::AddressMode getWrapMode(int32_t wrapMode)
 
 RenderSys::TextureSampler::FilterMode getFilterMode(int32_t filterMode)
 {
-    // The *_MIPMAP_* modes name the texel filter first: 9985 is LINEAR_MIPMAP_NEAREST, 9986 is NEAREST_MIPMAP_LINEAR
+    // The *_MIPMAP_* modes name the texel filter first: 9985 is LINEAR_MIPMAP_NEAREST, 9986 is NEAREST_MIPMAP_LINEAR.
+    // Only that texel filter is kept: glTF textures load with a single mip level, so there is no mip filter to set.
     switch (filterMode) {
     case 9728:
         return RenderSys::TextureSampler::FilterMode::NEAREST;
@@ -597,7 +628,7 @@ RenderSys::TextureSampler::FilterMode getFilterMode(int32_t filterMode)
     return RenderSys::TextureSampler::FilterMode::LINEAR;
 }
 
-RenderSys::TextureSampler getDefaultSampler()
+static RenderSys::TextureSampler getDefaultSampler()
 {
     RenderSys::TextureSampler sampler{};
     sampler.minFilter = getFilterMode(-1);

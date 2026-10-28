@@ -151,8 +151,18 @@ void VulkanRenderer2D::DestroyBuffers()
 
 void VulkanRenderer2D::DestroyImages()
 {
-    // Called on every resize; the UI may still be sampling the old image
-    vkDeviceWaitIdle(Vulkan::GetDevice());
+    // Called on every resize; the UI may still be sampling the old image. The first call has nothing to wait for.
+    if (m_ImageToRenderInto != VK_NULL_HANDLE)
+    {
+        vkDeviceWaitIdle(Vulkan::GetDevice());
+    }
+
+    // The framebuffer references the render target's view, so it goes first
+    if (m_frameBuffer)
+    {
+        vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
+        m_frameBuffer = VK_NULL_HANDLE;
+    }
 
     if (m_finalRenderTarget)
     {
@@ -307,6 +317,16 @@ bool VulkanRenderer2D::CreateRenderPass()
     depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
     depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+    // Outgoing dependency: ImGui's fragment shader samples the color attachment for display after this pass.
+    // Only this one is passed, so the incoming dependency stays the implicit one.
+    VkSubpassDependency colorOutDep{};
+    colorOutDep.srcSubpass = 0;
+    colorOutDep.dstSubpass = VK_SUBPASS_EXTERNAL;
+    colorOutDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    colorOutDep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    colorOutDep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    colorOutDep.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
     VkSubpassDependency dependencies[] = {subpassDep, depthDep};
     VkAttachmentDescription attachments[] = {colorAtt};
 
@@ -318,6 +338,8 @@ bool VulkanRenderer2D::CreateRenderPass()
     renderPassInfo.pSubpasses = &subpassDesc;
     //   renderPassInfo.dependencyCount = 2;
     //   renderPassInfo.pDependencies = dependencies;
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &colorOutDep;
 
     if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
     {
