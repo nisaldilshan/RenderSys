@@ -79,7 +79,8 @@ void EditorCameraController::MousePan(const glm::vec2 &delta, glm::vec3 &positio
 void EditorCameraController::MouseRotate(const glm::vec2 &delta, float& yaw, float& pitch)
 {
     float yawSign = m_Camera->GetUpDirection().y < 0 ? -1.0f : 1.0f;
-    // Positive yaw turns toward +X, which is screen left in a right-handed view
+    // Positive yaw turns toward +X, which is screen left in a right-handed view. Only X is mirrored,
+    // so pitch, and pan and zoom along the camera's own directions, need no handedness flip.
     if (m_Camera->GetHandedness() == Handedness::Right)
         yawSign = -yawSign;
     yaw += yawSign * delta.x * RotationSpeed();
