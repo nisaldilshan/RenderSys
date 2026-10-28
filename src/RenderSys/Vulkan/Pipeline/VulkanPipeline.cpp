@@ -30,8 +30,11 @@ VkPipelineRasterizationStateCreateInfo Pipeline::getRasterizerInfo()
     rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizerInfo.lineWidth = 1.0f;
     rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    // because we use negative viewports in vulkan main pipeline (not in shadow)
-    rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE; 
+    // Default for a left-handed camera: counter-clockwise triangles land clockwise through its matrices.
+    // The main pass's negative viewport only undoes Vulkan's Y flip, so it does not change the winding.
+    // PbrRenderPipeline overrides this from the camera's handedness; ShadowRenderPipeline sets its own,
+    // since it draws with the light's matrices and no negative viewport.
+    rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterizerInfo.depthBiasEnable = VK_FALSE;
     return rasterizerInfo;
 }

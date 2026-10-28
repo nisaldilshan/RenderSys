@@ -28,6 +28,7 @@ struct Context
     uint32_t queueFamily = 0;
     VkQueue queue = VK_NULL_HANDLE;
     // Pool the host's UI draws from, used to show render targets as ImGui images. Optional.
+    // Needs VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT: render targets free their set on resize.
     VkDescriptorPool uiDescriptorPool = VK_NULL_HANDLE;
     const VkAllocationCallbacks* allocator = nullptr;
     // The host window's surface; the graphics queue can present to it. Null when headless.

@@ -39,6 +39,7 @@ public:
 	{
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 		m_renderer->Init();
+		m_renderer->SetClearColor(m_clearColor); // OnUIRender only applies changes, and starts equal to it
 
 		if (!loadScene())
 		{
@@ -104,7 +105,8 @@ public:
 			assert(false);
 		}
 
-		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f);
+		// glTF is right-handed: a left-handed camera shows it mirrored
+		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f, RenderSys::Handedness::Right);
 		auto cameraEntity = m_scene->AddCamera(m_cameraController->GetCamera());
 		m_cameraController->SetCameraEntity(cameraEntity, m_scene->m_Registry);
 
@@ -178,7 +180,7 @@ public:
 		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
 
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
-		m_renderer->CreatePipeline();
+		m_renderer->CreatePipeline(m_cameraController->GetCamera()->GetHandedness());
 	}
 
 	virtual void OnDetach() override
@@ -230,6 +232,10 @@ public:
 			for (auto entity : view)
 			{
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
+				// Every primitive of the mesh draws all its instances, e.g. one per placed robot
+				const uint32_t instanceCount = view.get<RenderSys::InstanceTagComponent>(entity).GetInstanceCount();
+				for (auto& subMesh : meshComponent.m_Mesh->subMeshes)
+					subMesh.m_InstanceCount = instanceCount;
 				m_renderer->RenderMesh(meshComponent);
 			}
 
@@ -310,6 +316,9 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 {
 	Walnut::ApplicationSpecification spec;
 	spec.Name = "Renderer3D Example";
+#ifndef NDEBUG
+	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
+#endif
 
 	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();

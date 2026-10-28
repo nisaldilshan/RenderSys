@@ -1,15 +1,19 @@
 #pragma once
 
 #include "ICamera.h"
+#include <RenderSys/RenderUtil.h>
 
 namespace RenderSys
 {
 
+// Either handedness looks along +Z of the camera's rotation, so a position and orientation see the same place.
 class PerspectiveCamera : public ICamera
 {
 public:
-    PerspectiveCamera(float fov, float nearClip, float farClip);
+    PerspectiveCamera(float fov, float nearClip, float farClip, Handedness handedness = Handedness::Left);
     ~PerspectiveCamera() override = default;
+
+    Handedness GetHandedness() const { return m_handedness; }
 
     glm::vec3 GetUpDirection() const;
     glm::vec3 GetRightDirection() const;
@@ -36,6 +40,7 @@ private:
     float m_AspectRatio = 1.0f;
     float m_nearClip = 0.0f;
     float m_farClip = 0.0f;
+    Handedness m_handedness = Handedness::Left;
 };
 
 

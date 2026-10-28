@@ -173,8 +173,7 @@ void VulkanRenderer3D::DestroyImages()
 
     for (auto &debugView : m_debugViews)
     {
-        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), debugView->descriptorSetLayout, nullptr);
-        vkDestroyImageView(Vulkan::GetDevice(), debugView->view, nullptr);
+        Vulkan::DestroyRenderTarget(*debugView);
     }
     m_debugViews.clear();
 
@@ -187,8 +186,7 @@ void VulkanRenderer3D::DestroyImages()
 
     if (m_finalRenderTarget)
     {
-        vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), m_finalRenderTarget->descriptorSetLayout, nullptr);
-        vkDestroyImageView(Vulkan::GetDevice(), m_finalRenderTarget->view, nullptr);
+        Vulkan::DestroyRenderTarget(*m_finalRenderTarget);
     }
     m_finalRenderTarget.reset();
 
@@ -392,7 +390,9 @@ void VulkanRenderer3D::CreateRenderPass()
     colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAtt.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+    // Matches the layout CreateRenderTarget() declares for the ImGui descriptor set that
+    // samples this image (VulkanRendererUtils.cpp); GENERAL here was a validation-hidden mismatch.
+    colorAtt.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference colorAttRef{};
     colorAttRef.attachment = 0;
@@ -435,7 +435,17 @@ void VulkanRenderer3D::CreateRenderPass()
     depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
     depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-    VkSubpassDependency dependencies[] = {subpassDep, depthDep};
+    // Outgoing dependency: the color attachment is read by ImGui's fragment shader (sampling it for
+    // display) and by the transfer stage (GetRenderedImageDataToCPUSide's readback), both after this pass.
+    VkSubpassDependency colorOutDep{};
+    colorOutDep.srcSubpass = 0;
+    colorOutDep.dstSubpass = VK_SUBPASS_EXTERNAL;
+    colorOutDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    colorOutDep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    colorOutDep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+    colorOutDep.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+
+    VkSubpassDependency dependencies[] = {subpassDep, depthDep, colorOutDep};
     VkAttachmentDescription attachments[] = {colorAtt, depthAtt};
 
     VkRenderPassCreateInfo renderPassInfo{};
@@ -444,7 +454,7 @@ void VulkanRenderer3D::CreateRenderPass()
     renderPassInfo.pAttachments = attachments;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpassDesc;
-    renderPassInfo.dependencyCount = 2;
+    renderPassInfo.dependencyCount = 3;
     renderPassInfo.pDependencies = dependencies;
 
     if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
@@ -473,7 +483,7 @@ void VulkanRenderer3D::DestroyRenderPass()
     vkDestroyRenderPass(Vulkan::GetDevice(), m_renderpass, nullptr);
 }
 
-void VulkanRenderer3D::CreatePipeline()
+void VulkanRenderer3D::CreatePipeline(RenderSys::Handedness cameraHandedness)
 {
     auto vertexShaderIter = m_shaderMap.find("Vertex");
     if (vertexShaderIter == m_shaderMap.end()) {
@@ -495,7 +505,9 @@ void VulkanRenderer3D::CreatePipeline()
     std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
                                                     RenderSys::GetMaterialBindGroupLayout(),
                                                     RenderSys::GetResourceBindGroupLayout()};
-    m_pbrRenderPipeline = std::make_unique<RenderSys::Vulkan::PbrRenderPipeline>(m_renderpass, layouts, m_vertexInputLayout, shaderStageInfos);
+    // The negative viewport undoes Vulkan's Y flip, so only a left-handed camera mirrors the counter-clockwise winding of right-handed data such as glTF
+    const VkFrontFace vkFrontFace = cameraHandedness == RenderSys::Handedness::Right ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+    m_pbrRenderPipeline = std::make_unique<RenderSys::Vulkan::PbrRenderPipeline>(m_renderpass, layouts, m_vertexInputLayout, shaderStageInfos, vkFrontFace);
     if (m_pbrRenderPipeline->GetPipeline() == VK_NULL_HANDLE || m_pbrRenderPipeline->GetPipelineLayout() == VK_NULL_HANDLE){
         std::cout << "error: could not create pipeline" << std::endl;
         assert(false);
@@ -1104,7 +1116,7 @@ std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
     imageBarrier_toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     imageBarrier_toTransfer.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT; // Or whatever it was before
     imageBarrier_toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    imageBarrier_toTransfer.oldLayout = VK_IMAGE_LAYOUT_GENERAL; // IMPORTANT: Use the layout the image is currently in
+    imageBarrier_toTransfer.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // IMPORTANT: Use the layout the image is currently in
     imageBarrier_toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     imageBarrier_toTransfer.image = m_ImageToRenderInto;
     imageBarrier_toTransfer.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
@@ -1138,7 +1150,7 @@ std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
     imageBarrier_toOriginal.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     imageBarrier_toOriginal.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
     imageBarrier_toOriginal.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    imageBarrier_toOriginal.newLayout = VK_IMAGE_LAYOUT_GENERAL; // Transition back to what ImGui expects
+    imageBarrier_toOriginal.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // Transition back to what ImGui expects
     imageBarrier_toOriginal.image = m_ImageToRenderInto;
     imageBarrier_toOriginal.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 

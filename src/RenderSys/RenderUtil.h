@@ -62,6 +62,14 @@ namespace RenderSys
     };
 
 
+    // Handedness of the camera matrices. Left is what RenderSys always used, and it shows right-handed data
+    // such as glTF mirrored; Right draws it as authored. Pass the camera's handedness to
+    // Renderer3D::CreatePipeline too: the mirror flips triangle winding, so it decides which faces are culled.
+    enum class Handedness : uint32_t {
+        Left = 0,
+        Right,
+    };
+
     enum class ShaderStage : uint32_t {
         None = 0x00000000,
         Vertex = 0x00000001,

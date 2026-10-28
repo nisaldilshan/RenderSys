@@ -3,8 +3,8 @@
 namespace RenderSys
 {
 
-EditorCameraController::EditorCameraController(float fov, float nearClip, float farClip)
-    : m_Camera(std::make_shared<PerspectiveCamera>(fov, nearClip, farClip))
+EditorCameraController::EditorCameraController(float fov, float nearClip, float farClip, Handedness handedness)
+    : m_Camera(std::make_shared<PerspectiveCamera>(fov, nearClip, farClip, handedness))
     , m_prevMousePosition(0.0f, 0.0f)
     , m_CameraEntity(entt::null)
     , m_Registry(nullptr)
@@ -79,6 +79,10 @@ void EditorCameraController::MousePan(const glm::vec2 &delta, glm::vec3 &positio
 void EditorCameraController::MouseRotate(const glm::vec2 &delta, float& yaw, float& pitch)
 {
     float yawSign = m_Camera->GetUpDirection().y < 0 ? -1.0f : 1.0f;
+    // Positive yaw turns toward +X, which is screen left in a right-handed view. Only X is mirrored,
+    // so pitch, and pan and zoom along the camera's own directions, need no handedness flip.
+    if (m_Camera->GetHandedness() == Handedness::Right)
+        yawSign = -yawSign;
     yaw += yawSign * delta.x * RotationSpeed();
     pitch += delta.y * RotationSpeed();
 }

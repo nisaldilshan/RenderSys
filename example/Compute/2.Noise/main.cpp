@@ -307,6 +307,9 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 {
 	Walnut::ApplicationSpecification spec;
 	spec.Name = "Compute Example";
+#ifndef NDEBUG
+	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
+#endif
 
 	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();

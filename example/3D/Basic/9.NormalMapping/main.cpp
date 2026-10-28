@@ -41,6 +41,7 @@ public:
 	{
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 		m_renderer->Init();
+		m_renderer->SetClearColor(m_clearColor); // OnUIRender only applies changes, and starts equal to it
 
 		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cylinder.obj", m_vertexBuffer);
 		assert(success);
@@ -463,6 +464,9 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 {
 	Walnut::ApplicationSpecification spec;
 	spec.Name = "Renderer3D Example";
+#ifndef NDEBUG
+	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
+#endif
 
 	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();

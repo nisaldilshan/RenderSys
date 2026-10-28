@@ -1,6 +1,7 @@
 import os
 from conan import ConanFile
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
+from conan.tools.env import VirtualRunEnv
 from conan.tools.scm import Git
 from conan.tools.files import copy
 from conan.errors import ConanInvalidConfiguration, ConanException
@@ -93,6 +94,18 @@ class RenderSysConan(ConanFile):
         
         deps = CMakeDeps(self)
         deps.generate()
+
+        # Walnut's run environment points VK_LAYER_PATH at a loader-compatible validation layer manifest.
+        # The VS Code debugger cannot source conanrun.sh, so hand the variables over as an envFile
+        # (see .vscode/launch.json). Every launch config reads it, so it is written for every option
+        # combination, empty when there is no layer to enable.
+        layer_path = None
+        if self.options.with_walnut and self.options.rendering_backend == "Vulkan":
+            layer_path = VirtualRunEnv(self).environment().vars(self, scope="run").get("VK_LAYER_PATH")
+        with open(os.path.join(self.build_folder, "vk_layer_path.env"), "w") as env_file:
+            if layer_path:
+                env_file.write(f"VK_LAYER_PATH={layer_path}\n")
+                env_file.write("VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation\n")
 
     def build(self):
         cmake = CMake(self)

@@ -15,7 +15,8 @@ public:
     PbrRenderPipeline(VkRenderPass renderPass, 
                         std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
                         const Vulkan::VertexInputLayout& vertexInputLayout, 
-                        const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos);
+                        const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos,
+                        VkFrontFace frontFace);
     ~PbrRenderPipeline();
 
     PbrRenderPipeline(const PbrRenderPipeline&) = delete;
@@ -29,7 +30,7 @@ public:
 private:
     void CreatePipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts);
     void CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
-                        const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos);
+                        const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos, VkFrontFace frontFace);
 
     VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
     VkPipeline m_Pipeline = VK_NULL_HANDLE;

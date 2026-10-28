@@ -53,9 +53,9 @@ void Renderer3D::SetIndexBufferData(uint32_t vertexBufferID, const std::vector<u
     m_rendererBackend->CreateIndexBuffer(vertexBufferID, bufferData);
 }
 
-void Renderer3D::CreatePipeline()
+void Renderer3D::CreatePipeline(Handedness cameraHandedness)
 {
-    m_rendererBackend->CreatePipeline();
+    m_rendererBackend->CreatePipeline(cameraHandedness);
 }
 
 void Renderer3D::CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries)

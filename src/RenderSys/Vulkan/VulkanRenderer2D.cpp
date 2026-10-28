@@ -40,10 +40,10 @@ bool VulkanRenderer2D::Init()
 
 void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height)
 {
+    DestroyImages();
     m_width = width;
     m_height = height;
 
-    static VkDeviceMemory m_Memory;
     VkImageCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     info.imageType = VK_IMAGE_TYPE_2D;
@@ -66,9 +66,9 @@ void VulkanRenderer2D::CreateTextureToRenderInto(uint32_t width, uint32_t height
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = req.size;
     alloc_info.memoryTypeIndex = Vulkan::FindMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_Memory);
+    err = vkAllocateMemory(Vulkan::GetDevice(), &alloc_info, nullptr, &m_renderImageMemory);
     Vulkan::CheckVkResult(err);
-    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_Memory, 0);
+    err = vkBindImageMemory(Vulkan::GetDevice(), m_ImageToRenderInto, m_renderImageMemory, 0);
     Vulkan::CheckVkResult(err);
 
     CreateTextureSampler();
@@ -146,6 +146,46 @@ void VulkanRenderer2D::DestroyBuffers()
     if (m_indexBuffer != VK_NULL_HANDLE && m_indexBufferMemory != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(m_vma, m_indexBuffer, m_indexBufferMemory);
+    }
+}
+
+void VulkanRenderer2D::DestroyImages()
+{
+    // Called on every resize; the UI may still be sampling the old image. The first call has nothing to wait for.
+    if (m_ImageToRenderInto != VK_NULL_HANDLE)
+    {
+        vkDeviceWaitIdle(Vulkan::GetDevice());
+    }
+
+    // The framebuffer references the render target's view, so it goes first
+    if (m_frameBuffer)
+    {
+        vkDestroyFramebuffer(Vulkan::GetDevice(), m_frameBuffer, nullptr);
+        m_frameBuffer = VK_NULL_HANDLE;
+    }
+
+    if (m_finalRenderTarget)
+    {
+        Vulkan::DestroyRenderTarget(*m_finalRenderTarget);
+    }
+    m_finalRenderTarget.reset();
+
+    if (m_textureSampler != VK_NULL_HANDLE)
+    {
+        vkDestroySampler(Vulkan::GetDevice(), m_textureSampler, nullptr);
+        m_textureSampler = VK_NULL_HANDLE;
+    }
+
+    if (m_ImageToRenderInto != VK_NULL_HANDLE)
+    {
+        vkDestroyImage(Vulkan::GetDevice(), m_ImageToRenderInto, nullptr);
+        m_ImageToRenderInto = VK_NULL_HANDLE;
+    }
+
+    if (m_renderImageMemory != VK_NULL_HANDLE)
+    {
+        vkFreeMemory(Vulkan::GetDevice(), m_renderImageMemory, nullptr);
+        m_renderImageMemory = VK_NULL_HANDLE;
     }
 }
 
@@ -232,7 +272,9 @@ bool VulkanRenderer2D::CreateRenderPass()
     colorAtt.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAtt.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAtt.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+    // Matches the layout CreateRenderTarget() declares for the ImGui descriptor set that
+    // samples this image (VulkanRendererUtils.cpp); GENERAL here was a validation-hidden mismatch.
+    colorAtt.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference colorAttRef{};
     colorAttRef.attachment = 0;
@@ -275,6 +317,16 @@ bool VulkanRenderer2D::CreateRenderPass()
     depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
     depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+    // Outgoing dependency: ImGui's fragment shader samples the color attachment for display after this pass.
+    // Only this one is passed, so the incoming dependency stays the implicit one.
+    VkSubpassDependency colorOutDep{};
+    colorOutDep.srcSubpass = 0;
+    colorOutDep.dstSubpass = VK_SUBPASS_EXTERNAL;
+    colorOutDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    colorOutDep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    colorOutDep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    colorOutDep.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
     VkSubpassDependency dependencies[] = {subpassDep, depthDep};
     VkAttachmentDescription attachments[] = {colorAtt};
 
@@ -286,6 +338,8 @@ bool VulkanRenderer2D::CreateRenderPass()
     renderPassInfo.pSubpasses = &subpassDesc;
     //   renderPassInfo.dependencyCount = 2;
     //   renderPassInfo.pDependencies = dependencies;
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &colorOutDep;
 
     if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
     {
@@ -664,6 +718,7 @@ void VulkanRenderer2D::EndRenderPass()
 
 void VulkanRenderer2D::Destroy()
 {
+    DestroyImages();
     DestroyBuffers();
 
     // Destroy VMA instance

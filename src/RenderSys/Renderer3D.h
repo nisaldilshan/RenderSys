@@ -45,7 +45,7 @@ public:
     void SetShader(RenderSys::Shader& shader);
     uint32_t SetVertexBufferData(const VertexBuffer& bufferData, RenderSys::VertexBufferLayout bufferLayout);
     void SetIndexBufferData(uint32_t vertexBufferID, const std::vector<uint32_t>& bufferData);
-    void CreatePipeline();
+    void CreatePipeline(Handedness cameraHandedness = Handedness::Left);
     void CreateBindGroup(const std::vector<RenderSys::BindGroupLayoutEntry>& bindGroupLayoutEntries);
     void CreateTexture(uint32_t binding, const std::shared_ptr<RenderSys::Texture> texture);
     void SetClearColor(glm::vec4 clearColor);

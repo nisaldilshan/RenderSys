@@ -39,6 +39,7 @@ public:
 	{
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
 		m_renderer->Init();
+		m_renderer->SetClearColor(m_clearColor); // OnUIRender only applies changes, and starts equal to it
 
 		if (!loadScene())
 		{
@@ -253,7 +254,8 @@ public:
 			{
 				auto& meshComponent = view.get<RenderSys::MeshComponent>(entity);
 				auto& instanceTagComponent = view.get<RenderSys::InstanceTagComponent>(entity);
-				meshComponent.m_Mesh->subMeshes[0].m_InstanceCount = instanceTagComponent.GetInstanceCount();
+				for (auto& subMesh : meshComponent.m_Mesh->subMeshes)
+					subMesh.m_InstanceCount = instanceTagComponent.GetInstanceCount();
 				m_renderer->RenderMesh(meshComponent);
 			}
 
@@ -326,6 +328,9 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 {
 	Walnut::ApplicationSpecification spec;
 	spec.Name = "Renderer3D Example";
+#ifndef NDEBUG
+	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
+#endif
 
 	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();

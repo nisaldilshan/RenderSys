@@ -38,6 +38,8 @@ void TransitionImageLayout(VkImage image, VkFormat format,
 
 uint32_t GetUniformStride(const uint32_t sizeOfUniform);
 std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSampler sampler);
+// Frees what CreateRenderTarget made, including the view it took. The GPU must be done with the target.
+void DestroyRenderTarget(RenderTarget& renderTarget);
 
 } // namespace Vulkan
 } // namespace RenderSys

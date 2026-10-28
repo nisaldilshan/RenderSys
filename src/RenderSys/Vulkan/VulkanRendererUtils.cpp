@@ -316,5 +316,21 @@ std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSample
     return ret;
 }
 
+void DestroyRenderTarget(RenderTarget& renderTarget)
+{
+    // Return the set to the host's pool, or every viewport resize leaks one set from it.
+    // Without a pool CreateRenderTarget made no set or layout, only the view.
+    const VkDescriptorPool uiDescriptorPool = Vulkan::GetContext().uiDescriptorPool;
+    if (uiDescriptorPool != VK_NULL_HANDLE && renderTarget.descriptorSet != VK_NULL_HANDLE)
+    {
+        VkResult err = vkFreeDescriptorSets(Vulkan::GetDevice(), uiDescriptorPool, 1, &renderTarget.descriptorSet);
+        Vulkan::CheckVkResult(err);
+    }
+    // Each handle goes back with the allocator it was made with: the layout's, the context's; the view's, none
+    vkDestroyDescriptorSetLayout(Vulkan::GetDevice(), renderTarget.descriptorSetLayout, Vulkan::GetContext().allocator);
+    vkDestroyImageView(Vulkan::GetDevice(), renderTarget.view, nullptr);
+    renderTarget = RenderTarget{};
+}
+
 } // namespace Vulkan
 } // namespace RenderSys

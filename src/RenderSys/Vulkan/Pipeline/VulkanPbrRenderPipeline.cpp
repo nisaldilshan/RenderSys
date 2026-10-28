@@ -14,10 +14,11 @@ namespace Vulkan {
 PbrRenderPipeline::PbrRenderPipeline(VkRenderPass renderPass,
     std::vector<VkDescriptorSetLayout> &descriptorSetLayouts,
     const Vulkan::VertexInputLayout& vertexInputLayout, 
-    const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos) 
+    const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos,
+    VkFrontFace frontFace)
 {
     CreatePipelineLayout(descriptorSetLayouts);
-    CreatePipeline(renderPass, vertexInputLayout, shaderStageInfos);
+    CreatePipeline(renderPass, vertexInputLayout, shaderStageInfos, frontFace);
 }
 
 PbrRenderPipeline::~PbrRenderPipeline() 
@@ -58,7 +59,7 @@ void PbrRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSetLa
 }
 
 void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
-                                       const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos)
+                                       const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos, VkFrontFace frontFace)
 {
     assert(m_PipelineLayout != VK_NULL_HANDLE);
 
@@ -137,6 +138,7 @@ void PbrRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::Ve
     pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
     pipelineCreateInfo.pViewportState = &viewportStateInfo;
     VkPipelineRasterizationStateCreateInfo rasterizerInfo = Vulkan::Pipeline::getRasterizerInfo();
+    rasterizerInfo.frontFace = frontFace;
     pipelineCreateInfo.pRasterizationState = &rasterizerInfo;
     pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
     pipelineCreateInfo.pColorBlendState = &colorBlendingInfo;
