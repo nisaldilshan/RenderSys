@@ -31,9 +31,12 @@ A simple rendering system written in C++.
 - GLM for mathematics operations.
 
 ## Examples
-Run the example application to see the rendering system in action:
+The 2D and the basic 3D examples are each built into one application. Pick an example from the
+"Examples" list; the application destroys the running example and starts the selected one.
+Pass an example's number to start with it:
 ```bash
-#TODO
+build/Debug/example/2D/Examples2D 3
+build/Debug/example/3D/Basic/Examples3DBasic 9
 ```
 
 ## Contributing

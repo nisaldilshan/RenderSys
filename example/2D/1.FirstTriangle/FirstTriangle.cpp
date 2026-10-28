@@ -1,6 +1,4 @@
 #include "Walnut/Application.h"
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#include "Walnut/EntryPoint.h"
 #include "Walnut/Random.h"
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
@@ -8,7 +6,12 @@
 #include <RenderSys/Renderer2D.h>
 #include <imgui.h>
 
-class Renderer2DLayer : public Walnut::Layer
+#include "Examples2D.h"
+
+namespace
+{
+
+class FirstTriangleLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
@@ -40,7 +43,6 @@ public:
 					#version 450
 
 					layout(location = 0) out vec4 FragColor;
-					layout(location = 0) in vec2 texCoord;
 
 					void main()
 					{
@@ -135,16 +137,9 @@ private:
     float m_lastRenderTime = 0.0f;
 };
 
-Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
-{
-	Walnut::ApplicationSpecification spec;
-	spec.Name = "Renderer2D Example";
-#ifndef NDEBUG
-	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
-#endif
+} // namespace
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	RenderSys::AttachToWalnut();
-	app->PushLayer<Renderer2DLayer>();
-	return app;
+std::shared_ptr<Walnut::Layer> CreateFirstTriangleLayer()
+{
+	return std::make_shared<FirstTriangleLayer>();
 }

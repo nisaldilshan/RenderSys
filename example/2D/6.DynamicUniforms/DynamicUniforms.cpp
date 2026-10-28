@@ -1,13 +1,16 @@
 #include <array>
 #include <Walnut/Application.h>
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer2D.h>
 #include <RenderSys/Geometry.h>
 #include <imgui.h>
+
+#include "Examples2D.h"
+
+namespace
+{
 
 /**
  * The same structure as in the shader, replicated in C++
@@ -25,7 +28,7 @@ struct MyUniforms {
 // Have the compiler check byte alignment
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-class Renderer2DLayer : public Walnut::Layer
+class DynamicUniformsLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
@@ -261,16 +264,9 @@ private:
 	MyUniforms m_uniformData;
 };
 
-Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
-{
-	Walnut::ApplicationSpecification spec;
-	spec.Name = "Renderer2D Example";
-#ifndef NDEBUG
-	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
-#endif
+} // namespace
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	RenderSys::AttachToWalnut();
-	app->PushLayer<Renderer2DLayer>();
-	return app;
+std::shared_ptr<Walnut::Layer> CreateDynamicUniformsLayer()
+{
+	return std::make_shared<DynamicUniformsLayer>();
 }
