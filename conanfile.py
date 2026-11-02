@@ -104,6 +104,8 @@ class RenderSysConan(ConanFile):
             layer_path = VirtualRunEnv(self).environment().vars(self, scope="run").get("VK_LAYER_PATH")
         with open(os.path.join(self.build_folder, "vk_layer_path.env"), "w") as env_file:
             if layer_path:
+                # dotenv parsers (CodeLLDB) treat backslashes as escapes, so Windows paths use forward slashes
+                layer_path = layer_path.replace("\\", "/")
                 env_file.write(f"VK_LAYER_PATH={layer_path}\n")
                 env_file.write("VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation\n")
 

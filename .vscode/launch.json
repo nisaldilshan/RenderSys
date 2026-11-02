@@ -2,6 +2,8 @@
     // Use IntelliSense to learn about possible attributes.
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    // Single-config generators (Linux) build into build/<config>/<target dir>, while Visual Studio
+    // (multi-config) builds into build/<target dir>/<config>, hence the "windows" overrides
     "version": "0.2.0",
     "configurations": [
         {
@@ -16,18 +18,28 @@
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/2D/Debug/Examples2D.exe",
+                "cwd": "${workspaceFolder}/build/example/2D/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+            },
         },
         {
             "name": "Fluid2D",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/2D/7.Fluid2D/Fluid2D",
+            "program": "${workspaceFolder}/build/Debug/example/Compute/3.Fluid2D/Fluid2D",
             "args": [],
             "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/2D/7.Fluid2D",
+            "cwd": "${workspaceFolder}/build/Debug/example/Compute/3.Fluid2D",
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
+            },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/Compute/3.Fluid2D/Debug/Fluid2D.exe",
+                "cwd": "${workspaceFolder}/build/example/Compute/3.Fluid2D/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
             },
         },
         {
@@ -42,6 +54,11 @@
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/Compute/1.BasicCompute/Debug/BasicCompute.exe",
+                "cwd": "${workspaceFolder}/build/example/Compute/1.BasicCompute/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+            },
         },
         {
             "name": "Noise",
@@ -54,6 +71,11 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
+            },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/Compute/2.Noise/Debug/Noise.exe",
+                "cwd": "${workspaceFolder}/build/example/Compute/2.Noise/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
             },
         },
         {
@@ -68,6 +90,11 @@
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
             },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/3D/Basic/Debug/Examples3DBasic.exe",
+                "cwd": "${workspaceFolder}/build/example/3D/Basic/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+            },
         },
         {
             "name": "GLTFModel",
@@ -80,6 +107,11 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
+            },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/3D/Advanced/2.GLTFModel/Debug/GLTFModel.exe",
+                "cwd": "${workspaceFolder}/build/example/3D/Advanced/2.GLTFModel/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
             },
         },
         {
@@ -94,6 +126,11 @@
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
             },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/3D/Advanced/3.FirstAnimation/Debug/FirstAnimation.exe",
+                "cwd": "${workspaceFolder}/build/example/3D/Advanced/3.FirstAnimation/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+            },
         },
         {
             "name": "ShadowMapping",
@@ -107,6 +144,11 @@
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
             },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/3D/Advanced/4.ShadowMapping/Debug/ShadowMapping.exe",
+                "cwd": "${workspaceFolder}/build/example/3D/Advanced/4.ShadowMapping/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+            },
         },
         {
             "name": "RayMarching",
@@ -119,6 +161,11 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
+            },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/3D/Advanced/1.RayMarching/Debug/RayMarching.exe",
+                "cwd": "${workspaceFolder}/build/example/3D/Advanced/1.RayMarching/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
             },
         }
     ]
