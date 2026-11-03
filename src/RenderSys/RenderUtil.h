@@ -70,6 +70,13 @@ namespace RenderSys
         Right,
     };
 
+    // Which triangles a pipeline discards, by the winding they show through its matrices
+    enum class CullMode : uint32_t {
+        None = 0,
+        Front,
+        Back,
+    };
+
     enum class ShaderStage : uint32_t {
         None = 0x00000000,
         Vertex = 0x00000001,

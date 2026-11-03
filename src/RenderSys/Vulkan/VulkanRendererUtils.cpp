@@ -272,7 +272,7 @@ uint32_t GetUniformStride(const uint32_t sizeOfUniform)
     return uniformStride;
 }
 
-std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSampler sampler)
+std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSampler sampler, VkImageLayout imageLayout)
 {
     auto ret = std::make_unique<RenderTarget>();
     ret->view = imageView;
@@ -304,7 +304,7 @@ std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSample
     VkDescriptorImageInfo desc_image[1] = {};
     desc_image[0].sampler = sampler;
     desc_image[0].imageView = imageView;
-    desc_image[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    desc_image[0].imageLayout = imageLayout;
     VkWriteDescriptorSet write_desc[1] = {};
     write_desc[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write_desc[0].dstSet = ret->descriptorSet;

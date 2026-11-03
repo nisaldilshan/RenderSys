@@ -73,7 +73,8 @@ public:
     void EndRenderPass();
 
     void CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight);
-    void CreateShadowPipeline();
+    void CreateShadowPipeline(RenderSys::CullMode cullMode);
+    void SetShadowDepthBias(float constantFactor, float slopeFactor);
     void BeginShadowMapPass();
     void RenderShadowMap(entt::registry& entityRegistry);
     void EndShadowMapPass();
@@ -83,7 +84,7 @@ public:
     void ResetCommandBuffer();
     void SubmitCommandBuffer();
 
-    uint64_t GetDebugView();
+    uint64_t GetShadowMapImGuiTexture() const;
     std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 
 private:
@@ -131,8 +132,13 @@ private:
 
     std::shared_ptr<RenderSys::Vulkan::ShadowMap> m_shadowMap;
     std::unique_ptr<Vulkan::ShadowRenderPipeline> m_shadowRenderPipeline;
+    float m_shadowDepthBiasConstant = 0.0f;
+    float m_shadowDepthBiasSlope = 0.0f;
+    // The shadow map's depth as greyscale for ImGui::Image, through a plain (non-compare) sampler.
+    // It lives as long as the shadow map, unlike the viewport images that a resize recreates.
+    std::unique_ptr<Vulkan::RenderTarget> m_shadowMapImGuiTarget;
+    bool m_shadowMapWritten = false; // until a shadow pass has run, the map is in no layout a sampler may read
     std::unique_ptr<VulkanCPUImageCopyData> m_cpuImageData;
-    std::vector<std::unique_ptr<Vulkan::RenderTarget>> m_debugViews;
 };
 
 }
