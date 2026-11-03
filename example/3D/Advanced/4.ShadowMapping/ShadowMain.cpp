@@ -22,6 +22,8 @@
 
 #include "ShadowHelper.h"
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/constants.hpp>
+#include <resources/Shaders/ShaderLighting.h>
 
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
@@ -31,13 +33,20 @@ struct alignas(16) MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-struct alignas(16) LightingUniforms {
-    std::array<glm::vec4, 1> lightDirections;
-    std::array<glm::vec4, 1> lightColors;
-	std::array<glm::mat4x4, 1> padding;
-	std::array<glm::mat4x4, 1> lightViewProjections;
-};
-static_assert(sizeof(LightingUniforms) % 16 == 0);
+static_assert(sizeof(LightingProperties) == 192, "must match the std140 layout in ShaderLighting.h");
+
+// The scene's directional light fills light 0 every frame. The 0.03 ambient is what this example
+// always had, now from a uniform sky, and no tone curve keeps its look.
+static LightingProperties GetLighting()
+{
+	LightingProperties lighting{};
+	lighting.m_skyColor = glm::vec4(0.03f, 0.03f, 0.03f, 0.0f);
+	lighting.m_groundColor = lighting.m_skyColor;
+	lighting.m_lightViewProjection = glm::mat4(1.0f);
+	lighting.m_exposure = { 1.0f, 0.0f, 0.0f, 0.0f };
+	lighting.m_settings = { 1, GLSL_TONEMAP_NONE, 0, 0 };
+	return lighting;
+}
 
 Walnut::Application* appPtr = nullptr;
 
@@ -132,7 +141,7 @@ public:
 		lightingUniformLayout.binding = 1;
 		lightingUniformLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
 		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingProperties);
 		// ShadowMap binding
 		RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[2];
 		textureBindingLayout.setDefault();
@@ -142,7 +151,7 @@ public:
 		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
 		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
-		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
+		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingProperties), 1);
 
 		m_renderer->CreateShadowMap(2048, 2048);
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
@@ -296,10 +305,11 @@ private:
 		for (auto entity : lightView)
 		{
 			auto& lightComponent = lightView.get<RenderSys::DirectionalLightComponent>(entity);
-			m_lightingUniformData.lightColors[0] = { lightComponent.m_Color, 1.0f };
+			// The shaders divide the Lambert term by pi, so pi keeps this example's brightness
+			m_lightingUniformData.m_lightColors[0] = { glm::pi<float>() * lightComponent.m_LightIntensity * lightComponent.m_Color, 0.0f };
 			auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
 			// shader expects the direction towards the light, the light shines along its forward vector
-			m_lightingUniformData.lightDirections[0] = { -transformComponent.GetForwardVector(), 0.0f };
+			m_lightingUniformData.m_lightDirections[0] = { -transformComponent.GetForwardVector(), 0.0f };
 
 			auto lightModelMatrix = glm::translate(glm::mat4(1.0f), transformComponent.GetTranslation());
 			lightModelMatrix = lightModelMatrix * glm::mat4_cast(glm::quat(-transformComponent.GetRotation()));
@@ -421,7 +431,7 @@ private:
 			glm::mat4 lightOrthoMatrix = glm::orthoRH_ZO(ortho.l, ortho.r, ortho.b, ortho.t, ortho.n, ortho.f);
 
 			// The final matrix is stable and correctly positioned
-			m_lightingUniformData.lightViewProjections[0] = lightOrthoMatrix * lightViewMatrix;
+			m_lightingUniformData.m_lightViewProjection = lightOrthoMatrix * lightViewMatrix;
 		}
 		m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 	}
@@ -565,7 +575,7 @@ private:
 	glm::vec4 m_clearColor = glm::vec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	MyUniforms m_myUniformData;
-	LightingUniforms m_lightingUniformData;
+	LightingProperties m_lightingUniformData = GetLighting();
 	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;

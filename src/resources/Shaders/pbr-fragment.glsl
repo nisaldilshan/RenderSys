@@ -1,8 +1,10 @@
 #version 460
 
 #include "ShaderMaterial.h"
+#include "ShaderLighting.h"
 #include "metallic-roughness.glsl"
 #include "pbr-material.glsl"
+#include "tonemap.glsl"
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 projectionMatrix;
@@ -11,9 +13,8 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     float time;
 } ubo;
 
-layout(set = 0, binding = 1) uniform LightingUniforms {
-    vec4 directions[2];
-    vec4 colors[2];
+layout(std140, set = 0, binding = 1) uniform LightingUniforms {
+    LightingProperties m_lighting;
 } lightingUbo;
 
 layout (location = 0) in vec3 in_viewDirection;
@@ -28,12 +29,12 @@ void main()
     PbrSurface surface = getPbrSurface(in_uv, in_normal, in_tangent);
     vec3 V = normalize(in_viewDirection);
 
-    vec3 color = pbrAmbient(surface);
-    for (int i = 0; i < lightingUbo.directions.length(); ++i) 
+    vec3 color = pbrAmbient(surface, V, lightingUbo.m_lighting.m_skyColor.rgb, lightingUbo.m_lighting.m_groundColor.rgb);
+    int lightCount = min(lightingUbo.m_lighting.m_settings.x, GLSL_MAX_DIRECTIONAL_LIGHTS);
+    for (int i = 0; i < lightCount; ++i)
     {
-        color += pbrDirectLight(surface, V, normalize(lightingUbo.directions[i].xyz), lightingUbo.colors[i].rgb);
+        color += pbrDirectLight(surface, V, normalize(lightingUbo.m_lighting.m_lightDirections[i].xyz), lightingUbo.m_lighting.m_lightColors[i].rgb);
     }
 
-    out_color = vec4(color, surface.alpha);
-    out_color = pow(out_color, vec4(1.0/2.2));
+    out_color = vec4(applyDisplayTransform(color, lightingUbo.m_lighting), surface.alpha);
 }

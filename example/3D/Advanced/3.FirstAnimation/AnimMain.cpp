@@ -16,6 +16,8 @@
 #include <RenderSys/Components/TagAndIDComponents.h>
 #include <RenderSys/Scene/Scene.h>
 #include <RenderSys/Scene/SceneHierarchyPanel.h>
+#include <resources/Shaders/ShaderLighting.h>
+#include <glm/gtc/constants.hpp>
 #include <imgui.h>
 
 struct alignas(16) MyUniforms {
@@ -25,12 +27,64 @@ struct alignas(16) MyUniforms {
     float time;
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
+static_assert(sizeof(LightingProperties) == 192, "must match the std140 layout in ShaderLighting.h");
 
-struct alignas(16) LightingUniforms {
-    std::array<glm::vec4, 2> directions;
-    std::array<glm::vec4, 2> colors;
+// One sun plus a sky-and-ground ambient term, like the sun and sky light of a UE level.
+// Values are tuned by eye and exposed in the Settings window.
+struct SunSkyRig
+{
+	float sunElevationDeg = 50.0f; // above the horizon
+	float sunAzimuthDeg = 35.0f;   // from -z towards -x
+	glm::vec3 sunColor = {1.0f, 0.93f, 0.84f};
+	float sunIntensity = 1.0f;     // 1 lights a white surface facing the sun to radiance 1
+	glm::vec3 skyColor = {0.80f, 0.89f, 1.0f};
+	float skyToSun = 0.18f;        // sky irradiance on an upward face over sun illuminance, pi * L_sky / E_sun
+	glm::vec3 groundColor = {1.0f, 0.96f, 0.90f};
+	float groundToSun = 0.06f;     // the same ratio for light from below
+	float exposureEV = 1.0f;
+	int toneMapper = GLSL_TONEMAP_ACES_FITTED;
+
+	LightingProperties ToLightingProperties() const
+	{
+		const float elevation = glm::radians(sunElevationDeg);
+		const float azimuth = glm::radians(sunAzimuthDeg);
+		const glm::vec3 towardsSun = {-std::cos(elevation) * std::sin(azimuth),
+									  std::sin(elevation),
+									  -std::cos(elevation) * std::cos(azimuth)};
+
+		LightingProperties lighting{};
+		lighting.m_lightDirections[0] = glm::vec4(towardsSun, 0.0f);
+		// Illuminance pi gives radiance 1 off a white Lambert surface (BRDF 1/pi) facing the sun
+		lighting.m_lightColors[0] = glm::vec4(glm::pi<float>() * sunIntensity * sunColor, 0.0f);
+		// A uniform sky of radiance L gives irradiance pi * L on an upward face,
+		// so L = ratio * E_sun / pi = ratio * sunIntensity
+		lighting.m_skyColor = glm::vec4(skyToSun * sunIntensity * skyColor, 0.0f);
+		lighting.m_groundColor = glm::vec4(groundToSun * sunIntensity * groundColor, 0.0f);
+		lighting.m_lightViewProjection = glm::mat4(1.0f);
+		lighting.m_exposure = glm::vec4(std::exp2(exposureEV), 0.0f, 0.0f, 0.0f);
+		lighting.m_settings = glm::ivec4(1, toneMapper, 0, 0);
+		return lighting;
+	}
+
+	void OnImGuiRender()
+	{
+		ImGui::SliderFloat("Sun elevation", &sunElevationDeg, 0.0f, 90.0f, "%.0f deg");
+		ImGui::SliderFloat("Sun azimuth", &sunAzimuthDeg, -180.0f, 180.0f, "%.0f deg");
+		ImGui::SetItemTooltip("Measured from -z towards -x");
+		ImGui::ColorEdit3("Sun color", &sunColor.x);
+		ImGui::SliderFloat("Sun intensity", &sunIntensity, 0.0f, 4.0f);
+		ImGui::ColorEdit3("Sky color", &skyColor.x);
+		ImGui::SliderFloat("Sky / sun", &skyToSun, 0.0f, 1.0f);
+		ImGui::SetItemTooltip("Sky light on an upward face relative to the sun, pi * L_sky / E_sun");
+		ImGui::ColorEdit3("Ground color", &groundColor.x);
+		ImGui::SliderFloat("Ground / sun", &groundToSun, 0.0f, 1.0f);
+		const char* toneMappers[] = {"None (clamp)", "ACES fit", "Khronos PBR Neutral"};
+		ImGui::Combo("Tone curve", &toneMapper, toneMappers, IM_ARRAYSIZE(toneMappers));
+		ImGui::SliderFloat("Exposure", &exposureEV, -4.0f, 4.0f, "%+.1f EV");
+		if (ImGui::Button("Reset lighting"))
+			*this = SunSkyRig{};
+	}
 };
-static_assert(sizeof(LightingUniforms) % 16 == 0);
 
 class Renderer3DLayer : public Walnut::Layer
 {
@@ -174,10 +228,10 @@ public:
 		lightingUniformLayout.binding = 1;
 		lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
 		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingProperties);
 
 		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
-		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
+		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingProperties), 1);
 
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
 		m_renderer->CreatePipeline(m_cameraController->GetCamera()->GetHandedness());
@@ -219,10 +273,7 @@ public:
 			m_myUniformData.cameraWorldPosition = camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
-			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
-			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
-			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
-			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
+			m_lightingUniformData = m_lightRig.ToLightingProperties();
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
@@ -258,6 +309,8 @@ public:
 			m_clearColor = newClearColor;
 			m_renderer->SetClearColor(m_clearColor);
 		}
+		if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
+			m_lightRig.OnImGuiRender();
 		ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -305,7 +358,8 @@ private:
 	glm::vec4 m_clearColor = glm::vec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	MyUniforms m_myUniformData;
-	LightingUniforms m_lightingUniformData;
+	SunSkyRig m_lightRig;
+	LightingProperties m_lightingUniformData;
 	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;

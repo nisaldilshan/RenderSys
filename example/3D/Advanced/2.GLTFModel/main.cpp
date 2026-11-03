@@ -16,6 +16,8 @@
 #include <RenderSys/Components/TagAndIDComponents.h>
 #include <RenderSys/Scene/Scene.h>
 #include <RenderSys/Scene/SceneHierarchyPanel.h>
+#include <resources/Shaders/ShaderLighting.h>
+#include <glm/gtc/constants.hpp>
 #include <imgui.h>
 
 struct alignas(16) MyUniforms {
@@ -26,11 +28,24 @@ struct alignas(16) MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-struct alignas(16) LightingUniforms {
-    std::array<glm::vec4, 2> directions;
-    std::array<glm::vec4, 2> colors;
-};
-static_assert(sizeof(LightingUniforms) % 16 == 0);
+static_assert(sizeof(LightingProperties) == 192, "must match the std140 layout in ShaderLighting.h");
+
+// The two opposite lights and the 0.03 ambient this example always had. The shaders now divide
+// the Lambert term by pi, so the light colors carry a factor of pi to keep the same brightness.
+static LightingProperties GetLighting()
+{
+	LightingProperties lighting{};
+	lighting.m_lightDirections[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
+	lighting.m_lightDirections[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
+	lighting.m_lightColors[0] = glm::pi<float>() * glm::vec4{ 1.0f, 0.9f, 1.0f, 0.0f };
+	lighting.m_lightColors[1] = glm::pi<float>() * glm::vec4{ 0.8f, 0.9f, 1.0f, 0.0f };
+	lighting.m_skyColor = glm::vec4(0.03f, 0.03f, 0.03f, 0.0f);
+	lighting.m_groundColor = lighting.m_skyColor;
+	lighting.m_lightViewProjection = glm::mat4(1.0f);
+	lighting.m_exposure = { 1.0f, 0.0f, 0.0f, 0.0f };
+	lighting.m_settings = { 2, GLSL_TONEMAP_NONE, 0, 0 };
+	return lighting;
+}
 
 class Renderer3DLayer : public Walnut::Layer
 {
@@ -195,10 +210,10 @@ public:
 		lightingUniformLayout.binding = 1;
 		lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
 		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingProperties);
 
 		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
-		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
+		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingProperties), 1);
 
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
 		m_renderer->CreatePipeline();
@@ -240,10 +255,6 @@ public:
 			m_myUniformData.cameraWorldPosition = camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
-			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
-			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
-			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 1.0f, 1.0f };
-			m_lightingUniformData.colors[1] = { 0.8f, 0.9f, 1.0f, 1.0f };
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
@@ -317,7 +328,7 @@ private:
 	glm::vec4 m_clearColor = glm::vec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	MyUniforms m_myUniformData;
-	LightingUniforms m_lightingUniformData;
+	LightingProperties m_lightingUniformData = GetLighting();
 	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::unique_ptr<RenderSys::Model> m_model;
