@@ -155,11 +155,12 @@ namespace RenderSys
         ImGui::Text("%s", label.c_str());
         ImGui::NextColumn();
 
-        ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
         float lineHeight = GImGui->FontSize + GImGui->Style.FramePadding.y * 2.0f;
         ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
+        // The three buttons and three fields share what is left of the column, so they fit a narrow panel
+        ImGui::PushMultiItemsWidths(3, ImGui::GetContentRegionAvail().x - 3.0f * buttonSize.x);
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
@@ -271,6 +272,10 @@ namespace RenderSys
             assert(tag.size() < sizeof(buffer));
             strcpy(buffer, tag.c_str());
 
+            // Leaves room for the "Add Component" button on the same line
+            const ImGuiStyle& style = ImGui::GetStyle();
+            const float buttonWidth = ImGui::CalcTextSize("Add Component").x + style.FramePadding.x * 2.0f;
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttonWidth - style.ItemSpacing.x);
             if (ImGui::InputText("##Tag", buffer, sizeof(buffer)))
             {
                 tag = std::string(buffer);
@@ -331,15 +336,15 @@ namespace RenderSys
 		    [](auto& component)
 		    {
                 auto position = component.GetTranslation();
-			    DrawVec3Control("Position", position, 0.0f, 100.0f);
+			    DrawVec3Control("Position", position, 0.0f, 80.0f);
                 component.SetTranslation(position);
 
 			    glm::vec3 rotation = glm::degrees(component.GetRotation());
-			    DrawVec3Control("Rotation", rotation, 0.0f, 100.0f);
+			    DrawVec3Control("Rotation", rotation, 0.0f, 80.0f);
                 component.SetRotation(glm::radians(rotation));
 
                 auto scale = component.GetScale();
-			    DrawVec3Control("Scale", scale, 1.0f, 100.0f);
+			    DrawVec3Control("Scale", scale, 1.0f, 80.0f);
                 component.SetScale(scale);
 		    });
 

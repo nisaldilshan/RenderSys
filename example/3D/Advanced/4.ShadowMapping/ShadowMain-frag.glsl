@@ -1,8 +1,10 @@
 #version 460
 
 #include "ShaderMaterial.h"
+#include "ShaderLighting.h"
 #include "metallic-roughness.glsl"
 #include "pbr-material.glsl"
+#include "tonemap.glsl"
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 projectionMatrix;
@@ -12,10 +14,7 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(std140, set = 0, binding = 1) uniform LightingUniforms {
-    vec4 directions[1];
-    vec4 colors[1];
-    mat4 padding[1];
-    mat4 viewProjection[1];
+    LightingProperties m_lighting;
 } lightingUbo;
 
 layout(set = 0, binding = 2) uniform sampler2D shadowMap;
@@ -28,17 +27,17 @@ layout (location = 4) in vec4 inShadowCoord;
 
 layout (location = 0) out vec4 out_color;
 
-#define ambientForShadow 0.1
-
+// 1 is lit and 0 is fully shadowed. The shadow blocks only the sun: the sky and ground light from
+// pbrAmbient still reach shadowed surfaces.
 float textureProj(vec4 shadowCoord, vec2 off)
 {
 	float shadow = 1.0;
-	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
+	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 )
 	{
 		float dist = texture( shadowMap, shadowCoord.st + off ).r;
-		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z - 0.005 ) 
+		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z - 0.005 )
 		{
-			shadow = ambientForShadow;
+			shadow = 0.0;
 		}
 	}
 	return shadow;
@@ -96,13 +95,15 @@ void main()
     PbrSurface surface = getPbrSurface(in_uv, in_normal, in_tangent);
     vec3 V = normalize(in_viewDirection);
 
-    vec3 color = pbrAmbient(surface);
-    for (int i = 0; i < lightingUbo.directions.length(); ++i) 
+    vec3 color = pbrAmbient(surface, V, lightingUbo.m_lighting.m_skyColor.rgb, lightingUbo.m_lighting.m_groundColor.rgb);
+    // The shadow map is rendered from light 0, the sun
+    float sunShadow = filterPCF(inShadowCoord / inShadowCoord.w);
+    int lightCount = min(lightingUbo.m_lighting.m_settings.x, GLSL_MAX_DIRECTIONAL_LIGHTS);
+    for (int i = 0; i < lightCount; ++i)
     {
-        color += pbrDirectLight(surface, V, normalize(lightingUbo.directions[i].xyz), lightingUbo.colors[i].rgb);
+        float shadow = (i == 0) ? sunShadow : 1.0;
+        color += shadow * pbrDirectLight(surface, V, normalize(lightingUbo.m_lighting.m_lightDirections[i].xyz), lightingUbo.m_lighting.m_lightColors[i].rgb);
     }
 
-    float shadow = filterPCF(inShadowCoord / inShadowCoord.w);
-    out_color = vec4(color * shadow, surface.alpha);
-    out_color = pow(out_color, vec4(1.0/2.2));
+    out_color = vec4(applyDisplayTransform(color, lightingUbo.m_lighting), surface.alpha);
 }

@@ -22,6 +22,10 @@
 
 #include "ShadowHelper.h"
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/constants.hpp>
+#include <resources/Shaders/ShaderLighting.h>
+
+#include "Common/SunSkyRig.h"
 
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
@@ -31,13 +35,7 @@ struct alignas(16) MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-struct alignas(16) LightingUniforms {
-    std::array<glm::vec4, 1> lightDirections;
-    std::array<glm::vec4, 1> lightColors;
-	std::array<glm::mat4x4, 1> padding;
-	std::array<glm::mat4x4, 1> lightViewProjections;
-};
-static_assert(sizeof(LightingUniforms) % 16 == 0);
+static_assert(sizeof(LightingProperties) == 192, "must match the std140 layout in ShaderLighting.h");
 
 Walnut::Application* appPtr = nullptr;
 
@@ -61,7 +59,7 @@ public:
 		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 500.0f);
 		auto cameraEntity = m_scene->AddCamera(m_cameraController->GetCamera());
 		m_cameraController->SetCameraEntity(cameraEntity, m_scene->m_Registry);
-		// Start facing the top brick wall of the Sponza atrium, lit by the overhead light at a grazing angle.
+		// Start facing the top brick wall of the Sponza atrium, which the default sun lights at a grazing angle.
 		// Its glTF tangents have w = +1, so its bricks look lit from above only if the shader honours tangent.w.
 		auto& cameraTransform = m_scene->m_Registry.get<RenderSys::TransformComponent>(cameraEntity);
 		cameraTransform.SetTranslation(glm::vec3(10.0f, 62.0f, -3.0f));
@@ -115,7 +113,7 @@ public:
 		}
 		
 		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
-		m_scene->AddDirectionalLight(glm::vec3(1.5708f, 0.0f, 0.0f), glm::vec3(0.0f, 200.0f, 0.0f), glm::vec3( 1.0f, 1.0f, 1.0f)); // 1.5708f radians = 90 degrees
+		m_scene->AddDirectionalLight(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f)); // aimLightAtSun places it every frame
 
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 		// The uniform buffer binding that we already had
@@ -132,7 +130,7 @@ public:
 		lightingUniformLayout.binding = 1;
 		lightingUniformLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
 		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingProperties);
 		// ShadowMap binding
 		RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[2];
 		textureBindingLayout.setDefault();
@@ -142,7 +140,7 @@ public:
 		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
 		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
-		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
+		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingProperties), 1);
 
 		m_renderer->CreateShadowMap(2048, 2048);
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
@@ -197,11 +195,12 @@ public:
 		if (m_renderer)
 		{
 			m_cameraController->OnUpdate(RenderSys::GetCameraInputFromWalnut());
+			if (m_moveLightDirection)
+				moveLight(ts);
+			aimLightAtSun();
 			m_scene->Update();
 
 			updateUniforms();
-			if (m_moveLightDirection)
-				moveLight();
 
 			m_renderer->BeginFrame();
 
@@ -243,6 +242,8 @@ public:
 		ImGui::Checkbox("Texel Snapping ", &m_texelSnapping);
 		ImGui::Checkbox("Move Light Direction ", &m_moveLightDirection);
 		ImGui::Checkbox("Debug View ", &m_debugView);
+		if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
+			m_lightRig.OnImGuiRender();
 		ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -291,19 +292,22 @@ private:
 
 		// ========================================================================
 
-		auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent, 
+		// The sun is light 0; the loop below adds the shadow map's view-projection
+		m_lightingUniformData = m_lightRig.ToLightingProperties();
+
+		auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent,
 											RenderSys::TransformComponent>();
 		for (auto entity : lightView)
 		{
-			auto& lightComponent = lightView.get<RenderSys::DirectionalLightComponent>(entity);
-			m_lightingUniformData.lightColors[0] = { lightComponent.m_Color, 1.0f };
 			auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
-			// shader expects the direction towards the light, the light shines along its forward vector
-			m_lightingUniformData.lightDirections[0] = { -transformComponent.GetForwardVector(), 0.0f };
 
-			auto lightModelMatrix = glm::translate(glm::mat4(1.0f), transformComponent.GetTranslation());
-			lightModelMatrix = lightModelMatrix * glm::mat4_cast(glm::quat(-transformComponent.GetRotation()));
-			glm::mat4 lightViewMatrix = glm::inverse(lightModelMatrix);
+			// Looks along the light's forward vector. The inverse of translate * quat(-rotation) that this
+			// replaces did so only for a rotation about x, so shadows fell the wrong way for most sun azimuths.
+			const glm::vec3 lightPosition = transformComponent.GetTranslation();
+			const glm::vec3 lightForward = transformComponent.GetForwardVector();
+			const glm::vec3 lightUp = std::abs(lightForward.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+			glm::mat4 lightViewMatrix = glm::lookAtRH(lightPosition, lightPosition + lightForward, lightUp);
+			glm::mat4 lightModelMatrix = glm::inverse(lightViewMatrix);
 
 			OrthoProjInfo ortho;
 
@@ -421,37 +425,37 @@ private:
 			glm::mat4 lightOrthoMatrix = glm::orthoRH_ZO(ortho.l, ortho.r, ortho.b, ortho.t, ortho.n, ortho.f);
 
 			// The final matrix is stable and correctly positioned
-			m_lightingUniformData.lightViewProjections[0] = lightOrthoMatrix * lightViewMatrix;
+			m_lightingUniformData.m_lightViewProjection = lightOrthoMatrix * lightViewMatrix;
 		}
 		m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 	}
 
-	void moveLight()
+	// Sweeps the sun around the sky at 10 degrees a second, which turns every shadow
+	void moveLight(float ts)
 	{
-		constexpr float xMax = 0.2f;
-		constexpr float xMin = -0.2f;
-		constexpr float zMax = 0.1f;
-		constexpr float zMin = -0.1f;
-		auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent, 
+		m_lightRig.sunAzimuthDeg += 10.0f * ts;
+		if (m_lightRig.sunAzimuthDeg > 180.0f)
+			m_lightRig.sunAzimuthDeg -= 360.0f;
+	}
+
+	// The scene's directional light follows the rig, so the shadow pass and the Properties panel match the
+	// lighting. TransformComponent's forward is quat(euler) * +z, which for euler (pitch, yaw, 0) is
+	// (cos pitch sin yaw, -sin pitch, cos pitch cos yaw): the elevation and azimuth as pitch and yaw point
+	// it along the sunlight, away from TowardsSun().
+	void aimLightAtSun()
+	{
+		auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent,
 											RenderSys::TransformComponent>();
 		for (auto entity : lightView)
 		{
-			auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
-			glm::vec3 rotation = transformComponent.GetRotation();
-			static float xSpeed = 0.001f;
-			static float zSpeed = 0.001f;
-			if (rotation.x > xMax + 1.5708f) // 1.5708f radians = 90 degrees
-				xSpeed = -0.002f;
-			if (rotation.x < xMin + 1.5708f)
-				xSpeed = 0.001f;
-			if (rotation.z > zMax)
-				zSpeed = -0.001f;
-			if (rotation.z < zMin)
-				zSpeed = 0.002f;
+			auto& lightComponent = lightView.get<RenderSys::DirectionalLightComponent>(entity);
+			lightComponent.m_Color = m_lightRig.sunColor;
+			lightComponent.m_LightIntensity = m_lightRig.sunIntensity;
 
-			rotation.x += xSpeed;
-			rotation.z += zSpeed;
-			transformComponent.SetRotation(rotation);
+			auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
+			transformComponent.SetRotation(glm::vec3(glm::radians(m_lightRig.sunElevationDeg), glm::radians(m_lightRig.sunAzimuthDeg), 0.0f));
+			// The shadow map's depth range is centred on the light, 200 units out like the old overhead light
+			transformComponent.SetTranslation(200.0f * m_lightRig.TowardsSun());
 		}
 	}
 
@@ -565,7 +569,8 @@ private:
 	glm::vec4 m_clearColor = glm::vec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	MyUniforms m_myUniformData;
-	LightingUniforms m_lightingUniformData;
+	SunSkyRig m_lightRig;
+	LightingProperties m_lightingUniformData;
 	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;

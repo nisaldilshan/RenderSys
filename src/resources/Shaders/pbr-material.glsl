@@ -82,8 +82,9 @@ PbrSurface getPbrSurface(vec2 uv, vec3 normal, vec4 tangent)
     return surface;
 }
 
-// Diffuse + specular contribution of one directional light. L points towards the light.
-vec3 pbrDirectLight(PbrSurface surface, vec3 V, vec3 L, vec3 radiance)
+// Diffuse + specular contribution of one directional light. L points towards the light, and
+// illuminance is the light arriving on a surface facing it (see ShaderLighting.h).
+vec3 pbrDirectLight(PbrSurface surface, vec3 V, vec3 L, vec3 illuminance)
 {
     vec3 N = surface.N;
     vec3 H = normalize(V + L);
@@ -103,10 +104,37 @@ vec3 pbrDirectLight(PbrSurface surface, vec3 V, vec3 L, vec3 radiance)
     vec3 kD = vec3(1.0) - kS;
     kD *= 1.0 - surface.metallic;
 
-    return (kD * surface.albedo + specular) * radiance * NdotL;
+    // Lambert BRDF is albedo / pi; specular is already a BRDF
+    return (kD * surface.albedo / PI + specular) * illuminance * NdotL;
 }
 
-vec3 pbrAmbient(PbrSurface surface)
+// Karis' analytic fit of the split-sum environment BRDF ("Physically Based Shading on Mobile", 2014)
+vec3 envBRDFApprox(vec3 F0, float roughness, float NdotV)
 {
-    return surface.albedo * 0.03;
+    const vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
+    const vec4 c1 = vec4(1.0, 0.0425, 1.04, -0.04);
+    vec4 r = roughness * c0 + c1;
+    float a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
+    vec2 AB = vec2(-1.04, 1.04) * a004 + r.zw;
+    return F0 * AB.x + AB.y;
+}
+
+// Light from a two-colour environment: sky radiance above the horizon, ground radiance below it, +y up.
+// Diffuse: for that environment, irradiance / pi is exactly mix(ground, sky, 0.5 + 0.5 * N.y).
+// Specular: the environment seen along the reflection vector, with a horizon that softens with
+// roughness, scaled by the environment BRDF, so metals reflect the sky.
+vec3 pbrAmbient(PbrSurface surface, vec3 V, vec3 skyRadiance, vec3 groundRadiance)
+{
+    vec3 N = surface.N;
+    float NdotV = clamp(dot(N, V), 0.0, 1.0);
+
+    vec3 irradianceOverPi = mix(groundRadiance, skyRadiance, 0.5 + 0.5 * N.y);
+    vec3 diffuse = surface.albedo * (1.0 - surface.metallic) * irradianceOverPi;
+
+    vec3 R = reflect(-V, N);
+    float skyWeight = clamp(0.5 + 0.5 * R.y / max(surface.roughness, 0.05), 0.0, 1.0);
+    vec3 reflectedRadiance = mix(groundRadiance, skyRadiance, skyWeight);
+    vec3 specular = envBRDFApprox(surface.F0, surface.roughness, NdotV) * reflectedRadiance;
+
+    return diffuse + specular;
 }
