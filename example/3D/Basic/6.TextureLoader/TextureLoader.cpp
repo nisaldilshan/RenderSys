@@ -1,13 +1,17 @@
 #include <array>
 #include <Walnut/Application.h>
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
+#include <RenderSys/Texture.h>
 #include <imgui.h>
+
+#include "Examples3DBasic.h"
+
+namespace
+{
 
 struct MyUniforms {
     glm::mat4x4 projectionMatrix;
@@ -18,13 +22,20 @@ struct MyUniforms {
     float _pad[3];
 };
 
-class Renderer3DLayer : public Walnut::Layer
+class TextureLoaderLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
 	{
 		m_renderer = std::make_shared<RenderSys::Renderer3D>();
-		m_renderer->Init();	
+		m_renderer->Init();
+
+		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/fourareen.obj", m_vertexData);
+		if (!success) 
+		{
+			std::cerr << "Could not load geometry!" << std::endl;
+			assert(false);
+		}
 
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
@@ -80,8 +91,7 @@ public:
 
 				void main()
 				{
-					ivec2 texelCoords = ivec2(in_uv * vec2(textureSize(tex, 0)));
-					vec3 texColor = texelFetch(tex, texelCoords, 0).rgb;
+					vec3 texColor = texture(tex, in_uv).rgb; 
 
 					out_color = vec4(texColor, ubo.color.a);
 				}
@@ -121,6 +131,7 @@ public:
 
 			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
 			@group(0) @binding(1) var gradientTexture: texture_2d<f32>;
+			@group(0) @binding(2) var textureSampler: sampler;
 
 			@vertex
 			fn vs_main(in: VertexInput) -> VertexOutput {
@@ -137,8 +148,7 @@ public:
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 				// We remap UV coords to actual texel coordinates
-				let texelCoords = vec2i(in.uv * vec2f(textureDimensions(gradientTexture)));
-				let color = textureLoad(gradientTexture, texelCoords, 0).rgb;
+				let color = textureSample(gradientTexture, textureSampler, in.uv).rgb;
 
 				// Gamma-correction
 				let corrected_color = pow(color, vec3f(2.2));
@@ -155,15 +165,9 @@ public:
 			assert(false);
 		}
 
-		RenderSys::VertexBuffer vertexData;
-		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cube.obj", vertexData);
-		if (!success) 
-		{
-			std::cerr << "Could not load geometry!" << std::endl;
-			assert(false);
-			return;
-		}
-
+		auto texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
+		m_renderer->CreateTexture(1, texture);
+		
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
 
 		// Position attribute
@@ -192,25 +196,8 @@ public:
 		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-		m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
-
-		constexpr uint32_t texWidth = 256;
-		constexpr uint32_t texHeight = 256;
-		std::vector<uint8_t> pixels(4 * texWidth * texHeight);
-
-		for (uint32_t i = 0; i < texWidth; ++i) {
-			for (uint32_t j = 0; j < texHeight; ++j) {
-				uint8_t *p = &pixels[4 * (j * texWidth + i)];
-				p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
-				p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
-				p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
-				p[3] = 255; // a
-			}
-		}
-
-		auto texture = std::make_shared<RenderSys::Texture>(texWidth, texHeight, 1, RenderSys::TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED);
-		texture->SetData(pixels.data());
-		m_renderer->CreateTexture(1, texture);
+		assert(m_vertexData.size() > 0);
+		m_renderer->SetVertexBufferData(m_vertexData, vertexBufferLayout);
 
 		// Since we now have 2 bindings, we use a vector to store them
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
@@ -231,7 +218,7 @@ public:
 		textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
 		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
-		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 2);
+		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
 		m_renderer->CreatePipeline();
@@ -269,19 +256,20 @@ public:
 			glm::mat4x4 M1(1.0);
 			float angle1 = time * 0.9f;
 			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));
-			M1 = glm::translate(M1, glm::vec3(1.0, 0.0, 0.0));
+			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.3f));
 			m_uniformData.modelMatrix = M1;
 
 			m_uniformData.time = time;
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
-
 			m_renderer->BindResources();
+
 			m_renderer->Render(0);
 			m_renderer->EndRenderPass();
 			m_renderer->EndFrame();
 		}
+       		
 
         m_lastRenderTime = timer.ElapsedMillis();
 	}
@@ -301,8 +289,6 @@ public:
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
         ImGui::PopStyleVar();
-
-		ImGui::ShowDemoWindow();
 	}
 
 private:
@@ -312,18 +298,12 @@ private:
     float m_lastRenderTime = 0.0f;
 
 	MyUniforms m_uniformData;
+	RenderSys::VertexBuffer m_vertexData;
 };
 
-Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
-{
-	Walnut::ApplicationSpecification spec;
-	spec.Name = "Renderer3D Example";
-#ifndef NDEBUG
-	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
-#endif
+} // namespace
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	RenderSys::AttachToWalnut();
-	app->PushLayer<Renderer3DLayer>();
-	return app;
+std::shared_ptr<Walnut::Layer> CreateTextureLoaderLayer()
+{
+	return std::make_shared<TextureLoaderLayer>();
 }

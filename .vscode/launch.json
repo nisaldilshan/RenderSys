@@ -2,97 +2,48 @@
     // Use IntelliSense to learn about possible attributes.
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    // Single-config generators (Linux) build into build/<config>/<target dir>, while Visual Studio
+    // (multi-config) builds into build/<target dir>/<config>, hence the "windows" overrides
+    // _NO_DEBUG_HEAP: Windows gives a process started by a debugger the NT debug heap, unless this is set. That heap
+    // makes allocation-heavy code such as OBJ parsing and shader compiling 10-50x slower (mammoth.obj: 47 s instead of 1 s).
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "FirstTriangle",
+            "name": "Examples2D",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/2D/1.FirstTriangle/FirstTriangle",
-            "args": [],
+            "program": "${workspaceFolder}/build/Debug/example/2D/Examples2D",
+            "args": [], // the 1-based example to start with, e.g. ["3"]
             "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/2D/1.FirstTriangle",
+            "cwd": "${workspaceFolder}/build/Debug/example/2D",
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
-        },
-        {
-            "name": "VertexBuffers",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/2D/2.VertexBuffers/VertexBuffers",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/2D/2.VertexBuffers",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-            },
-        },
-        {
-            "name": "VertexAttributes",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/2D/3.VertexAttributes/VertexAttributes",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/2D/3.VertexAttributes",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-            },
-        },
-        {
-            "name": "IndexBuffers",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/2D/4.IndexBuffers/IndexBuffers",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/2D/4.IndexBuffers",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-            },
-        },
-        {
-            "name": "UniformBuffers",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/2D/5.UniformBuffers/UniformBuffers",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/2D/5.UniformBuffers",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
-            },
-        },
-        {
-            "name": "DynamicUniforms",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/2D/6.DynamicUniforms/DynamicUniforms",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/2D/6.DynamicUniforms",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
+            "windows": {
+                "program": "${workspaceFolder}/build/example/2D/Debug/Examples2D.exe",
+                "cwd": "${workspaceFolder}/build/example/2D/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+                "env": { "_NO_DEBUG_HEAP": "1" },
             },
         },
         {
             "name": "Fluid2D",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/2D/7.Fluid2D/Fluid2D",
+            "program": "${workspaceFolder}/build/Debug/example/Compute/3.Fluid2D/Fluid2D",
             "args": [],
             "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/2D/7.Fluid2D",
+            "cwd": "${workspaceFolder}/build/Debug/example/Compute/3.Fluid2D",
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
+            },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/Compute/3.Fluid2D/Debug/Fluid2D.exe",
+                "cwd": "${workspaceFolder}/build/example/Compute/3.Fluid2D/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+                "env": { "_NO_DEBUG_HEAP": "1" },
             },
         },
         {
@@ -107,6 +58,12 @@
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/Compute/1.BasicCompute/Debug/BasicCompute.exe",
+                "cwd": "${workspaceFolder}/build/example/Compute/1.BasicCompute/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+                "env": { "_NO_DEBUG_HEAP": "1" },
+            },
         },
         {
             "name": "Noise",
@@ -120,123 +77,43 @@
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}",
             },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/Compute/2.Noise/Debug/Noise.exe",
+                "cwd": "${workspaceFolder}/build/example/Compute/2.Noise/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+                "env": { "_NO_DEBUG_HEAP": "1" },
+            },
         },
         {
-            "name": "First3DShape",
+            "name": "Examples3DBasic",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/3D/Basic/1.First3DShape/First3DShape",
-            "args": [],
+            "program": "${workspaceFolder}/build/Debug/example/3D/Basic/Examples3DBasic",
+            "args": [], // the 1-based example to start with, e.g. ["3"]
             "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/3D/Basic/1.First3DShape",
+            "cwd": "${workspaceFolder}/build/Debug/example/3D/Basic",
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
             },
-        },
-        {
-            "name": "TransformationMatrices",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/3D/Basic/2.TransformationMatrices/TransformationMatrices",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/3D/Basic/2.TransformationMatrices",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
+            "windows": {
+                "program": "${workspaceFolder}/build/example/3D/Basic/Debug/Examples3DBasic.exe",
+                "cwd": "${workspaceFolder}/build/example/3D/Basic/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+                "env": { "_NO_DEBUG_HEAP": "1" },
             },
         },
         {
-            "name": "BasicShading",
-            "type": "lldb",
+            // Windows only: the Visual Studio debugger engine of the C/C++ extension
+            "name": "Examples3DBasic (MSVC debugger)",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/3D/Basic/3.BasicShading/BasicShading",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/3D/Basic/3.BasicShading",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-            },
-        },
-        {
-            "name": "FirstTexture",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/3D/Basic/4.FirstTexture/FirstTexture",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/3D/Basic/4.FirstTexture",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-            },
-        },
-        {
-            "name": "TextureSampler",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/3D/Basic/5.TextureSampler/TextureSampler",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/3D/Basic/5.TextureSampler",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-            },
-        },
-        {
-            "name": "TextureLoader",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/3D/Basic/6.TextureLoader/TextureLoader",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/3D/Basic/6.TextureLoader",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-            },
-        },
-        {
-            "name": "CameraControls",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/3D/Basic/7.CameraControls/CameraControls",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/3D/Basic/7.CameraControls",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-            },
-        },
-        {
-            "name": "Lighting",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/3D/Basic/8.Lighting/Lighting",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/3D/Basic/8.Lighting",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-            },
-        },
-        {
-            "name": "NormalMapping",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/example/3D/Basic/9.NormalMapping/NormalMapping",
-            "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/build/Debug/example/3D/Basic/9.NormalMapping",
-            "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
-            "env": {
-                "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
-            },
+            "program": "${workspaceFolder}/build/example/3D/Basic/Debug/Examples3DBasic.exe",
+            "args": [], // the 1-based example to start with, e.g. ["3"]
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/example/3D/Basic/Debug",
+            "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+            "environment": [{ "name": "_NO_DEBUG_HEAP", "value": "1" }],
         },
         {
             "name": "GLTFModel",
@@ -249,6 +126,12 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
+            },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/3D/Advanced/2.GLTFModel/Debug/GLTFModel.exe",
+                "cwd": "${workspaceFolder}/build/example/3D/Advanced/2.GLTFModel/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+                "env": { "_NO_DEBUG_HEAP": "1" },
             },
         },
         {
@@ -263,6 +146,12 @@
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
             },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/3D/Advanced/3.FirstAnimation/Debug/FirstAnimation.exe",
+                "cwd": "${workspaceFolder}/build/example/3D/Advanced/3.FirstAnimation/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+                "env": { "_NO_DEBUG_HEAP": "1" },
+            },
         },
         {
             "name": "ShadowMapping",
@@ -276,6 +165,12 @@
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
             },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/3D/Advanced/4.ShadowMapping/Debug/ShadowMapping.exe",
+                "cwd": "${workspaceFolder}/build/example/3D/Advanced/4.ShadowMapping/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+                "env": { "_NO_DEBUG_HEAP": "1" },
+            },
         },
         {
             "name": "RayMarching",
@@ -288,6 +183,12 @@
             "envFile": "${workspaceFolder}/build/Debug/vk_layer_path.env",
             "env": {
                 "DYLD_LIBRARY_PATH" : "${workspaceFolder}/build/Debug/example",
+            },
+            "windows": {
+                "program": "${workspaceFolder}/build/example/3D/Advanced/1.RayMarching/Debug/RayMarching.exe",
+                "cwd": "${workspaceFolder}/build/example/3D/Advanced/1.RayMarching/Debug",
+                "envFile": "${workspaceFolder}/build/vk_layer_path.env",
+                "env": { "_NO_DEBUG_HEAP": "1" },
             },
         }
     ]

@@ -1,8 +1,5 @@
 #include <array>
 #include <Walnut/Application.h>
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#include <Walnut/EntryPoint.h>
-#include "Walnut/Random.h"
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
 
@@ -10,20 +7,28 @@
 #include <RenderSys/Geometry.h>
 #include <imgui.h>
 
+#include "Examples2D.h"
 
-//The same structure as in the shader, replicated in C++
-struct MyUniforms
+namespace
 {
+
+/**
+ * The same structure as in the shader, replicated in C++
+ */
+struct MyUniforms {
 	// offset = 0 * sizeof(vec4f) -> OK
 	std::array<float, 4> color;
+
 	// offset = 16 = 4 * sizeof(f32) -> OK
 	float time;
+
 	// Add padding to make sure the struct is host-shareable
 	float _pad[3];
 };
+// Have the compiler check byte alignment
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-class Renderer2DLayer : public Walnut::Layer
+class DynamicUniformsLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
@@ -33,7 +38,7 @@ public:
 
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
-			const char *vertexShaderSource = R"(
+			const char* vertexShaderSource = R"(
 					#version 450 core
 					layout(binding = 0) uniform UniformBufferObject {
 						vec4 color;
@@ -56,14 +61,19 @@ public:
 			vertexShader.stage = RenderSys::ShaderStage::Vertex;
 			m_renderer->SetShader(vertexShader);
 
-			const char *fragmentShaderSource = R"(
+			const char* fragmentShaderSource = R"(
 					#version 450
+					layout(binding = 0) uniform UniformBufferObject {
+						vec4 color;
+						float time;
+						float _pad[3];
+					} ubo;
 					layout(location = 0) in vec3 vColor;
 					layout(location = 0) out vec4 FragColor;
 
 					void main()
 					{
-						FragColor = vec4(vColor, 1.0); // Use the color from the vertex shader
+						FragColor = vec4(vColor, 1.0) * ubo.color;
 					}
 				)";
 			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
@@ -73,7 +83,7 @@ public:
 		}
 		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 		{
-			const char *shaderSource = R"(
+			const char* shaderSource = R"(
 				/**
 				 * A structure with fields labeled with vertex attribute locations can be used
 				 * as input to the entry point of a shader.
@@ -121,9 +131,10 @@ public:
 
 				@fragment
 				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-					// We apply a gamma-correction to the color
-					let corrected_color = pow(in.color, vec3f(2.2));
-					return vec4f(corrected_color, 1.0);
+					let color = in.color * uMyUniforms.color.rgb;
+					// Gamma-correction
+					let corrected_color = pow(color, vec3f(2.2));
+					return vec4f(corrected_color, uMyUniforms.color.a);
 				}
 				)";
 
@@ -137,7 +148,6 @@ public:
 			assert(false);
 		}
 
-		//
 		std::vector<float> vertexData;
 		std::vector<uint16_t> indexData;
 		auto success = Geometry::load2DGeometry(RESOURCE_DIR "/model.txt", vertexData, indexData);
@@ -146,9 +156,7 @@ public:
 			std::cerr << "Could not load geometry!" << std::endl;
 			return;
 		}
-		//
 
-		// Vertex fetch
 		// We now have 2 attributes
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
 
@@ -177,12 +185,14 @@ public:
 		// The binding index as used in the @binding attribute in the shader
 		bGLayoutEntry.binding = 0;
 		// The stage that needs to access this resource
-		bGLayoutEntry.visibility = RenderSys::ShaderStage::Vertex;
+		bGLayoutEntry.visibility = static_cast<RenderSys::ShaderStage>(
+			static_cast<uint32_t>(RenderSys::ShaderStage::Vertex) | static_cast<uint32_t>(RenderSys::ShaderStage::Fragment));
 		bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
 		bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
-		bGLayoutEntry.buffer.hasDynamicOffset = false;
+		// Make this binding dynamic so we can offset it between draw calls
+		bGLayoutEntry.buffer.hasDynamicOffset = true;
 
-		m_renderer->CreateUniformBuffer(1, sizeof(MyUniforms));
+		m_renderer->CreateUniformBuffer(2, sizeof(MyUniforms));
 		m_renderer->CreateBindGroup(bGLayoutEntry);
 		m_renderer->CreatePipeline();
 	}
@@ -200,19 +210,28 @@ public:
 
         if (m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
-        {
+        {		
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
         }
 
 		m_renderer->BeginRenderPass();
-		// Update uniform buffer
 		static auto startTime = std::chrono::steady_clock::now();
 		const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
-		m_uniformData.time = static_cast<float>(time); // glfwGetTime returns a double
+		// Upload first value
+		m_uniformData.time = static_cast<float>(time) * 0.95f; // glfwGetTime returns a double
+		m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 		m_renderer->SetUniformBufferData(&m_uniformData, 0);
 
-		m_renderer->RenderIndexed(0, 0);
+		// Upload second value
+		m_uniformData.time = static_cast<float>(time) * 1.05f; // glfwGetTime returns a double
+		m_uniformData.color = { 1.0f, 1.0f, 1.0f, 0.7f };
+		m_renderer->SetUniformBufferData(&m_uniformData, 1);
+		//                               				^^^^^^^^^^^^^ beware of the non-null offset!
+
+		m_renderer->RenderIndexed(0, 1);
+		m_renderer->RenderIndexed(1, 1);
 		m_renderer->EndRenderPass();
+
         m_lastRenderTime = timer.ElapsedMillis();
 	}
 
@@ -226,12 +245,12 @@ public:
         ImGui::Begin("Viewport");
 		m_viewportWidth = ImGui::GetContentRegionAvail().x;
         m_viewportHeight = ImGui::GetContentRegionAvail().y;
+		const float imageWidth = m_renderer->GetWidth();
+		const float imageHeight = m_renderer->GetHeight();
         if (m_renderer)
-            ImGui::Image(m_renderer->GetDescriptorSet(), {(float)m_renderer->GetWidth(),(float)m_renderer->GetWidth()});
+            ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
         ImGui::PopStyleVar();
-
-		ImGui::ShowDemoWindow();
 	}
 
 private:
@@ -243,16 +262,9 @@ private:
 	MyUniforms m_uniformData;
 };
 
-Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
-{
-	Walnut::ApplicationSpecification spec;
-	spec.Name = "Renderer2D Example";
-#ifndef NDEBUG
-	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
-#endif
+} // namespace
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	RenderSys::AttachToWalnut();
-	app->PushLayer<Renderer2DLayer>();
-	return app;
+std::shared_ptr<Walnut::Layer> CreateDynamicUniformsLayer()
+{
+	return std::make_shared<DynamicUniformsLayer>();
 }

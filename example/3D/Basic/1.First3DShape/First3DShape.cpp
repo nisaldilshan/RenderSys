@@ -1,8 +1,5 @@
 #include <array>
-
 #include <Walnut/Application.h>
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
 
@@ -10,29 +7,28 @@
 #include <RenderSys/Geometry.h>
 #include <imgui.h>
 
-struct MyUniforms {
-	// We add transform matrices
-    glm::mat4x4 projectionMatrix;
-    glm::mat4x4 viewMatrix;
-    glm::mat4x4 modelMatrix;
-    std::array<float, 4> color;
-    float time;
-    float _pad[3];
-};
+#include "Examples3DBasic.h"
 
-glm::mat4x4 makePerspectiveProj(float ratio, float near, float far, float focalLength)
+namespace
 {
-	float divides = 1.0f / (far - near);
-	float aaa[16] = {
-		focalLength,         0.0,              0.0,               0.0,
-			0.0,     focalLength * ratio,      0.0,               0.0,
-			0.0,             0.0,         far * divides, -far * near * divides,
-			0.0,             0.0,              1.0,               0.0,
-	};
-	return glm::transpose(glm::make_mat4(aaa));
-}
 
-class Renderer3DLayer : public Walnut::Layer
+/**
+ * The same structure as in the shader, replicated in C++
+ */
+struct MyUniforms {
+	// offset = 0 * sizeof(vec4f) -> OK
+	std::array<float, 4> color;
+
+	// offset = 16 = 4 * sizeof(f32) -> OK
+	float time;
+
+	// Add padding to make sure the struct is host-shareable
+	float _pad[3];
+};
+// Have the compiler check byte alignment
+static_assert(sizeof(MyUniforms) % 16 == 0);
+
+class First3DShapeLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
@@ -44,28 +40,27 @@ public:
 		{
 			const char* vertexShaderSource = R"(
 				#version 450 core
-
 				layout(binding = 0) uniform UniformBufferObject {
-					mat4 projectionMatrix;
-					mat4 viewMatrix;
-					mat4 modelMatrix;
 					vec4 color;
 					float time;
 					float _pad[3];
 				} ubo;
 				layout (location = 0) in vec3 aPos;
-				layout (location = 1) in vec3 in_normal;
-				layout (location = 2) in vec3 in_color;
-
-				layout (location = 0) out vec3 out_color;
-				layout (location = 1) out vec3 out_normal;
+				layout (location = 1) in vec3 aColor; // Add color attribute
+				layout (location = 0) out vec3 vColor; // Add color attribute
 
 				void main() 
 				{
-					gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(aPos, 1.0);
-					vec4 mult = ubo.modelMatrix * vec4(in_normal, 0.0);
-					out_normal = mult.xyz;
-					out_color = in_color;
+					float angle = ubo.time;
+					float alpha = cos(angle);
+					float beta = sin(angle);
+					vec3 pos = vec3(
+						aPos.x,
+						alpha * aPos.y + beta * aPos.z,
+						alpha * aPos.z - beta * aPos.y
+					);
+					gl_Position = vec4(pos.x, pos.y, pos.z*0.5 + 0.5, 1.0);
+					vColor = aColor; // Pass color to fragment shader
 				}
 			)";
 			RenderSys::Shader vertexShader("Vertex", vertexShaderSource);
@@ -75,35 +70,17 @@ public:
 
 			const char* fragmentShaderSource = R"(
 				#version 450
-
 				layout(binding = 0) uniform UniformBufferObject {
-					mat4 projectionMatrix;
-					mat4 viewMatrix;
-					mat4 modelMatrix;
 					vec4 color;
 					float time;
 					float _pad[3];
 				} ubo;
-
-				layout (location = 0) in vec3 in_color;
-				layout (location = 1) in vec3 in_normal;
-
-				layout (location = 0) out vec4 out_color;
+				layout(location = 0) in vec3 vColor;
+				layout(location = 0) out vec4 FragColor;
 
 				void main()
 				{
-					vec3 normal = normalize(in_normal);
-
-					vec3 lightColor1 = vec3(1.0, 0.9, 0.6);
-					vec3 lightColor2 = vec3(0.6, 0.9, 1.0);
-					vec3 lightDirection1 = vec3(0.5, -0.9, 0.1);
-					vec3 lightDirection2 = vec3(0.2, 0.4, 0.3);
-					float shading1 = max(0.0, dot(lightDirection1, normal));
-					float shading2 = max(0.0, dot(lightDirection2, normal));
-					vec3 shading = shading1 * lightColor1 + shading2 * lightColor2;
-					vec3 color = in_color * shading;
-
-					out_color = vec4(color, ubo.color.a);
+					FragColor = vec4(vColor, 1.0) * ubo.color;
 				}
 			)";
 			RenderSys::Shader fragmentShader("Fragment", fragmentShaderSource);
@@ -114,25 +91,33 @@ public:
 		else if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::WebGPU)
 		{
 			const char* shaderSource = R"(
+			/**
+			 * A structure with fields labeled with vertex attribute locations can be used
+			 * as input to the entry point of a shader.
+			 */
 			struct VertexInput {
 				@location(0) position: vec3f,
-				@location(1) normal: vec3f,
-				@location(2) color: vec3f,
+				@location(1) color: vec3f,
 			};
 
+			/**
+			 * A structure with fields labeled with builtins and locations can also be used
+			 * as *output* of the vertex shader, which is also the input of the fragment
+			 * shader.
+			 */
 			struct VertexOutput {
 				@builtin(position) position: vec4f,
+				// The location here does not refer to a vertex attribute, it just means
+				// that this field must be handled by the rasterizer.
+				// (It can also refer to another field of another struct that would be used
+				// as input to the fragment shader.)
 				@location(0) color: vec3f,
-				@location(1) normal: vec3f,
 			};
 
 			/**
 			 * A structure holding the value of our uniforms
 			 */
 			struct MyUniforms {
-				projectionMatrix: mat4x4f,
-				viewMatrix: mat4x4f,
-				modelMatrix: mat4x4f,
 				color: vec4f,
 				time: f32,
 			};
@@ -143,26 +128,27 @@ public:
 			@vertex
 			fn vs_main(in: VertexInput) -> VertexOutput {
 				var out: VertexOutput;
-				out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4f(in.position, 1.0);
-				// Forward the normal
-				out.normal = (uMyUniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
+				let ratio = 640.0 / 480.0;
+				let angle = uMyUniforms.time; // you can multiply it go rotate faster
+
+				// Rotate the position around the X axis by "mixing" a bit of Y and Z in
+				// the original Y and Z.
+				let alpha = cos(angle);
+				let beta = sin(angle);
+				var position = vec3f(
+					in.position.x,
+					alpha * in.position.y + beta * in.position.z,
+					alpha * in.position.z - beta * in.position.y
+				);
+				out.position = vec4f(position.x, position.y * ratio, position.z * 0.5 + 0.5, 1.0);
+				
 				out.color = in.color;
 				return out;
 			}
 
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-				let normal = normalize(in.normal);
-
-				let lightColor1 = vec3f(1.0, 0.9, 0.6);
-				let lightColor2 = vec3f(0.6, 0.9, 1.0);
-				let lightDirection1 = vec3f(0.5, -0.9, 0.1);
-				let lightDirection2 = vec3f(0.2, 0.4, 0.3);
-				let shading1 = max(0.0, dot(lightDirection1, normal));
-				let shading2 = max(0.0, dot(lightDirection2, normal));
-				let shading = shading1 * lightColor1 + shading2 * lightColor2;
-				let color = in.color * shading;
-
+				let color = in.color * uMyUniforms.color.rgb;
 				// Gamma-correction
 				let corrected_color = pow(color, vec3f(2.2));
 				return vec4f(corrected_color, uMyUniforms.color.a);
@@ -180,29 +166,28 @@ public:
 		}
 
 		RenderSys::VertexBuffer vertexData;
-		bool success = Geometry::loadGeometryFromObj(RESOURCE_DIR "/mammoth.obj", vertexData);
+		std::vector<uint32_t> indexData;
+		auto success = Geometry::load3DGeometry(RESOURCE_DIR "/model.txt", vertexData, indexData, 3, true);
 		if (!success) 
 		{
 			std::cerr << "Could not load geometry!" << std::endl;
 			return;
 		}
+		//
 
-		std::vector<RenderSys::VertexAttribute> vertexAttribs(3);
+		// Vertex fetch
+		// We now have 2 attributes
+		std::vector<RenderSys::VertexAttribute> vertexAttribs(2);
 
 		// Position attribute
 		vertexAttribs[0].location = 0;
 		vertexAttribs[0].format = RenderSys::VertexFormat::Float32x3;
-		vertexAttribs[0].offset = 0;
-
-		// Normal attribute
-		vertexAttribs[1].location = 1;
-		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3;
-		vertexAttribs[1].offset = offsetof(RenderSys::Vertex, normal);
+		vertexAttribs[0].offset = offsetof(RenderSys::Vertex, position);
 
 		// Color attribute
-		vertexAttribs[2].location = 2;
-		vertexAttribs[2].format = RenderSys::VertexFormat::Float32x3;
-		vertexAttribs[2].offset = offsetof(RenderSys::Vertex, color);
+		vertexAttribs[1].location = 1;
+		vertexAttribs[1].format = RenderSys::VertexFormat::Float32x3; 
+		vertexAttribs[1].offset = offsetof(RenderSys::Vertex, color);
 
 		RenderSys::VertexBufferLayout vertexBufferLayout;
 		vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
@@ -210,7 +195,8 @@ public:
 		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-		m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
+		auto vertexBufID = m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
+		m_renderer->SetIndexBufferData(vertexBufID, indexData);
 
 		// Create binding layout (don't forget to = Default)
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(1);
@@ -219,7 +205,8 @@ public:
 		// The binding index as used in the @binding attribute in the shader
 		bGLayoutEntry.binding = 0;
 		// The stage that needs to access this resource
-		bGLayoutEntry.visibility = RenderSys::ShaderStage::VertexAndFragment;
+		bGLayoutEntry.visibility = static_cast<RenderSys::ShaderStage>
+						(static_cast<uint32_t>(RenderSys::ShaderStage::Vertex) | static_cast<uint32_t>(RenderSys::ShaderStage::Fragment));
 		bGLayoutEntry.buffer.type = RenderSys::BufferBindingType::Uniform;
 		bGLayoutEntry.buffer.minBindingSize = sizeof(MyUniforms);
 		// Make this binding dynamic so we can offset it between draw calls
@@ -252,39 +239,16 @@ public:
 		{
 			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
-			
+
 			static auto startTime = std::chrono::steady_clock::now();
 			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
-
-			constexpr float PI = 3.14159265358979323846f;
-			float angle2 = 3.0f * PI / 4.0f;
-			glm::vec3 focalPoint(0.0, 0.0, -2.0);			
-
-			glm::mat4x4 V(1.0);
-			V = glm::translate(V, -focalPoint);
-			V = glm::rotate(V, -angle2, glm::vec3(1.0, 0.0, 0.0));
-			m_uniformData.viewMatrix = V;
-			
-			float focalLength = 2.0;
-			float fov = 2 * glm::atan(1 / focalLength);
-			float ratio = m_viewportWidth / m_viewportHeight;
-			float near = 0.01f;
-			float far = 100.0f;
-			m_uniformData.projectionMatrix = makePerspectiveProj(m_viewportWidth / m_viewportHeight, 0.01, 100.0, 2.0);
-
-			glm::mat4x4 M1(1.0);
-			float angle1 = time * 0.9f;
-			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));
-			M1 = glm::translate(M1, glm::vec3(0.5, 0.0, 0.0));
-			M1 = glm::scale(M1, glm::vec3(0.3f));
-			m_uniformData.modelMatrix = M1;
-
-			m_uniformData.time = time;
+			m_uniformData.time = static_cast<float>(time) * 0.95f; // glfwGetTime returns a double
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
 
 			m_renderer->BindResources();
-			m_renderer->Render(0);
+			
+			m_renderer->RenderIndexed(0);
 			m_renderer->EndRenderPass();
 			m_renderer->EndFrame();
 		}
@@ -308,8 +272,6 @@ public:
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
         ImGui::PopStyleVar();
-
-		ImGui::ShowDemoWindow();
 	}
 
 private:
@@ -321,16 +283,9 @@ private:
 	MyUniforms m_uniformData;
 };
 
-Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
-{
-	Walnut::ApplicationSpecification spec;
-	spec.Name = "Renderer3D Example";
-#ifndef NDEBUG
-	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
-#endif
+} // namespace
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	RenderSys::AttachToWalnut();
-	app->PushLayer<Renderer3DLayer>();
-	return app;
+std::shared_ptr<Walnut::Layer> CreateFirst3DShapeLayer()
+{
+	return std::make_shared<First3DShapeLayer>();
 }

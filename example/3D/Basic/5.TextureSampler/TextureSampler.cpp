@@ -1,16 +1,16 @@
 #include <array>
 #include <Walnut/Application.h>
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
-#include <RenderSys/Texture.h>
-#include <RenderSys/Camera/EditorCameraController.h>
-#include <RenderSys/Walnut/WalnutInput.h>
 #include <imgui.h>
+
+#include "Examples3DBasic.h"
+
+namespace
+{
 
 struct MyUniforms {
     glm::mat4x4 projectionMatrix;
@@ -21,21 +21,13 @@ struct MyUniforms {
     float _pad[3];
 };
 
-class Renderer3DLayer : public Walnut::Layer
+class TextureSamplerLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
 	{
-		m_renderer = std::make_unique<RenderSys::Renderer3D>();
-		m_renderer->Init();
-		m_renderer->SetClearColor(m_clearColor); // OnUIRender only applies changes, and starts equal to it
-
-		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/fourareen.obj", m_vertexBuffer);
-		if (!success) 
-		{
-			std::cerr << "Could not load geometry!" << std::endl;
-			assert(false);
-		}
+		m_renderer = std::make_shared<RenderSys::Renderer3D>();
+		m_renderer->Init();	
 
 		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
@@ -140,7 +132,7 @@ public:
 				// Forward the normal
 				out.normal = (uMyUniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
 				out.color = in.color;
-				out.uv = in.uv;
+				out.uv = in.uv * 2.0;
 
 				return out;
 			}
@@ -165,10 +157,14 @@ public:
 			assert(false);
 		}
 
-		auto texture = std::make_shared<RenderSys::Texture>(RESOURCE_DIR "/Textures/fourareen2K_albedo.jpg");
-		m_renderer->CreateTexture(1, texture);
-
-		m_cameraController = std::make_unique<RenderSys::EditorCameraController>(30.0f, 0.01f, 100.0f);
+		RenderSys::VertexBuffer vertexData;
+		bool success = Geometry::loadGeometryFromObjWithUV<RenderSys::Vertex>(RESOURCE_DIR "/Meshes/cube.obj", vertexData);
+		if (!success) 
+		{
+			std::cerr << "Could not load geometry!" << std::endl;
+			assert(false);
+			return;
+		}
 
 		std::vector<RenderSys::VertexAttribute> vertexAttribs(4);
 
@@ -198,8 +194,25 @@ public:
 		vertexBufferLayout.arrayStride = sizeof(RenderSys::Vertex);
 		vertexBufferLayout.stepMode = RenderSys::VertexStepMode::Vertex;
 
-		assert(m_vertexBuffer.size() > 0);
-		m_renderer->SetVertexBufferData(m_vertexBuffer, vertexBufferLayout);
+		m_renderer->SetVertexBufferData(vertexData, vertexBufferLayout);
+
+		constexpr uint32_t texWidth = 256;
+		constexpr uint32_t texHeight = 256;
+		std::vector<uint8_t> pixels(4 * texWidth * texHeight);
+
+		for (uint32_t i = 0; i < texWidth; ++i) {
+			for (uint32_t j = 0; j < texHeight; ++j) {
+				uint8_t *p = &pixels[4 * (j * texWidth + i)];
+				p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
+				p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
+				p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
+				p[3] = 255; // a
+			}
+		}
+
+		auto texture = std::make_shared<RenderSys::Texture>(texWidth, texHeight, 8, RenderSys::TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED);
+		texture->SetData(pixels.data());
+		m_renderer->CreateTexture(1, texture);
 
 		// Since we now have 2 bindings, we use a vector to store them
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(2);
@@ -220,7 +233,7 @@ public:
 		textureBindingLayout.texture.sampleType = RenderSys::TextureSampleType::Float;
 		textureBindingLayout.texture.viewDimension = RenderSys::TextureViewDimension::_2D;
 
-		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
+		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 2);
 
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
 		m_renderer->CreatePipeline();
@@ -237,38 +250,36 @@ public:
 		if (m_viewportWidth == 0 || m_viewportHeight == 0)
 			return;
 
-        if (m_viewportWidth != m_renderer->GetWidth() ||
+        if (!m_renderer ||
+            m_viewportWidth != m_renderer->GetWidth() ||
             m_viewportHeight != m_renderer->GetHeight())
         {
 			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-			m_cameraController->GetCamera()->SetAspectRatio((float)m_viewportWidth/ (float)m_viewportHeight);
         }
 
 		if (m_renderer)
 		{
-			m_cameraController->OnUpdate(RenderSys::GetCameraInputFromWalnut());
-
 			m_renderer->BeginFrame();
 			m_renderer->BeginRenderPass();
 
-			auto camera = m_cameraController->GetCamera();
-			m_uniformData.viewMatrix = camera->GetViewMatrix();
-			m_uniformData.projectionMatrix = camera->GetProjectionMatrix();
-
 			static auto startTime = std::chrono::steady_clock::now();
 			const float time = std::chrono::duration<float>(std::chrono::steady_clock::now() - startTime).count();
+			constexpr float PI = 3.14159265358979323846f;		
+			m_uniformData.viewMatrix = glm::lookAtLH(glm::vec3(-2.0f, -3.0f, 2.0f), glm::vec3(0.0f), glm::vec3(0, 0, 1));
+			m_uniformData.projectionMatrix = glm::perspectiveLH_ZO(30 * (PI / 180), (float)(m_viewportWidth / m_viewportHeight), 0.01f, 100.0f);
+
 			glm::mat4x4 M1(1.0);
 			float angle1 = time * 0.9f;
 			M1 = glm::rotate(M1, angle1, glm::vec3(0.0, 0.0, 1.0));
-			M1 = glm::translate(M1, glm::vec3(0.0, 0.0, 0.0));
+			M1 = glm::translate(M1, glm::vec3(1.0, 0.0, 0.0));
 			M1 = glm::scale(M1, glm::vec3(0.3f));
 			m_uniformData.modelMatrix = M1;
 
 			m_uniformData.time = time;
 			m_uniformData.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 			m_renderer->SetUniformBufferData(0, &m_uniformData, 0);
-			m_renderer->BindResources();
 
+			m_renderer->BindResources();
 			m_renderer->Render(0);
 			m_renderer->EndRenderPass();
 			m_renderer->EndFrame();
@@ -281,52 +292,31 @@ public:
 	{
 		ImGui::Begin("Settings");
         ImGui::Text("Last render: %.3fms", m_lastRenderTime);
-		static ImVec4 newClearColorImgui = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-		ImGui::ColorEdit3("Clear Color", (float*)&newClearColorImgui); 
-		glm::vec4 newClearColor = {newClearColorImgui.x, newClearColorImgui.y, newClearColorImgui.z, newClearColorImgui.w};
-		if (newClearColor != m_clearColor)
-		{
-			m_clearColor = newClearColor;
-			m_renderer->SetClearColor(m_clearColor);
-		}
 		ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::Begin("Viewport");
 		m_viewportWidth = ImGui::GetContentRegionAvail().x;
         m_viewportHeight = ImGui::GetContentRegionAvail().y;
-		const float imageWidth = m_renderer->GetWidth();
+        const float imageWidth = m_renderer->GetWidth();
 		const float imageHeight = m_renderer->GetHeight();
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
         ImGui::PopStyleVar();
-
-		ImGui::ShowDemoWindow();
 	}
 
 private:
-    std::unique_ptr<RenderSys::Renderer3D> m_renderer;
+    std::shared_ptr<RenderSys::Renderer3D> m_renderer;
     uint32_t m_viewportWidth = 0;
     uint32_t m_viewportHeight = 0;
     float m_lastRenderTime = 0.0f;
-	glm::vec4 m_clearColor = glm::vec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	MyUniforms m_uniformData;
-	RenderSys::VertexBuffer m_vertexBuffer;
-	const char* m_shaderSource = nullptr;
-	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 };
 
-Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
-{
-	Walnut::ApplicationSpecification spec;
-	spec.Name = "Renderer3D Example";
-#ifndef NDEBUG
-	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
-#endif
+} // namespace
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	RenderSys::AttachToWalnut();
-	app->PushLayer<Renderer3DLayer>();
-	return app;
+std::shared_ptr<Walnut::Layer> CreateTextureSamplerLayer()
+{
+	return std::make_shared<TextureSamplerLayer>();
 }

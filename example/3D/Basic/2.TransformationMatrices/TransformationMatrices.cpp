@@ -1,14 +1,17 @@
 #include <array>
 
 #include <Walnut/Application.h>
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
 #include <imgui.h>
+
+#include "Examples3DBasic.h"
+
+namespace
+{
 
 struct MyUniforms {
 	// We add transform matrices
@@ -32,7 +35,7 @@ glm::mat4x4 makePerspectiveProj(float ratio, float near, float far, float focalL
 	return glm::transpose(glm::make_mat4(aaa));
 }
 
-class Renderer3DLayer : public Walnut::Layer
+class TransformationMatricesLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
@@ -274,8 +277,6 @@ public:
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
         ImGui::PopStyleVar();
-
-		ImGui::ShowDemoWindow();
 	}
 
 private:
@@ -287,16 +288,9 @@ private:
 	MyUniforms m_uniformData;
 };
 
-Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
-{
-	Walnut::ApplicationSpecification spec;
-	spec.Name = "Renderer3D Example";
-#ifndef NDEBUG
-	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
-#endif
+} // namespace
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	RenderSys::AttachToWalnut();
-	app->PushLayer<Renderer3DLayer>();
-	return app;
+std::shared_ptr<Walnut::Layer> CreateTransformationMatricesLayer()
+{
+	return std::make_shared<TransformationMatricesLayer>();
 }

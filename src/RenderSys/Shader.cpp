@@ -101,7 +101,10 @@ std::vector<uint32_t> compile_file(const std::string &name,
         assert(false);
     }
 
-    shaderc::Compiler compiler;
+    // One compiler for the whole process: every shaderc::Compiler holds glslang initialized, and destroying the
+    // last one frees glslang's built-in symbol tables, which the next compile then rebuilds (most of a compile's time).
+    // shaderc allows compiling on the same compiler from several threads at once.
+    static const shaderc::Compiler compiler;
     shaderc::CompileOptions options;
     options.SetGenerateDebugInfo();
     options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);

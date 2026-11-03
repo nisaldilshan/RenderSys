@@ -1,13 +1,16 @@
 #include <array>
 #include <Walnut/Application.h>
-#include <RenderSys/Walnut/WalnutAdapter.h>
-#include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Geometry.h>
 #include <imgui.h>
+
+#include "Examples3DBasic.h"
+
+namespace
+{
 
 struct MyUniforms {
     glm::mat4x4 projectionMatrix;
@@ -18,7 +21,7 @@ struct MyUniforms {
     float _pad[3];
 };
 
-class Renderer3DLayer : public Walnut::Layer
+class FirstTextureLayer : public Walnut::Layer
 {
 public:
 	virtual void OnAttach() override
@@ -80,7 +83,8 @@ public:
 
 				void main()
 				{
-					vec3 texColor = texture(tex, in_uv).rgb; 
+					ivec2 texelCoords = ivec2(in_uv * vec2(textureSize(tex, 0)));
+					vec3 texColor = texelFetch(tex, texelCoords, 0).rgb;
 
 					out_color = vec4(texColor, ubo.color.a);
 				}
@@ -120,7 +124,6 @@ public:
 
 			@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
 			@group(0) @binding(1) var gradientTexture: texture_2d<f32>;
-			@group(0) @binding(2) var textureSampler: sampler;
 
 			@vertex
 			fn vs_main(in: VertexInput) -> VertexOutput {
@@ -129,7 +132,7 @@ public:
 				// Forward the normal
 				out.normal = (uMyUniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
 				out.color = in.color;
-				out.uv = in.uv * 2.0;
+				out.uv = in.uv;
 
 				return out;
 			}
@@ -137,7 +140,8 @@ public:
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 				// We remap UV coords to actual texel coordinates
-				let color = textureSample(gradientTexture, textureSampler, in.uv).rgb;
+				let texelCoords = vec2i(in.uv * vec2f(textureDimensions(gradientTexture)));
+				let color = textureLoad(gradientTexture, texelCoords, 0).rgb;
 
 				// Gamma-correction
 				let corrected_color = pow(color, vec3f(2.2));
@@ -207,7 +211,7 @@ public:
 			}
 		}
 
-		auto texture = std::make_shared<RenderSys::Texture>(texWidth, texHeight, 8, RenderSys::TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED);
+		auto texture = std::make_shared<RenderSys::Texture>(texWidth, texHeight, 1, RenderSys::TextureUsage::SAMPLED_TRANSFERDST_UNDEFINED);
 		texture->SetData(pixels.data());
 		m_renderer->CreateTexture(1, texture);
 
@@ -300,8 +304,6 @@ public:
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
         ImGui::PopStyleVar();
-
-		ImGui::ShowDemoWindow();
 	}
 
 private:
@@ -313,16 +315,9 @@ private:
 	MyUniforms m_uniformData;
 };
 
-Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
-{
-	Walnut::ApplicationSpecification spec;
-	spec.Name = "Renderer3D Example";
-#ifndef NDEBUG
-	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
-#endif
+} // namespace
 
-	Walnut::Application* app = new Walnut::Application(spec);
-	RenderSys::AttachToWalnut();
-	app->PushLayer<Renderer3DLayer>();
-	return app;
+std::shared_ptr<Walnut::Layer> CreateFirstTextureLayer()
+{
+	return std::make_shared<FirstTextureLayer>();
 }
