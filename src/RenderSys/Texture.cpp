@@ -106,4 +106,21 @@ std::shared_ptr<Texture> Texture::createDepthDummy(int texWidth, int texHeight)
     return dummyTexture;
 }
 
+std::shared_ptr<Texture> Texture::createShadowMapTexture(int texWidth, int texHeight)
+{
+    auto shadowMapTexture = std::make_shared<RenderSys::Texture>(texWidth, texHeight, 1,
+                                                                 TextureUsage::SAMPLED_UNDEFINED_DEPTHSTENCIL);
+    TextureSampler sampler;
+    sampler.minFilter = TextureSampler::FilterMode::LINEAR;
+    sampler.magFilter = TextureSampler::FilterMode::LINEAR;
+    sampler.addressModeU = TextureSampler::AddressMode::CLAMP_TO_BORDER;
+    sampler.addressModeV = TextureSampler::AddressMode::CLAMP_TO_BORDER;
+    sampler.addressModeW = TextureSampler::AddressMode::CLAMP_TO_BORDER;
+    sampler.borderColor = TextureSampler::BorderColor::OPAQUE_WHITE;
+    // Lit where the receiver's depth is at or in front of the nearest caster's
+    sampler.compareOp = TextureSampler::CompareOp::LESS_OR_EQUAL;
+    shadowMapTexture->SetSampler(sampler);
+    return shadowMapTexture;
+}
+
 }

@@ -524,10 +524,6 @@ void WebGPURenderer3D::EndShadowMapPass()
 
 }
 
-void WebGPURenderer3D::OnDebugView()
-{
-}
-
 void WebGPURenderer3D::Destroy()
 {
     for (auto &&vertexIndexBufferInfo : m_vertexIndexBufferInfoMap)
@@ -555,7 +551,11 @@ void WebGPURenderer3D::CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight)
 {
 }
 
-void WebGPURenderer3D::CreateShadowPipeline()
+void WebGPURenderer3D::CreateShadowPipeline(RenderSys::CullMode cullMode)
+{
+}
+
+void WebGPURenderer3D::SetShadowDepthBias(float constantFactor, float slopeFactor)
 {
 }
 

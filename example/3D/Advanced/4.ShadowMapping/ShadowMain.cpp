@@ -1,11 +1,14 @@
+#include <algorithm>
 #include <array>
+#include <chrono>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <Walnut/Application.h>
 #include <RenderSys/Walnut/WalnutAdapter.h>
 #include <Walnut/EntryPoint.h>
 #include <Walnut/Timer.h>
 #include <Walnut/RenderingBackend.h>
-#include <Walnut/Image.h>
 
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Camera/PerspectiveCamera.h>
@@ -20,12 +23,12 @@
 #include <RenderSys/Scene/SceneHierarchyPanel.h>
 #include <imgui.h>
 
-#include "ShadowHelper.h"
-#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/constants.hpp>
 #include <resources/Shaders/ShaderLighting.h>
 
+#include "Common/ExampleDockLayout.h"
 #include "Common/SunSkyRig.h"
+#include "ShadowFit.h"
 
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
@@ -35,9 +38,31 @@ struct alignas(16) MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-static_assert(sizeof(LightingProperties) == 192, "must match the std140 layout in ShaderLighting.h");
+static_assert(sizeof(LightingProperties) == 208, "must match the std140 layout in ShaderLighting.h");
 
-Walnut::Application* appPtr = nullptr;
+constexpr uint32_t kShadowMapResolution = 2048;
+
+// The sun's shadow, tuned in the Settings window
+struct SunShadowSettings
+{
+	enum class Fit : int
+	{
+		WholeScene = 0, // the map covers every caster; it moves only with the sun
+		CameraView,     // the map covers the view up to the shadow distance, or the scene when that is smaller
+	};
+
+	Fit fit = Fit::WholeScene;
+	float shadowDistance = 20.0f;   // how far from the camera the camera-view fit reaches, in world units
+	bool texelSnapping = true;      // move the camera-view fit in whole texels, so edges do not shimmer
+	float depthBiasConstant = 1.25f; // vkCmdSetDepthBias constant factor
+	float depthBiasSlope = 1.75f;    // vkCmdSetDepthBias slope factor
+	float normalOffsetTexels = 1.0f; // receivers move this many texels along their normal before the lookup
+	int pcfRadius = 1;               // 0 is one hardware 2x2 tap, 1 is 3x3 taps, 2 is 5x5 taps
+	// Sponza has single-sided walls and leaves, which leak light if the faces that face the sun are culled
+	RenderSys::CullMode casterCulling = RenderSys::CullMode::None;
+	int debugView = GLSL_SHADOW_DEBUG_NONE;
+	bool showShadowMap = true;
+};
 
 class Renderer3DLayer : public Walnut::Layer
 {
@@ -111,9 +136,9 @@ public:
 			assert(meshComponent.m_Mesh->m_meshData->indices.size() > 0);
 			m_renderer->SetIndexBufferData(vertexBufID, meshComponent.m_Mesh->m_meshData->indices);
 		}
-		
+
 		m_scene->AddInstanceOfSubTree(0, glm::vec3(0.0f, 0.0f, 0.0f), m_scene->m_rootNodeIndex, m_scene->m_instancedRootNodeIndex);
-		m_scene->AddDirectionalLight(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f)); // aimLightAtSun places it every frame
+		m_scene->AddDirectionalLight(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f)); // aimLightAtSun aims it every frame
 
 		std::vector<RenderSys::BindGroupLayoutEntry> bindingLayoutEntries(3);
 		// The uniform buffer binding that we already had
@@ -131,7 +156,7 @@ public:
 		lightingUniformLayout.visibility = RenderSys::ShaderStage::VertexAndFragment;
 		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
 		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingProperties);
-		// ShadowMap binding
+		// ShadowMap binding, a sampler2DShadow
 		RenderSys::BindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[2];
 		textureBindingLayout.setDefault();
 		textureBindingLayout.binding = 2;
@@ -142,12 +167,10 @@ public:
 		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
 		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingProperties), 1);
 
-		m_renderer->CreateShadowMap(2048, 2048);
+		m_renderer->CreateShadowMap(kShadowMapResolution, kShadowMapResolution);
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
 		m_renderer->CreatePipeline();
-
-
-		m_renderer->CreateShadowPipeline();
+		m_renderer->CreateShadowPipeline(m_shadow.casterCulling);
 	}
 
 	virtual void OnDetach() override
@@ -162,35 +185,15 @@ public:
 	virtual void OnUpdate(float ts) override
 	{
         Walnut::Timer timer;
+		if (m_viewportWidth == 0 || m_viewportHeight == 0)
+			return;
 
-		static uint32_t windowWidth = 0;
-		static uint32_t windowHeight = 0;
-		auto& mainImage = appPtr->MainImageRef();
-		if (mainImage) {
-			// A minimised window reports 0x0, which would create zero-extent images and a NaN aspect ratio.
-			if (mainImage->GetWidth() == 0 || mainImage->GetHeight() == 0)
-				return;
-
-			if (windowWidth != mainImage->GetWidth() ||
-				windowHeight != mainImage->GetHeight())
-			{
-				windowWidth = mainImage->GetWidth();
-				windowHeight = mainImage->GetHeight();
-				m_renderer->OnResize(windowWidth, windowHeight);
-				m_cameraController->GetCamera()->SetAspectRatio(static_cast<float>(windowWidth)/ static_cast<float>(windowHeight));
-			}
-		} else {
-			if (m_viewportWidth == 0 || m_viewportHeight == 0)
-				return;
-	
-			if (m_viewportWidth != m_renderer->GetWidth() ||
-				m_viewportHeight != m_renderer->GetHeight())
-			{
-				m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
-				m_cameraController->GetCamera()->SetAspectRatio(static_cast<float>(m_viewportWidth)/ static_cast<float>(m_viewportHeight));
-			}
+		if (m_viewportWidth != m_renderer->GetWidth() ||
+			m_viewportHeight != m_renderer->GetHeight())
+		{
+			m_renderer->OnResize(m_viewportWidth, m_viewportHeight);
+			m_cameraController->GetCamera()->SetAspectRatio(static_cast<float>(m_viewportWidth)/ static_cast<float>(m_viewportHeight));
 		}
-
 
 		if (m_renderer)
 		{
@@ -199,8 +202,14 @@ public:
 				moveLight(ts);
 			aimLightAtSun();
 			m_scene->Update();
+			if (!m_sceneBoundsComputed)
+			{
+				computeSceneBounds(); // needs the instance matrices that the first Update writes
+				m_sceneBoundsComputed = true;
+			}
 
 			updateUniforms();
+			m_renderer->SetShadowDepthBias(m_shadow.depthBiasConstant, m_shadow.depthBiasSlope);
 
 			m_renderer->BeginFrame();
 
@@ -208,8 +217,8 @@ public:
 
 			m_renderer->BeginRenderPass();
 			m_renderer->BindResources();
-			auto meshView = m_scene->m_Registry.view<RenderSys::MeshComponent, 
-												RenderSys::TransformComponent, 
+			auto meshView = m_scene->m_Registry.view<RenderSys::MeshComponent,
+												RenderSys::TransformComponent,
 												RenderSys::InstanceTagComponent>();
 			for (auto entity : meshView)
 			{
@@ -221,9 +230,6 @@ public:
 			m_renderer->EndFrame();
 		}
 
-		if (mainImage) {
-			mainImage->SetData(m_renderer->GetRenderedImageData().data());
-		}
         m_lastRenderTime = timer.ElapsedMillis();
 	}
 
@@ -232,16 +238,17 @@ public:
 		ImGui::Begin("Settings");
         ImGui::Text("Last render: %.3fms", m_lastRenderTime);
 		static ImVec4 newClearColorImgui = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-		ImGui::ColorEdit3("Clear Color", (float*)&newClearColorImgui); 
+		ImGui::ColorEdit3("Clear Color", (float*)&newClearColorImgui);
 		glm::vec4 newClearColor = {newClearColorImgui.x, newClearColorImgui.y, newClearColorImgui.z, newClearColorImgui.w};
 		if (newClearColor != m_clearColor)
 		{
 			m_clearColor = newClearColor;
 			m_renderer->SetClearColor(m_clearColor);
 		}
-		ImGui::Checkbox("Texel Snapping ", &m_texelSnapping);
-		ImGui::Checkbox("Move Light Direction ", &m_moveLightDirection);
-		ImGui::Checkbox("Debug View ", &m_debugView);
+		ImGui::Checkbox("Move Light Direction", &m_moveLightDirection);
+		ImGui::SetItemTooltip("Sweeps the sun's azimuth at 10 degrees a second");
+		if (ImGui::CollapsingHeader("Shadows", ImGuiTreeNodeFlags_DefaultOpen))
+			shadowSettingsUI();
 		if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
 			m_lightRig.OnImGuiRender();
 		ImGui::End();
@@ -255,11 +262,18 @@ public:
         ImGui::Image(m_renderer->GetDescriptorSet(), {imageWidth, imageHeight});
 		ImGui::End();
 
-		if (m_debugView) {
-			ImGui::Begin("VulkanRenderer3D DebugView");
-			const auto debugViewDescriptorSet = m_renderer->GetDebugView();
-			if (debugViewDescriptorSet != 0) // Ensure the debug view is available before trying to display it
-        		ImGui::Image(debugViewDescriptorSet, {imageWidth, imageHeight});
+		if (m_shadow.showShadowMap)
+		{
+			ImGui::Begin("Shadow Map", &m_shadow.showShadowMap);
+			const uint64_t shadowMapTexture = m_renderer->GetShadowMapImGuiTexture();
+			if (shadowMapTexture != 0)
+			{
+				// Square, as large as fits. Depth is greyscale, black nearest the sun. The map's first row is the
+				// light's bottom edge, so flip it to show the light's up as up.
+				const ImVec2 available = ImGui::GetContentRegionAvail();
+				const float side = std::max(1.0f, std::min(available.x, available.y));
+				ImGui::Image((ImTextureID)shadowMapTexture, {side, side}, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+			}
 			ImGui::End();
 		}
         ImGui::PopStyleVar();
@@ -268,6 +282,52 @@ public:
 	}
 
 private:
+	void shadowSettingsUI()
+	{
+		const char* fits[] = {"Whole scene", "Camera view"};
+		int fit = static_cast<int>(m_shadow.fit);
+		if (ImGui::Combo("Fit", &fit, fits, IM_ARRAYSIZE(fits)))
+			m_shadow.fit = static_cast<SunShadowSettings::Fit>(fit);
+		ImGui::SetItemTooltip("Whole scene: the map covers every caster and moves only with the sun.\n"
+							  "Camera view: the map covers what the camera sees up to the shadow distance,\n"
+							  "for sharper shadows near the camera.");
+		if (m_shadow.fit == SunShadowSettings::Fit::CameraView)
+		{
+			ImGui::SliderFloat("Shadow distance", &m_shadow.shadowDistance, 1.0f, 500.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+			ImGui::Checkbox("Texel snapping", &m_shadow.texelSnapping);
+			ImGui::SetItemTooltip("Moves the map in whole texels. Turn it off and move the camera to see edges shimmer.");
+			if (!m_fitFollowsCamera)
+				ImGui::TextDisabled("The whole-scene map is sharper at this distance, so it is used");
+		}
+		ImGui::Text("Map %.1f units wide, texel %.3f units", m_shadowFit.mapWorldSize, m_shadowFit.texelWorldSize);
+		ImGui::Text("Fit on the CPU: %.2f us", m_fitMicroseconds);
+
+		ImGui::SliderFloat("Depth bias", &m_shadow.depthBiasConstant, 0.0f, 20.0f, "%.2f");
+		ImGui::SetItemTooltip("Constant depth bias, in the depth format's smallest steps");
+		ImGui::SliderFloat("Slope bias", &m_shadow.depthBiasSlope, 0.0f, 10.0f, "%.2f");
+		ImGui::SetItemTooltip("Depth bias per unit of a caster's depth slope; the main cure for acne on tilted surfaces");
+		ImGui::SliderFloat("Normal offset", &m_shadow.normalOffsetTexels, 0.0f, 4.0f, "%.2f texels");
+		ImGui::SetItemTooltip("Moves each receiver along its normal before the lookup, more where it faces away from the sun");
+		const char* pcfKernels[] = {"2x2 (one hardware tap)", "3x3 taps", "5x5 taps"};
+		ImGui::Combo("PCF", &m_shadow.pcfRadius, pcfKernels, IM_ARRAYSIZE(pcfKernels));
+		const char* cullModes[] = {"None", "Faces towards the sun", "Faces away from the sun"};
+		int casterCulling = static_cast<int>(m_shadow.casterCulling);
+		if (ImGui::Combo("Cull casters", &casterCulling, cullModes, IM_ARRAYSIZE(cullModes)))
+		{
+			m_shadow.casterCulling = static_cast<RenderSys::CullMode>(casterCulling);
+			m_renderer->CreateShadowPipeline(m_shadow.casterCulling);
+		}
+		ImGui::SetItemTooltip("Culling the faces towards the sun stops acne on closed meshes, but single-sided\n"
+							  "geometry such as Sponza's walls and leaves then lets light through");
+
+		const char* debugViews[] = {"Off", "Sun visibility", "Shadow-map texels"};
+		ImGui::Combo("Debug view", &m_shadow.debugView, debugViews, IM_ARRAYSIZE(debugViews));
+		ImGui::SetItemTooltip("Sun visibility: white where the sun reaches, black in shadow.\n"
+							  "Shadow-map texels: a checkerboard of the map's texels, still on surfaces when snapping works.\n"
+							  "Both tint red what the map does not cover.");
+		ImGui::Checkbox("Show shadow map", &m_shadow.showShadowMap);
+	}
+
 	void updateUniforms()
 	{
 		auto camera = m_cameraController->GetCamera();
@@ -277,157 +337,67 @@ private:
 		m_myUniformData.time = 0.0f;
 		m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
 
-		// ========================================================================
-		// STEP 1: Get Camera Frustum Corners in World Space
-		// ========================================================================
-
-		// Get the inverse of the main camera's combined view-projection matrix
-		glm::mat4 invView = glm::inverse(camera->GetViewMatrix());
-
-		// Define the 8 corners of the NDC cube (Vulkan's depth is [0, 1])
-		Frustum frustum;
-    	frustum.CalcCorners(camera);
-		frustum.Transform(invView);
-		Frustum view_frustum_in_world_space = frustum;   // backup for later
-
-		// ========================================================================
-
-		// The sun is light 0; the loop below adds the shadow map's view-projection
+		// The sun is light 0, and the shadow map is rendered from it
 		m_lightingUniformData = m_lightRig.ToLightingProperties();
 
-		auto lightView = m_scene->m_Registry.view<RenderSys::DirectionalLightComponent,
-											RenderSys::TransformComponent>();
-		for (auto entity : lightView)
+		const auto fitStart = std::chrono::steady_clock::now();
+		const glm::vec3 towardsSun = m_lightRig.TowardsSun();
+		m_fitFollowsCamera = false;
+		if (m_sceneBounds.IsValid())
+			m_shadowFit = FitSunShadowToBounds(towardsSun, m_sceneBounds, kShadowMapResolution);
+		if (m_shadow.fit == SunShadowSettings::Fit::CameraView || !m_sceneBounds.IsValid())
 		{
-			auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
-
-			// Looks along the light's forward vector. The inverse of translate * quat(-rotation) that this
-			// replaces did so only for a rotation about x, so shadows fell the wrong way for most sun azimuths.
-			const glm::vec3 lightPosition = transformComponent.GetTranslation();
-			const glm::vec3 lightForward = transformComponent.GetForwardVector();
-			const glm::vec3 lightUp = std::abs(lightForward.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
-			glm::mat4 lightViewMatrix = glm::lookAtRH(lightPosition, lightPosition + lightForward, lightUp);
-			glm::mat4 lightModelMatrix = glm::inverse(lightViewMatrix);
-
-			OrthoProjInfo ortho;
-
-			if (m_texelSnapping) {
-				frustum.Transform(lightModelMatrix);
-				AABB aabb;
-    			frustum.CalcAABB(aabb);
-
-				//
-				// Step #5: Calculate the position of the light
-				//
-				glm::vec3 BottomLeft(aabb.MinX, aabb.MinY, aabb.MinZ);
-				glm::vec3 TopRight(aabb.MaxX, aabb.MaxY, aabb.MinZ);
-				glm::vec4 LightPosWorld4d = glm::vec4((BottomLeft + TopRight) / 2.0f, 1.0f);
-
-				//
-				// Step #6: transform the position of the light back to world space
-				//
-				LightPosWorld4d = lightViewMatrix * LightPosWorld4d;
-				auto LightPosWorld = glm::vec3(LightPosWorld4d.x, LightPosWorld4d.y, LightPosWorld4d.z);
-
-				// 3. Create Final Stable Light View Matrix
-				auto LightView = glm::lookAtLH(LightPosWorld, 
-												LightPosWorld + transformComponent.GetForwardVector(), 
-												transformComponent.GetUpVector());
-				
-				// Update the variable we use later for matrix multiplication
-				//lightViewMatrix = LightView; 
-
-				// 4. Move Frustum to this FINAL Light Space
-				// Note: Reset frustum to world space first if it was modified, or use a backup
-				view_frustum_in_world_space.Transform(LightView);
-
-				// 5. Calculate final Ortho X/Y bounds from this new frustum position
-				AABB final_aabb;
-				view_frustum_in_world_space.CalcAABB(final_aabb);
-				final_aabb.UpdateOrthoInfo(ortho);
-
-				// =================================================================
-				// NEW ALGORITHM INTEGRATION
-				// =================================================================
-				
-				// Extract the 8 corners of the view frustum which are now in Light Space
-				// (Assuming your Frustum class has a way to access the transformed points)
-				// If 'view_frustum_in_world_space' stores points internally:
-				std::vector<glm::vec3> lightSpaceFrustumCorners;
-				for(int i=0; i<1; i++) {
-					// REPLACE with your actual accessor, e.g. .Points[i] or .GetCorner(i)
-					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearTopRight); 
-					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearTopLeft); 
-					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearBottomLeft); 
-					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.NearBottomRight); 
-
-					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarTopRight); 
-					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarTopLeft); 
-					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarBottomLeft); 
-					lightSpaceFrustumCorners.push_back(view_frustum_in_world_space.FarBottomRight); 
-				}
-
-				// Define the bounds we want to clip against (The Ortho X/Y we just calculated)
-				glm::vec3 lightCameraOrthographicMin(ortho.l, ortho.b, 0.0f);
-				glm::vec3 lightCameraOrthographicMax(ortho.r, ortho.t, 0.0f);
-
-				float fNearPlane = FLT_MAX;
-				float fFarPlane = -FLT_MAX;
-
-				// Run the clipping algorithm
-				ComputeNearAndFar(fNearPlane, fFarPlane, 
-								lightCameraOrthographicMin, 
-								lightCameraOrthographicMax, 
-								lightSpaceFrustumCorners);
-
-				// Override the naive AABB Z-bounds with the tighter clipped bounds
-				ortho.n = fNearPlane;
-				ortho.f = fFarPlane;
-				// =================================================================
+			const float farDistance = std::clamp(m_shadow.shadowDistance, 2.0f * camera->GetNearClip(), camera->GetFarClip());
+			float centerDistance = 0.0f;
+			ShadowSphere cameraSphere = FrustumSliceSphere(glm::radians(camera->GetFOV()), camera->GetAspectRatio(),
+															camera->GetNearClip(), farDistance, centerDistance);
+			cameraSphere.center = camera->GetPosition() + centerDistance * camera->GetForwardDirection();
+			const SunShadowFit cameraFit = FitSunShadowToSphere(towardsSun, cameraSphere, m_sceneBounds, kShadowMapResolution,
+																m_shadow.texelSnapping);
+			// Once the view reaches about the scene's size, the whole-scene map is the sharper one
+			if (!m_sceneBounds.IsValid() || cameraFit.texelWorldSize < m_shadowFit.texelWorldSize)
+			{
+				m_shadowFit = cameraFit;
+				m_fitFollowsCamera = true;
 			}
-			else {
-				// Get frustum center
-				glm::vec3 frustumCent = frustum.FarBottomLeft + frustum.FarBottomRight + frustum.FarTopLeft + frustum.FarTopRight
-										+ frustum.NearBottomLeft + frustum.NearBottomRight + frustum.NearTopLeft + frustum.NearTopRight;
-				frustumCent /= 8.0f;
-				glm::vec4 frustumCenter = glm::vec4(frustumCent, 1.0f);
-
-				float radius = 0.0f;
-				float distance = glm::length(frustum.FarBottomLeft - frustumCenter);
-				radius = glm::max(radius, distance);
-				distance = glm::length(frustum.FarBottomRight - frustumCenter);
-				radius = glm::max(radius, distance);
-				distance = glm::length(frustum.FarTopLeft - frustumCenter);
-				radius = glm::max(radius, distance);
-				distance = glm::length(frustum.FarTopRight - frustumCenter);
-				radius = glm::max(radius, distance);
-				distance = glm::length(frustum.NearBottomLeft - frustumCenter);
-				radius = glm::max(radius, distance);
-				distance = glm::length(frustum.NearBottomRight - frustumCenter);
-				radius = glm::max(radius, distance);
-				distance = glm::length(frustum.NearTopLeft - frustumCenter);
-				radius = glm::max(radius, distance);
-				distance = glm::length(frustum.NearTopRight - frustumCenter);
-				radius = glm::max(radius, distance);
-
-				radius = std::ceil(radius * 16.0f) / 16.0f;
-
-				const auto temp = glm::vec3(radius);
-				ortho.r = temp.x;
-				ortho.l = -ortho.r;
-				ortho.t = temp.y;
-				ortho.b = -ortho.t;
-				ortho.f = temp.z;
-				ortho.n = -ortho.f;
-			}
-			
-			// Create the final, stable orthographic matrix
-			glm::mat4 lightOrthoMatrix = glm::orthoRH_ZO(ortho.l, ortho.r, ortho.b, ortho.t, ortho.n, ortho.f);
-
-			// The final matrix is stable and correctly positioned
-			m_lightingUniformData.m_lightViewProjection = lightOrthoMatrix * lightViewMatrix;
 		}
+		const auto fitEnd = std::chrono::steady_clock::now();
+		// A running average, since one fit is close to the clock's resolution
+		const float fitMicroseconds = std::chrono::duration<float, std::micro>(fitEnd - fitStart).count();
+		m_fitMicroseconds += 0.05f * (fitMicroseconds - m_fitMicroseconds);
+
+		m_lightingUniformData.m_lightViewProjection = m_shadowFit.viewProjection;
+		m_lightingUniformData.m_settings.w = m_shadow.debugView;
+		m_lightingUniformData.m_shadowParams = glm::vec4(m_shadow.normalOffsetTexels * m_shadowFit.texelWorldSize,
+														 static_cast<float>(m_shadow.pcfRadius), 0.0f, 0.0f);
 		m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
+	}
+
+	// The world bounds of every mesh instance, which are the shadow casters. The scene is static, so this runs once.
+	void computeSceneBounds()
+	{
+		m_sceneBounds = ShadowBounds{};
+		auto meshView = m_scene->m_Registry.view<RenderSys::MeshComponent, RenderSys::InstanceTagComponent>();
+		for (auto entity : meshView)
+		{
+			const auto& meshComponent = meshView.get<RenderSys::MeshComponent>(entity);
+			const auto& instanceTag = meshView.get<RenderSys::InstanceTagComponent>(entity);
+			ShadowBounds meshBounds;
+			for (const auto& vertex : meshComponent.m_Mesh->m_meshData->vertices)
+				meshBounds.Add(vertex.pos);
+			if (!meshBounds.IsValid())
+				continue;
+
+			const auto instanceBuffer = instanceTag.GetInstanceBuffer();
+			for (uint32_t instance = 0; instance < instanceTag.GetInstanceCount(); ++instance)
+			{
+				const glm::mat4& modelMatrix = instanceBuffer->GetModelMatrix(meshComponent.m_FirstInstance + instance);
+				for (int corner = 0; corner < 8; ++corner)
+					m_sceneBounds.Add(glm::vec3(modelMatrix * glm::vec4(meshBounds.Corner(corner), 1.0f)));
+			}
+		}
+		std::cout << "Shadow casters span (" << m_sceneBounds.min.x << ", " << m_sceneBounds.min.y << ", " << m_sceneBounds.min.z
+				  << ") to (" << m_sceneBounds.max.x << ", " << m_sceneBounds.max.y << ", " << m_sceneBounds.max.z << ")" << std::endl;
 	}
 
 	// Sweeps the sun around the sky at 10 degrees a second, which turns every shadow
@@ -438,8 +408,8 @@ private:
 			m_lightRig.sunAzimuthDeg -= 360.0f;
 	}
 
-	// The scene's directional light follows the rig, so the shadow pass and the Properties panel match the
-	// lighting. TransformComponent's forward is quat(euler) * +z, which for euler (pitch, yaw, 0) is
+	// The scene's directional light follows the rig, so the Properties panel matches the lighting. The shadow fit
+	// reads the rig directly. TransformComponent's forward is quat(euler) * +z, which for euler (pitch, yaw, 0) is
 	// (cos pitch sin yaw, -sin pitch, cos pitch cos yaw): the elevation and azimuth as pitch and yaw point
 	// it along the sunlight, away from TowardsSun().
 	void aimLightAtSun()
@@ -454,8 +424,6 @@ private:
 
 			auto& transformComponent = lightView.get<RenderSys::TransformComponent>(entity);
 			transformComponent.SetRotation(glm::vec3(glm::radians(m_lightRig.sunElevationDeg), glm::radians(m_lightRig.sunAzimuthDeg), 0.0f));
-			// The shadow map's depth range is centred on the light, 200 units out like the old overhead light
-			transformComponent.SetTranslation(200.0f * m_lightRig.TowardsSun());
 		}
 	}
 
@@ -483,83 +451,37 @@ private:
 		return true;
 	}
 
-	void loadShaders()
+	void loadShader(const std::string& fileName, const std::string& shaderName, RenderSys::ShaderStage stage)
 	{
 		const auto shaderDir = std::filesystem::path(SHADER_DIR).string();
 		assert(!shaderDir.empty());
 
-		if (Walnut::RenderingBackend::GetBackend() == Walnut::RenderingBackend::BACKEND::Vulkan)
-		{
-			{
-				std::ifstream file(shaderDir + "/ShadowMain-vert.glsl", std::ios::binary);
-				std::vector<char> content((std::istreambuf_iterator<char>(file)),
-											std::istreambuf_iterator<char>());
-
-				if (!file.is_open()) {
-					std::cerr << "Unable to open file." << std::endl;
-					assert(false);
-				}
-				RenderSys::Shader vertexShader("Vertex", std::string(content.data(), content.size()));
-				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				vertexShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
-				m_renderer->SetShader(vertexShader);
-			}
-
-			{
-				std::ifstream file(shaderDir + "/ShadowMain-frag.glsl", std::ios::binary);
-				std::vector<char> content((std::istreambuf_iterator<char>(file)),
-											std::istreambuf_iterator<char>());
-
-				if (!file.is_open()) {
-					std::cerr << "Unable to open file." << std::endl;
-					assert(false);
-				}
-
-				RenderSys::Shader fragmentShader("Fragment", std::string(content.data(), content.size()));
-				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				fragmentShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
-				m_renderer->SetShader(fragmentShader);
-			}
-
-			{
-				std::ifstream file(shaderDir + "/shadow-vert.glsl", std::ios::binary);
-				std::vector<char> content((std::istreambuf_iterator<char>(file)),
-											std::istreambuf_iterator<char>());
-
-				if (!file.is_open()) {
-					std::cerr << "Unable to open file." << std::endl;
-					assert(false);
-				}
-				RenderSys::Shader vertexShader("Shadow-Vertex", std::string(content.data(), content.size()));
-				vertexShader.type = RenderSys::ShaderType::SPIRV;
-				vertexShader.stage = RenderSys::ShaderStage::Vertex;
-				vertexShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
-				m_renderer->SetShader(vertexShader);
-			}
-
-			{
-				std::ifstream file(shaderDir + "/shadow-frag.glsl", std::ios::binary);
-				std::vector<char> content((std::istreambuf_iterator<char>(file)),
-											std::istreambuf_iterator<char>());
-
-				if (!file.is_open()) {
-					std::cerr << "Unable to open file." << std::endl;
-					assert(false);
-				}
-
-				RenderSys::Shader fragmentShader("Shadow-Fragment", std::string(content.data(), content.size()));
-				fragmentShader.type = RenderSys::ShaderType::SPIRV;
-				fragmentShader.stage = RenderSys::ShaderStage::Fragment;
-				fragmentShader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
-				m_renderer->SetShader(fragmentShader);
-			}
+		std::ifstream file(shaderDir + "/" + fileName, std::ios::binary);
+		if (!file.is_open()) {
+			std::cerr << "Unable to open file " << fileName << std::endl;
+			assert(false);
+			return;
 		}
-		else
+		std::vector<char> content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+		RenderSys::Shader shader(shaderName, std::string(content.data(), content.size()));
+		shader.type = RenderSys::ShaderType::SPIRV;
+		shader.stage = stage;
+		shader.SetIncludeDirectory(std::string(RESOURCE_DIR) + "/Shaders");
+		m_renderer->SetShader(shader);
+	}
+
+	void loadShaders()
+	{
+		if (Walnut::RenderingBackend::GetBackend() != Walnut::RenderingBackend::BACKEND::Vulkan)
 		{
 			assert(false);
+			return;
 		}
+		loadShader("ShadowMain-vert.glsl", "Vertex", RenderSys::ShaderStage::Vertex);
+		loadShader("ShadowMain-frag.glsl", "Fragment", RenderSys::ShaderStage::Fragment);
+		loadShader("shadow-vert.glsl", "Shadow-Vertex", RenderSys::ShaderStage::Vertex);
+		loadShader("shadow-frag.glsl", "Shadow-Fragment", RenderSys::ShaderStage::Fragment);
 	}
 
     std::unique_ptr<RenderSys::Renderer3D> m_renderer;
@@ -575,9 +497,14 @@ private:
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;
 	std::unique_ptr<RenderSys::SceneHierarchyPanel> m_sceneHierarchyPanel;
-	bool m_texelSnapping = false;
 	bool m_moveLightDirection = false;
-	bool m_debugView = false;
+
+	SunShadowSettings m_shadow;
+	ShadowBounds m_sceneBounds;   // the casters, in world space
+	bool m_sceneBoundsComputed = false;
+	SunShadowFit m_shadowFit;     // this frame's map placement
+	bool m_fitFollowsCamera = false;
+	float m_fitMicroseconds = 0.0f;
 };
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
@@ -587,10 +514,12 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 #ifndef NDEBUG
 	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
 #endif
-	spec.UseImGui = false;
 
-	appPtr = new Walnut::Application(spec);
+	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();
-	appPtr->PushLayer<Renderer3DLayer>();
-	return appPtr;
+	ExampleDockLayout layout;
+	layout.Left = { "Scene Hierarchy", "Properties", "Shadow Map" };
+	layout.SetAsDefault(*app);
+	app->PushLayer<Renderer3DLayer>();
+	return app;
 }

@@ -23,6 +23,11 @@
 // the forward pass then writes linear scene values, so nothing is applied twice.
 #define GLSL_DISPLAY_TRANSFORM_IN_POST (0x1 << 0x0)
 
+// What the shadow-mapping examples draw in place of the lit scene, selected by LightingProperties::m_settings.w
+#define GLSL_SHADOW_DEBUG_NONE 0       // the lit scene
+#define GLSL_SHADOW_DEBUG_SUN_SHADOW 1 // the sun's visibility: white where lit, black where shadowed
+#define GLSL_SHADOW_DEBUG_TEXELS 2     // the shadow map's texel grid over the scene, red outside the map
+
 struct LightingProperties
 {
     // bytes 0 to 31: xyz is the unit vector towards each light, w is unused
@@ -45,8 +50,13 @@ struct LightingProperties
     vec4 m_exposure;
 
     // bytes 176 to 191: x is the number of lights in use, y is a GLSL_TONEMAP_* curve,
-    // z holds GLSL_DISPLAY_* flags, w is unused
+    // z holds GLSL_DISPLAY_* flags, w is a GLSL_SHADOW_DEBUG_* view
     ivec4 m_settings;
+
+    // bytes 192 to 207, read only by shadow-mapping shaders: x is how far a receiver moves along its normal
+    // before the shadow lookup, in world units (the normal offset), y is the PCF kernel radius in texels
+    // (0 is one hardware 2x2 tap, 1 is 3x3 taps), z and w are unused
+    vec4 m_shadowParams;
 };
 
 #endif // SHADERLIGHTING_H
