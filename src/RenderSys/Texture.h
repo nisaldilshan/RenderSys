@@ -51,6 +51,9 @@ public:
 
     static std::shared_ptr<Texture> createDummy(int texWidth, int texHeight);
     static std::shared_ptr<Texture> createDepthDummy(int texWidth, int texHeight);
+    // A depth texture for a shadow map, read through sampler2DShadow: hardware depth compare with 2x2
+    // filtering, and a border at the far plane so receivers outside the map stay lit.
+    static std::shared_ptr<Texture> createShadowMapTexture(int texWidth, int texHeight);
 private:
     int m_texWidth = 0;
 	int m_texHeight = 0; 

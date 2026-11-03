@@ -30,7 +30,7 @@ struct alignas(16) MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
-static_assert(sizeof(LightingProperties) == 192, "must match the std140 layout in ShaderLighting.h");
+static_assert(sizeof(LightingProperties) == 208, "must match the std140 layout in ShaderLighting.h");
 
 // The two opposite lights and the 0.03 ambient this example always had. The shaders now divide
 // the Lambert term by pi, so the light colors carry a factor of pi to keep the same brightness.

@@ -29,7 +29,7 @@ struct alignas(16) MyUniforms {
     float time;
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
-static_assert(sizeof(LightingProperties) == 192, "must match the std140 layout in ShaderLighting.h");
+static_assert(sizeof(LightingProperties) == 208, "must match the std140 layout in ShaderLighting.h");
 
 class Renderer3DLayer : public Walnut::Layer
 {

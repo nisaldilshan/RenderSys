@@ -12,10 +12,12 @@ class ShadowRenderPipeline
 {
 
 public:
-    ShadowRenderPipeline(VkRenderPass renderPass, 
+    // The depth bias is dynamic state: set it with vkCmdSetDepthBias after binding the pipeline.
+    ShadowRenderPipeline(VkRenderPass renderPass,
                         std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
-                        const Vulkan::VertexInputLayout& vertexInputLayout, 
-                        const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos);
+                        const Vulkan::VertexInputLayout& vertexInputLayout,
+                        const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos,
+                        VkCullModeFlags cullMode);
     ~ShadowRenderPipeline();
 
     ShadowRenderPipeline(const ShadowRenderPipeline&) = delete;
@@ -28,8 +30,9 @@ public:
 
 private:
     void CreatePipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts);
-    void CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout, 
-                        const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos);
+    void CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
+                        const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos,
+                        VkCullModeFlags cullMode);
 
     VkPipelineLayout m_PipelineLayout;
     VkPipeline m_Pipeline;
