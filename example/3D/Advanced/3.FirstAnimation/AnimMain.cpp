@@ -30,17 +30,19 @@ static_assert(sizeof(MyUniforms) % 16 == 0);
 static_assert(sizeof(LightingProperties) == 192, "must match the std140 layout in ShaderLighting.h");
 
 // One sun plus a sky-and-ground ambient term, like the sun and sky light of a UE level.
-// Values are tuned by eye and exposed in the Settings window.
+// The defaults match the rr_oks UE5 level: the sun comes from its DirectionalLight (pitch -49.5,
+// yaw -10.3), mapped to glTF as (x, z, -y) like the OKS converter, assuming the UE map keeps the
+// OKS axes. The sky and ground values are fitted to its shaded walls. Tune in the Settings window.
 struct SunSkyRig
 {
 	float sunElevationDeg = 50.0f; // above the horizon
-	float sunAzimuthDeg = 35.0f;   // from -z towards -x
+	float sunAzimuthDeg = 100.0f;  // from -z towards -x
 	glm::vec3 sunColor = {1.0f, 0.93f, 0.84f};
 	float sunIntensity = 1.0f;     // 1 lights a white surface facing the sun to radiance 1
-	glm::vec3 skyColor = {0.80f, 0.89f, 1.0f};
-	float skyToSun = 0.18f;        // sky irradiance on an upward face over sun illuminance, pi * L_sky / E_sun
+	glm::vec3 skyColor = {0.92f, 0.95f, 1.0f};
+	float skyToSun = 0.24f;        // sky irradiance on an upward face over sun illuminance, pi * L_sky / E_sun
 	glm::vec3 groundColor = {1.0f, 0.96f, 0.90f};
-	float groundToSun = 0.06f;     // the same ratio for light from below
+	float groundToSun = 0.08f;     // the same ratio for light from below
 	float exposureEV = 1.0f;
 	int toneMapper = GLSL_TONEMAP_ACES_FITTED;
 
