@@ -1,8 +1,9 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-# Lists examples and runs the selected one as a Walnut layer, see Common/ExampleBrowser.h
-add_library(ExampleBrowser STATIC Common/ExampleBrowser.cpp)
-target_link_libraries(ExampleBrowser PUBLIC walnut::walnut)
+# Shared by the examples: the default window layout (Common/ExampleDockLayout.h), and the browser that
+# lists examples and runs the selected one as a Walnut layer (Common/ExampleBrowser.h)
+add_library(ExampleCommon STATIC Common/ExampleDockLayout.cpp Common/ExampleBrowser.cpp)
+target_link_libraries(ExampleCommon PUBLIC walnut::walnut)
 
 add_subdirectory(2D)
 add_subdirectory(3D/Basic)

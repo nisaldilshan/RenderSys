@@ -20,6 +20,8 @@
 #include <glm/gtc/constants.hpp>
 #include <imgui.h>
 
+#include "Common/ExampleDockLayout.h"
+
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
     glm::mat4x4 viewMatrix;
@@ -378,6 +380,9 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 
 	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();
+	ExampleDockLayout layout;
+	layout.Left = { "Scene Hierarchy", "Properties" };
+	layout.SetAsDefault(*app);
 	app->PushLayer<Renderer3DLayer>();
 	return app;
 }

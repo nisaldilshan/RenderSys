@@ -10,7 +10,7 @@ add_executable(Examples2D
 )
 
 target_include_directories(Examples2D PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(Examples2D PRIVATE RenderSys2D RenderSysWalnut ExampleBrowser)
+target_link_libraries(Examples2D PRIVATE RenderSys2D RenderSysWalnut ExampleCommon)
 
 # These examples load the model.txt in their own folder
 set_source_files_properties(5.UniformBuffers/UniformBuffers.cpp PROPERTIES

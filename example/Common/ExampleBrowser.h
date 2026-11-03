@@ -29,7 +29,7 @@ public:
 	void Select(size_t index);
 
 	// Docks the example list on the left, "Settings" on the right and "Viewport" in the middle,
-	// the windows every example draws. Used while there is no imgui.ini with a saved layout.
+	// the windows every example draws. Used while there is no imgui.ini with a saved layout, see ExampleDockLayout.
 	static void SetDefaultDockLayout(Walnut::Application& app);
 
 	// The example the command line asks for: its 1-based number, e.g. "3" in `Examples2D 3`.
