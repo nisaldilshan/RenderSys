@@ -27,17 +27,17 @@ layout (location = 4) in vec4 inShadowCoord;
 
 layout (location = 0) out vec4 out_color;
 
-#define ambientForShadow 0.1
-
+// 1 is lit and 0 is fully shadowed. The shadow blocks only the sun: the sky and ground light from
+// pbrAmbient still reach shadowed surfaces.
 float textureProj(vec4 shadowCoord, vec2 off)
 {
 	float shadow = 1.0;
-	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
+	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 )
 	{
 		float dist = texture( shadowMap, shadowCoord.st + off ).r;
-		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z - 0.005 ) 
+		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z - 0.005 )
 		{
-			shadow = ambientForShadow;
+			shadow = 0.0;
 		}
 	}
 	return shadow;
@@ -96,12 +96,14 @@ void main()
     vec3 V = normalize(in_viewDirection);
 
     vec3 color = pbrAmbient(surface, V, lightingUbo.m_lighting.m_skyColor.rgb, lightingUbo.m_lighting.m_groundColor.rgb);
+    // The shadow map is rendered from light 0, the sun
+    float sunShadow = filterPCF(inShadowCoord / inShadowCoord.w);
     int lightCount = min(lightingUbo.m_lighting.m_settings.x, GLSL_MAX_DIRECTIONAL_LIGHTS);
     for (int i = 0; i < lightCount; ++i)
     {
-        color += pbrDirectLight(surface, V, normalize(lightingUbo.m_lighting.m_lightDirections[i].xyz), lightingUbo.m_lighting.m_lightColors[i].rgb);
+        float shadow = (i == 0) ? sunShadow : 1.0;
+        color += shadow * pbrDirectLight(surface, V, normalize(lightingUbo.m_lighting.m_lightDirections[i].xyz), lightingUbo.m_lighting.m_lightColors[i].rgb);
     }
 
-    float shadow = filterPCF(inShadowCoord / inShadowCoord.w);
-    out_color = vec4(applyDisplayTransform(color * shadow, lightingUbo.m_lighting), surface.alpha);
+    out_color = vec4(applyDisplayTransform(color, lightingUbo.m_lighting), surface.alpha);
 }
