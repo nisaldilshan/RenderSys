@@ -85,6 +85,7 @@ if(RENDERER STREQUAL "Vulkan")
                     src/RenderSys/Vulkan/VulkanMaterial.cpp
                     src/RenderSys/Vulkan/VulkanResource.cpp
                     src/RenderSys/Vulkan/VulkanShadowMap.cpp
+                    src/RenderSys/Vulkan/VulkanGpuTimer.cpp
                     src/RenderSys/Vulkan/Pipeline/VulkanPipeline.cpp
                     src/RenderSys/Vulkan/Pipeline/VulkanPbrRenderPipeline.cpp
                     src/RenderSys/Vulkan/Pipeline/VulkanShadowRenderPipeline.cpp
@@ -146,6 +147,7 @@ target_sources(RenderSys3D
                 TYPE HEADERS 
                 BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/src
                 FILES   src/RenderSys/Renderer3D.h 
+                        src/RenderSys/GpuTiming.h
                         src/RenderSys/RenderUtil.h 
                         src/RenderSys/Texture.h 
                         src/RenderSys/TextureSampler.h 

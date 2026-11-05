@@ -10,6 +10,9 @@ static_assert(false);
 static_assert(false);
 #endif
 
+#include <cstdlib>
+#include <cstring>
+
 using namespace RenderSys;
 
 Renderer3D::Renderer3D()
@@ -36,6 +39,29 @@ void Renderer3D::Init()
 {
     m_rendererBackend->Init();
     OnResize(1, 1);
+
+    if (const char* gpuTiming = std::getenv("RENDERSYS_GPU_TIMING"))
+        SetGpuTimingEnabled(std::strcmp(gpuTiming, "0") != 0);
+}
+
+bool Renderer3D::IsGpuTimingSupported() const
+{
+    return m_rendererBackend->IsGpuTimingSupported();
+}
+
+void Renderer3D::SetGpuTimingEnabled(bool enabled)
+{
+    m_rendererBackend->SetGpuTimingEnabled(enabled);
+}
+
+bool Renderer3D::IsGpuTimingEnabled() const
+{
+    return m_rendererBackend->IsGpuTimingEnabled();
+}
+
+const GpuFrameTimings& Renderer3D::GetGpuTimings() const
+{
+    return m_rendererBackend->GetGpuTimings();
 }
 
 void Renderer3D::SetShader(RenderSys::Shader& shader)

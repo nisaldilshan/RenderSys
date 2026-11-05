@@ -22,6 +22,7 @@
 
 #include "ShadowHelper.h"
 #include <glm/gtc/quaternion.hpp>
+#include "Common/GpuTimingPanel.h"
 
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
@@ -232,6 +233,7 @@ public:
 	{
 		ImGui::Begin("Settings");
         ImGui::Text("Last render: %.3fms", m_lastRenderTime);
+		m_gpuTimingPanel.OnImGuiRender(*m_renderer);
 		static ImVec4 newClearColorImgui = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 		ImGui::ColorEdit3("Clear Color", (float*)&newClearColorImgui); 
 		glm::vec4 newClearColor = {newClearColorImgui.x, newClearColorImgui.y, newClearColorImgui.z, newClearColorImgui.w};
@@ -559,6 +561,7 @@ private:
 	}
 
     std::unique_ptr<RenderSys::Renderer3D> m_renderer;
+	GpuTimingPanel m_gpuTimingPanel;
     uint32_t m_viewportWidth = 0;
     uint32_t m_viewportHeight = 0;
     float m_lastRenderTime = 0.0f;
