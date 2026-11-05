@@ -2,7 +2,7 @@
 // reads the image back and checks a few pixels. Exits with 0 on success.
 // For validation, set VK_LAYER_PATH to a vulkan-validationlayers 1.3.243+ bin folder: the 1.3.239.0
 // package Walnut pulls in has a manifest the Vulkan loader skips. Set RENDERSYS_REQUIRE_VALIDATION=1
-// to fail when the layer does not load.
+// to fail when the layer does not load. It also checks GPU timing (Renderer3D::SetGpuTimingEnabled).
 #include <RenderSys/Renderer3D.h>
 #include <RenderSys/Vulkan/VulkanContext.h>
 
@@ -50,6 +50,56 @@ bool PixelMatches(const std::vector<uint8_t>& image, uint32_t x, uint32_t y, con
            pixel[0], pixel[1], pixel[2], pixel[3],
            expected[0], expected[1], expected[2], expected[3], matches ? "ok" : "MISMATCH");
     return matches;
+}
+
+void RenderFrame(RenderSys::Renderer3D& renderer, const Uniforms& uniforms)
+{
+    renderer.BeginFrame();
+    renderer.BeginRenderPass();
+    renderer.SetUniformBufferData(0, &uniforms, 0);
+    renderer.BindResources();
+    renderer.RenderIndexed(0);
+    renderer.EndRenderPass();
+    renderer.EndFrame();
+}
+
+// Off: no timings. On: each frame gives a new result with one "Main" pass inside the frame's time.
+// Off again: no timings. Devices without timestamps skip the on part.
+bool CheckGpuTiming(RenderSys::Renderer3D& renderer, const Uniforms& uniforms)
+{
+    bool ok = !renderer.IsGpuTimingEnabled() && !renderer.GetGpuTimings().valid;
+    if (!ok)
+        printf("  GPU timing: on or valid before it was enabled\n");
+    if (!renderer.IsGpuTimingSupported())
+    {
+        printf("  GPU timing: not supported on this device, skipped\n");
+        return ok;
+    }
+
+    renderer.SetGpuTimingEnabled(true);
+    uint64_t lastFrameIndex = renderer.GetGpuTimings().frameIndex;
+    for (int frame = 0; frame < 3; frame++)
+    {
+        RenderFrame(renderer, uniforms);
+        const RenderSys::GpuFrameTimings& timings = renderer.GetGpuTimings();
+        const bool frameOk = timings.valid && timings.frameIndex == lastFrameIndex + 1
+                          && timings.passes.size() == 1 && timings.passes[0].name == "Main"
+                          && timings.frameMilliseconds > 0.0f
+                          && timings.passes[0].milliseconds > 0.0f
+                          && timings.passes[0].milliseconds <= timings.frameMilliseconds;
+        printf("  GPU timing frame %d: valid %d, frame %.3f ms, %zu pass(es)%s%s %.3f ms: %s\n", frame,
+               timings.valid, timings.frameMilliseconds, timings.passes.size(),
+               timings.passes.empty() ? "" : ", ", timings.passes.empty() ? "" : timings.passes[0].name.c_str(),
+               timings.passes.empty() ? 0.0f : timings.passes[0].milliseconds, frameOk ? "ok" : "WRONG");
+        ok &= frameOk;
+        lastFrameIndex = timings.frameIndex;
+    }
+
+    renderer.SetGpuTimingEnabled(false);
+    RenderFrame(renderer, uniforms);
+    const bool offOk = !renderer.IsGpuTimingEnabled() && !renderer.GetGpuTimings().valid;
+    printf("  GPU timing off again: %s\n", offOk ? "ok" : "STILL VALID");
+    return ok && offOk;
 }
 
 bool RenderAndCheck()
@@ -104,13 +154,7 @@ bool RenderAndCheck()
     renderer->OnResize(kWidth, kHeight);
 
     const Uniforms uniforms{{kTriangleColor[0] / 255.0f, kTriangleColor[1] / 255.0f, kTriangleColor[2] / 255.0f, 1.0f}};
-    renderer->BeginFrame();
-    renderer->BeginRenderPass();
-    renderer->SetUniformBufferData(0, &uniforms, 0);
-    renderer->BindResources();
-    renderer->RenderIndexed(0);
-    renderer->EndRenderPass();
-    renderer->EndFrame();
+    RenderFrame(*renderer, uniforms);
 
     const std::vector<uint8_t>& image = renderer->GetRenderedImageData();
     bool ok = image.size() == kWidth * kHeight * 4;
@@ -124,6 +168,8 @@ bool RenderAndCheck()
     {
         printf("  read back %zu bytes, expected %u\n", image.size(), kWidth * kHeight * 4);
     }
+
+    ok &= CheckGpuTiming(*renderer, uniforms);
 
     renderer->Destroy();
     return ok;
