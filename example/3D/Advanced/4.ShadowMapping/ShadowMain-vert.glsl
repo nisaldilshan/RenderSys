@@ -1,6 +1,7 @@
 #version 460
 
 #include "ShaderResource.h"
+#include "ShaderLighting.h"
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 projectionMatrix;
@@ -10,10 +11,7 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(std140, set = 0, binding = 1) uniform LightingUniforms {
-    vec4 directions[1];
-    vec4 colors[1];
-    mat4 padding[1];
-    mat4 viewProjection[1];
+    LightingProperties m_lighting;
 } lightingUbo;
 
 struct InstanceData
@@ -55,5 +53,5 @@ void main()
 	out_normal = (modelMatrix * vec4(in_normal, 0.0)).xyz;
     out_tangent = vec4((modelMatrix * vec4(in_tangent.xyz, 0.0)).xyz, in_tangent.w);
 
-    outShadowCoord = (biasMat * lightingUbo.viewProjection[0] * worldPosition );
+    outShadowCoord = (biasMat * lightingUbo.m_lighting.m_lightViewProjection * worldPosition );
 }

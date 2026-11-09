@@ -1,7 +1,7 @@
 #include "ExampleBrowser.h"
+#include "ExampleDockLayout.h"
 
 #include <imgui.h>
-#include <imgui_internal.h> // DockBuilder
 
 #include <cstdlib>
 
@@ -42,15 +42,10 @@ void ExampleBrowser::Select(size_t index)
 
 void ExampleBrowser::SetDefaultDockLayout(Walnut::Application& app)
 {
-	app.SetDefaultDockLayoutCallback([](uint32_t dockspaceId)
-	{
-		ImGuiID viewportId = dockspaceId;
-		ImGuiID examplesId = ImGui::DockBuilderSplitNode(viewportId, ImGuiDir_Left, 0.15f, nullptr, &viewportId);
-		ImGuiID settingsId = ImGui::DockBuilderSplitNode(viewportId, ImGuiDir_Right, 0.25f, nullptr, &viewportId);
-		ImGui::DockBuilderDockWindow("Examples", examplesId);
-		ImGui::DockBuilderDockWindow("Settings", settingsId);
-		ImGui::DockBuilderDockWindow("Viewport", viewportId);
-	});
+	ExampleDockLayout layout;
+	layout.Left = { "Examples" };
+	layout.LeftWidth = 0.15f;
+	layout.SetAsDefault(app);
 }
 
 size_t ExampleBrowser::ExampleFromCommandLine(int argc, char** argv, size_t exampleCount)

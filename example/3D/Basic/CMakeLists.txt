@@ -13,7 +13,7 @@ add_executable(Examples3DBasic
 )
 
 target_include_directories(Examples3DBasic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(Examples3DBasic PRIVATE RenderSys3D RenderSysWalnut ExampleBrowser stb::stb)
+target_link_libraries(Examples3DBasic PRIVATE RenderSys3D RenderSysWalnut ExampleCommon stb::stb)
 
 # These examples load the model.txt in their own folder
 set_source_files_properties(1.First3DShape/First3DShape.cpp PROPERTIES
