@@ -172,12 +172,6 @@ void VulkanRenderer3D::DestroyImages()
 {
     vkQueueWaitIdle(Vulkan::GetQueue());
 
-    for (auto &debugView : m_debugViews)
-    {
-        Vulkan::DestroyRenderTarget(*debugView);
-    }
-    m_debugViews.clear();
-
     if (m_frameBuffer)
     {
         vkDeviceWaitIdle(Vulkan::GetDevice());
@@ -882,46 +876,87 @@ void VulkanRenderer3D::EndRenderPass()
     m_gpuTimer.EndPass(m_commandBuffer);
 }
 
-void VulkanRenderer3D::CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight)
+// A view of the shadow map's depth that ImGui samples as greyscale: depth into r, g and b, and opaque alpha
+static VkImageView createShadowMapImGuiView(const std::shared_ptr<RenderSys::Vulkan::ShadowMap>& shadowMap)
 {
-    CreateTexture(2, RenderSys::Texture::createDepthDummy(mapWidth, mapHeight));
-    auto shadowMapTexIter = m_textures.find(2);
-    constexpr int shadowMapResolution = 2048;
-    assert(shadowMapTexIter->second->GetWidth() == shadowMapResolution);
-    assert(shadowMapTexIter->second->GetHeight() == shadowMapResolution);
-    m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(shadowMapTexIter->second);
+    VkImageViewCreateInfo viewInfo = {};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = shadowMap->GetShadowDepthImage();
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = Vulkan::GetDepthFormat();
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE};
+
+    VkImageView imageView = VK_NULL_HANDLE;
+    if (vkCreateImageView(Vulkan::GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+        assert(false);
+    }
+    return imageView;
 }
 
-void VulkanRenderer3D::CreateShadowPipeline()
+void VulkanRenderer3D::CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight)
+{
+    assert(!m_shadowMap);
+    // Binding 2 of the main bind group: a sampler2DShadow in the shaders
+    CreateTexture(2, RenderSys::Texture::createShadowMapTexture(mapWidth, mapHeight));
+    auto shadowMapTexIter = m_textures.find(2);
+    assert(shadowMapTexIter != m_textures.end());
+    m_shadowMap = std::make_shared<RenderSys::Vulkan::ShadowMap>(shadowMapTexIter->second);
+
+    // The shadow pass leaves the map in DEPTH_STENCIL_READ_ONLY_OPTIMAL, where ImGui samples it too
+    m_shadowMapImGuiTarget = Vulkan::CreateRenderTarget(createShadowMapImGuiView(m_shadowMap), m_defaultTextureSampler,
+                                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+}
+
+void VulkanRenderer3D::CreateShadowPipeline(RenderSys::CullMode cullMode)
 {
     assert(m_shadowMap);
-    if (!m_shadowRenderPipeline)
-    {
-        auto vertexShaderIter = m_shaderMap.find("Shadow-Vertex");
-        if (vertexShaderIter == m_shaderMap.end()) {
-            std::cout << "error: could not find Vertex shader" << std::endl;
-            assert(false);
-            return;
-        }
-        auto fragmentShaderIter = m_shaderMap.find("Shadow-Fragment");
-        if (fragmentShaderIter == m_shaderMap.end()) {
-            std::cout << "error: could not find Fragment shader" << std::endl;
-            assert(false);
-            return;
-        }
-
-        std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos = {
-            vertexShaderIter->second.shaderStageInfo, 
-            fragmentShaderIter->second.shaderStageInfo
-        }; 
-
-        std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout, 
-                                                    RenderSys::GetMaterialBindGroupLayout(),
-                                                    RenderSys::GetResourceBindGroupLayout()};
-
-        m_shadowRenderPipeline = std::make_unique<Vulkan::ShadowRenderPipeline>(
-            m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, shaderStageInfos);
+    auto vertexShaderIter = m_shaderMap.find("Shadow-Vertex");
+    if (vertexShaderIter == m_shaderMap.end()) {
+        std::cout << "error: could not find Vertex shader" << std::endl;
+        assert(false);
+        return;
     }
+    auto fragmentShaderIter = m_shaderMap.find("Shadow-Fragment");
+    if (fragmentShaderIter == m_shaderMap.end()) {
+        std::cout << "error: could not find Fragment shader" << std::endl;
+        assert(false);
+        return;
+    }
+
+    std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos = {
+        vertexShaderIter->second.shaderStageInfo,
+        fragmentShaderIter->second.shaderStageInfo
+    };
+
+    std::vector<VkDescriptorSetLayout> layouts{m_mainBindGroupLayout,
+                                                RenderSys::GetMaterialBindGroupLayout(),
+                                                RenderSys::GetResourceBindGroupLayout()};
+
+    VkCullModeFlags vkCullMode = VK_CULL_MODE_NONE;
+    if (cullMode == RenderSys::CullMode::Front)
+        vkCullMode = VK_CULL_MODE_FRONT_BIT;
+    else if (cullMode == RenderSys::CullMode::Back)
+        vkCullMode = VK_CULL_MODE_BACK_BIT;
+
+    // Called again to change the cull mode: the old pipeline may still be in use by the last frame
+    if (m_shadowRenderPipeline)
+    {
+        vkDeviceWaitIdle(Vulkan::GetDevice());
+        m_shadowRenderPipeline.reset();
+    }
+    m_shadowRenderPipeline = std::make_unique<Vulkan::ShadowRenderPipeline>(
+        m_shadowMap->GetShadowRenderPass(), layouts, m_vertexInputLayout, shaderStageInfos, vkCullMode);
+}
+
+void VulkanRenderer3D::SetShadowDepthBias(float constantFactor, float slopeFactor)
+{
+    m_shadowDepthBiasConstant = constantFactor;
+    m_shadowDepthBiasSlope = slopeFactor;
 }
 
 void VulkanRenderer3D::BeginShadowMapPass()
@@ -962,6 +997,8 @@ void VulkanRenderer3D::RenderShadowMap(entt::registry& entityRegistry)
 {
     assert(m_shadowRenderPipeline);
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowRenderPipeline->GetPipeline());
+    // A clamp of 0 needs no depthBiasClamp device feature
+    vkCmdSetDepthBias(m_commandBuffer, m_shadowDepthBiasConstant, 0.0f, m_shadowDepthBiasSlope);
 
     auto view = entityRegistry.view<RenderSys::MeshComponent,
                                                 RenderSys::TransformComponent,
@@ -980,6 +1017,7 @@ void VulkanRenderer3D::EndShadowMapPass()
 
     vkCmdEndRenderPass(m_commandBuffer);
     m_gpuTimer.EndPass(m_commandBuffer);
+    m_shadowMapWritten = true;
 }
 
 void VulkanRenderer3D::DestroyTextures()
@@ -1004,6 +1042,11 @@ void VulkanRenderer3D::Destroy()
     DestroyBindGroup();
     DestroyBuffers();
     DestroyImages();
+    if (m_shadowMapImGuiTarget)
+    {
+        Vulkan::DestroyRenderTarget(*m_shadowMapImGuiTarget); // DestroyImages waited for the GPU
+        m_shadowMapImGuiTarget.reset();
+    }
     DestroyTextures();
     DestroyRenderPass();
 
@@ -1042,53 +1085,11 @@ void VulkanRenderer3D::SubmitCommandBuffer()
     m_gpuTimer.ReadResults(); // the submit waited for the GPU, so the timestamps are ready
 }
 
-VkImageView createDebugImageView(const std::shared_ptr<RenderSys::Vulkan::ShadowMap>& shadowMap)
+uint64_t VulkanRenderer3D::GetShadowMapImGuiTexture() const
 {
-    // NOW, CREATE A NEW VIEW FOR IMGUI
-    VkImageView m_imguiView = VK_NULL_HANDLE;
-
-    VkImageViewCreateInfo viewInfo = {};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = shadowMap->GetShadowDepthImage();
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = Vulkan::GetDepthFormat();
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT; // Use DEPTH aspect
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
-
-    // THIS IS THE IMPORTANT PART
-    // It tells the sampler how to map the image channels to the shader's input
-    // We are telling it to use the 'R' (depth) channel for R, G, and B.
-    VkComponentMapping componentMapping = {
-        VK_COMPONENT_SWIZZLE_R,     // Red channel takes data from the image's Red (depth) channel
-        VK_COMPONENT_SWIZZLE_R,     // Green channel also takes data from the image's Red (depth) channel
-        VK_COMPONENT_SWIZZLE_R,     // Blue channel also takes data from the image's Red (depth) channel
-        VK_COMPONENT_SWIZZLE_ONE    // Alpha channel is forced to 1.0
-    };
-    viewInfo.components = componentMapping;
-
-    if (vkCreateImageView(Vulkan::GetDevice(), &viewInfo, nullptr, &m_imguiView) != VK_SUCCESS) {
-        assert(false);
-    }
-
-    return m_imguiView;
-}
-
-uint64_t VulkanRenderer3D::GetDebugView()
-{
-    if (m_shadowMap)
-    {
-        if (m_debugViews.empty())
-        {
-            const auto imguiImageView = createDebugImageView(m_shadowMap);
-            m_debugViews.push_back(Vulkan::CreateRenderTarget(imguiImageView, m_defaultTextureSampler));
-        }
-    }
-
-    
-    return (uint64_t)m_debugViews.at(0)->descriptorSet;
+    // 0 without a shadow map, before the first shadow pass, or when the host has no UI to show it in.
+    // The UI draws after the frame's submit, which waits for the GPU, so the pass has run by then.
+    return (m_shadowMapImGuiTarget && m_shadowMapWritten) ? (uint64_t)m_shadowMapImGuiTarget->descriptorSet : 0;
 }
 
 void VulkanRenderer3D::CreateImageCopyBuffers() 

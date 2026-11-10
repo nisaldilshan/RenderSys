@@ -37,7 +37,9 @@ void TransitionImageLayout(VkImage image, VkFormat format,
                             VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipMapLevelCount, VkCommandPool commandPool);
 
 uint32_t GetUniformStride(const uint32_t sizeOfUniform);
-std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSampler sampler);
+// imageLayout is the layout the image is in whenever the host UI samples it
+std::unique_ptr<RenderTarget> CreateRenderTarget(VkImageView imageView, VkSampler sampler,
+                                                 VkImageLayout imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 // Frees what CreateRenderTarget made, including the view it took. The GPU must be done with the target.
 void DestroyRenderTarget(RenderTarget& renderTarget);
 

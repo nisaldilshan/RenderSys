@@ -16,8 +16,12 @@
 #include <RenderSys/Components/TagAndIDComponents.h>
 #include <RenderSys/Scene/Scene.h>
 #include <RenderSys/Scene/SceneHierarchyPanel.h>
+#include <resources/Shaders/ShaderLighting.h>
 #include <imgui.h>
 #include "Common/GpuTimingPanel.h"
+
+#include "Common/ExampleDockLayout.h"
+#include "Common/SunSkyRig.h"
 
 struct alignas(16) MyUniforms {
     glm::mat4x4 projectionMatrix;
@@ -26,12 +30,7 @@ struct alignas(16) MyUniforms {
     float time;
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
-
-struct alignas(16) LightingUniforms {
-    std::array<glm::vec4, 2> directions;
-    std::array<glm::vec4, 2> colors;
-};
-static_assert(sizeof(LightingUniforms) % 16 == 0);
+static_assert(sizeof(LightingProperties) == 208, "must match the std140 layout in ShaderLighting.h");
 
 class Renderer3DLayer : public Walnut::Layer
 {
@@ -175,10 +174,10 @@ public:
 		lightingUniformLayout.binding = 1;
 		lightingUniformLayout.visibility = RenderSys::ShaderStage::Fragment; // only Fragment is needed
 		lightingUniformLayout.buffer.type = RenderSys::BufferBindingType::Uniform;
-		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingUniforms);
+		lightingUniformLayout.buffer.minBindingSize = sizeof(LightingProperties);
 
 		m_renderer->CreateUniformBuffer(uniformBindingLayout.binding, sizeof(MyUniforms), 1);
-		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingUniforms), 1);
+		m_renderer->CreateUniformBuffer(lightingUniformLayout.binding, sizeof(LightingProperties), 1);
 
 		m_renderer->CreateBindGroup(bindingLayoutEntries);
 		m_renderer->CreatePipeline(m_cameraController->GetCamera()->GetHandedness());
@@ -220,10 +219,7 @@ public:
 			m_myUniformData.cameraWorldPosition = camera->GetPosition();
 			m_myUniformData.time = 0.0f;
 			m_renderer->SetUniformBufferData(0, &m_myUniformData, 0);
-			m_lightingUniformData.directions[0] = { 0.5f, 0.5f, 0.5f, 0.0f };
-			m_lightingUniformData.directions[1] = { -0.5f, -0.5f, -0.5f, 0.0f };
-			m_lightingUniformData.colors[0] = { 1.0f, 0.9f, 0.6f, 1.0f };
-			m_lightingUniformData.colors[1] = { 0.6f, 0.9f, 1.0f, 1.0f };
+			m_lightingUniformData = m_lightRig.ToLightingProperties();
 			m_renderer->SetUniformBufferData(1, &m_lightingUniformData, 0);
 			m_renderer->BindResources();
 
@@ -260,6 +256,8 @@ public:
 			m_clearColor = newClearColor;
 			m_renderer->SetClearColor(m_clearColor);
 		}
+		if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
+			m_lightRig.OnImGuiRender();
 		ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -308,7 +306,8 @@ private:
 	glm::vec4 m_clearColor = glm::vec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	MyUniforms m_myUniformData;
-	LightingUniforms m_lightingUniformData;
+	SunSkyRig m_lightRig;
+	LightingProperties m_lightingUniformData;
 	std::unique_ptr<RenderSys::EditorCameraController> m_cameraController;
 	std::shared_ptr<RenderSys::Scene> m_scene;
 	std::vector<RenderSys::Model> m_models;
@@ -325,6 +324,9 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 
 	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();
+	ExampleDockLayout layout;
+	layout.Left = { "Scene Hierarchy", "Properties" };
+	layout.SetAsDefault(*app);
 	app->PushLayer<Renderer3DLayer>();
 	return app;
 }

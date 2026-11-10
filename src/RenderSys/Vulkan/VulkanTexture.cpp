@@ -143,19 +143,73 @@ void VulkanTexture::SetData(unsigned char *textureData)
                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, RenderSys::Vulkan::GetCommandPool());
 }
 
+static VkSamplerAddressMode getVkAddressMode(RenderSys::TextureSampler::AddressMode addressMode)
+{
+    switch (addressMode)
+    {
+    case RenderSys::TextureSampler::AddressMode::REPEAT:
+        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    case RenderSys::TextureSampler::AddressMode::MIRRORED_REPEAT:
+        return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+    case RenderSys::TextureSampler::AddressMode::CLAMP_TO_BORDER:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    case RenderSys::TextureSampler::AddressMode::CLAMP_TO_EDGE:
+    default:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    }
+}
+
+static VkBorderColor getVkBorderColor(RenderSys::TextureSampler::BorderColor borderColor)
+{
+    switch (borderColor)
+    {
+    case RenderSys::TextureSampler::BorderColor::TRANSPARENT_BLACK:
+        return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    case RenderSys::TextureSampler::BorderColor::OPAQUE_WHITE:
+        return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+    case RenderSys::TextureSampler::BorderColor::OPAQUE_BLACK:
+    default:
+        return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+    }
+}
+
 void VulkanTexture::SetSampler(RenderSys::TextureSampler sampler)
 {
+    VkFilter magFilter = sampler.magFilter == RenderSys::TextureSampler::FilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+    VkFilter minFilter = sampler.minFilter == RenderSys::TextureSampler::FilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+    // Depth formats need not support linear filtering. Without it, a compare sampler falls back to one
+    // nearest sample per read instead of the hardware's 2x2 percentage-closer filter.
+    VkFormatProperties formatProperties{};
+    vkGetPhysicalDeviceFormatProperties(Vulkan::GetPhysicalDevice(), m_imageCreateInfo.format, &formatProperties);
+    if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+    {
+        magFilter = VK_FILTER_NEAREST;
+        minFilter = VK_FILTER_NEAREST;
+    }
+
     VkSamplerCreateInfo texSamplerInfo{};
     texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    texSamplerInfo.magFilter = sampler.magFilter == RenderSys::TextureSampler::FilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-    texSamplerInfo.minFilter = sampler.minFilter == RenderSys::TextureSampler::FilterMode::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-    texSamplerInfo.addressModeU = sampler.addressModeU == RenderSys::TextureSampler::AddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    texSamplerInfo.addressModeV = sampler.addressModeV == RenderSys::TextureSampler::AddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    texSamplerInfo.addressModeW = sampler.addressModeW == RenderSys::TextureSampler::AddressMode::REPEAT ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    texSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    texSamplerInfo.magFilter = magFilter;
+    texSamplerInfo.minFilter = minFilter;
+    texSamplerInfo.addressModeU = getVkAddressMode(sampler.addressModeU);
+    texSamplerInfo.addressModeV = getVkAddressMode(sampler.addressModeV);
+    texSamplerInfo.addressModeW = getVkAddressMode(sampler.addressModeW);
+    texSamplerInfo.borderColor = getVkBorderColor(sampler.borderColor);
     texSamplerInfo.unnormalizedCoordinates = VK_FALSE;
-    texSamplerInfo.compareEnable = VK_FALSE;
-    texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    texSamplerInfo.compareEnable = sampler.compareOp == RenderSys::TextureSampler::CompareOp::NONE ? VK_FALSE : VK_TRUE;
+    switch (sampler.compareOp)
+    {
+    case RenderSys::TextureSampler::CompareOp::LESS_OR_EQUAL:
+        texSamplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+        break;
+    case RenderSys::TextureSampler::CompareOp::GREATER_OR_EQUAL:
+        texSamplerInfo.compareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+        break;
+    case RenderSys::TextureSampler::CompareOp::NONE:
+    default:
+        texSamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        break;
+    }
     texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     texSamplerInfo.mipLodBias = 0.0f;
     texSamplerInfo.minLod = 0.0f;

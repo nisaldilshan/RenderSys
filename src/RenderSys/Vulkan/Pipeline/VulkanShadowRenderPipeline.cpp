@@ -13,12 +13,13 @@ namespace Vulkan {
 ShadowRenderPipeline::ShadowRenderPipeline(VkRenderPass renderPass,
                                         std::vector<VkDescriptorSetLayout> &descriptorSetLayouts,
                                         const Vulkan::VertexInputLayout& vertexInputLayout, 
-                                        const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos) 
-    : m_PipelineLayout(VK_NULL_HANDLE), 
+                                        const std::vector<VkPipelineShaderStageCreateInfo>& shaderStageInfos,
+                                        VkCullModeFlags cullMode)
+    : m_PipelineLayout(VK_NULL_HANDLE),
       m_Pipeline(VK_NULL_HANDLE)
 {
     CreatePipelineLayout(descriptorSetLayouts);
-    CreatePipeline(renderPass, vertexInputLayout, shaderStageInfos);
+    CreatePipeline(renderPass, vertexInputLayout, shaderStageInfos, cullMode);
 }
 
 ShadowRenderPipeline::~ShadowRenderPipeline()
@@ -57,8 +58,9 @@ void ShadowRenderPipeline::CreatePipelineLayout(const std::vector<VkDescriptorSe
     }
 }
 
-void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout, 
-                                            const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos)
+void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan::VertexInputLayout &vertexInputLayout,
+                                            const std::vector<VkPipelineShaderStageCreateInfo> &shaderStageInfos,
+                                            VkCullModeFlags cullMode)
 {
     assert(m_PipelineLayout != VK_NULL_HANDLE);
 
@@ -121,7 +123,8 @@ void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan:
     depthStencilInfo.maxDepthBounds = 1.0f;
     depthStencilInfo.stencilTestEnable = VK_FALSE;
 
-    std::vector<VkDynamicState> dynStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    // The depth bias is tuned at run time, per scene
+    std::vector<VkDynamicState> dynStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS };
 
     VkPipelineDynamicStateCreateInfo dynStatesInfo{};
     dynStatesInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -137,12 +140,12 @@ void ShadowRenderPipeline::CreatePipeline(VkRenderPass renderPass, const Vulkan:
     pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
     pipelineCreateInfo.pViewportState = &viewportStateInfo;
     VkPipelineRasterizationStateCreateInfo rasterizerInfo = Vulkan::Pipeline::getRasterizerInfo();
-    rasterizerInfo.depthBiasEnable = VK_TRUE;
-    rasterizerInfo.cullMode = VK_CULL_MODE_FRONT_BIT;
-    rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rasterizerInfo.depthBiasConstantFactor = 8.0f; // Optional
-    rasterizerInfo.depthBiasClamp = 0.0f;          // Optional
-    rasterizerInfo.depthBiasSlopeFactor = 3.0f;    // Optional
+    rasterizerInfo.depthBiasEnable = VK_TRUE; // the factors are dynamic state
+    rasterizerInfo.cullMode = cullMode;
+    // The light's right-handed matrices keep glTF's counter-clockwise front faces counter-clockwise in
+    // clip space, and the shadow pass's positive-height viewport (Vulkan's Y-down framebuffer) then shows
+    // them clockwise. So VK_CULL_MODE_FRONT_BIT culls the faces that face the light.
+    rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
     pipelineCreateInfo.pRasterizationState = &rasterizerInfo;
     pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
     pipelineCreateInfo.pColorBlendState = &colorBlendingInfo;

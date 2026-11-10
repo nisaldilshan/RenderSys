@@ -8,6 +8,8 @@
 #include <RenderSys/Compute.h>
 #include <imgui.h>
 
+#include "Common/ExampleDockLayout.h"
+
 constexpr uint32_t g_bufferSize = 64 * sizeof(float);
 
 class ComputeLayer : public Walnut::Layer
@@ -151,6 +153,11 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 
 	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();
+	// The example prints its results to the console and draws no viewport, so its one window fills the app
+	ExampleDockLayout layout;
+	layout.Center = "Settings";
+	layout.Right = {};
+	layout.SetAsDefault(*app);
 	app->PushLayer<ComputeLayer>();
 	return app;
 }

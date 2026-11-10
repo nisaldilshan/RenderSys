@@ -7,6 +7,8 @@
 #include <RenderSys/Renderer2D.h>
 #include <imgui.h>
 
+#include "Common/ExampleDockLayout.h"
+
 #include "FluidSolver2D.h"
 #include "Utils.h"
 
@@ -363,6 +365,9 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 
 	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();
+	ExampleDockLayout layout;
+	layout.Right = { "Settings", "Dear ImGui Demo" };
+	layout.SetAsDefault(*app);
 	app->PushLayer<Renderer2DLayer>();
 	return app;
 }

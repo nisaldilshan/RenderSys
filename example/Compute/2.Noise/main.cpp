@@ -8,6 +8,8 @@
 #include <RenderSys/Compute.h>
 #include <imgui.h>
 
+#include "Common/ExampleDockLayout.h"
+
 int g_width = 0;
 int g_height = 0;
 
@@ -313,6 +315,7 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 
 	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();
+	ExampleDockLayout().SetAsDefault(*app);
 	app->PushLayer<ComputeLayer>();
 	return app;
 }

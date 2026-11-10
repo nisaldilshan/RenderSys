@@ -65,11 +65,12 @@ public:
     void Destroy();
 
     void CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight);
-    void CreateShadowPipeline();
+    void CreateShadowPipeline(RenderSys::CullMode cullMode);
+    void SetShadowDepthBias(float constantFactor, float slopeFactor);
     void BeginShadowMapPass();
     void RenderShadowMap(entt::registry& entityRegistry);
     void EndShadowMapPass();
-    void OnDebugView();
+    uint64_t GetShadowMapImGuiTexture() const { return 0; }
 
     void ResetCommandBuffer();
     void SubmitCommandBuffer();

@@ -164,9 +164,14 @@ void Renderer3D::CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight)
     m_rendererBackend->CreateShadowMap(mapWidth, mapHeight);
 }
 
-void Renderer3D::CreateShadowPipeline()
+void Renderer3D::CreateShadowPipeline(CullMode cullMode)
 {
-    m_rendererBackend->CreateShadowPipeline();
+    m_rendererBackend->CreateShadowPipeline(cullMode);
+}
+
+void Renderer3D::SetShadowDepthBias(float constantFactor, float slopeFactor)
+{
+    m_rendererBackend->SetShadowDepthBias(constantFactor, slopeFactor);
 }
 
 void Renderer3D::ShadowPass(entt::registry &entityRegistry)
@@ -176,9 +181,9 @@ void Renderer3D::ShadowPass(entt::registry &entityRegistry)
     m_rendererBackend->EndShadowMapPass();
 }
 
-uint64_t Renderer3D::GetDebugView()
+uint64_t Renderer3D::GetShadowMapImGuiTexture() const
 {
-    return m_rendererBackend->GetDebugView();
+    return m_rendererBackend->GetShadowMapImGuiTexture();
 }
 
 std::vector<uint8_t>& Renderer3D::GetRenderedImageData()
