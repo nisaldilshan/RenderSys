@@ -1,6 +1,5 @@
 add_executable(ShadowMapping
             ShadowMain.cpp
-            ShadowFit.h
 )
 
 target_link_libraries(ShadowMapping PRIVATE RenderSys3D RenderSysEditor RenderSysWalnut ExampleCommon)
