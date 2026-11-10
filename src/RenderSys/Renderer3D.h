@@ -60,12 +60,19 @@ public:
     void BeginRenderPass();
     void EndRenderPass();
 
+    // A depth map at binding 2 of the main bind group, read as sampler2DShadow (see Texture::createShadowMapTexture)
     void CreateShadowMap(uint32_t mapWidth, uint32_t mapHeight);
-    void CreateShadowPipeline();
+    // Builds the shadow pass's pipeline, or rebuilds it when called again. Front culls the faces that face the light.
+    void CreateShadowPipeline(CullMode cullMode = CullMode::None);
+    // Rasterizer depth bias for the shadow pass, in the units of vkCmdSetDepthBias: constantFactor in the depth
+    // format's smallest steps, slopeFactor times the depth slope of each triangle
+    void SetShadowDepthBias(float constantFactor, float slopeFactor);
     void ShadowPass(entt::registry& entityRegistry);
     void* GetDescriptorSet() const;
     void Destroy();
-    uint64_t GetDebugView();
+    // The shadow map as an ImGui texture, its depth as greyscale; 0 without a shadow map or a UI, or before the
+    // first ShadowPass
+    uint64_t GetShadowMapImGuiTexture() const;
     std::vector<uint8_t>& GetRenderedImageData();
 
 private:
