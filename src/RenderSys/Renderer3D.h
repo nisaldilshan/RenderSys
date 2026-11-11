@@ -7,6 +7,7 @@
 #include "Buffer.h"
 #include "RenderUtil.h"
 #include "Shader.h"
+#include "GpuTiming.h"
 #include <RenderSys/Texture.h>
 #include <RenderSys/Scene/Mesh.h>
 #include <RenderSys/Components/MeshComponent.h>
@@ -74,6 +75,17 @@ public:
     // first ShadowPass
     uint64_t GetShadowMapImGuiTexture() const;
     std::vector<uint8_t>& GetRenderedImageData();
+
+    // GPU timing: timestamps around the frame and each pass (shadow, main), read back in EndFrame.
+    // Off by default; RENDERSYS_GPU_TIMING=1 turns it on in Init. A change applies from the next
+    // BeginFrame. It costs a few timestamp writes per frame and no extra wait, since EndFrame already
+    // waits for the GPU.
+    bool IsGpuTimingSupported() const;
+    void SetGpuTimingEnabled(bool enabled);
+    // False while off, and on devices that cannot write timestamps
+    bool IsGpuTimingEnabled() const;
+    // The last timed frame; valid is false until one has finished
+    const GpuFrameTimings& GetGpuTimings() const;
 
 private:
     uint32_t m_Width = 0, m_Height = 0;

@@ -38,6 +38,7 @@ bool VulkanRenderer3D::Init()
     RenderSys::CreateMaterialBindGroupLayout();
     RenderSys::CreateResourceBindGroupPool();
     RenderSys::CreateResourceBindGroupLayout();
+    m_gpuTimer.Init();
     return true;
 }
 
@@ -853,6 +854,7 @@ void VulkanRenderer3D::BeginRenderPass()
     rpInfo.clearValueCount = 2;
     rpInfo.pClearValues = clearValues.data();
 
+    m_gpuTimer.BeginPass(m_commandBuffer, "Main");
     vkCmdBeginRenderPass(m_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     VkViewport viewport{};
@@ -871,6 +873,7 @@ void VulkanRenderer3D::BeginRenderPass()
 void VulkanRenderer3D::EndRenderPass()
 {
     vkCmdEndRenderPass(m_commandBuffer);
+    m_gpuTimer.EndPass(m_commandBuffer);
 }
 
 // A view of the shadow map's depth that ImGui samples as greyscale: depth into r, g and b, and opaque alpha
@@ -961,6 +964,8 @@ void VulkanRenderer3D::BeginShadowMapPass()
     if (!m_commandBuffer)
         return;
 
+    m_gpuTimer.BeginPass(m_commandBuffer, "Shadow");
+
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = m_shadowMap->GetShadowRenderPass();
@@ -1011,6 +1016,7 @@ void VulkanRenderer3D::EndShadowMapPass()
         return;
 
     vkCmdEndRenderPass(m_commandBuffer);
+    m_gpuTimer.EndPass(m_commandBuffer);
     m_shadowMapWritten = true;
 }
 
@@ -1047,6 +1053,7 @@ void VulkanRenderer3D::Destroy()
     m_pbrRenderPipeline.reset();
     m_shadowRenderPipeline.reset();
     m_shadowMap.reset();
+    m_gpuTimer.Destroy();
 
     RenderSys::Vulkan::DestroyMemoryAllocator();
 }
@@ -1061,10 +1068,12 @@ void VulkanRenderer3D::ResetCommandBuffer()
     begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     err = vkBeginCommandBuffer(m_commandBuffer, &begin_info);
     Vulkan::CheckVkResult(err);
+    m_gpuTimer.BeginFrame(m_commandBuffer);
 }
 
 void VulkanRenderer3D::SubmitCommandBuffer()
 {
+    m_gpuTimer.EndFrame(m_commandBuffer);
     auto err = vkEndCommandBuffer(m_commandBuffer);
     Vulkan::CheckVkResult(err);
 
@@ -1073,6 +1082,7 @@ void VulkanRenderer3D::SubmitCommandBuffer()
     end_info.commandBufferCount = 1;
     end_info.pCommandBuffers = &m_commandBuffer;
     Vulkan::QueueSubmitAndWait(end_info);
+    m_gpuTimer.ReadResults(); // the submit waited for the GPU, so the timestamps are ready
 }
 
 uint64_t VulkanRenderer3D::GetShadowMapImGuiTexture() const

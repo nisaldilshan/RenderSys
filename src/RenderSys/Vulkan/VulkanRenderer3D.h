@@ -14,6 +14,8 @@
 #include <RenderSys/Components/MeshComponent.h>
 #include <RenderSys/Vulkan/VulkanVertex.h>
 #include <RenderSys/Vulkan/VulkanRendererUtils.h>
+#include <RenderSys/Vulkan/VulkanGpuTimer.h>
+#include <RenderSys/GpuTiming.h>
 #include <entt/entt.hpp>
 
 
@@ -87,6 +89,11 @@ public:
     uint64_t GetShadowMapImGuiTexture() const;
     std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 
+    bool IsGpuTimingSupported() const { return m_gpuTimer.IsSupported(); }
+    void SetGpuTimingEnabled(bool enabled) { m_gpuTimer.SetEnabled(enabled); }
+    bool IsGpuTimingEnabled() const { return m_gpuTimer.IsEnabled(); }
+    const GpuFrameTimings& GetGpuTimings() const { return m_gpuTimer.GetTimings(); }
+
 private:
     void RenderSubMesh(const uint32_t vertexBufferID, const RenderSys::SubMesh& subMesh, const std::shared_ptr<RenderSys::Resource>& resource, const uint32_t firstInstance, VkPipelineLayout pipelineLayout);
     void CreateDefaultTextureSampler();
@@ -139,6 +146,7 @@ private:
     std::unique_ptr<Vulkan::RenderTarget> m_shadowMapImGuiTarget;
     bool m_shadowMapWritten = false; // until a shadow pass has run, the map is in no layout a sampler may read
     std::unique_ptr<VulkanCPUImageCopyData> m_cpuImageData;
+    Vulkan::GpuTimer m_gpuTimer;
 };
 
 }

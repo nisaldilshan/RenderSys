@@ -8,6 +8,7 @@
 #include <RenderSys/Shader.h>
 #include <RenderSys/Buffer.h>
 #include <RenderSys/Texture.h>
+#include <RenderSys/GpuTiming.h>
 #include <RenderSys/Scene/Mesh.h>
 #include <RenderSys/Components/MeshComponent.h>
 #include <entt/entt.hpp>
@@ -73,6 +74,12 @@ public:
 
     void ResetCommandBuffer();
     void SubmitCommandBuffer();
+
+    // GPU timing is Vulkan-only for now: WebGPU timestamp queries are an optional feature
+    bool IsGpuTimingSupported() const { return false; }
+    void SetGpuTimingEnabled(bool) {}
+    bool IsGpuTimingEnabled() const { return false; }
+    const GpuFrameTimings& GetGpuTimings() const { static const GpuFrameTimings none; return none; }
 
     std::vector<uint8_t>& GetRenderedImageDataToCPUSide();
 private:
