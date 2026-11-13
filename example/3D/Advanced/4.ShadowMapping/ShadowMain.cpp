@@ -1,9 +1,11 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <string_view>
 #include <Walnut/Application.h>
 #include <RenderSys/Walnut/WalnutAdapter.h>
 #include <Walnut/EntryPoint.h>
@@ -68,6 +70,10 @@ struct SunShadowSettings
 class Renderer3DLayer : public Walnut::Layer
 {
 public:
+	Renderer3DLayer(Walnut::Application& app, bool useImGui)
+		: m_app(app), m_useImGui(useImGui)
+	{}
+
 	virtual void OnAttach() override
 	{
 		m_renderer = std::make_unique<RenderSys::Renderer3D>();
@@ -176,6 +182,9 @@ public:
 
 	virtual void OnDetach() override
 	{
+		if (!m_useImGui)
+			m_app.SetMainImageHandle(0);
+
 		m_models.clear();
 		m_sceneHierarchyPanel.reset();
 		m_scene.reset();
@@ -186,6 +195,11 @@ public:
 	virtual void OnUpdate(float ts) override
 	{
         Walnut::Timer timer;
+		if (!m_useImGui)
+		{
+			m_viewportWidth = m_app.GetFramebufferWidth();
+			m_viewportHeight = m_app.GetFramebufferHeight();
+		}
 		if (m_viewportWidth == 0 || m_viewportHeight == 0)
 			return;
 
@@ -229,6 +243,9 @@ public:
 
 			m_renderer->EndRenderPass();
 			m_renderer->EndFrame();
+
+			if (!m_useImGui)
+				m_app.SetMainImageHandle(static_cast<uint64_t>(reinterpret_cast<std::uintptr_t>(m_renderer->GetDescriptorSet())));
 		}
 
         m_lastRenderTime = timer.ElapsedMillis();
@@ -236,6 +253,9 @@ public:
 
 	virtual void OnUIRender() override
 	{
+		if (!m_useImGui)
+			return;
+
 		ImGui::Begin("Settings");
         ImGui::Text("Last render: %.3fms", m_lastRenderTime);
 		m_gpuTimingPanel.OnImGuiRender(*m_renderer);
@@ -486,6 +506,9 @@ private:
 		loadShader("shadow-frag.glsl", "Shadow-Fragment", RenderSys::ShaderStage::Fragment);
 	}
 
+	Walnut::Application& m_app;
+	bool m_useImGui = true;
+
     std::unique_ptr<RenderSys::Renderer3D> m_renderer;
 	GpuTimingPanel m_gpuTimingPanel;
     uint32_t m_viewportWidth = 0;
@@ -512,17 +535,28 @@ private:
 
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 {
+	bool useImGui = true;
+	for (int i = 1; i < argc; ++i)
+	{
+		if (std::string_view(argv[i]) == "--no-imgui")
+			useImGui = false;
+	}
+
 	Walnut::ApplicationSpecification spec;
 	spec.Name = "Renderer3D Example";
+	spec.UseImGui = useImGui;
 #ifndef NDEBUG
 	spec.EnableGraphicsValidation = true; // used only when the loader finds the layer, see VK_LAYER_PATH in launch.json
 #endif
 
 	Walnut::Application* app = new Walnut::Application(spec);
 	RenderSys::AttachToWalnut();
-	ExampleDockLayout layout;
-	layout.Left = { "Scene Hierarchy", "Properties", "Shadow Map" };
-	layout.SetAsDefault(*app);
-	app->PushLayer<Renderer3DLayer>();
+	if (useImGui)
+	{
+		ExampleDockLayout layout;
+		layout.Left = { "Scene Hierarchy", "Properties", "Shadow Map" };
+		layout.SetAsDefault(*app);
+	}
+	app->PushLayer<Renderer3DLayer>(*app, useImGui);
 	return app;
 }

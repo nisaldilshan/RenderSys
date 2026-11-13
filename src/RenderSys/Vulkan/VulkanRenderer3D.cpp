@@ -414,10 +414,12 @@ void VulkanRenderer3D::CreateRenderPass()
     subpassDesc.pColorAttachments = &colorAttRef;
     subpassDesc.pDepthStencilAttachment = &depthAttRef;
 
+    // Incoming dependency: wait for any prior color attachment output and any prior frame's
+    // fragment-shader read (ImGui or Walnut's no-ImGui fullscreen pass) before clearing/writing.
     VkSubpassDependency subpassDep{};
     subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
     subpassDep.dstSubpass = 0;
-    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     subpassDep.srcAccessMask = 0;
     subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
