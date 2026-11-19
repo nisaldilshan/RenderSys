@@ -245,7 +245,7 @@ public:
 			m_renderer->EndFrame();
 
 			if (!m_useImGui)
-				m_app.SetMainImageHandle(static_cast<uint64_t>(reinterpret_cast<std::uintptr_t>(m_renderer->GetDescriptorSet())));
+				m_app.SetMainImageHandle(m_renderer->GetDescriptorSet());
 		}
 
         m_lastRenderTime = timer.ElapsedMillis();

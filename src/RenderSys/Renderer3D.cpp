@@ -114,9 +114,9 @@ void Renderer3D::BindResources()
     m_rendererBackend->BindResources();
 }
 
-void* Renderer3D::GetDescriptorSet() const
+uint64_t Renderer3D::GetDescriptorSet() const
 {
-    return (void*)m_rendererBackend->GetDescriptorSet();
+    return m_rendererBackend->GetDescriptorSet();
 }
 
 void Renderer3D::Destroy()

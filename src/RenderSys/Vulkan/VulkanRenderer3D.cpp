@@ -72,8 +72,7 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
     const auto finalRenderTargetView = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
     m_finalRenderTarget = RenderSys::Vulkan::CreateRenderTarget(finalRenderTargetView, m_defaultTextureSampler);
 
-    // create image copy staging buffer for cpu image copy
-    CreateImageCopyBuffers();
+    // CPU readback staging buffers are created lazily in GetRenderedImageDataToCPUSide().
 }
 
 void VulkanRenderer3D::CreateDepthImage()
@@ -837,7 +836,7 @@ void VulkanRenderer3D::DrawCube()
 
 uint64_t VulkanRenderer3D::GetDescriptorSet()
 {
-    return (uint64_t)m_finalRenderTarget->descriptorSet;
+    return m_finalRenderTarget ? (uint64_t)m_finalRenderTarget->descriptorSet : 0;
 }
 
 void VulkanRenderer3D::BeginRenderPass()
@@ -1123,6 +1122,9 @@ void VulkanRenderer3D::CreateImageCopyBuffers()
 
 std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
 {
+    if (!m_cpuImageData)
+        CreateImageCopyBuffers();
+
     auto currentCommandBuffer = RenderSys::Vulkan::BeginSingleTimeCommands(RenderSys::Vulkan::GetCommandPool());
 
     VkImageMemoryBarrier imageBarrier_toTransfer{};

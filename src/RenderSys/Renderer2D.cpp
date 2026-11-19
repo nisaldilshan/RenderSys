@@ -74,9 +74,9 @@ void Renderer2D::SetUniformBufferData(const void* bufferData, uint32_t uniformIn
     m_rendererBackend->SetUniformData(bufferData, uniformIndex);
 }
 
-void* Renderer2D::GetDescriptorSet() const
+uint64_t Renderer2D::GetDescriptorSet() const
 {
-    return (void*)m_rendererBackend->GetDescriptorSet();
+    return m_rendererBackend->GetDescriptorSet();
 }
 
 void RenderSys::Renderer2D::Destroy()

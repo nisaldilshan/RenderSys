@@ -69,7 +69,7 @@ public:
     // format's smallest steps, slopeFactor times the depth slope of each triangle
     void SetShadowDepthBias(float constantFactor, float slopeFactor);
     void ShadowPass(entt::registry& entityRegistry);
-    void* GetDescriptorSet() const;
+    uint64_t GetDescriptorSet() const;
     void Destroy();
     // The shadow map as an ImGui texture, its depth as greyscale; 0 without a shadow map or a UI, or before the
     // first ShadowPass
