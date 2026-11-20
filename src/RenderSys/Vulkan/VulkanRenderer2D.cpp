@@ -314,24 +314,17 @@ bool VulkanRenderer2D::CreateRenderPass()
     subpassDesc.pColorAttachments = &colorAttRef;
     // subpassDesc.pDepthStencilAttachment = &depthAttRef;
 
+    // Incoming dependency: wait for any prior color attachment output and any prior frame's
+    // fragment-shader read (ImGui or Walnut's no-ImGui fullscreen pass) before clearing/writing.
     VkSubpassDependency subpassDep{};
     subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
     subpassDep.dstSubpass = 0;
-    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     subpassDep.srcAccessMask = 0;
     subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    VkSubpassDependency depthDep{};
-    depthDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-    depthDep.dstSubpass = 0;
-    depthDep.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    depthDep.srcAccessMask = 0;
-    depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-    // Outgoing dependency: ImGui's fragment shader samples the color attachment for display after this pass.
-    // Only this one is passed, so the incoming dependency stays the implicit one.
+    // Outgoing dependency: ImGui or Walnut's fullscreen fragment shader samples the color attachment after this pass.
     VkSubpassDependency colorOutDep{};
     colorOutDep.srcSubpass = 0;
     colorOutDep.dstSubpass = VK_SUBPASS_EXTERNAL;
@@ -340,7 +333,7 @@ bool VulkanRenderer2D::CreateRenderPass()
     colorOutDep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     colorOutDep.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-    VkSubpassDependency dependencies[] = {subpassDep, depthDep};
+    VkSubpassDependency dependencies[] = {subpassDep, colorOutDep};
     VkAttachmentDescription attachments[] = {colorAtt};
 
     VkRenderPassCreateInfo renderPassInfo{};
@@ -349,10 +342,8 @@ bool VulkanRenderer2D::CreateRenderPass()
     renderPassInfo.pAttachments = attachments;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpassDesc;
-    //   renderPassInfo.dependencyCount = 2;
-    //   renderPassInfo.pDependencies = dependencies;
-    renderPassInfo.dependencyCount = 1;
-    renderPassInfo.pDependencies = &colorOutDep;
+    renderPassInfo.dependencyCount = 2;
+    renderPassInfo.pDependencies = dependencies;
 
     if (vkCreateRenderPass(Vulkan::GetDevice(), &renderPassInfo, nullptr, &m_renderpass) != VK_SUCCESS)
     {
@@ -666,7 +657,7 @@ void VulkanRenderer2D::CreateTextureSampler()
 
 uint64_t VulkanRenderer2D::GetDescriptorSet()
 {
-    return (uint64_t)m_finalRenderTarget->descriptorSet;
+    return m_finalRenderTarget ? (uint64_t)m_finalRenderTarget->descriptorSet : 0;
 }
 
 void VulkanRenderer2D::BeginRenderPass()

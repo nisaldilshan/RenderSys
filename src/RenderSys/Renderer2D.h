@@ -53,7 +53,7 @@ public:
     void BeginRenderPass();
     void EndRenderPass();
 
-    void* GetDescriptorSet() const;
+    uint64_t GetDescriptorSet() const;
     void Destroy();
 private:
     uint32_t m_Width = 0, m_Height = 0;

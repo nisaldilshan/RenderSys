@@ -72,8 +72,7 @@ void VulkanRenderer3D::CreateImageToRender(uint32_t width, uint32_t height)
     const auto finalRenderTargetView = RenderSys::Vulkan::CreateImageView(m_ImageToRenderInto, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
     m_finalRenderTarget = RenderSys::Vulkan::CreateRenderTarget(finalRenderTargetView, m_defaultTextureSampler);
 
-    // create image copy staging buffer for cpu image copy
-    CreateImageCopyBuffers();
+    // CPU readback staging buffers are created lazily in GetRenderedImageDataToCPUSide().
 }
 
 void VulkanRenderer3D::CreateDepthImage()
@@ -414,10 +413,12 @@ void VulkanRenderer3D::CreateRenderPass()
     subpassDesc.pColorAttachments = &colorAttRef;
     subpassDesc.pDepthStencilAttachment = &depthAttRef;
 
+    // Incoming dependency: wait for any prior color attachment output and any prior frame's
+    // fragment-shader read (ImGui or Walnut's no-ImGui fullscreen pass) before clearing/writing.
     VkSubpassDependency subpassDep{};
     subpassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
     subpassDep.dstSubpass = 0;
-    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     subpassDep.srcAccessMask = 0;
     subpassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     subpassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -835,7 +836,7 @@ void VulkanRenderer3D::DrawCube()
 
 uint64_t VulkanRenderer3D::GetDescriptorSet()
 {
-    return (uint64_t)m_finalRenderTarget->descriptorSet;
+    return m_finalRenderTarget ? (uint64_t)m_finalRenderTarget->descriptorSet : 0;
 }
 
 void VulkanRenderer3D::BeginRenderPass()
@@ -1121,6 +1122,9 @@ void VulkanRenderer3D::CreateImageCopyBuffers()
 
 std::vector<uint8_t>& VulkanRenderer3D::GetRenderedImageDataToCPUSide()
 {
+    if (!m_cpuImageData)
+        CreateImageCopyBuffers();
+
     auto currentCommandBuffer = RenderSys::Vulkan::BeginSingleTimeCommands(RenderSys::Vulkan::GetCommandPool());
 
     VkImageMemoryBarrier imageBarrier_toTransfer{};
